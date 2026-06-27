@@ -1,0 +1,58 @@
+name: TRVM conformance
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  battery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Toolchain versions
+        run: |
+          gcc --version | head -1
+          python3 --version
+          node --version
+
+      - name: Build native runtime
+        run: make native
+
+      - name: Native self-test (ic32 --test, 13/13)
+        run: make native-selftest
+
+      - name: Conformance runner (vectors + SPEC §6.1–§6.3)
+        run: make conformance
+
+      - name: WASM smoke (ic32.wasm via node)
+        run: make wasm-smoke
+
+      - name: Swarm capstone (coordination-free across workers)
+        run: make swarm
+
+      - name: Identity/memory result (merge-is-a-CvRDT)
+        run: make research
+
+  wasm-rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang-15 + lld-15
+        run: sudo apt-get update && sudo apt-get install -y clang-15 lld-15
+      - name: Rebuild ic32.wasm and verify it still matches
+        run: |
+          cp runtime/wasm/ic32.wasm /tmp/committed.wasm
+          CLANG=clang-15 bash runtime/wasm/build.sh
+          echo "committed vs rebuilt:"
+          ls -l /tmp/committed.wasm runtime/wasm/ic32.wasm

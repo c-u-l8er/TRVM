@@ -1,0 +1,173 @@
+{
+  "_doc": "Language-agnostic TRVM conformance vectors. Each `term` (surface IC/lambda syntax) MUST normalize to `nf`. `ref_interactions` is the Python reference reducer's interaction count (ic_float); native/wasm counts may differ by strategy but the normal form MUST match. Vectors are cross-validated: only terms where ic_float (python) and ic32 (C) already agree are included, so any conforming implementation can check against `nf` directly.",
+  "vectors": [
+    {
+      "name": "identity",
+      "term": "λx.x",
+      "nf": "λa.a",
+      "ref_interactions": 0,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "K_true",
+      "term": "λa.λb.a",
+      "nf": "λa.λb.a",
+      "ref_interactions": 0,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "K_false",
+      "term": "λa.λb.b",
+      "nf": "λa.λb.b",
+      "ref_interactions": 0,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "apply_id",
+      "term": "(λx.λt.(t x) λy.y)",
+      "nf": "λa.(a λb.b)",
+      "ref_interactions": 1,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "not_true",
+      "term": "(λb.λt.λf.((b f) t) λT.λF.T)",
+      "nf": "λa.λb.b",
+      "ref_interactions": 3,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "dup_pair",
+      "term": "!{a,b} = {λx.x,λy.y}; (a b)",
+      "nf": "λa.a",
+      "ref_interactions": 2,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "sup_app",
+      "term": "({λx.x,λy.y} λz.z)",
+      "nf": "&0{λa.a,λb.b}",
+      "ref_interactions": 5,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_not_2",
+      "term": "((λf.λx.!{f0,f1}=f;(f0 (f1 x)) λB.λT.λF.((B F) T)) λa.λb.a)",
+      "nf": "λa.λb.a",
+      "ref_interactions": 16,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_apply_0",
+      "term": "((λf.λx.x S) Z)",
+      "nf": "Z",
+      "ref_interactions": 2,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_apply_1",
+      "term": "((λf.λx.(f x) S) Z)",
+      "nf": "(S Z)",
+      "ref_interactions": 2,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_apply_2",
+      "term": "((λf.λx.!&1001{c0,c1}=f;(c0 (c1 x)) S) Z)",
+      "nf": "(S (S Z))",
+      "ref_interactions": 3,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_apply_3",
+      "term": "((λf.λx.!&1002{c0,t0}=f;!&1003{c1,c2}=t0;(c0 (c1 (c2 x))) S) Z)",
+      "nf": "(S (S (S Z)))",
+      "ref_interactions": 4,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_apply_4",
+      "term": "((λf.λx.!&1004{c0,t0}=f;!&1005{c1,t1}=t0;!&1006{c2,c3}=t1;(c0 (c1 (c2 (c3 x)))) S) Z)",
+      "nf": "(S (S (S (S Z))))",
+      "ref_interactions": 5,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_apply_5",
+      "term": "((λf.λx.!&1007{c0,t0}=f;!&1008{c1,t1}=t0;!&1009{c2,t2}=t1;!&1010{c3,c4}=t2;(c0 (c1 (c2 (c3 (c4 x))))) S) Z)",
+      "nf": "(S (S (S (S (S Z)))))",
+      "ref_interactions": 6,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_apply_6",
+      "term": "((λf.λx.!&1011{c0,t0}=f;!&1012{c1,t1}=t0;!&1013{c2,t2}=t1;!&1014{c3,t3}=t2;!&1015{c4,c5}=t3;(c0 (c1 (c2 (c3 (c4 (c5 x)))))) S) Z)",
+      "nf": "(S (S (S (S (S (S Z))))))",
+      "ref_interactions": 7,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_exp_2_2",
+      "term": "((λf.λx.!&1001{c0,c1}=f;(c0 (c1 x)) λf.λx.!&1002{c0,c1}=f;(c0 (c1 x))) S)",
+      "nf": "λa.(S (S (S (S a))))",
+      "ref_interactions": 21,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_exp_3_2",
+      "term": "((λf.λx.!&1001{c0,t0}=f;!&1002{c1,c2}=t0;(c0 (c1 (c2 x))) λf.λx.!&1003{c0,c1}=f;(c0 (c1 x))) S)",
+      "nf": "λa.(S (S (S (S (S (S (S (S a))))))))",
+      "ref_interactions": 42,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_exp_2_3",
+      "term": "((λf.λx.!&1001{c0,c1}=f;(c0 (c1 x)) λf.λx.!&1002{c0,t0}=f;!&1003{c1,c2}=t0;(c0 (c1 (c2 x)))) S)",
+      "nf": "λa.(S (S (S (S (S (S (S (S (S a)))))))))",
+      "ref_interactions": 36,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_exp_3_3",
+      "term": "((λf.λx.!&1001{c0,t0}=f;!&1002{c1,c2}=t0;(c0 (c1 (c2 x))) λf.λx.!&1003{c0,t0}=f;!&1004{c1,c2}=t0;(c0 (c1 (c2 x)))) S)",
+      "nf": "λa.(S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S a)))))))))))))))))))))))))))",
+      "ref_interactions": 91,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_exp_4_2",
+      "term": "((λf.λx.!&1001{c0,t0}=f;!&1002{c1,t1}=t0;!&1003{c2,c3}=t1;(c0 (c1 (c2 (c3 x)))) λf.λx.!&1004{c0,c1}=f;(c0 (c1 x))) S)",
+      "nf": "λa.(S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S a))))))))))))))))",
+      "ref_interactions": 71,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_exp_2_4",
+      "term": "((λf.λx.!&1001{c0,c1}=f;(c0 (c1 x)) λf.λx.!&1002{c0,t0}=f;!&1003{c1,t1}=t0;!&1004{c2,c3}=t1;(c0 (c1 (c2 (c3 x))))) S)",
+      "nf": "λa.(S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S a))))))))))))))))",
+      "ref_interactions": 55,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_not_parity_2",
+      "term": "(((λf.λx.!&1001{c0,c1}=f;(c0 (c1 x)) λp.λt.λf.((p f) t)) λa.λb.a) X)",
+      "nf": "λa.X",
+      "ref_interactions": 17,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_not_parity_3",
+      "term": "(((λf.λx.!&1001{c0,t0}=f;!&1002{c1,c2}=t0;(c0 (c1 (c2 x))) λp.λt.λf.((p f) t)) λa.λb.a) X)",
+      "nf": "λa.a",
+      "ref_interactions": 28,
+      "ic_ref_agrees": true
+    },
+    {
+      "name": "church_not_parity_4",
+      "term": "(((λf.λx.!&1001{c0,t0}=f;!&1002{c1,t1}=t0;!&1003{c2,c3}=t1;(c0 (c1 (c2 (c3 x)))) λp.λt.λf.((p f) t)) λa.λb.a) X)",
+      "nf": "λa.X",
+      "ref_interactions": 39,
+      "ic_ref_agrees": true
+    }
+  ]
+}
