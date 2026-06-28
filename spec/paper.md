@@ -12,9 +12,12 @@ Optimal interaction-net evaluators (the HVM lineage) compile the Interaction
 Calculus to fast single-node machine code and are converging on parallel program
 and proof **search** as their destination. We observe that the axis they are *not*
 building is **distribution across machines**, and that it is both open and a
-natural fit: interaction-net reduction is confluent by construction, and
-confluence is exactly the operational license for coordination-free distributed
-execution. We make this concrete. We (1) build a correct reducer for the
+natural fit: interaction-net reduction is confluent by construction, which makes
+single-net reduction *schedule-independent*. Coordination-freedom **across
+machines** additionally requires the boundary-port discipline of §4.5 (owner-only
+rewrite over monotone, never-retracting export grafts); we keep these two
+guarantees distinct rather than collapsing distribution onto confluence alone. We
+make this concrete. We (1) build a correct reducer for the
 Interaction Calculus using the floating-duplication representation, fixing a
 higher-order-duplication bug class that defeated several hand-rolled attempts; (2)
 compile it to a packed-word native runtime that exhibits the optimal-evaluation
@@ -90,8 +93,19 @@ the load-bearing property for everything in §6.
 **CALM and CRDTs.** The CALM theorem (Hellerstein) states that a computation has a
 coordination-free distributed implementation **iff** it is monotone. Conflict-free
 replicated data types (CRDTs) are the standard monotone building block; a grow-only
-set under union is the simplest. Confluence generalizes the commutativity CRDTs rely
-on; the two notions meet at "order does not change the result."
+set under union is the simplest. These two notions are *related but not identical*,
+and the distinction is load-bearing for §6. **Confluence** (Church–Rosser)
+conserves the *normal form* of a **fixed, closed net** under reordering of its
+internal reduction steps. **CALM-monotonicity** conserves the *observable output*
+as a ⊆-monotone function of a **growing input set** in an **open** system. A
+boundary-port (BND) wire arrival is not a reduction step but a *structural
+extension* of the net — exactly the event Church–Rosser assumes away — so
+confluence alone does not discharge the open-system obligation. What confluence
+supplies is schedule-independence; coordination-freedom across machines is supplied
+by the BND ownership + monotone-export discipline (§4.5). Concretely: the set of
+*fired* boundary pairs is grow-only and CALM-safe, but *reading out a partial
+normal form* gated on cross-boundary fan resolution is not monotone — which is why
+global termination (§4.6) is the one residual coordination point.
 
 ---
 
@@ -308,6 +322,31 @@ implements that for the interaction-combinator model (40/40 reductions matched t
 oracle; 20/20 terminations detected). The IC32 autonomous regime, which would unlock
 parallel speedup, reuses that detector and is the principal remaining engineering
 step.
+
+### 6.5 What the evidence certifies — precisely
+
+Three scope notes, so the demonstrations are not read for more than they support:
+
+- **WASM/native bit-for-bit parity (§5) certifies sequential implementation
+  correctness** — closed-net normal-form agreement on a single schedule. It is
+  necessary, not sufficient, for the open/boundary-port regime, which it does not
+  exercise.
+- **`dist_ic.py`'s 480 runs vary both schedule and partition**, but under a
+  **centralized control plane** (a single coordinator drives root normalization,
+  §6.2). They certify partition- and schedule-invariance of a *demand-driven*
+  reduction — not of an *autonomous* one where nodes fire boundary redexes with no
+  central call/return structure.
+- **`swarm.js` is partition-independent for independent search** (disjoint slices
+  merged by monotone union). It does not exercise a *shared sharing graph* whose
+  fan (DUP) auxiliary ports straddle a partition — the case where ownership of a
+  cross-partition active pair is genuinely ambiguous.
+
+The regime that exercises all of these at once — autonomous IC32 sharded reduction
+over a shared sharing graph with no central coordinator — is unbuilt (§6.4; the
+`p2.py` autonomous detector covers interaction-combinators only). There the
+standing open question is whether boundary-port reconnection can introduce a *new
+active pair*; the equality of interaction counts across configurations holds only
+under the currently-unstated precondition that it cannot.
 
 ---
 

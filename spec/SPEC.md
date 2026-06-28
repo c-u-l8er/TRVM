@@ -33,11 +33,13 @@ agents and their wires) and the system is **strongly confluent**: the normal for
 *number of interactions*, is independent of reduction order. (Reference: `inet.py` demo [1] —
 300 random orders reach the same normal form in exactly 15 interactions on the test net.)
 
-> **Why this matters for distribution.** Confluence is the operational basis of coordination-free
-> execution: a confluent operation yields the same result under any ordering/batching of inputs, and
-> confluent operations *compose*, so order-independence holds across distributed sites. TRVM's pure
-> fragment (the table in §3.1–§3.4) is confluent and therefore reducible with **no locks and no
-> consensus**. The non-confluent fragment (native numbers/ops, IO, the superposition *collapse*) is
+> **Why this matters for distribution.** Confluence makes single-net reduction *schedule-independent*:
+> the normal form (and the interaction count) is the same under any ordering/batching of **reduction
+> steps**, and confluent operations *compose*, so that schedule-independence holds across sites. Note
+> the scope: this is order-independence of *reduction*, not of *input arrival* — coordination-freedom
+> across an open, growing system additionally requires the boundary-port discipline (§4.4 here and
+> `paper.md` §4.5). With that caveat, TRVM's pure fragment (the table in §3.1–§3.4) is confluent and
+> therefore reducible with **no locks and no consensus**. The non-confluent fragment (native numbers/ops, IO, the superposition *collapse*) is
 > quarantined in §3.5 and is the *only* place coordination is reintroduced — besides termination
 > detection (§4.4).
 

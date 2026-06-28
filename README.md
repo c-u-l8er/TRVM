@@ -12,11 +12,14 @@ calculus HVM3/HVM4 implement), and the argument and evidence that its reduction
 
 ## The thesis in one paragraph
 
-Interaction-net reduction is confluent by construction, and confluence is exactly
-the operational license for coordination-free distribution: if the order redexes
-fire does not change the result, then *which machine* fires a redex and *when* does
-not change it either. So a single computation can be sharded across nodes and
-reduced without coordination. **Reduction is the data plane and needs no
+Interaction-net reduction is confluent by construction, which makes single-net
+reduction *schedule-independent*: if the order redexes fire does not change the
+result, then *which machine* fires a redex and *when* does not change the result of
+a fixed net either. Coordination-freedom **across machines** additionally rests on
+the boundary-port discipline (owner-only rewrite over monotone, never-retracting
+exports; see `spec/paper.md` §4.5) — confluence licenses the schedule-independence,
+that discipline licenses the coordination-freedom. Together they let a single
+computation be sharded across nodes and reduced without locks or consensus. **Reduction is the data plane and needs no
 coordination; only termination is ever a control-plane question — and only in the
 autonomous regime.** On a WebAssembly substrate, the same runtime runs in any
 browser with no server, so "multi-node" means browser/edge/client-side — the
