@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spinner Bench v0.7.0-alpha.4</title>
+<link rel="stylesheet" href="spinner_bench.css">
+</head>
+<body data-view="author">
+<header>
+  <h1>Spinner&nbsp;Bench <span class="ver">v0.7.0-alpha.4</span></h1>
+  <!-- v0.7-1 progressive disclosure: two presentation-only workspace views over
+       the SAME state + APIs. Author = authoring surfaces (Canvas / WRL / World /
+       Scenario); Evidence = the deep runtime evidence (Film / SemanticDiff /
+       identity / native+oracle / provenance). Switching moves no id, runs nothing. -->
+  <span class="view-seg" id="view-seg" role="group" aria-label="Workspace view">
+    <button id="view-author" class="seg on" aria-pressed="true" title="Author view — Canvas, WRL editor, World disc, Scenario">Author</button
+    ><button id="view-evidence" class="seg" aria-pressed="false" title="Evidence view — Film + identity, SemanticDiff, native/oracle parity, provenance">Evidence</button>
+  </span>
+  <div class="toolbar">
+    <button id="btn-lower">Lower</button>
+    <button id="btn-format">Format</button>
+    <button id="btn-run">Run (ic_ref)</button>
+    <button id="btn-verify">Verify native (ic32)</button>
+    <button id="btn-cancel" class="ghost hidden" title="Cancel the running run/verify job at the next epoch boundary (v0.6-1)">Cancel</button>
+    <button id="btn-diff">Diff</button>
+    <button id="btn-apply" title="Apply the editor text to the draft as one atomic ReplaceWorldSourceV1 → the Canvas converges">Apply → canvas</button>
+    <button id="btn-save" title="Save the COMPLETE workspace — a valid OR invalid draft, the raw editor buffer, undo + scenario state — without activating a candidate world (v0.5.1). Distinct from Commit.">Save</button>
+    <button id="btn-commit" title="Promote the current candidate to the active world (explicit content-checked commit); logs the commit + surfaces the scenario-compat law. Also saves the workspace.">Commit</button>
+    <button id="btn-draft-undo" class="ghost" title="Undo the last draft text replacement (restores exact prior identity + presentation)">Undo draft</button>
+    <button id="btn-reset" class="ghost">Reset demo</button>
+    <button id="btn-home" class="ghost" title="Reopen the start chooser (Explore / Open / Create) at any time">Home</button>
+    <button id="btn-guide" class="ghost" title="Reopen the guided demo rail">Guide</button>
+    <span id="status" class="status"></span>
+    <span id="recovery-indicator" class="recovery" title="" aria-live="polite"></span>
+  </div>
+</header>
+
+<!-- v0.7-1 D: read-only Golden Demo exploration. Creates NO project, writes NO
+     recovery journal, never compiles native / mutates / commits. "Make an editable
+     copy" is the ONLY path that creates real, persisted state. -->
+<div id="explore-banner" class="explore-banner hidden" role="status" aria-live="polite">
+  <span class="eb-tag">Read-only</span>
+  <span class="eb-msg">Exploring the frozen Golden Demo — nothing is saved and no project is created.</span>
+  <button id="btn-make-copy" title="Create a real, editable project seeded from this exact preset world + scenario, then make one guided edit">Make an editable copy</button>
+</div>
+
+<!-- v0.7-2 Error and Progress UX: a typed error surface + a persistent job
+     progress panel. Both live OUTSIDE the panels so they survive a view switch
+     and never lose progress. The error banner renders one ErrorPresentationV1
+     (stable code, title, domain message, single action) — never a raw Python
+     exception; the progress panel shows a job's monotonic state (queued →
+     running → completed | failed | cancelled) and stays after it settles so the
+     result is inspectable. -->
+<div id="error-banner" class="error-banner hidden" role="alert" aria-live="assertive"></div>
+<div id="job-progress" class="job-progress hidden" role="status" aria-live="polite"></div>
+
+<main class="grid">
+  <!-- panel 1: canvas -->
+  <section class="panel" id="panel-canvas">
+    <h2>1 · Canvas <small>world graph · text ⇄ draft convergence</small></h2>
+    <div id="library" class="library">
+      <span class="lib-label">Library</span>
+      <select id="lib-select" title="Switch between persisted worlds (each is its own durable project)"></select>
+      <button id="lib-new" class="ghost" title="Create a new project seeded with the demo world">New</button>
+      <button id="lib-fork" class="ghost" title="Fork the current project's SAVED workspace into a new project (unsaved edits are not forked)">Fork Saved</button>
+      <button id="lib-rename" class="ghost" title="Rename the current project's display name (its identity is immutable)">Rename</button>
+      <button id="lib-trash" class="ghost" title="Move the current project to non-destructive trash storage (restorable; shared world objects untouched)">Trash</button>
+      <button id="lib-restore" class="ghost" title="Restore a project from non-destructive trash storage">Restore…</button>
+      <button id="lib-migrate" class="ghost hidden" title="Upgrade this legacy v1 project to the current v2 workspace format — forward-only and identity-preserving (moves no world identity, preserves the revision); a v1 project is read-only until migrated">Migrate → v2</button>
+      <select id="lib-export-mode" title="Full = closes over every world the workspace references · Thin = active world + scenarios only (history stripped)">
+        <option value="full">full export</option>
+        <option value="thin">thin export</option>
+      </select>
+      <button id="lib-export" class="ghost" title="Export the current project + its referenced world/scenario objects as a self-contained bundle file">Export</button>
+      <button id="lib-import" class="ghost" title="Import a project bundle file into the Library">Import</button>
+      <input id="lib-import-file" type="file" accept="application/json,.json" style="display:none">
+    </div>
+    <svg id="canvas" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet"></svg>
+    <div id="draft-status" class="draft-status"></div>
+    <div id="draft-commits" class="draft-commits"></div>
+  </section>
+
+  <!-- panel 2: WRL editor -->
+  <section class="panel" id="panel-editor">
+    <h2>2 · WRL editor <small>sugar · format · complete · diagnose</small></h2>
+    <div class="editor-wrap">
+      <textarea id="wrl" spellcheck="false"></textarea>
+      <div id="complete" class="complete hidden"></div>
+    </div>
+    <div id="diagnostics" class="diagnostics"></div>
+  </section>
+
+  <!-- panel 3: world disc -->
+  <section class="panel" id="panel-world">
+    <h2>3 · World disc <small>rotor · pose · fault</small></h2>
+    <svg id="disc" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="scrubber">
+      <button id="ep-prev">◀</button>
+      <input type="range" id="ep-range" min="1" max="7" value="1">
+      <button id="ep-next">▶</button>
+      <span id="ep-label" class="ep-label"></span>
+    </div>
+    <div id="world-readout" class="readout"></div>
+  </section>
+
+  <!-- panel 4: film + identity -->
+  <section class="panel" id="panel-film">
+    <h2>4 · Film + identity <small>sealed id · scenario · film v0.7 · ADMIT · provenance</small></h2>
+    <div class="film-scroll">
+    <div class="idblock">
+      <div class="idrow"><span class="k">SemanticArtifactID</span>
+        <code id="sem-id" class="sealed">—</code></div>
+      <div class="idrow"><span class="k">ScenarioDigest</span>
+        <code id="scen-id" class="scen">—</code></div>
+      <div id="provenance" class="provenance"></div>
+    </div>
+    <table class="film">
+      <thead><tr><th>t</th><th>step</th><th>Film v0.7</th><th>native</th></tr></thead>
+      <tbody id="film-body"></tbody>
+    </table>
+    <div id="admit-detail" class="admit-detail"></div>
+    </div>
+  </section>
+
+  <!-- panel 5: semantic diff -->
+  <section class="panel" id="panel-diff">
+    <h2>5 · SemanticDiff <small>sealed · identity bridge law</small></h2>
+    <div class="diff-cols">
+      <div class="diff-side">
+        <div class="diff-cap">A — editor source</div>
+        <textarea id="wrl-a" spellcheck="false" readonly></textarea>
+      </div>
+      <div class="diff-side">
+        <div class="diff-cap">B — variant <small>(edit me, then Diff)</small></div>
+        <textarea id="wrl-b" spellcheck="false"></textarea>
+      </div>
+    </div>
+    <div id="diff-verdict" class="diff-verdict"></div>
+    <div id="diff-changes" class="diff-changes"></div>
+  </section>
+
+  <!-- panel 6: scenario author -->
+  <section class="panel" id="panel-scenario">
+    <h2>6 · Scenario author <small>run inputs · ScenarioV1 · ScenarioDigest (world identity untouched)</small></h2>
+    <div class="author-toolbar">
+      <span class="mode-seg" id="scn-mode-seg" title="Demo = immutable preset · Author = edit a copy">
+        <button id="scn-mode-demo" class="seg on">Demo</button
+        ><button id="scn-mode-author" class="seg">Author</button>
+      </span>
+      <span class="mode-tag" id="scen-mode">Golden ADMIT Demo · preset</span>
+      <select id="scn-preset" title="load an immutable preset">
+        <option value="golden">Golden ADMIT Demo</option>
+        <option value="bench">ADMIT Acceptance Bench</option>
+      </select>
+      <button id="scn-add-claim">+ claim</button>
+      <button id="scn-add-reset">+ reset</button>
+      <button id="scn-add-idle">+ idle epoch</button>
+      <button id="scn-retransmit">retransmit</button>
+      <button id="scn-equivocate">equivocate</button>
+      <button id="scn-reset-preset" class="ghost">↺ preset</button>
+      <button id="scn-run">Run this scenario</button>
+    </div>
+    <div class="scenario-scroll">
+      <table class="scenario" id="scenario-table"></table>
+    </div>
+    <div id="scen-digest" class="scen-digest"></div>
+  </section>
+</main>
+
+<!-- v0.7-1 A: first-run landing. When there is no last project to restore (and no
+     recovery journal takes precedence), we show this instead of dropping straight
+     into the full bench. All choices are explicit; "Explore Golden Demo" is the
+     read-only path that creates nothing. -->
+<div id="first-run" class="overlay hidden" role="dialog" aria-modal="true"
+     aria-labelledby="fr-title" aria-describedby="fr-sub">
+  <div class="fr-card">
+    <h2 id="fr-title">Forge Spinner Bench</h2>
+    <p class="fr-sub" id="fr-sub">Author a WallRiderLang world, fold it through the real
+       WRL → IR → CompilePlan → TRVM pipeline, and watch its sealed identity.</p>
+    <div id="fr-resume" class="fr-resume hidden">
+      <p class="fr-lead">Resume where you left off:</p>
+      <button id="fr-open-last" class="fr-primary">Open last project</button>
+      <div class="fr-secondary">
+        <button id="fr-explore-alt">Explore demo instead</button>
+        <button id="fr-choose">Choose another project</button>
+      </div>
+    </div>
+    <div id="fr-fresh" class="fr-fresh">
+      <p class="fr-lead">Start from a template:</p>
+      <div id="fr-templates" class="fr-templates">
+        <p class="fr-templates-empty">Loading templates…</p>
+      </div>
+      <div class="fr-secondary">
+        <button id="fr-open">Open Existing Project</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v0.7-1 B: dismissible SIDE rail (never a blocking dialog). Six steps that
+     highlight EXISTING panels. Its entire state (seen / current step / advanced
+     expanded) lives in browser localStorage — never in a project doc, never near
+     any SemanticArtifactID / ScenarioDigest / ReplayBundleID / export. -->
+<aside id="guide-rail" class="guide-rail hidden" aria-label="Guided demo">
+  <div class="gr-head">
+    <span class="gr-title">Guided demo</span>
+    <span class="gr-count" id="gr-count"></span>
+    <button id="gr-dismiss" class="gr-x" title="Dismiss the guide (reopen it from the Guide button)"
+            aria-label="Dismiss guide">✕</button>
+  </div>
+  <div class="gr-step">
+    <div class="gr-step-title" id="gr-step-title"></div>
+    <div class="gr-step-body" id="gr-step-body"></div>
+  </div>
+  <details id="gr-advanced" class="gr-advanced">
+    <summary>Why this matters</summary>
+    <div id="gr-advanced-body" class="gr-advanced-body"></div>
+  </details>
+  <div class="gr-nav">
+    <button id="gr-back">Back</button>
+    <button id="gr-next" class="gr-primary">Next</button>
+  </div>
+</aside>
+
+<!-- v0.7-2: host for the accessible in-app dialogs (create / make-copy / fork /
+     rename / trash / restore / recovery choice / import / destructive confirms).
+     Each dialog is focus-trapped, ARIA-labelled, and Escape-dismissable — the
+     browser-native prompt/alert/confirm are no longer used for any flow. -->
+<div id="dialog-root" class="dialog-root hidden" aria-live="polite"></div>
+
+<script src="spinner_bench.js"></script>
+</body>
+</html>

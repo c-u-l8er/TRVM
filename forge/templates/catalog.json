@@ -1,0 +1,17 @@
+{
+  "catalog_version": "forge.template.catalog.v1",
+  "templates": [
+    {
+      "file": "golden-admit-v1.json",
+      "template_id": "forge.template.golden-admit.v1"
+    },
+    {
+      "file": "acceptance-bench-v1.json",
+      "template_id": "forge.template.acceptance-bench.v1"
+    },
+    {
+      "file": "blank-spinner-v1.json",
+      "template_id": "forge.template.blank-spinner.v1"
+    }
+  ]
+}

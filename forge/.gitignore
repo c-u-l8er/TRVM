@@ -1,0 +1,21 @@
+# Local authoring / runtime state -- NEVER tracked and NEVER shipped in a release.
+# Default project data now lives outside the source tree (OS data dir); these
+# entries only catch a legacy in-tree FORGE_PROJECT_ROOT override.
+.forge_projects/
+.recovery/
+.trash/
+.last_session.json
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs and milestone packets (built on demand, never committed)
+*.log
+WRL_*_PACKET.zip
+WRL_SPINNER_BENCH_V*_PACKET.zip
+
+# Built release artifacts
+dist/
+forge-release/

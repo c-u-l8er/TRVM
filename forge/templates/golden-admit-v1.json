@@ -1,0 +1,420 @@
+{
+  "canonical_world_source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[relay:r0]{sig_in, sig_out}\n[spinner:sp](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:ob]{pose}\n[pulser:p1](once at 1){sig_out}\n[door:d0]{sig_in}\n\n[pulser:p0] --sig--> [relay:r0]\n[relay:r0] --sig--> [spinner:sp]\n[spinner:sp] --socket--> [orb:ob]\n[pulser:p1] --sig--> [door:d0]\n",
+  "canvas_layout": {
+    "edges": [
+      {
+        "edge_key": "SignalWire:p0->r0",
+        "presentation": {
+          "control_points": [],
+          "label_position": "mid",
+          "line_length": 0,
+          "paint": "#f4d35e",
+          "texture_style": "solid"
+        }
+      },
+      {
+        "edge_key": "SignalWire:p1->d0",
+        "presentation": {
+          "control_points": [],
+          "label_position": "mid",
+          "line_length": 0,
+          "paint": "#f4d35e",
+          "texture_style": "solid"
+        }
+      },
+      {
+        "edge_key": "SignalWire:r0->sp",
+        "presentation": {
+          "control_points": [],
+          "label_position": "mid",
+          "line_length": 0,
+          "paint": "#f4d35e",
+          "texture_style": "solid"
+        }
+      },
+      {
+        "edge_key": "SocketControl:sp->ob",
+        "presentation": {
+          "control_points": [],
+          "label_position": "mid",
+          "line_length": 0,
+          "paint": "#ee6c4d",
+          "texture_style": "solid"
+        }
+      }
+    ],
+    "layout_version": "canvas-layout.v1",
+    "nodes": [
+      {
+        "object_id": "d0",
+        "presentation": {
+          "collapsed": false,
+          "color": "#5b8e7d",
+          "height": 90,
+          "label_style": "default",
+          "layer": 0,
+          "width": 140,
+          "x": 80,
+          "y": 80
+        }
+      },
+      {
+        "object_id": "ob",
+        "presentation": {
+          "collapsed": false,
+          "color": "#4d5061",
+          "height": 90,
+          "label_style": "default",
+          "layer": 0,
+          "width": 140,
+          "x": 280,
+          "y": 80
+        }
+      },
+      {
+        "object_id": "p0",
+        "presentation": {
+          "collapsed": false,
+          "color": "#f4a259",
+          "height": 90,
+          "label_style": "default",
+          "layer": 0,
+          "width": 140,
+          "x": 480,
+          "y": 80
+        }
+      },
+      {
+        "object_id": "p1",
+        "presentation": {
+          "collapsed": false,
+          "color": "#f4a259",
+          "height": 90,
+          "label_style": "default",
+          "layer": 0,
+          "width": 140,
+          "x": 680,
+          "y": 80
+        }
+      },
+      {
+        "object_id": "r0",
+        "presentation": {
+          "collapsed": false,
+          "color": "#8cb369",
+          "height": 90,
+          "label_style": "default",
+          "layer": 0,
+          "width": 140,
+          "x": 80,
+          "y": 220
+        }
+      },
+      {
+        "object_id": "sp",
+        "presentation": {
+          "collapsed": false,
+          "color": "#bc4b51",
+          "height": 90,
+          "label_style": "default",
+          "layer": 0,
+          "width": 140,
+          "x": 280,
+          "y": 220
+        }
+      }
+    ],
+    "profile_id": "forge.world.core.v1"
+  },
+  "default_scenario_document_id": "golden",
+  "difficulty": "intro",
+  "expected_edit_effect": "The candidate SemanticArtifactID moves while the active world stays fixed until you commit.",
+  "expected_replay_bundle_ids": {
+    "bench": "replay-a7b7714f49df85fa2e5445a898232a1dd407d18ca58c6ca94caa3b9ee132de22",
+    "golden": "replay-cd3ad22768190539f1f8c089fca89d992fa98e161b0e889e90a56e8b8d2cf91f"
+  },
+  "expected_scenario_digests": {
+    "bench": "scen-ce8177ecbf90f5d99333e2c40528bea7e26d6886c494fcd884505194f16fbff2",
+    "golden": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842"
+  },
+  "guide_steps": [
+    "Press Run to fold the golden 7-epoch scenario and watch the film.",
+    "Open the WRL editor and read the six-node world source.",
+    "Change the Spinner rotor and Apply to see a new candidate identity.",
+    "Commit to make the edited world active, then Run again."
+  ],
+  "name": "Golden ADMIT Demo",
+  "purpose": "Learn the ADMIT pipeline end to end: a pulser-driven spinner sets an orb's fault latch, and the golden scenario walks accept, reset, and an unknown-object rejection.",
+  "scenarios": [
+    {
+      "name": "golden",
+      "scenario": {
+        "epochs": [
+          {
+            "claims": [
+              {
+                "operation": "SetRotor",
+                "payload": {
+                  "rotor": [
+                    181,
+                    0,
+                    0,
+                    181
+                  ]
+                },
+                "sequence": 1,
+                "target": "sp",
+                "writer_id": 1
+              }
+            ],
+            "epoch": 1,
+            "label": "set rotor = quarter_turn_z (181.0.0.181)"
+          },
+          {
+            "claims": [],
+            "epoch": 2,
+            "label": "idle pulse tick"
+          },
+          {
+            "claims": [
+              {
+                "operation": "SetRotor",
+                "payload": {
+                  "rotor": [
+                    256,
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                "sequence": 2,
+                "target": "sp",
+                "writer_id": 2
+              }
+            ],
+            "epoch": 3,
+            "label": "set rotor = 256.0.0.0 (full-scale)"
+          },
+          {
+            "claims": [
+              {
+                "operation": "ResetFault",
+                "payload": {},
+                "sequence": 3,
+                "target": "ob",
+                "writer_id": 3
+              }
+            ],
+            "epoch": 4,
+            "label": "reset orb fault latch"
+          },
+          {
+            "claims": [
+              {
+                "operation": "SetRotor",
+                "payload": {
+                  "rotor": [
+                    128,
+                    0,
+                    128,
+                    0
+                  ]
+                },
+                "sequence": 4,
+                "target": "sp",
+                "writer_id": 4
+              }
+            ],
+            "epoch": 5,
+            "label": "set rotor = 128.0.128.0 (mixed)"
+          },
+          {
+            "claims": [],
+            "epoch": 6,
+            "label": "idle pulse tick"
+          },
+          {
+            "claims": [
+              {
+                "operation": "SetRotor",
+                "payload": {
+                  "rotor": [
+                    10,
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                "sequence": 5,
+                "target": "sp",
+                "writer_id": 5
+              },
+              {
+                "operation": "SetRotor",
+                "payload": {
+                  "rotor": [
+                    9,
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                "sequence": 6,
+                "target": "zz",
+                "writer_id": 6
+              }
+            ],
+            "epoch": 7,
+            "label": "set rotor = 10.0.0.0 + unknown-obj claim"
+          }
+        ],
+        "initial_runtime": {
+          "numeric_faults": [
+            "ob"
+          ]
+        },
+        "scenario_version": "scenario.v1",
+        "world_semantic_id": "sem-8ae91fe9cbc5fd086ce4356d587c403211e5c7b2b3ebdd316496367429ecfe4a"
+      },
+      "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842"
+    },
+    {
+      "name": "bench",
+      "scenario": {
+        "epochs": [
+          {
+            "claims": [
+              {
+                "operation": "SetRotor",
+                "payload": {
+                  "rotor": [
+                    32767,
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                "sequence": 1,
+                "target": "sp",
+                "writer_id": 1
+              }
+            ],
+            "epoch": 1,
+            "label": "1 accept SetRotor (full-scale 32767)"
+          },
+          {
+            "claims": [
+              {
+                "operation": "SetRotor",
+                "payload": {
+                  "rotor": [
+                    32767,
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                "sequence": 1,
+                "target": "sp",
+                "writer_id": 1
+              }
+            ],
+            "epoch": 2,
+            "label": "2 exact retransmit (no 2nd effect)"
+          },
+          {
+            "claims": [
+              {
+                "operation": "SetRotor",
+                "payload": {
+                  "rotor": [
+                    32767,
+                    0,
+                    0,
+                    0
+                  ]
+                },
+                "sequence": 3,
+                "target": "sp",
+                "writer_id": 3
+              },
+              {
+                "operation": "SetRotor",
+                "payload": {
+                  "rotor": [
+                    32767,
+                    0,
+                    0,
+                    1
+                  ]
+                },
+                "sequence": 3,
+                "target": "sp",
+                "writer_id": 3
+              }
+            ],
+            "epoch": 3,
+            "label": "3 conflicting payload, same event key -> disputed"
+          },
+          {
+            "claims": [],
+            "epoch": 4,
+            "label": "idle (saturation runway)"
+          },
+          {
+            "claims": [],
+            "epoch": 5,
+            "label": "idle (saturation runway)"
+          },
+          {
+            "claims": [],
+            "epoch": 6,
+            "label": "4 saturating rotor -> fault latches"
+          },
+          {
+            "claims": [
+              {
+                "operation": "ResetFault",
+                "payload": {},
+                "sequence": 7,
+                "target": "ob",
+                "writer_id": 7
+              }
+            ],
+            "epoch": 7,
+            "label": "5 reset in safe epoch -> clears"
+          },
+          {
+            "claims": [
+              {
+                "operation": "ResetFault",
+                "payload": {},
+                "sequence": 8,
+                "target": "ob",
+                "writer_id": 8
+              }
+            ],
+            "epoch": 8,
+            "label": "6 reset + same-epoch overflow -> stays latched"
+          },
+          {
+            "claims": [],
+            "epoch": 9,
+            "label": "7 idle / replay verify"
+          }
+        ],
+        "initial_runtime": {
+          "numeric_faults": []
+        },
+        "scenario_version": "scenario.v1",
+        "world_semantic_id": "sem-8ae91fe9cbc5fd086ce4356d587c403211e5c7b2b3ebdd316496367429ecfe4a"
+      },
+      "scenario_digest": "scen-ce8177ecbf90f5d99333e2c40528bea7e26d6886c494fcd884505194f16fbff2"
+    }
+  ],
+  "short_description": "The canonical 6-node ADMIT world with its 7-epoch golden run.",
+  "suggested_first_edit": "Change the Spinner's rotor (e.g. from quarter_turn_z to 256.0.0.0).",
+  "template_id": "forge.template.golden-admit.v1",
+  "template_version": "forge.template.v1",
+  "world_semantic_id": "sem-8ae91fe9cbc5fd086ce4356d587c403211e5c7b2b3ebdd316496367429ecfe4a"
+}

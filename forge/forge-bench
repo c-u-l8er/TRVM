@@ -1,0 +1,186 @@
+#!/usr/bin/env python3
+"""forge-bench -- the standalone Forge Spinner Bench launcher (v0.7.0-alpha.4).
+
+One command starts the local six-panel web app over the REAL WRL -> IR ->
+CompilePlan -> TRVM pipeline. It works from BOTH a built release
+(`<root>/forge-bench`, `<root>/forge/`, `<root>/runtime/`) and the dev tree
+(`forge/forge-bench` alongside `forge/spinner_bench.py`).
+
+READ-ONLY INSTALLATION (v0.6.5.1): the launcher keeps EVERY write out of the
+extracted release. Python bytecode is redirected to an external
+PYTHONPYCACHEPREFIX (and this launcher process sets sys.dont_write_bytecode so
+importing forge_paths never seeds a __pycache__ in the install), and the native
+reducer is compiled into an EXTERNAL runtime cache -- not <install>/runtime/c/.
+
+What it does (GPT-5.6 v0.6.5.1 launcher contract):
+  * locate a Python 3 interpreter (the one running this script);
+  * locate/BUILD the native reducer in the EXTERNAL cache from `ic32.c` (keyed
+    by source+platform); if that fails (or --ref-only), degrade to
+    reference-only and say so, passing the path via TRVM_IC32_PATH;
+  * choose + DISPLAY the project data dir (external OS data dir by default, or
+    FORGE_PROJECT_ROOT / --project-dir) AND the external runtime/bytecode cache;
+  * pick an AVAILABLE port (the requested one, else the next free port);
+  * start the server, print the URL, and optionally open a browser (--open);
+  * on any startup failure, print the exact recovery command to re-run by hand.
+
+Usage:
+    ./forge-bench [--ref-only] [--port N] [--project-dir DIR] [--open] [--host H]
+"""
+# Keep this launcher process from seeding bytecode into the (possibly
+# read-only) install tree when it imports forge_paths below.
+import sys
+sys.dont_write_bytecode = True
+
+import argparse
+import os
+import socket
+import subprocess
+
+
+def _resolve_layout():
+    """Return (forge_dir, runtime_dir). Supports the release layout
+    (<root>/forge, <root>/runtime) and the dev layout (this file inside
+    forge/, runtime a sibling)."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    if os.path.isfile(os.path.join(here, "spinner_bench.py")):
+        # dev layout: launcher lives inside forge/
+        forge_dir = here
+        runtime_dir = os.path.join(os.path.dirname(here), "runtime")
+    elif os.path.isfile(os.path.join(here, "forge", "spinner_bench.py")):
+        # release layout: launcher at release root
+        forge_dir = os.path.join(here, "forge")
+        runtime_dir = os.path.join(here, "runtime")
+    else:
+        sys.stderr.write("forge-bench: cannot locate spinner_bench.py near %s\n"
+                         % here)
+        sys.exit(2)
+    return forge_dir, runtime_dir
+
+
+def _ensure_native(forge_paths, runtime_dir, ref_only):
+    """Locate or build the native reducer in the EXTERNAL cache (never in the
+    install tree). Returns the absolute binary path, or None for ref-only."""
+    if ref_only:
+        return None
+    source = os.path.join(runtime_dir, "c", "ic32.c")
+    if not os.path.isfile(source):
+        print("[forge-bench] native reducer source missing (%s) -- ref-only"
+              % source)
+        return None
+    if forge_paths.find_cc() is None and not os.environ.get("TRVM_IC32_PATH"):
+        print("[forge-bench] no C compiler found (set CC=...) -- ref-only")
+        return None
+    path = forge_paths.ensure_ic32(source)
+    if path:
+        print("[forge-bench] native reducer: %s" % path)
+    else:
+        print("[forge-bench] native build FAILED -- ref-only")
+    return path
+
+
+def _free_port(host, want):
+    """Return `want` if bindable, else the next free ephemeral port."""
+    for candidate in (want, 0):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.bind((host, candidate))
+            port = s.getsockname()[1]
+            s.close()
+            return port
+        except OSError:
+            continue
+    return want
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Launch the Forge Spinner Bench.")
+    ap.add_argument("--ref-only", action="store_true",
+                    help="skip native ic32 entirely (reference reducer only)")
+    ap.add_argument("--port", type=int,
+                    default=int(os.environ.get("SPINNER_BENCH_PORT", "8765")))
+    ap.add_argument("--host", default=os.environ.get("SPINNER_BENCH_HOST",
+                                                      "127.0.0.1"))
+    ap.add_argument("--project-dir", default=None,
+                    help="project data dir (default: OS data dir; also "
+                         "FORGE_PROJECT_ROOT)")
+    ap.add_argument("--open", action="store_true",
+                    help="open the app in a browser once it is up")
+    args = ap.parse_args()
+
+    forge_dir, runtime_dir = _resolve_layout()
+    server = os.path.join(forge_dir, "spinner_bench.py")
+
+    # forge_paths owns the EXTERNAL cache locations + the transactional native
+    # build. Importing it here is safe: sys.dont_write_bytecode (set at the top)
+    # keeps its own bytecode out of the install tree.
+    sys.path.insert(0, forge_dir)
+    import forge_paths
+
+    native = _ensure_native(forge_paths, runtime_dir, args.ref_only)
+
+    env = dict(os.environ)
+    # the server inserts ../runtime/python + ../research from forge/ itself, but
+    # export PYTHONPATH too so an out-of-tree invocation still resolves ic_ref.
+    py_paths = [forge_dir, os.path.join(runtime_dir, "python")]
+    env["PYTHONPATH"] = os.pathsep.join(
+        py_paths + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []))
+    if args.ref_only or not native:
+        env["TRVM_SKIP_NATIVE"] = "1"
+    else:
+        # the server's forge_runtime prefers this over the (read-only) dev path.
+        env["TRVM_IC32_PATH"] = native
+    if args.project_dir:
+        env["FORGE_PROJECT_ROOT"] = os.path.abspath(args.project_dir)
+
+    # keep the server's bytecode OUT of the install tree too. PYTHONPYCACHEPREFIX
+    # is read by the child interpreter at startup; create it so it is usable.
+    pyc_prefix = forge_paths.pycache_prefix()
+    try:
+        os.makedirs(pyc_prefix, exist_ok=True)
+        env["PYTHONPYCACHEPREFIX"] = pyc_prefix
+    except OSError:
+        # if the cache cannot be created, at least never write into the install.
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
+
+    port = _free_port(args.host, args.port)
+    env["SPINNER_BENCH_HOST"] = args.host
+    env["SPINNER_BENCH_PORT"] = str(port)
+
+    project_dir = env.get("FORGE_PROJECT_ROOT", "(OS data dir default)")
+    url = "http://%s:%d/" % (args.host, port)
+    print("[forge-bench] python      : %s" % sys.executable)
+    print("[forge-bench] native mode : %s" % ("ic32" if native else "ref-only"))
+    print("[forge-bench] project dir : %s" % project_dir)
+    print("[forge-bench] runtime cache: %s" % forge_paths.runtime_cache_dir())
+    print("[forge-bench] bytecode cache: %s"
+          % env.get("PYTHONPYCACHEPREFIX", "(disabled)"))
+    print("[forge-bench] serving     : %s" % url)
+
+    if args.open:
+        try:
+            import webbrowser
+            import threading
+            threading.Timer(1.2, lambda: webbrowser.open(url)).start()
+        except Exception:
+            pass
+
+    try:
+        return subprocess.call([sys.executable, server], env=env)
+    except KeyboardInterrupt:
+        return 0
+    except Exception as ex:
+        recover = ("PYTHONPATH=%s %s%s%s %s"
+                   % (env["PYTHONPATH"],
+                      "TRVM_SKIP_NATIVE=1 " if env.get("TRVM_SKIP_NATIVE") else "",
+                      ("PYTHONPYCACHEPREFIX=%s " % env["PYTHONPYCACHEPREFIX"])
+                      if env.get("PYTHONPYCACHEPREFIX") else "",
+                      sys.executable, server))
+        sys.stderr.write("\n[forge-bench] startup FAILED: %s\n" % ex)
+        sys.stderr.write("[forge-bench] recover by running the server directly:\n")
+        sys.stderr.write("    %s\n" % recover)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,804 @@
+--- a/FINDINGS.md
++++ b/FINDINGS.md
+@@ -397,6 +397,16 @@
+ | active search schedule-independent | v3 battery + reviewer perturbation | HOLDS after derived-preference fix; economic invariance cadence-bounded |
+ | MP == IP at matched cadence | four-store canonical compare | HOLDS exactly (asserted) |
+ | async synthesis is "pure wiring" | reviewer analysis | RETRACTED: monotone facts replicate; schedules derive locally |
++| divergent stale schedules purchase coverage (16/16 vs canonical 14/16) | depth-instrumented CONV rerun | FALSIFIED: memo-key bug -- Node.refill() regen stamp was depth-blind, skipped the size-8 band; XOR/XNOR build from single reps at size 8 |
++| canonical single schedule reaches full behavior coverage (2-input, size<=8) | fixed CONV, seed sweep | HOLDS: deterministic 16/16 = all 16 two-input functions, (16,134 / 280) == [synth_bool4 DET] cross-engine, pid-for-pid (16/16 is the Boolean-function ceiling for this experiment, not a completeness ceiling for programs) |
++| async divergence changes final behavior coverage (either direction) | 6 configs saturated + resume probe + autonomous probe 40/40 | FALSIFIED both ways: coverage reaches 16/16 in all tested configs (autonomously robust); the one 15/16 was a harness artifact (coverage read before the enriched frontier closed), resumes to 16/16. "All tested configs", not proven schedule-invariance |
++| divergence buys implementation multiplicity as a BENEFIT | preferred-rep quality across configs | HALF-FALSIFIED: the multiplicity is real (280 canonical; healthy N=4 346-399; faults 427-508; not nested) but NOT a demonstrated benefit -- of the preferred reps that differ from canonical, none is strictly better in (ref, exp, cost); they differ only by hash tie-break |
++| autonomous nodes AGREE under faults (deterministically) | remove the saturation oracle, run pairwise gossip only | REFINED: per-replica coverage-closure is autonomous and robust (32/32 no-partition battery, per-node asserted -- the earlier "40/40" read node 0 only and included a mislabeled partition row), but fact agreement at a stability stop is eventual (31/32; the miss agrees after 43 ticks of continued gossip). Deterministic agreement was manufactured by the oracle |
++| non-agreeing stops are due to messages in flight | inbox inspection at both misses | FALSIFIED mechanism: inboxes were EMPTY [0,0,0,0]; the differing facts sat in one replica's store ([325,321,321,323] / [351,351,351,348] programs) awaiting a FUTURE random anti-entropy pairing; continued ordinary gossip agreed in 6 and 43 ticks |
++| the autonomous "partition" row tested partition recovery | stop-tick audit vs partition window | INVALID TEST: partition (2,300,900) vs stops at ticks 238-318 -- 7/8 runs ended before the partition began, none saw healing; it measured no-partition dynamics under a partition label. Law 26 |
++| the protocol recovers autonomously after a partition heals | staged-healing probe: partition asserted to bite (isolated node 14-15/16 at heal), then unchanged protocol | HOLDS: full per-replica coverage in median 31-38 ticks post-heal, fact agreement median ~91 (max 212), across 3 windows x 8 seeds; the stability heuristic often fires BEFORE agreement (1/8 to 8/8 by window), consistent with the eventual-agreement finding |
++| semantic recognition requires synchronized evidence histories | layered agreement at the heuristic stop | FALSIFIED: signature-set agreement 32/32 and preferred-map agreement 32/32 while fact-store agreement 31/32 -- replicas recognized identical behaviors and identical preferred representatives while holding different implementation-fact collections |
++| restart divergence % is valid as reported | counter audit | FALSIFIED then fixed: restore() zeroed paid/vpaid, so dup=worker-unique went negative (-6,238); run-level carried counters restore it, dup>=0 by construction |
+ 
+ ## E. Design laws distilled
+ 
+@@ -489,24 +499,193 @@
+ Verifier work: zero UNDER TRUST -- the trust dividend, not architecture;
+ measured trust=False on the same config: verifier = 3.00x unique (exactly N-1) (each
+ importer re-executes; the N-1 replication cost, now measured). Divergence
+-cost: 56-161% extra worker interactions vs the single-schedule reference.
+-CONDITIONAL EMERGENT EFFECT: at THIS TIGHT HORIZON, divergent stale
+-schedules reach 16/16 behaviors where the canonical single schedule reaches
+-14/16; the effect vanishes at size 9-10 where the reference also completes
+-(reviewer measured). Divergence can PURCHASE coverage at tight horizons; it
+-is not generally superior. (Single-preferred-rep closure is not
+-behavior-complete at tight horizons: the Pareto gap, measured.)
++cost: 58-90% extra worker interactions vs the single-schedule reference
++(this now INCLUDES the work of closing the merged frontier to a genuine
++fixed point -- see the second correction below; the earlier 20-85% was
++measured with a harness that stopped short of closure and with broken
++restart accounting, both now fixed).
++CORRECTED -- was "CONDITIONAL EMERGENT EFFECT" (a MEMO-KEY BUG, not an
++emergent effect): the earlier claim that divergent stale schedules reach
++16/16 where the canonical single schedule reaches only 14/16 was an
++artifact of a depth-blind regeneration guard. Node.refill()'s memo stamp
++keyed on the frontier (reps) alone; because depth is advanced by a
++recursion that leaves the frontier unchanged, the guard fired the instant
++depth first reached max_size and skipped the ENTIRE size-8 candidate band
++forever -- so the canonical N=1 schedule was crippled to 14/16 (missing
++XOR, XNOR, both constructible at size 8 from single preferred reps, e.g.
++AND[OR(a,b), NOT(AND(a,b))]). Any fault that churned the frontier changed
++the stamp, re-opened the band, and cleared that artificially low bar; the
++"emergence" was churn getting credit for work the canonical schedule
++should have done alone. Fix: stamp on (depth, frontier) -- still quiesces,
++no longer truncates. The canonical single schedule now reaches
++FULL BEHAVIOR COVERAGE for this experiment -- all 16 two-input Boolean
++functions -- deterministically: 16/16 every seed (asserted over a seed
++sweep) at identical cost (unique 16,134, programs 280), matching
++[synth_bool4 DET] pid-for-pid cross-engine. (16/16 is the Boolean-function
++ceiling for 2-input size<=8, NOT a completeness ceiling for programs or
++evaluations -- those keep growing with divergence, see below.) SECOND CORRECTION (this session, from a reviewer applying the project's own
++"separate agreement from closure" rule): an intermediate build then over-
++claimed the OPPOSITE -- that under faults "a node quiesces on a stale
++frontier and the collective settles BELOW the ceiling" -- on the strength
++of one 15/16 run. That was a harness artifact, the SAME premature-
++termination error as the memo bug, one level up: run_async broke on local
++quiescence, did a final fact merge, and REPORTED coverage without CLOSING
++the merged frontier. A merge can hand a node a frontier richer than any it
++generated against (a peer's facts fill a gap in its preferred reps),
++setting gen_stamp=None -- the node KNEW it was stale but was never stepped
++again. A resume probe (research/probe_quiescence.py) closes that 15/16 run
++to 16/16 in <=3 rounds; every other config was already closed. After the
++merged facts are saturated (run_async now does this), behavior coverage
++reaches the full 16-function set in ALL SIX TESTED configs. So NEITHER claim
++survives -- divergence neither purchases coverage nor loses it. (Coverage
++being invariant across the tested schedules is well-motivated -- the fixed
++point is the closure of the reachable size<=8 program space -- but "all
++tested configs" is the earned wording, not a proven schedule-invariance.)
++  What IS schedule-dependent is the PROGRAM lattice, the SET of
++implementations realizing those 16 behaviors: canonical N=1 closes at 280
++programs; healthy N=4 at 346-399 (seed-dependent); faults at 427-508; and
++the sets are not even nested (one healthy seed misses 15 canonical programs
++while adding 95). Divergence accumulates implementation MULTIPLICITY -- but
++this is a STRUCTURAL effect, not a demonstrated benefit: of the preferred
++representatives that differ from canonical, NONE is strictly better in
++(ref, exp, cost); they differ only by the content-hash tie-break. Whether
++that multiplicity ever helps (larger-horizon closure, resilience after
++program removal, composition, a richer quality metric) is open -- measure it.
++
++THIRD CORRECTION (this session): the round-2 "genuine fixed point" was
++reached by a SATURATION ORACLE -- run_async forces all-to-all full-state
++exchange (no loss/delay) plus centrally driven work exhaustion. That
++computes the point the dynamics converge toward, but does not show the
++pairwise gossip scheduler reaching it on its own. Removing the oracle
++(research/probe_autonomous.py) exposes what the coordination-free dynamics
++actually do: (a) full COVERAGE closure IS autonomous and robust once
++anti-entropy is adequate; but (b) AGREEMENT is EVENTUAL, not immediate:
++at the default (throttled) anti-entropy the autonomous loop stops
++DISAGREEING (and a replica can still be below 16); at adequate anti-entropy
++fact agreement usually holds at the stop but is not guaranteed. Precisely:
++THIS local stability heuristic cannot establish fact agreement -- it only
++observes that nothing changed recently. That is a property of the heuristic,
++NOT an impossibility: certified termination (acknowledgements, version
++vectors, distributed termination-detection protocols) is a distinct,
++unbuilt layer. The stopping-mode ladder the project now distinguishes:
++local stability < local closure < semantic (signature-set) agreement <
++preferred-map agreement < fact agreement < saturated closure < certified
++termination. The autonomous loop has the first two; saturation computes
++the fifth and sixth; the seventh does not exist yet. So the honest split
++is: coverage-closure is an autonomous property; DETERMINISTIC agreement at
++a chosen stopping time is what the saturation phase buys. The KB figures
++now include the saturation bytes (previously an accounting asymmetry,
++fixed); adequate autonomous anti-entropy roughly doubles bandwidth.
++  The invariant that survives all three passes: replicas that have received
++the same facts derive identical behavior and preferred-representative maps
++(a CvRDT property). Getting every replica the same facts is eventual under
++loss, and terminating a measurement at the right moment is a separate
++problem. (The old "single-preferred-rep closure is behavior-incomplete at
++tight horizons -- the Pareto gap" was also the memo bug. Whether single-rep
++closure is complete at ALL horizons is separable and genuinely open.)
++  Restart accounting was also broken and is fixed: restore() built a fresh
++node with paid=vpaid=0, so a rolled-back node's already-performed (and
++already-gossiped) work vanished from the totals and dup=worker-unique went
++NEGATIVE (-6,238, impossible under its own definition). Run-level carried
++counters preserve it; dup is now >=0 by construction.
++
++FOURTH CORRECTION (this session, continuing the same review loop; reviewer
++right on all four points). (1) The autonomous-probe "partition" row was an
++INVALID TEST as labeled: at adequate anti-entropy the runs stop at ticks
++~238-318, but the configured partition was (2, 300, 900) -- 7/8 runs ended
++BEFORE the partition began, one saw 18 ticks of it, none saw healing. It
++measured no-partition dynamics wearing a partition label. (In the MAIN
++harness the same window IS active at quiescence, so that row measures
++"partition active at stop; the saturation oracle reunites the node" --
++now annotated; autonomous healing was untested everywhere.) The rebuilt
++staged-healing experiment (probe part C) asserts the partition overlaps
++execution, records per-node coverage at heal, then lets the UNCHANGED
++protocol run: the fault bites in 8/8 runs per window (the isolated node
++sits at 14-15/16 at heal -- it cannot see the program space owned by its
++peers), and the protocol recovers autonomously: median 31-38 ticks from
++heal to full per-node coverage, median ~91 (max 212) to fact agreement,
++across windows (50,150), (50,250), (100,250) x 8 seeds. Autonomous
++partition recovery is now DEMONSTRATED, not assumed. (2) The earlier
++explanation of non-agreeing stops ("a fact still in flight") was WRONG in
++its mechanism: at both measured misses all inboxes were EMPTY
++([0,0,0,0]); the differing facts sat quietly in one replica's store
++([325,321,321,323] and [351,351,351,348] programs) AWAITING A FUTURE
++random anti-entropy pairing, and continuing the ordinary protocol reached
++agreement in 6 and 43 ticks. Nothing was in flight; the next necessary
++exchange simply had not been scheduled yet. This strengthens the eventual-
++consistency reading: the system converges once communication continues.
++(3) The probe's coverage metric read NODE 0 only, so its "40/40" formally
++asserted node 0's coverage; the stronger per-replica claim happened to be
++true but was unenforced. covs() is now per-node and the battery asserts
++EVERY replica at 16/16 (32/32 in the no-partition battery). (4) Agreement
++is now measured in LAYERS, and the layering is the result: signature-set
++agreement (which 16 behaviors exist) 32/32 and preferred-map agreement
++32/32 at the heuristic stop, fact-store agreement 31/32 -- SEMANTIC
++RECOGNITION STABILIZES BEFORE THE SUPPORTING EVIDENCE HISTORY
++SYNCHRONIZES. Replicas can recognize identical behaviors, and even
++identical preferred representatives, while still holding different
++implementation-fact collections.
+ FLAG: XOR3 emerges compositionally in the async-converged store (witness
+ 5779c31e, intrinsic 416, no AP-free witness) referencing component cd8b128e.
+ The WITNESS is regime-dependent (a different composed form than the
+ synchronous 6b663124); the COMPONENT is regime-invariant -- the same content
+ address across orchestrated and autonomous execution. Composition varies
+-with schedule; identity does not. Laws earned: 20 verifier marks
++with schedule; identity does not. (cd8b128e is the size-8 XOR the corrected
++canonical schedule now generates deterministically; surfacing it no longer
++depends on fault-driven library churn.) Laws earned: 20 verifier marks
+ assert execution, not agreement; 21 no-op joins are silent; 22 quiescence
+-is stability; 23 schedule divergence can purchase coverage at tight horizons (a
+-conditional effect, not a general superiority; verify at your horizon).
++is stability; 23 a regeneration memo key must include EVERY dimension the
++generator ranges over (depth AND frontier) -- a depth-blind key silently
++truncated the search band and masqueraded as an emergent coverage effect;
++24 measure coverage only at a GENUINE FIXED POINT of merge -> derive
++frontier -> generate -> evaluate -> merge, never at the union reached when
++local queues first empty -- a fact merge can enrich a node's frontier and
++mark it stale (gen_stamp=None), and reporting before it re-closes
++UNDERSTATES coverage (this produced a spurious 15/16 "settles below the
++ceiling" claim; closed, every TESTED schedule is 16/16). Behavior coverage
++at the saturated fixed point is invariant across the tested schedules; the
++program lattice is not. Both the "divergence purchases coverage" and the
++mirror "divergence settles below" claims were these two premature-
++termination bugs, retracted. 25 distinguish the autonomous DYNAMICS from a
++measurement ORACLE: a saturation phase (forced all-to-all exchange + central
++work exhaustion) computes the fixed point but does not demonstrate the
++pairwise scheduler reaching it; measured separately, full coverage IS
++reached autonomously and robustly (per-replica, asserted), but fact
++agreement at a stability stop is only EVENTUAL -- THIS heuristic observes
++recent silence, not agreement; certified termination is a distinct, unbuilt
++layer. Deterministic agreement at a chosen stopping time is what the oracle
++buys, not an autonomous guarantee. Account for its bytes symmetrically with
++its work. 26 a fault-injection test must ASSERT the fault actually
++overlapped execution -- the autonomous partition row configured a partition
++at ticks 300-900 while adequate anti-entropy finished runs by ~240-320, so
++7/8 "partition" runs contained no partition at all; a test whose fault never
++fires measures the wrong hypothesis while reporting success (the staged-
++healing probe now asserts partition_ticks_seen > 0 and records coverage
++at heal to prove the fault bit).
+ 
+ Answer to the session's final question: autonomous nodes with stale,
+-divergent, locally derived schedules DO converge on the same verified fact
+-lattice under faults, at a quantified cost that is partly an exploration
+-benefit.
++divergent, locally derived schedules DO converge under faults -- and after
++four correction passes the structure of that convergence is precise. Full
++behavior coverage (all 16 two-input functions) is reached AUTONOMOUSLY on
++EVERY REPLICA: 32/32 runs in the latency/duplication/loss battery
++(per-node, asserted), no central phase required. After a temporary
++partition that provably bites (the isolated node at 14-15/16 at heal), the
++UNCHANGED protocol recovers full per-replica coverage in ~31-38 ticks
++(median) and full fact agreement in ~91 (max 212). Agreement is LAYERED
++and the layering is the finding: at the stability stop, signature-set and
++preferred-map agreement held in 32/32 runs while fact-store agreement held
++in 31/32 -- semantic recognition stabilizes BEFORE the supporting evidence
++history synchronizes. The one non-agreeing stop had empty inboxes; the
++differing facts sat in a replica's store awaiting a future anti-entropy
++pairing, and ordinary continued gossip agreed in 43 ticks. Divergence
++changes neither the behavior set (it does not purchase coverage, nor
++settle below it -- both earlier claims were premature-termination bugs) but
++it does change the PROGRAM lattice: divergent schedules accumulate more,
++different implementations of those same behaviors (280 canonical, 346-399
++healthy N=4, 427-508 faults, not nested), at 58-90% extra worker
++interactions -- so far a structural effect only; no divergent run produced
++a strictly better preferred representative. The durable one-liner: same
++facts compel the same recognized behaviors -- and recognition can be
++shared before, and independently of, the full evidence history being
++shared. The schedule, the program set, the cost, and the moment of fact
++agreement all vary; the recognized projection does not.
+--- a/research/synth_async.py
++++ b/research/synth_async.py
+@@ -219,7 +219,18 @@
+         from synth_bool4 import gen_level
+         reps = self.reps(self.nvars)
+         rmap = {s: (r, a) for s, (r, a, _) in reps.items()}
+-        stamp = frozenset((s, p) for s, (r, a, p) in reps.items())
++        # The regeneration memo key must include DEPTH, not just the frontier.
++        # depth is bumped via the recursive `self.depth += 1; self.refill()`
++        # below; on that recursion the frontier is unchanged, so a frontier-only
++        # stamp made the guard fire the instant depth first reached max_size --
++        # skipping the entire max_size candidate band forever (measured: the
++        # size-8 XOR/XNOR band was never generated in the clean single schedule,
++        # capping it at 14/16 while fault-driven frontier churn accidentally
++        # defeated the guard and reached 16/16). Keying on (depth, frontier)
++        # forces one generation pass per (depth, frontier) pair and still goes
++        # quiescent once the max-size band has been generated on a stable
++        # frontier with an empty queue.
++        stamp = (self.depth, frozenset((s, p) for s, (r, a, p) in reps.items()))
+         if stamp == self.gen_stamp and not self.queue and \
+            self.depth >= self.max_size:
+             return
+@@ -295,6 +306,12 @@
+              for i in range(N)]
+     bytes_tx = 0; tick = 0; snaps = {}
+     last_change = [0] * N
++    # Physical worker/verifier interactions performed by a node that is later
++    # discarded by a stale-snapshot rollback must not vanish from the accounting
++    # (restore() builds a fresh Node with paid=vpaid=0). Carry them at the run
++    # level; otherwise worker < unique and dup=worker-unique goes NEGATIVE, which
++    # is impossible under its own definition.
++    carried_paid = 0; carried_vpaid = 0
+     def blocked(a, b):
+         if not partition: return False
+         (pn, t0, t1) = partition
+@@ -329,6 +346,8 @@
+             j = restart[0]
+             old = snaps.get(j)
+             if old:
++                carried_paid += nodes[j].paid    # physical work already done
++                carried_vpaid += nodes[j].vpaid  # (and gossiped) survives the
+                 nodes[j] = nodes[j].restore(old[1], rng)   # stale rollback
+                 nodes[j].inbox = []
+         stable = tick - max(last_change) > 3 * anti + L + 5
+@@ -339,12 +358,41 @@
+                                      # forced-sync equality asserts below are
+                                      # the ground truth
+     req(tick < cap_ticks, "failed to quiesce")
+-    for _ in range(4):                                    # fair anti-entropy
+-        for n in nodes:
++    # SEMANTIC SATURATION (a measurement oracle, NOT autonomous termination).
++    # The autonomous loop above stops on local quiescence + stability; that is
++    # an eventual-consistency system, so at the stop the replicas need not yet
++    # AGREE and the merged frontier need not yet be CLOSED (a peer's facts can
++    # fill a gap in a node's preferred reps, letting the closure reach a program
++    # no single node generated -- e.g. the L=20 15/16 stop). This phase computes
++    # the fixed point the dynamics converge TOWARD, by forcing all-to-all full-
++    # state exchange (no loss/delay) and driving work to exhaustion. It is an
++    # oracle: it does NOT show the pairwise gossip scheduler reaching that point
++    # under its own protocol. probe_autonomous.py measures that separately, and
++    # finds it real but eventual: with adequate anti-entropy the coordination-
++    # free dynamics reach 16/16 robustly and agreement usually, but a finite
++    # stability-terminated run can stop before agreement (the boundary this
++    # oracle papers over). Its bytes ARE counted below so KB is not understated.
++    sat_bytes = 0; sat_rounds = 0; guard_hit = False
++    while True:
++        changed = False
++        for n in nodes:                                   # forced anti-entropy
+             s = n.full_state(); h = n.state_h()
+             for peer in nodes:
+                 if peer is not n:
+                     peer.import_msg(("F", h, s)); peer.reconcile()
++                    sat_bytes += len(s)
++        for n in nodes:
++            before = n.state_h()
++            guard = 0
++            while n.work():                               # exhaust regeneration
++                guard += 1
++                if guard > 100000: guard_hit = True; break
++            if n.state_h() != before: changed = True
++        sat_rounds += 1
++        if not changed: break
++        req(sat_rounds < 200, f"saturation did not converge in 200 rounds")
++    req(not guard_hit, "work guard (100000) exhausted during saturation")
++    bytes_tx += sat_bytes            # KB now includes the saturation cost too
+     states = {n.full_state() for n in nodes}
+     behs = {json.dumps(sorted((str(k), sorted(v)) for k, v in n.beh.items()))
+             for n in nodes}
+@@ -352,8 +400,11 @@
+                                n.reps(nvars).items())) for n in nodes}
+     n0 = nodes[0]
+     unique = sum(e["cost"] for e in n0.ev.values())
+-    worker = sum(n.paid for n in nodes); verif = sum(n.vpaid for n in nodes)
+-    dup_work = worker - unique
++    worker = sum(n.paid for n in nodes) + carried_paid
++    verif = sum(n.vpaid for n in nodes) + carried_vpaid
++    dup_work = worker - unique          # now >= 0 by construction: every
++                                        # physical eval is counted exactly once
++                                        # in worker and dedups to <= 1 in unique
+     obsolete = (sum(n0.prog[p]["cost_i"] for p in n0.prog
+                     if p not in ref_progs) if ref_progs else 0)
+     return dict(agree=len(states) == 1, beh_agree=len(behs) == 1,
+@@ -372,6 +423,15 @@
+           "trust_peers=True")
+     ref = run_async(N=1, L=1, dup_p=0, drop_p=0, seed=0)
+     ref_behs = {s for (n, s) in ref["store"].beh if n == 2}
++    # Automate the "deterministic every seed" claim rather than asserting it in
++    # prose: the single-schedule reference must be seed-invariant in behaviors,
++    # cost, and the exact program set (fold order is the only thing seed changes,
++    # and canonical identity is order-independent).
++    for sd in range(1, 8):
++        rc = run_async(N=1, L=1, dup_p=0, drop_p=0, seed=sd)
++        assert (rc["nbeh"], rc["unique"], rc["progs"]) == \
++               (ref["nbeh"], ref["unique"], ref["progs"]), \
++               f"N=1 reference not deterministic at seed {sd}"
+     NAMES = {sig_of(f, 2): nm for nm, f in [
+         ("F", lambda x, y: False), ("T", lambda x, y: True),
+         ("x", lambda x, y: x), ("y", lambda x, y: y),
+@@ -383,14 +443,37 @@
+         ("RIMPL", lambda x, y: (not y) or x), ("RNIMPL", lambda x, y: y and not x)]}
+     have = {s for (n, s) in ref["store"].beh if n == 2}
+     missing = [NAMES[s] for s in NAMES if s not in have]
+-    print(f"    (closure over single preferred reps at this horizon misses "
+-          f"{missing} -- the deferred Pareto-representative gap; the async "
+-          f"claim is closure AGREEMENT, not completeness)")
+-    print(f"    reference (N=1, no faults): behaviors {ref['nbeh']}/16, "
+-          f"unique {ref['unique']:,}, programs {len(ref['progs'])}")
++    # The canonical single schedule is now COMPLETE (16/16). An earlier build
++    # reported it stuck at 14/16 (XOR, XNOR "missing") and attributed the gap to
++    # a deferred "Pareto-representative" feature. That diagnosis was wrong: both
++    # XOR and XNOR are reachable from single preferred reps at size 8 (e.g.
++    # AND[OR, NAND] and OR[NOR, AND]); they were simply never generated, because
++    # the depth-blind regeneration memo key skipped the whole max_size candidate
++    # band the instant depth reached max_size (see Node.refill). The apparent
++    # "emergent" superiority of divergent schedules was the mirror image of the
++    # same bug -- fault-driven frontier churn perturbed the memo key often enough
++    # to defeat the guard, so divergent runs generated the band the canonical run
++    # skipped. With the key fixed the canonical schedule reaches 16/16. That
++    # "divergence purchases coverage" effect WAS this bug and does not survive
++    # it. An intermediate build then claimed the OPPOSITE -- divergence "settles
++    # below" the ceiling -- on one 15/16 run; that too was an artifact, one level
++    # up: the harness measured coverage after a fact merge without CLOSING the
++    # merged frontier (the node knew it was stale, gen_stamp=None, but was never
++    # stepped again). run_async now saturates the merged facts to a fixed point;
++    # every TESTED schedule reaches 16/16 there (see below).
++    assert ref["nbeh"] == 16, f"reference incomplete: {ref['nbeh']}/16 {missing}"
++    print(f"    reference (N=1, no faults): behaviors {ref['nbeh']}/16 "
++          f"(all 16 two-input functions), unique {ref['unique']:,}, "
++          f"programs {len(ref['progs'])}; missing {missing or 'NONE'}")
+     cfgs = [("L=2", dict(L=2, seed=1)), ("L=20", dict(L=20, seed=2)),
+             ("dup30/loss30", dict(L=8, dup_p=.3, drop_p=.3, seed=3)),
+             ("restart n1@stale", dict(L=6, restart=(1, 900), seed=4)),
++            # NOTE: with the main harness's anti=40 pacing this partition is
++            # still ACTIVE when local quiescence fires (~tick 650-900), so the
++            # saturation phase is what reunites node 2 -- this row measures
++            # "partition active at stop; oracle closes it". Autonomous healing
++            # (partition provably overlaps, heals, protocol recovers on its
++            # own) is measured in research/probe_autonomous.py part C.
+             ("partition n2", dict(L=6, partition=(2, 300, 900), seed=5)),
+             ("L=8 seed6", dict(L=8, seed=6))]
+     pick = [int(a) for a in sys.argv[1:] if a.isdigit()]
+@@ -398,25 +481,48 @@
+     print(f"{'config':>18} {'agree':>6} {'beh':>5} {'pref':>5} {'cov':>6} "
+           f"{'worker':>8} {'verif':>7} {'dup':>6} {'obsol':>6} {'divrg':>7} "
+           f"{'KB':>6}")
+-    allok = True
++    agree_all = True; covs = []
+     for name, kw in cfgs:
+         r = run_async(ref_progs=ref["progs"], **kw)
+         r["div"] = (r["worker"] - ref["unique"]) / ref["unique"]
+-        run_behs = {s for (n, s) in r["store"].beh if n == 2}
+-        ok = r["agree"] and r["beh_agree"] and r["pref_agree"] and \
+-             ref_behs <= run_behs
+-        allok &= ok
++        # THE INVARIANT is agreement: every node converges to one fact lattice,
++        # its derived behavior map, and its derived preferred map. Coverage --
++        # how much of the 16-function closure that shared lattice contains -- is
++        # a SEPARATE quantity, but at a genuine fixed point it is schedule-
++        # INVARIANT: every config reaches 16/16 (run_async closes the merged
++        # frontier now, rather than reporting the union at an arbitrary stop).
++        # What IS schedule-dependent is the PROGRAM lattice: divergent schedules
++        # accumulate more, different implementations of the same 16 behaviors
++        # (measured at the saturated fixed point: canonical 280; healthy N=4
++        # 346-399; faults 427-508, not even nested). Honest test below: every
++        # tested config agrees (saturation-confirmed) AND is behavior-complete.
++        agree = r["agree"] and r["beh_agree"] and r["pref_agree"]
++        agree_all &= agree
++        covs.append(r["nbeh"])
+         print(f"{name:>18} {str(r['agree']):>6} {str(r['beh_agree']):>5} "
+               f"{str(r['pref_agree']):>5} {r['nbeh']:>3}/16 "
+               f"{r['worker']:>8,} {r['verifier']:>7,} {r['dup']:>6,} "
+               f"{r['obsolete']:>6,} {r['div']:>6.1%} {r['bytes']//1024:>6,}")
+-    print(f"    SEMANTIC convergence under every fault config: {allok}")
+-    print(f"    (depths/trajectories/paid legitimately differ; facts do not)")
+-    print(f"    EMERGENT: divergent stale schedules reach 16/16 where the")
+-    print(f"    single canonical schedule reaches 14/16 -- schedule waste is")
+-    print(f"    partly schedule DIVERSITY; the union closure exceeds any")
+-    print(f"    one node's closure")
+-    assert allok
++    print(f"    AGREEMENT (fact / behavior / preferred maps), saturation-"
++          f"confirmed, all tested configs: {agree_all}")
++    print(f"    (depths/trajectories/paid legitimately differ; facts do not.")
++    print(f"     agreement is EVENTUAL -- the coordination-free dynamics reach")
++    print(f"     it in the limit; a stability-terminated run without the")
++    print(f"     saturation phase can stop before it -- see probe_autonomous.py)")
++    print(f"    COVERAGE reaches the full 16-function set in ALL TESTED configs:")
++    print(f"    {covs}. Behavior coverage is invariant across the tested")
++    print(f"    schedules (16/16); the PROGRAM lattice is not -- divergence")
++    print(f"    accumulates more, different implementations of the same behaviors")
++    print(f"    (280 canonical, 346-399 healthy N=4, 427-508 faults; not nested).")
++    print(f"    That is a STRUCTURAL effect, not a demonstrated benefit: of the")
++    print(f"    preferred reps that differ from canonical, none is strictly better")
++    print(f"    in (ref, exp, cost) -- they differ only by the content-hash tie-")
++    print(f"    break. Two retracted claims: 'divergence purchases coverage' (a")
++    print(f"    depth-blind memo-key bug) and its mirror 'divergence settles below")
++    print(f"    the ceiling' (a harness that measured before closing the merged")
++    print(f"    frontier). Both gone: every tested schedule closes to 16/16.")
++    assert agree_all
++    assert all(c == 16 for c in covs), f"a config failed to close: {covs}"
+     print("=" * 88)
+ 
+ def sec_FLAG():
+--- a/research/probe_quiescence.py
++++ b/research/probe_quiescence.py
+@@ -0,0 +1,122 @@
++"""Probe: is the reported fault-run coverage a TRUE fixed point of
++merge -> derive frontier -> generate -> evaluate -> merge, or just the
++union of what each node found before the harness stopped?
++
++Method: reproduce run_async's driver verbatim, capture coverage at the
++exact point run_async returns, THEN continue running work()+full
++anti-entropy to a genuine fixed point (no node changes, all queues empty,
++no node still flagged gen_stamp=None with generatable candidates), and
++report coverage again. If it rises, the harness stopped short of closure.
++"""
++import json, random, itertools
++import synth_async as sa
++from synth_async import Node
++
++def coverage(nodes, nvars=2):
++    n0 = nodes[0]
++    return len([1 for (nv, s) in n0.beh if nv == nvars])
++
++def states_agree(nodes):
++    return len({n.full_state() for n in nodes}) == 1
++
++def run_and_probe(N=4, nvars=2, max_size=8, seed=0, L=4, dup_p=0.15,
++                  drop_p=0.1, anti=40, restart=None, partition=None,
++                  cap_ticks=120000):
++    rng = random.Random(seed)
++    nodes = [Node(i, N, nvars, max_size, None, True, rng) for i in range(N)]
++    tick = 0; snaps = {}; last_change = [0] * N
++    def blocked(a, b):
++        if not partition: return False
++        (pn, t0, t1) = partition
++        return t0 <= tick <= t1 and (a == pn or b == pn)
++    while tick < cap_ticks:
++        tick += 1
++        for n in nodes:
++            if rng.random() > n.rate: continue
++            due = [m for m in n.inbox if m[0] <= tick]
++            n.inbox = [m for m in n.inbox if m[0] > tick]
++            for _, m in due: n.import_msg(m)
++            n.reconcile(); n.work()
++            blob = n.flush()
++            if blob:
++                last_change[n.nid] = tick
++                for peer in rng.sample(nodes, min(2, N)):
++                    if peer is n or blocked(n.nid, peer.nid): continue
++                    for _ in range(1 + (rng.random() < dup_p)):
++                        if rng.random() < drop_p: continue
++                        peer.inbox.append((tick + rng.randint(1, L),
++                                           ("D", None, blob)))
++            if tick % anti == 0 and rng.random() < 0.5:
++                peer = rng.choice(nodes)
++                if peer is not n and not blocked(n.nid, peer.nid):
++                    peer.inbox.append((tick + 1, ("F", n.state_h(),
++                                                  n.full_state())))
++            if tick % 50 == 0: snaps[n.nid] = (tick, n.full_state())
++        if restart and tick == restart[1]:
++            j = restart[0]; old = snaps.get(j)
++            if old:
++                nodes[j] = nodes[j].restore(old[1], rng); nodes[j].inbox = []
++        stable = tick - max(last_change) > 3 * anti + L + 5
++        if stable and all(n.depth >= max_size and not n.queue
++                          and not n.pending for n in nodes):
++            break
++    # ---- run_async's final forced anti-entropy (verbatim) ----
++    for _ in range(4):
++        for n in nodes:
++            s = n.full_state(); h = n.state_h()
++            for peer in nodes:
++                if peer is not n:
++                    peer.import_msg(("F", h, s)); peer.reconcile()
++
++    cov_at_return = coverage(nodes)
++    agree_at_return = states_agree(nodes)
++    stale_flags = [n.nid for n in nodes if n.gen_stamp is None]
++    nonempty_q = [n.nid for n in nodes if n.queue]
++
++    # ---- NOW drive to a genuine fixed point ----
++    extra = 0
++    while True:
++        changed = False
++        for n in nodes:
++            before = n.state_h()
++            n.reconcile()
++            # exhaust this node's generation/evaluation
++            guard = 0
++            while n.work():
++                guard += 1
++                if guard > 100000: break
++            if n.state_h() != before: changed = True
++        # full anti-entropy so newly generated facts propagate
++        for n in nodes:
++            s = n.full_state(); h = n.state_h()
++            for peer in nodes:
++                if peer is not n:
++                    peer.import_msg(("F", h, s)); peer.reconcile()
++        extra += 1
++        if not changed or extra > 200: break
++
++    cov_closed = coverage(nodes)
++    agree_closed = states_agree(nodes)
++    return dict(cov_at_return=cov_at_return, agree_at_return=agree_at_return,
++                stale_flags=stale_flags, nonempty_q=nonempty_q,
++                cov_closed=cov_closed, agree_closed=agree_closed,
++                extra_rounds=extra, progs_closed=set(nodes[0].prog))
++
++CFGS = [("L=2",            dict(L=2, seed=1)),
++        ("L=20",           dict(L=20, seed=2)),
++        ("dup30/loss30",   dict(L=8, dup_p=.3, drop_p=.3, seed=3)),
++        ("restart n1@stale",dict(L=6, restart=(1, 900), seed=4)),
++        ("partition n2",   dict(L=8, partition=(2, 200, 900), seed=5)),
++        ("L=8 seed6",      dict(L=8, seed=6))]
++
++if __name__ == "__main__":
++    print(f"{'config':>18} {'cov@return':>11} {'agree@ret':>9} "
++          f"{'stale':>7} {'queued':>7} | {'cov CLOSED':>10} {'agree':>6} "
++          f"{'+rounds':>7}")
++    for name, kw in CFGS:
++        r = run_and_probe(**kw)
++        flag = "  <-- ROSE" if r["cov_closed"] > r["cov_at_return"] else ""
++        print(f"{name:>18} {r['cov_at_return']:>9}/16 {str(r['agree_at_return']):>9} "
++              f"{str(r['stale_flags']):>7} {str(r['nonempty_q']):>7} | "
++              f"{r['cov_closed']:>8}/16 {str(r['agree_closed']):>6} "
++              f"{r['extra_rounds']:>7}{flag}")
+--- a/research/probe_autonomous.py
++++ b/research/probe_autonomous.py
+@@ -0,0 +1,228 @@
++"""Probe: what do the coordination-free dynamics do WITHOUT the oracle?
++
++run_async reports its fixed point via a SEMANTIC SATURATION phase (all-to-all
++full-state exchange + centrally driven work exhaustion). That is a measurement
++oracle: it computes the point the dynamics converge toward, but does not show
++the pairwise gossip scheduler reaching it under its own protocol. This probe
++removes the oracle and measures the autonomous dynamics directly.
++
++Findings it reproduces (deterministic seeds):
++
++A) At the default anti-entropy rate the stability heuristic stops the loop
++   mid-propagation: replicas DISAGREE and one config is still 15/16 on some
++   replica. The oracle was manufacturing agreement, not just measuring coverage.
++
++B) Latency / duplication / loss battery (NO partition), adequate anti-entropy:
++   every replica on every run reaches 16/16 (per-node, asserted) -- coverage
++   closure is autonomous and robust. Fact-store agreement at the heuristic stop
++   is frequent but not guaranteed; at every non-agreeing stop measured, all
++   inboxes were EMPTY -- the differing facts sat in one replica's store
++   awaiting a FUTURE random anti-entropy pairing (not "in flight"), and
++   continued ordinary gossip reached agreement in tens of ticks. The layered
++   result: SIGNATURE-SET agreement (which 16 behaviors exist) and usually
++   PREFERRED-MAP agreement stabilize before FACT-STORE agreement.
++   NOTE this heuristic-specific wording: the demonstrated gap is that THIS
++   local stability heuristic cannot establish fact agreement. Certified
++   termination (acknowledgements, version vectors, termination-detection
++   protocols) is a distinct, unbuilt layer -- not an impossibility.
++
++C) Temporary partition with STAGED HEALING (the corrected experiment; the
++   earlier config partition=(2,300,900) was INVALID as labeled -- with adequate
++   anti-entropy the runs stopped at ticks ~238-318, i.e. 7/8 BEFORE the
++   partition began, so it mostly measured no-partition dynamics). Here the
++   partition provably overlaps execution (asserted), heals, and the ordinary
++   protocol runs on: we measure per-node coverage at heal (the partitioned
++   node is typically BELOW 16/16 -- the fault bites), then time from heal to
++   full per-node coverage and to fact agreement.
++
++D) For every non-agreeing heuristic stop in B, continuing the same protocol
++   reaches agreement autonomously (ticks reported).
++"""
++import random
++from synth_async import Node
++
++NV = 2
++
++def covs(nodes):
++    return [len([1 for (nv, s) in n.beh if nv == NV]) for n in nodes]
++
++def sig_sets_agree(nodes):
++    return len({frozenset(s for (nv, s) in n.beh if nv == NV)
++                for n in nodes}) == 1
++
++def pref_maps_agree(nodes):
++    import json
++    return len({json.dumps(sorted((str(s), t[2]) for s, t in
++                                  n.reps(NV).items())) for n in nodes}) == 1
++
++def fact_agree(nodes):
++    return len({n.state_h() for n in nodes}) == 1
++
++class Sim:
++    """The exact autonomous event loop of run_async (pairwise delta gossip +
++    periodic random pairwise anti-entropy), stepped externally so experiments
++    can observe / continue without changing the protocol."""
++    def __init__(self, N=4, max_size=8, seed=0, L=4, dup_p=0.15, drop_p=0.1,
++                 anti=40, partition=None):
++        self.rng = random.Random(seed)
++        self.nodes = [Node(i, N, NV, max_size, None, True, self.rng)
++                      for i in range(N)]
++        self.N = N; self.L = L; self.dup_p = dup_p; self.drop_p = drop_p
++        self.anti = anti; self.partition = partition
++        self.tick = 0; self.last = [0] * N; self.bytes_tx = 0
++        self.partition_ticks_seen = 0
++
++    def blocked(self, a, b):
++        if not self.partition: return False
++        pn, t0, t1 = self.partition
++        return t0 <= self.tick <= t1 and (a == pn or b == pn)
++
++    def step(self):
++        self.tick += 1
++        if self.partition:
++            pn, t0, t1 = self.partition
++            if t0 <= self.tick <= t1: self.partition_ticks_seen += 1
++        for n in self.nodes:
++            if self.rng.random() > n.rate: continue
++            due = [m for m in n.inbox if m[0] <= self.tick]
++            n.inbox = [m for m in n.inbox if m[0] > self.tick]
++            for _, m in due: n.import_msg(m)
++            n.reconcile(); n.work()
++            blob = n.flush()
++            if blob:
++                self.last[n.nid] = self.tick
++                for peer in self.rng.sample(self.nodes, min(2, self.N)):
++                    if peer is n or self.blocked(n.nid, peer.nid): continue
++                    for _ in range(1 + (self.rng.random() < self.dup_p)):
++                        if self.rng.random() < self.drop_p: continue
++                        peer.inbox.append((self.tick +
++                                           self.rng.randint(1, self.L),
++                                           ("D", None, blob)))
++                        self.bytes_tx += len(blob)
++            if self.tick % self.anti == 0 and self.rng.random() < 0.5:
++                peer = self.rng.choice(self.nodes)
++                if peer is not n and not self.blocked(n.nid, peer.nid):
++                    b2 = n.full_state()
++                    peer.inbox.append((self.tick + 1, ("F", n.state_h(), b2)))
++                    self.bytes_tx += len(b2)
++
++    def heuristic_fires(self, window_mult):
++        stable = self.tick - max(self.last) > window_mult * self.anti + \
++                 self.L + 5
++        return (stable and
++                all(n.gen_stamp is not None for n in self.nodes) and
++                all(n.depth >= 8 and not n.queue and not n.pending
++                    for n in self.nodes))
++
++def run_heuristic(seed, L, anti=5, wm=8, dup_p=0.15, drop_p=0.1,
++                  partition=None, cap=800000, extra_cap=40000):
++    """Run to the stability-heuristic stop; report per-node coverage and the
++    three agreement layers; if fact stores disagree, continue the SAME
++    protocol and report ticks to autonomous agreement."""
++    s = Sim(seed=seed, L=L, dup_p=dup_p, drop_p=drop_p, anti=anti,
++            partition=partition)
++    while s.tick < cap:
++        s.step()
++        if s.heuristic_fires(wm): break
++    out = dict(qtick=s.tick, covs=covs(s.nodes),
++               sig=sig_sets_agree(s.nodes), pref=pref_maps_agree(s.nodes),
++               fact=fact_agree(s.nodes), kb=s.bytes_tx // 1024,
++               extra_to_agree=0)
++    if not out["fact"]:
++        t0 = s.tick
++        while s.tick < t0 + extra_cap and not fact_agree(s.nodes):
++            s.step()
++        out["extra_to_agree"] = (s.tick - t0 if fact_agree(s.nodes) else -1)
++    return out
++
++def run_partition_heal(seed, t0, t1, L=6, anti=5, wm=8, cap=60000):
++    """Staged healing experiment: assert the partition overlaps execution,
++    record per-node coverage at heal, then measure ticks from heal to full
++    per-node coverage and to fact agreement under the UNCHANGED protocol.
++    Also record when the stability heuristic first fires post-heal, to compare
++    the heuristic's stopping time against actual agreement."""
++    s = Sim(seed=seed, L=L, anti=anti, partition=(2, t0, t1))
++    covs_at_heal = None; t_cov = None; t_agree = None; t_heur = None
++    while s.tick < cap:
++        s.step()
++        if s.tick == t1: covs_at_heal = covs(s.nodes)
++        if s.tick >= t1:
++            if t_cov is None and all(c == 16 for c in covs(s.nodes)):
++                t_cov = s.tick - t1
++            if t_agree is None and fact_agree(s.nodes):
++                t_agree = s.tick - t1
++            if t_heur is None and s.heuristic_fires(wm):
++                t_heur = s.tick - t1
++            if t_cov is not None and t_agree is not None and \
++               t_heur is not None:
++                break
++    assert s.partition_ticks_seen > 0, "partition never overlapped execution"
++    return dict(seen=s.partition_ticks_seen, covs_at_heal=covs_at_heal,
++                t_cov=t_cov, t_agree=t_agree, t_heur=t_heur)
++
++BATTERY = [("L=2", dict(L=2)), ("L=20", dict(L=20)),
++           ("dup30/loss30", dict(L=8, dup_p=.3, drop_p=.3)),
++           ("L=8", dict(L=8))]
++
++if __name__ == "__main__":
++    print("[AUTONOMOUS] pairwise gossip only -- NO all-to-all saturation oracle")
++
++    print("\nA) default anti-entropy (anti=40, win=3): stops mid-propagation")
++    print(f"   {'config':>14} {'min-cov':>8} {'fact':>5} {'qtick':>7}")
++    for name, kw in BATTERY + [("partition n2",
++                                dict(L=6, partition=(2, 300, 900)))]:
++        r = run_heuristic(seed=2, anti=40, wm=3, **kw)
++        print(f"   {name:>14} {min(r['covs']):>6}/16 {str(r['fact']):>5} "
++              f"{r['qtick']:>7}")
++
++    print("\nB) latency/dup/loss battery (NO partition), anti=5, seeds 1-8:")
++    print(f"   {'config':>14} {'allnodes16':>10} {'sig':>5} {'pref':>5} "
++          f"{'fact':>5} {'cont->agree ticks':>18}")
++    tot = c16 = sg = pf = fa = 0; conts = []
++    for name, kw in BATTERY:
++        a16 = s_ = p_ = f_ = 0; ct = []
++        for sd in range(1, 9):
++            r = run_heuristic(seed=sd, anti=5, wm=8, **kw)
++            tot += 1
++            ok16 = all(c == 16 for c in r["covs"])
++            a16 += ok16; c16 += ok16
++            s_ += r["sig"]; sg += r["sig"]
++            p_ += r["pref"]; pf += r["pref"]
++            f_ += r["fact"]; fa += r["fact"]
++            if not r["fact"]:
++                ct.append(r["extra_to_agree"]); conts.append(r["extra_to_agree"])
++        print(f"   {name:>14} {str(a16)+'/8':>10} {str(s_)+'/8':>5} "
++              f"{str(p_)+'/8':>5} {str(f_)+'/8':>5} "
++              f"{str(sorted(ct)) if ct else '-':>18}")
++    print(f"   TOTAL: per-node coverage {c16}/{tot}; signature-set agree "
++          f"{sg}/{tot}; preferred-map agree {pf}/{tot}; fact agree {fa}/{tot}")
++    print(f"   every non-agreeing stop -> autonomous agreement on "
++          f"continuation, ticks: {sorted(conts)}")
++    assert c16 == tot, "a replica ended below 16/16 in the no-partition battery"
++    assert all(t >= 0 for t in conts), "a continuation failed to agree"
++
++    print("\nC) STAGED PARTITION HEALING (node 2 cut t0..t1, then heals;")
++    print("   protocol unchanged; measured post-heal). seeds 1-8:")
++    print(f"   {'window':>10} {'partition bit?':>14} {'cov@heal(min)':>13} "
++          f"{'t->cov16':>9} {'t->agree':>9} {'heur<agree':>10}")
++    for (t0, t1) in [(50, 150), (50, 250), (100, 250)]:
++        bit = 0; cmin = []; tcs = []; tas = []; hb = 0
++        for sd in range(1, 9):
++            r = run_partition_heal(sd, t0, t1)
++            bit += (min(r["covs_at_heal"]) < 16)
++            cmin.append(min(r["covs_at_heal"]))
++            tcs.append(r["t_cov"]); tas.append(r["t_agree"])
++            hb += (r["t_heur"] is not None and r["t_agree"] is not None
++                   and r["t_heur"] < r["t_agree"])
++        tcs = sorted(t if t is not None else -1 for t in tcs)
++        tas = sorted(t if t is not None else -1 for t in tas)
++        print(f"   {str((t0,t1)):>10} {str(bit)+'/8':>14} "
++              f"{str(sorted(cmin)):>13} "
++              f"med {tcs[4]:>4} max {tcs[-1]:>4} "
++              f"med {tas[4]:>4} max {tas[-1]:>4} {str(hb)+'/8':>10}")
++        assert all(t >= 0 for t in tcs) and all(t >= 0 for t in tas), \
++            "a partition run failed to recover"
++    print("   -> the fault bites (partitioned node below 16 at heal), and the")
++    print("      UNCHANGED protocol recovers full per-node coverage and fact")
++    print("      agreement autonomously after healing. The stability heuristic")
++    print("      often fires before agreement -- consistent with (B).")

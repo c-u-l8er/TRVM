@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRVM — the coordination-free runtime</title>
+<meta name="description" content="TRVM is a term-rewriting virtual machine on the interaction calculus. Confluent by construction: any schedule, any machine — same answer. Live demos on this page: the 9.9KB runtime, an isolation race, and semantic identity. Plus WallRiderLang and the Forge Spinner Bench.">
+<meta property="og:title" content="TRVM — the coordination-free runtime">
+<meta property="og:description" content="A 9.9KB deterministic reduction kernel that turns pure computation into replayable, content-addressed evidence. Three live demos run on the page itself.">
+<meta property="og:type" content="website"><link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EDEFEC; --paper-2:#E3E7E2; --ink:#141F1C; --ink-soft:#3A4A45;
+  --machine:#0D1512; --machine-2:#111B17; --machine-edge:#1E2C27;
+  --wire:#2F6B5B; --phosphor:#8FDCC3; --phosphor-dim:#5FA48E;
+  --brass:#B08A32; --brass-soft:#8A6D28;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --serif:'Newsreader',Georgia,serif;
+  --disp:'Archivo',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:19px;line-height:1.62;font-optical-sizing:auto;-webkit-font-smoothing:antialiased}
+::selection{background:var(--wire);color:var(--paper)}
+a{color:inherit;text-decoration-color:var(--wire);text-underline-offset:3px}
+a:hover{color:var(--wire)}
+:focus-visible{outline:2px solid var(--brass);outline-offset:3px;border-radius:2px}
+.skip{position:absolute;left:-9999px;top:0;background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:13px;padding:10px 16px;z-index:100}
+.skip:focus{left:12px;top:12px}
+header{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:28px;padding:14px 5vw;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--paper-2)}
+.mark{font-family:var(--disp);font-weight:800;font-stretch:118%;font-size:19px;letter-spacing:.04em;text-decoration:none}
+.mark small{font-family:var(--mono);font-weight:500;font-size:10px;color:var(--ink-soft);display:block;letter-spacing:.14em;margin-top:1px}
+nav{margin-left:auto;display:flex;gap:20px;flex-wrap:wrap}
+nav a{font-family:var(--mono);font-size:12px;letter-spacing:.05em;text-decoration:none;color:var(--ink-soft)}
+nav a:hover{color:var(--wire)}
+section{padding:84px 5vw}
+.inner{max-width:1080px;margin:0 auto}
+.slot{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.12em;color:var(--wire);margin-bottom:18px;display:flex;align-items:center;gap:12px}
+.slot::before{content:"";width:34px;height:1px;background:var(--wire)}
+h1,h2{font-family:var(--disp);line-height:1.05;letter-spacing:-.012em}
+h1{font-weight:800;font-stretch:112%;font-size:clamp(38px,6.2vw,74px);max-width:15ch}
+h2{font-weight:700;font-stretch:108%;font-size:clamp(26px,3.4vw,40px);margin-bottom:20px;max-width:26ch}
+.lede{font-size:clamp(19px,2vw,22px);max-width:62ch;color:var(--ink-soft);margin-top:22px}
+.lede b,p b{color:var(--ink);font-weight:600}
+p{max-width:70ch}
+p+p{margin-top:1em}
+.k{font-family:var(--mono);font-size:.82em;background:var(--paper-2);padding:2px 6px;border-radius:3px;white-space:nowrap}
+.machine{background:var(--machine);color:#CFE3DA}
+.machine .slot{color:var(--phosphor-dim)}
+.machine .slot::before{background:var(--phosphor-dim)}
+.machine h2{color:#F1F7F4}
+.machine p{color:#9FB8AE}
+.machine p b{color:#E4F0EA}
+.machine .k{background:var(--machine-edge);color:var(--phosphor)}
+.machine a{text-decoration-color:var(--phosphor-dim)}
+.machine a:hover{color:var(--phosphor)}
+.btn{font-family:var(--mono);font-size:13.5px;font-weight:600;letter-spacing:.05em;cursor:pointer;background:var(--wire);color:#EAF6F1;border:0;border-radius:7px;padding:12px 22px;transition:background .15s}
+.btn:hover{background:#3B8571}
+.demo-tag{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--brass);border:1px solid var(--brass);border-radius:99px;padding:4px 12px;display:inline-block;margin-bottom:14px}
+.machine .demo-tag{color:var(--phosphor);border-color:var(--phosphor-dim)}
+
+/* hero terminal */
+.hero{padding-top:64px;padding-bottom:84px}
+.term-cap{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;letter-spacing:.05em;color:var(--phosphor-dim);padding:0 2px 10px}
+.live-dot{color:var(--phosphor)}
+.live-dot::before{content:"●";margin-right:7px;animation:pulse 2.4s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.live-dot::before{animation:none}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.terminal{background:var(--machine);border:1px solid var(--machine-edge);border-radius:10px;padding:24px 24px 20px;box-shadow:0 24px 60px -30px rgba(20,31,28,.45)}
+.chips{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:16px}
+.chip{font-family:var(--mono);font-size:12.5px;padding:7px 13px;border-radius:99px;cursor:pointer;background:var(--machine-2);color:#B9D2C8;border:1px solid var(--machine-edge);transition:border-color .15s,color .15s}
+.chip:hover{border-color:var(--wire);color:var(--phosphor)}
+.term-row{display:flex;gap:10px}
+.term-in{flex:1;font-family:var(--mono);font-size:15px;color:var(--phosphor);background:#0A100E;border:1px solid var(--machine-edge);border-radius:7px;padding:13px 15px;min-width:0}
+.term-in::placeholder{color:#4B615A}
+.term-in:focus{border-color:var(--wire);outline:none}
+.term-out{margin-top:15px;font-family:var(--mono);font-size:14.5px;line-height:1.75;color:#7C948B;min-height:70px;white-space:pre-wrap;word-break:break-word}
+.term-out .nf{color:var(--phosphor);font-size:16.5px}
+.term-out .meta{color:#5C756C;font-size:12.5px}
+.term-out .ok{color:var(--phosphor-dim)}
+
+/* capabilities */
+.caps{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:44px}
+.cap{background:#fff;border:1px solid var(--paper-2);padding:26px 26px 22px;display:flex;flex-direction:column;gap:12px}
+.cap svg{width:52px;height:52px;display:block}
+.cap h3{font-family:var(--disp);font-weight:700;font-stretch:106%;font-size:21px;line-height:1.15}
+.cap p{font-size:16px;color:var(--ink-soft);line-height:1.55}
+.cap .r{margin-top:auto;font-family:var(--mono);font-size:11.5px;letter-spacing:.05em;color:var(--wire);border-top:1px solid var(--paper-2);padding-top:12px}
+.cap .dom{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.14em;color:var(--brass-soft)}
+
+/* isolation race */
+.lanes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:26px}
+.lane{background:var(--machine-2);border:1px solid var(--machine-edge);border-radius:8px;padding:16px 18px;font-family:var(--mono);font-size:12.5px;color:#7C948B;min-height:150px}
+.lane .hd{display:flex;justify-content:space-between;color:#5C756C;font-size:11px;letter-spacing:.08em;margin-bottom:10px}
+.lane .st{color:var(--phosphor-dim)}
+.lane .nf{color:var(--phosphor);font-size:13.5px;word-break:break-all;line-height:1.6}
+.lane .addr{color:#6E8A7F;font-size:11px;word-break:break-all;margin-top:8px}
+.merge-bar{margin-top:16px;border:1px dashed var(--machine-edge);border-radius:8px;padding:16px 18px;font-family:var(--mono);font-size:13px;color:#7C948B;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.merge-bar .good{color:var(--phosphor);font-weight:600}
+.race-ctl{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:26px}
+.race-term{font-family:var(--mono);font-size:12.5px;color:#7C948B}
+
+/* identity demo */
+.id-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:30px}
+.id-pane{background:var(--machine);border:1px solid var(--machine-edge);border-radius:9px;padding:18px 18px 16px}
+.id-pane label{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--phosphor-dim);display:block;margin-bottom:10px}
+.id-pane textarea{width:100%;background:#0A100E;color:var(--phosphor);border:1px solid var(--machine-edge);border-radius:6px;font-family:var(--mono);font-size:13.5px;padding:12px;min-height:72px;resize:vertical}
+.id-pane textarea:focus{border-color:var(--wire);outline:none}
+.id-pane .res{font-family:var(--mono);font-size:12px;color:#7C948B;margin-top:10px;line-height:1.8;word-break:break-all;min-height:58px}
+.id-pane .res .nf{color:var(--phosphor)}
+.verdict{margin-top:16px;display:flex;gap:12px;flex-wrap:wrap}
+.badge{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.06em;border-radius:7px;padding:11px 18px;border:1px solid}
+.badge.same{color:var(--phosphor);border-color:var(--wire);background:rgba(47,107,91,.12)}
+.badge.moved{color:var(--brass);border-color:var(--brass-soft);background:rgba(176,138,50,.1)}
+.badge.idle{color:#5C756C;border-color:var(--machine-edge)}
+
+/* stack table */
+table{width:100%;border-collapse:collapse;font-size:16px;margin-top:30px}
+th{font-family:var(--mono);font-size:11.5px;font-weight:500;letter-spacing:.1em;text-align:left;color:var(--phosphor-dim);padding:0 16px 12px 0;border-bottom:1px solid var(--machine-edge)}
+td{padding:14px 16px 14px 0;border-bottom:1px solid var(--machine-edge);vertical-align:top;color:#A9C0B6}
+td:first-child{font-family:var(--mono);font-size:14px;color:var(--phosphor);white-space:nowrap}
+td b{color:#E4F0EA;font-weight:600}
+.receipts{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}
+.receipt{font-family:var(--mono);font-size:12.5px;padding:8px 14px;border-radius:6px;background:var(--machine-2);border:1px solid var(--machine-edge);color:#B9D2C8}
+.receipt b{color:var(--phosphor);font-weight:600}
+
+/* memory pipeline */
+.pipe{display:flex;align-items:stretch;margin:38px 0 26px;flex-wrap:wrap}
+.pipe-step{flex:1;min-width:180px;padding:20px 22px;border:1px solid var(--paper-2);background:#fff;position:relative}
+.pipe-step+.pipe-step{margin-left:-1px}
+.pipe-step .n{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--wire)}
+.pipe-step .v{font-family:var(--disp);font-weight:700;font-stretch:106%;font-size:19px;margin:7px 0 8px}
+.pipe-step .d{font-size:15px;color:var(--ink-soft);line-height:1.5;max-width:34ch}
+.pipe-step::after{content:"→";position:absolute;right:-9px;top:50%;transform:translateY(-50%);font-family:var(--mono);color:var(--wire);background:var(--paper);z-index:2;font-size:15px}
+.pipe-step:last-child::after{content:""}
+
+/* WRL dual view */
+.wrl-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-top:34px}
+.wrl-code{background:var(--machine);border:1px solid var(--machine-edge);border-radius:9px;padding:20px 22px;font-family:var(--mono);font-size:13px;line-height:1.85;color:#9FB8AE;overflow-x:auto;white-space:pre}
+.wrl-code .kw{color:var(--phosphor)}
+.wrl-code .role{color:#D7C289}
+.wrl-code .rt{color:var(--phosphor-dim)}
+.wrl-code .cm{color:#54695F}
+.wrl-canvas{background:#fff;border:1px solid var(--paper-2);border-radius:9px;padding:18px}
+.wrl-canvas svg{width:100%;height:auto;display:block}
+.pane-cap{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--ink-soft);margin-bottom:12px}
+.machine .pane-cap{color:var(--phosphor-dim)}
+.wrl-pipe{display:flex;gap:0;flex-wrap:wrap;margin-top:22px;font-family:var(--mono);font-size:12px}
+.wrl-pipe span{padding:9px 16px;border:1px solid var(--paper-2);background:#fff;color:var(--ink-soft);position:relative;margin-left:-1px}
+.wrl-pipe span b{color:var(--wire);font-weight:600}
+
+/* forge bench schematic */
+.bench{margin-top:34px;background:var(--machine-2);border:1px solid var(--machine-edge);border-radius:12px;overflow:hidden}
+.bench-chrome{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--machine-edge);font-family:var(--mono);font-size:11.5px;color:#5C756C}
+.bench-chrome .dots span{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--machine-edge);margin-right:5px}
+.bench-tabs{margin-left:auto;display:flex;gap:8px}
+.bench-tab{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;padding:6px 14px;border-radius:99px;cursor:pointer;background:transparent;color:#7C948B;border:1px solid var(--machine-edge)}
+.bench-tab[aria-selected="true"]{color:var(--phosphor);border-color:var(--wire)}
+.bench-panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:var(--machine-edge)}
+.bpanel{background:var(--machine);padding:18px 18px 20px;min-height:132px}
+.bpanel .t{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--phosphor-dim);margin-bottom:9px}
+.bpanel .d{font-size:14.5px;color:#9FB8AE;line-height:1.55}
+.bpanel .d b{color:#E4F0EA}
+.seal{margin-top:18px;font-family:var(--mono);font-size:11.5px;color:#6E8A7F;word-break:break-all;line-height:1.8;padding:14px 18px;border:1px dashed var(--machine-edge);border-radius:8px}
+.seal b{color:var(--phosphor)}
+
+/* laws */
+.law-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:34px}
+.law{background:var(--machine-2);border:1px solid var(--machine-edge);border-radius:8px;padding:20px 22px}
+.law .id{font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;color:var(--phosphor-dim);display:flex;justify-content:space-between}
+.law .id .tier{color:var(--phosphor)}
+.law .id .tier.res{color:var(--brass)}
+.law .txt{margin-top:11px;font-size:16.5px;line-height:1.55;color:#CFE3DA}
+.law .why{margin-top:10px;font-family:var(--mono);font-size:11.5px;color:#5C756C;line-height:1.6}
+
+/* boundaries */
+.bounds{border-top:3px solid var(--brass)}
+.bounds .slot{color:var(--brass-soft)}
+.bounds .slot::before{background:var(--brass-soft)}
+.bound-list{margin-top:28px;display:grid;max-width:840px}
+.bound{padding:19px 0;border-bottom:1px solid var(--paper-2);display:grid;grid-template-columns:34px 1fr;gap:16px;align-items:baseline}
+.bound .no{font-family:var(--mono);font-size:13px;color:var(--brass)}
+.bound p{font-size:17px}
+
+/* reproduce */
+.repro-code{background:var(--machine);border:1px solid var(--machine-edge);border-radius:10px;font-family:var(--mono);font-size:14px;line-height:1.8;color:#B9D2C8;padding:24px 26px;overflow-x:auto;margin-top:28px;white-space:pre}
+.repro-code .c{color:#54695F}
+.repro-code .g{color:var(--phosphor)}
+
+/* context + footer */
+.ctx{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:32px}
+.ctx a{display:block;padding:24px 26px;border:1px solid var(--machine-edge);border-radius:9px;background:var(--machine-2);text-decoration:none;transition:border-color .15s}
+.ctx a:hover{border-color:var(--wire)}
+.ctx .t{font-family:var(--disp);font-weight:700;font-stretch:106%;font-size:19px;color:#F1F7F4}
+.ctx .s{font-family:var(--mono);font-size:12px;color:#7C948B;margin-top:8px;line-height:1.6}
+footer{padding:44px 5vw 56px;background:var(--machine);color:#5C756C;font-family:var(--mono);font-size:12px;letter-spacing:.04em;line-height:2;border-top:1px solid var(--machine-edge)}
+footer .inner{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}
+footer a{color:#7C948B;text-decoration:none}
+footer a:hover{color:var(--phosphor)}
+@media (max-width:860px){
+  section{padding:60px 6vw}
+  header{flex-wrap:wrap;gap:10px 20px}
+  nav{width:100%;display:flex;flex-wrap:nowrap;overflow-x:auto;gap:16px;padding-bottom:2px;margin-left:0;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  .id-grid,.ctx{grid-template-columns:1fr}
+  .wrl-grid{grid-template-columns:minmax(0,1fr)}
+  .wrl-grid>*{min-width:0}
+  .econ-split{grid-template-columns:1fr !important}
+  .pipe-step::after{display:none}
+  .chip,.bench-tab{min-height:44px}
+  .btn{min-height:44px}
+}
+</style>
+</head>
+<body id="top">
+<a class="skip" href="#machine">skip to content</a>
+<header>
+  <a class="mark" href="#top">TRVM<small>term-rewriting VM</small></a>
+  <nav aria-label="sections">
+    <a href="#machine">machine</a>
+    <a href="#capabilities">what falls out</a>
+    <a href="#isolation">isolation</a>
+    <a href="#identity">identity</a>
+    <a href="#wrl">WRL</a>
+    <a href="#forge">forge</a>
+    <a href="#uses">uses</a>
+    <a href="#economics">economics</a>
+    <a href="#laws">laws</a>
+    <a href="#reproduce">reproduce</a>
+  </nav>
+</header>
+
+<!-- ============ 0x00 · the machine ============ -->
+<section class="hero" id="machine">
+  <div class="inner">
+    <div class="slot">slot 0x00 · the machine</div>
+    <h1>Any order. Any machine. Same answer.</h1>
+    <p class="lede">TRVM is a term-rewriting virtual machine on the <b>interaction calculus</b> —
+    the model of computation where every step is a local graph rewrite and the result is
+    <b>provably independent of the schedule</b>. That one property is a seed. Everything below —
+    perfect replay, identity for programs, merging without locks, caching by meaning —
+    <b>falls out of it.</b> A machine for turning computation into <b>durable evidence</b>.</p>
+    <div style="display:flex;gap:12px;margin-top:32px;flex-wrap:wrap">
+      <button class="btn" id="cta-proof">run the live proof</button>
+      <a class="btn" href="#reproduce" style="text-decoration:none;display:inline-flex;align-items:center;background:transparent;color:var(--wire);border:1px solid var(--wire)">reproduce locally</a>
+    </div>
+  </div>
+  <div class="inner" style="margin-top:48px">
+    <span class="demo-tag">LIVE DEMO 1 / 3</span>
+    <div class="term-cap">
+      <span class="live-dot">ic32.wasm · 9,883 bytes · decoded from this HTML · executing in your tab</span>
+      <span>no server · λ or \ both parse</span>
+    </div>
+    <div class="terminal">
+      <div class="chips" id="chips"></div>
+      <div class="term-row">
+        <input class="term-in" id="term-in" spellcheck="false" autocomplete="off"
+               placeholder="type a term, or pick one above" aria-label="term to normalize">
+        <button class="btn" id="run-btn">normalize</button>
+      </div>
+      <div class="term-out" id="term-out">← the normal form and the interaction count appear here.
+<span class="meta">Every preset is a conformance vector or self-test term — the same contract every implementation must pass.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 0x01 · what falls out ============ -->
+<section id="capabilities" style="background:var(--paper-2)">
+  <div class="inner">
+    <div class="slot">slot 0x01 · capabilities</div>
+    <h2>Side effects of having none.</h2>
+    <p>The calculus is pure and confluent. These six capabilities aren't features that were
+    added — they're <b>consequences that couldn't be prevented.</b> Each one is something
+    conventional runtimes bolt on, approximate, or can't do at all.</p>
+    <div class="caps">
+      <div class="cap">
+        <svg viewBox="0 0 52 52" aria-hidden="true"><g fill="none" stroke="#2F6B5B" stroke-width="2"><rect x="6" y="12" width="40" height="28" rx="3"/><path d="M14 12v28M38 12v28"/><path d="M6 20h8M6 32h8M38 20h8M38 32h8" stroke-width="1.5"/><path d="M20 22l8 4-8 4z" fill="#2F6B5B" stroke="none"/></g></svg>
+        <h3>Perfect replay</h3>
+        <p>Every run produces a <b>film</b> — a byte-exact receipt. Replay it on the same sealed runtime — any machine, any year — and get the same bytes. If two worlds could ever diverge, their films already differ (that's a law, not a feature flag).</p>
+        <div class="r">Binding Law 6 · films diverge before effects do</div>
+      </div>
+      <div class="cap">
+        <svg viewBox="0 0 52 52" aria-hidden="true"><g fill="none" stroke="#2F6B5B" stroke-width="2"><circle cx="26" cy="26" r="17"/><path d="M26 13c-6 4-6 22 0 26M26 13c6 4 6 22 0 26M11 22h30M11 30h30" stroke-width="1.5"/></g><text x="26" y="31" text-anchor="middle" font-family="IBM Plex Mono" font-size="13" fill="#141F1C" font-weight="600">≡</text></svg>
+        <h3>Identity for computation</h3>
+        <p>Terminating programs that <b>mean the same thing — same canonical normal form — get the same address</b>, however they're spelled. Rename every variable, restructure the source: the hash doesn't move. Non-normalizing terms fall back to structural identity — a stated boundary, not a hidden one.</p>
+        <div class="r">canonicalize → content-address · try it below ↓</div>
+      </div>
+      <div class="cap">
+        <svg viewBox="0 0 52 52" aria-hidden="true"><g fill="none" stroke="#2F6B5B" stroke-width="2"><path d="M8 10l14 12M44 10L30 22M26 4v18"/><path d="M26 22v10"/><circle cx="26" cy="38" r="8"/><path d="M22 38h8M26 34v8" stroke-width="1.5"/></g></svg>
+        <h3>Merge without meetings</h3>
+        <p>Replicas exchange facts and take the <b>set union — that's the whole protocol.</b> No leader, no locks, no vector clocks, no conflict resolution, because canonical, append-only <b>facts</b> can't conflict. Things you can spend or revise are a different animal — the economics section draws that line. Machine-checked CvRDT laws.</p>
+        <div class="r">comm · assoc · idem — 200 random triples × 4 joins</div>
+      </div>
+      <div class="cap">
+        <svg viewBox="0 0 52 52" aria-hidden="true"><g fill="none" stroke="#2F6B5B" stroke-width="2"><path d="M26 8a18 18 0 1 1-12.7 5.3"/><path d="M13 4v10h10" stroke-width="1.8"/><path d="M20 26l4 4 8-9" stroke-width="2.2"/></g></svg>
+        <h3>Never compute twice</h3>
+        <p>The store is a <b>cache keyed by meaning, not spelling.</b> Once a verified result is in the reachable store, equivalent work becomes a lookup, not another reduction — for every replica that can reach it. ~18% of all work eliminated at toy scale. Measured, not modeled.</p>
+        <div class="r">semantic memoization · dedup_reduce battery</div>
+      </div>
+      <div class="cap">
+        <svg viewBox="0 0 52 52" aria-hidden="true"><g fill="none" stroke="#2F6B5B" stroke-width="2"><path d="M26 5l16 6v12c0 10-7 18-16 23-9-5-16-13-16-23V11z"/><path d="M18 26l6 6 11-12" stroke-width="2.2"/></g></svg>
+        <h3>Verify, don't trust</h3>
+        <p>Untrusted workers <b>can't lie their way in</b>: every imported evaluation is re-executed, every derived record is receiver-computed. Twenty forgery and omission attack classes — injection, suppression, impersonation — rejected by battery.</p>
+        <div class="r">20 forgery classes rejected · honest deltas derive to equality</div>
+      </div>
+      <div class="cap">
+        <svg viewBox="0 0 52 52" aria-hidden="true"><g fill="none" stroke="#2F6B5B" stroke-width="2"><rect x="14" y="14" width="24" height="24" rx="3"/><path d="M20 14V7M26 14V7M32 14V7M20 45v-7M26 45v-7M32 45v-7M14 20H7M14 26H7M14 32H7M45 20h-7M45 26h-7M45 32h-7" stroke-width="1.6"/></g></svg>
+        <h3>Runs anywhere</h3>
+        <p>The whole machine is <b>9,883 bytes of WebAssembly</b> with four exports and zero dependencies. Browser, phone, edge worker, air-gapped laptop. You're not reading about that capability — this page <b>is</b> it.</p>
+        <div class="r">the demos on this page are the existence proof</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 0x02 · isolation race ============ -->
+<section class="machine" id="isolation">
+  <div class="inner">
+    <div class="slot">slot 0x02 · coordination-free, before your eyes</div>
+    <span class="demo-tag">LIVE DEMO 2 / 3</span>
+    <h2>Four machines. Zero shared state. One answer.</h2>
+    <p>This button instantiates <b>four fresh, fully isolated copies</b> of the runtime — four separate
+    WebAssembly instances with four separate linear memories, sharing nothing. Each normalizes the
+    same term independently. Then the results are merged the only way this system ever merges anything:
+    <b>by union.</b> Watch what there is to reconcile.</p>
+    <div class="race-ctl">
+      <button class="btn" id="race-btn">spin up 4 isolated machines</button>
+      <span class="race-term" id="race-term"></span>
+    </div>
+    <div class="lanes" id="lanes"></div>
+    <div class="merge-bar" id="merge-bar"><span style="color:#5C756C">merge result appears here — union of whatever the machines produce.</span></div>
+    <p style="margin-top:22px;font-family:var(--mono);font-size:12px;color:#5C756C;max-width:none">
+    Honest print: these are isolated instances scheduled by one page — the repo's swarm battery does the same across
+    real OS worker threads, and the physical multi-machine run is <a href="#boundaries" style="color:#7C948B">designed, not yet done</a>.
+    The claim demonstrated is the one that matters: <b style="color:#9FB8AE">no shared state, no coordination, byte-identical results.</b></p>
+  </div>
+</section>
+
+<!-- ============ 0x03 · identity & semantic diff ============ -->
+<section id="identity">
+  <div class="inner">
+    <div class="slot">slot 0x03 · identity, live</div>
+    <span class="demo-tag">LIVE DEMO 3 / 3</span>
+    <h2>Two different programs. One identity.<br>Edit one — watch it move.</h2>
+    <p>Program A is Church-two applied to <span class="k">g</span> and <span class="k">z</span>.
+    Program B is just <span class="k">(g (g z))</span>, written by hand. Different sources, different shapes —
+    <b>same meaning, so same address.</b> Then edit either one and compare again: the moment the meaning moves,
+    the address moves. This is the <b>SemanticDiff</b> primitive the Forge bench is built on —
+    <span class="k">IDENTICAL</span> vs <span class="k">MOVED</span>, decided by the machine, not by eyeballing diffs.</p>
+    <div class="id-grid">
+      <div class="id-pane">
+        <label for="idA">PROGRAM A</label>
+        <textarea id="idA" spellcheck="false">((λf.λx.(f (f x)) g) z)</textarea>
+        <div class="res" id="resA"></div>
+      </div>
+      <div class="id-pane">
+        <label for="idB">PROGRAM B</label>
+        <textarea id="idB" spellcheck="false">(g (g z))</textarea>
+        <div class="res" id="resB"></div>
+      </div>
+    </div>
+    <div class="verdict">
+      <button class="btn" id="cmp-btn">compare identities</button>
+      <span class="badge idle" id="verdict">verdict pending</span>
+    </div>
+    <p style="margin-top:20px;font-family:var(--mono);font-size:12px;color:var(--ink-soft)">
+    demo address = FNV-1a-64 over the canonical normal form (the repo uses SHA-256 · same principle, shorter hex)</p>
+  </div>
+</section>
+
+<!-- ============ 0x04 · the stack ============ -->
+<section class="machine" id="stack">
+  <div class="inner">
+    <div class="slot">slot 0x04 · one spec, four bodies</div>
+    <h2>The spec is the contract. Implementations prove it.</h2>
+    <table>
+      <thead><tr><th>body</th><th>what it is</th><th>measured</th></tr></thead>
+      <tbody>
+        <tr><td>spec/</td><td>The calculus, the packed 32-bit word format, and <b>cross-validated conformance vectors</b> — only terms where reference and native already agree are admitted.</td><td>language-agnostic</td></tr>
+        <tr><td>ic_ref</td><td>The Python reference reducer — the executable spec and the oracle everything else is checked against.</td><td>the oracle</td></tr>
+        <tr><td>ic32</td><td>The native C runtime: packed words, free-list heap, iterative deep paths.</td><td><b>22–34M interactions/s</b> · <b>13/13</b> · 500k-deep stress</td></tr>
+        <tr><td>ic32.wasm</td><td>The same machine compiled to WebAssembly — the one running all three demos on this page.</td><td><b>9,883 bytes</b> · bit-identical</td></tr>
+        <tr><td>swarm</td><td>Coordination-free reduction across isolated OS workers: any worker count, any merge order, same answer.</td><td>correctness proven · speedup <a href="#boundaries">not claimed</a></td></tr>
+      </tbody>
+    </table>
+    <div class="receipts">
+      <span class="receipt"><b>13/13</b> native battery, cold clone</span>
+      <span class="receipt"><b>32/32</b> fault battery — latency · duplication · loss</span>
+      <span class="receipt">semilattice laws · <b>200 triples × 4 joins</b></span>
+      <span class="receipt"><b>~18%</b> memoization measured</span>
+      <span class="receipt">gaps <b>§6.4 · §6.5</b> printed every run</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 0x05 · memory ============ -->
+<section id="memory">
+  <div class="inner">
+    <div class="slot">slot 0x05 · memory for computation</div>
+    <h2>Never compute the same thing twice.</h2>
+    <div class="pipe">
+      <div class="pipe-step"><div class="n">verb 1</div><div class="v">canonicalize</div><div class="d">reduce to normal form; α-rename to the canonical spelling. Same meaning → same bytes.</div></div>
+      <div class="pipe-step"><div class="n">verb 2</div><div class="v">address</div><div class="d">hash the canonical form. The address <i>is</i> the meaning.</div></div>
+      <div class="pipe-step"><div class="n">verb 3</div><div class="v">union</div><div class="d">merge stores by set union — a CvRDT with machine-checked laws.</div></div>
+      <div class="pipe-step"><div class="n">verb 4</div><div class="v">reduce</div><div class="d">only what the reachable store has never seen.</div></div>
+    </div>
+    <p>You just used verbs 1–2 in the identity demo, and verb 3 in the race. Replicas that have never
+    spoken converge by exchanging facts in any order — the merge <b>can't</b> conflict, because the
+    objects it merges are canonical.</p>
+  </div>
+</section>
+
+<!-- ============ 0x06 · WallRiderLang ============ -->
+<section class="machine" id="wrl">
+  <div class="inner">
+    <div class="slot">slot 0x06 · the language · WallRiderLang</div>
+    <h2>One world. Two projections.<br>Zero ambiguity.</h2>
+    <p>WRL is a <b>spatial actor language</b> for authoring worlds on TRVM. The text below and the canvas
+    beside it are <b>the same object</b> — both are projections of one canonical semantic graph. Edit either;
+    the identity is computed from the graph, never from the spelling. This is the real demo world shipped
+    in the bench, verbatim:</p>
+    <div class="wrl-grid">
+      <div>
+        <div class="pane-cap">TEXT PROJECTION · the actual golden-demo source</div>
+        <div class="wrl-code"><span class="kw">profile</span> forge.world.core.v1
+
+[<span class="kw">pulser</span>:<span class="role">p0</span>](every 2){<span class="rt">sig_out</span>}
+[<span class="kw">relay</span>:<span class="role">r0</span>]{<span class="rt">sig_in, sig_out</span>}
+[<span class="kw">spinner</span>:<span class="role">sp</span>](w=16, n=8, rotor=quarter_turn_z,
+    configurable){<span class="rt">sig_in, socket</span>}
+[<span class="kw">orb</span>:<span class="role">ob</span>]{<span class="rt">pose</span>}
+[<span class="kw">pulser</span>:<span class="role">p1</span>](once at 1){<span class="rt">sig_out</span>}
+[<span class="kw">door</span>:<span class="role">d0</span>]{<span class="rt">sig_in</span>}
+
+[<span class="kw">pulser</span>:<span class="role">p0</span>] --sig--&gt; [<span class="kw">relay</span>:<span class="role">r0</span>]
+[<span class="kw">relay</span>:<span class="role">r0</span>] --sig--&gt; [<span class="kw">spinner</span>:<span class="role">sp</span>]
+[<span class="kw">spinner</span>:<span class="role">sp</span>] --socket--&gt; [<span class="kw">orb</span>:<span class="role">ob</span>]
+[<span class="kw">pulser</span>:<span class="role">p1</span>] --sig--&gt; [<span class="kw">door</span>:<span class="role">d0</span>]</div>
+      </div>
+      <div>
+        <div class="pane-cap" style="color:var(--ink-soft)">CANVAS PROJECTION · the same graph, drawn</div>
+        <div class="wrl-canvas">
+          <svg viewBox="0 0 460 320" role="img" aria-label="The demo world as a canvas: two pulsers, a relay, a spinner driving an orb, and a door">
+            <defs><marker id="warr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="#2F6B5B"/></marker></defs>
+            <g stroke="#2F6B5B" stroke-width="1.8" fill="none">
+              <path d="M84 84 H150" marker-end="url(#warr)"/>
+              <path d="M212 84 H278" marker-end="url(#warr)"/>
+              <path d="M328 118 C336 152 336 176 328 204" marker-end="url(#warr)"/>
+              <path d="M84 250 H180" marker-end="url(#warr)"/>
+            </g>
+            <g font-family="IBM Plex Mono" font-size="10.5" fill="#3A4A45">
+              <!-- p0 -->
+              <g transform="translate(52,84)"><circle r="20" fill="#EDEFEC" stroke="#141F1C" stroke-width="2"/><path d="M-8 4 h4 v-10 h4 v10 h4" stroke="#141F1C" stroke-width="1.8" fill="none"/><text y="36" text-anchor="middle">pulser:p0 · every 2</text></g>
+              <!-- relay -->
+              <g transform="translate(181,84)"><rect x="-30" y="-18" width="60" height="36" rx="5" fill="#EDEFEC" stroke="#141F1C" stroke-width="2"/><path d="M-12 6 L0 -8 L12 6" stroke="#141F1C" stroke-width="1.8" fill="none"/><text y="38" text-anchor="middle">relay:r0</text></g>
+              <!-- spinner -->
+              <g transform="translate(328,84)"><circle r="30" fill="#EDEFEC" stroke="#141F1C" stroke-width="2"/><circle r="19" stroke="#2F6B5B" stroke-width="1.4" fill="none" stroke-dasharray="4 5"/><path d="M0 -19 L5 -9 L-5 -9 z" fill="#2F6B5B"/><text y="48" text-anchor="middle">spinner:sp · w=16 n=8</text><text y="61" text-anchor="middle" fill="#8A6D28">rotor = quarter_turn_z</text></g>
+              <!-- orb -->
+              <g transform="translate(328,236)"><circle r="24" fill="#EDEFEC" stroke="#141F1C" stroke-width="2"/><circle r="8" fill="none" stroke="#141F1C" stroke-width="1.6"/><circle cx="5" cy="-5" r="2.4" fill="#2F6B5B"/><text y="42" text-anchor="middle">orb:ob · pose</text></g>
+              <!-- p1 -->
+              <g transform="translate(52,250)"><circle r="20" fill="#EDEFEC" stroke="#141F1C" stroke-width="2"/><path d="M-8 4 h6 v-10 h6" stroke="#141F1C" stroke-width="1.8" fill="none"/><text y="36" text-anchor="middle">pulser:p1 · once at 1</text></g>
+              <!-- door -->
+              <g transform="translate(214,250)"><rect x="-22" y="-24" width="44" height="48" rx="4" fill="#EDEFEC" stroke="#141F1C" stroke-width="2"/><path d="M10 -24 A34 34 0 0 0 -22 8" stroke="#2F6B5B" stroke-width="1.3" fill="none" stroke-dasharray="3 4"/><circle cx="10" cy="2" r="2.4" fill="#141F1C"/><text y="42" text-anchor="middle">door:d0</text></g>
+              <g font-size="10" fill="#2F6B5B"><text x="114" y="76">sig</text><text x="243" y="76">sig</text><text x="346" y="165">socket</text><text x="128" y="242">sig</text></g>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="wrl-pipe">
+      <span><b>WRL source</b></span><span>canonical semantic graph</span><span>Semantic IR</span><span>CompilePlan</span><span><b>TRVM reduction</b></span><span>Film + identity</span>
+    </div>
+    <p style="margin-top:22px">The normative rule of the whole language — <b>surface syntax is never lowered directly;
+    everything passes through the canonical graph</b> — is what makes formatting, naming, and whitespace
+    wash out of the identity. Frozen core in <span class="k">WRL_CORE_0.1</span>; the wider design is
+    tiered <span class="k">Core / Experimental / Proposed</span> and says which is which.</p>
+  </div>
+</section>
+
+<!-- ============ 0x07 · Forge Spinner Bench ============ -->
+<section id="forge" style="background:var(--paper-2)">
+  <div class="inner">
+    <div class="slot">slot 0x07 · the bench · Forge</div>
+    <h2>An IDE where evidence is a first-class panel.</h2>
+    <p>The <b>Spinner Bench</b> is Forge's authoring environment for WRL worlds — a local, single-file-launch
+    app (<span class="k">./forge-bench</span>) with two workspace views over one state. <b>Author</b> is where
+    you build. <b>Evidence</b> is the view most tools don't have: the film, the identity, the semantic diff,
+    and native-vs-oracle parity for the world you just ran. Toggle them:</p>
+    <div class="bench">
+      <div class="bench-chrome">
+        <span class="dots"><span></span><span></span><span></span></span>
+        <span>forge spinner bench · v0.7.0-alpha</span>
+        <div class="bench-tabs" role="tablist">
+          <button class="bench-tab" id="tab-author" role="tab" aria-selected="true">AUTHOR</button>
+          <button class="bench-tab" id="tab-evidence" role="tab" aria-selected="false">EVIDENCE</button>
+        </div>
+      </div>
+      <div class="bench-panels" id="bench-panels"></div>
+    </div>
+    <div class="seal">the shipped demo world seals to&nbsp; <b>sem-8ae91fe9cbc5fd086ce4356d587c403211e5c7b2b3ebdd316496367429ecfe4a</b><br>
+    a running release re-derives this id on launch — the install proves itself. The guided demo's arc:
+    edit the spinner's rotor → the candidate id <b>MOVES</b> → undo → the <b>exact</b> original id returns.</div>
+    <p style="margin-top:24px">Release discipline, because an IDE is a claim too: built from an <b>explicit allowlist</b>
+    (42 files, SHA-256 manifest), <b>read-only installation</b> as a tested law — first launch writes no bytecode and
+    compiles nothing into the install directory (battery RD1–RD15) — and a first-run guided rail that never blocks
+    and never touches a sealed id (PA1–PA20).</p>
+  </div>
+</section>
+
+<!-- ============ 0x08 · who needs this ============ -->
+<section id="uses">
+  <div class="inner">
+    <div class="slot">slot 0x08 · who needs this</div>
+    <h2>Eight places the industry is already<br>paying for what confluence gives away.</h2>
+    <p>Each card is a 2026 trend colliding with a primitive you just watched run.
+    The industry is building workarounds; the substrate makes the workaround unnecessary.</p>
+    <div class="caps">
+      <div class="cap">
+        <div class="dom">AGENT ENGINEERING</div>
+        <h3>Fleets that can't merge-conflict</h3>
+        <p>2026 is the year of parallel agent fleets — every major tool now runs sub-agents at once, isolated in git worktrees so they don't stomp each other, and one flagship platform (Replit's Agent 4) advertises auto-resolving <b>~90% of merge conflicts.</b> Isolation is a workaround; 90% is a coin with a bad side. Canonical identity makes <b>result-level conflict structurally impossible</b> — merge is union of facts, dedup is free, and two agents who did the same work produce one fact. Agents can still disagree on intent; that's a governance problem, not a merge problem.</p>
+        <div class="r">union merge + semantic dedup · demos 2 &amp; 3 ↑</div>
+      </div>
+      <div class="cap">
+        <div class="dom">AI GOVERNANCE &amp; COMPLIANCE</div>
+        <h3>Audit trails that replay</h3>
+        <p>The EU AI Act phases in: transparency duties from <b>August 2026</b>, AI-content transparency by <b>December 2026</b>, standalone high-risk rules <b>December 2027</b>, product-embedded <b>August 2028</b> — and the asks are constant throughout: automatic event records, tamper-evident, reconstructable after the fact. A film doesn't merely meet that bar; it <b>exceeds it by construction</b> — the log is the run, verification is replay-plus-hash-equality, and Law 6 guarantees two worlds that could diverge already have different bytes. Not a logging feature. A property of the machine.</p>
+        <div class="r">films + Law 6 + admit receipts · the Evidence view ↑</div>
+      </div>
+      <div class="cap">
+        <div class="dom">LOCAL-FIRST SOFTWARE</div>
+        <h3>Sync the computation, not just the document</h3>
+        <p>Local-first went mainstream — dedicated conference tracks, sync engines everywhere, CRDTs under every collaborative app. But today's CRDTs merge <b>data</b>. TRVM's store is a CRDT whose elements are <b>computations</b>: offline agents do real work on a plane, land, and union their <i>results</i> — derivations, evaluations, proofs — with nothing to reconcile.</p>
+        <div class="r">the CvRDT store · machine-checked join laws</div>
+      </div>
+      <div class="cap">
+        <div class="dom">RELIABILITY ENGINEERING</div>
+        <h3>Bugs that reproduce on the first try</h3>
+        <p>Deterministic simulation testing became the reliability movement of the decade for one reason: heisenbugs are schedule bugs. On a substrate where <b>the schedule cannot change the answer</b>, the scheduler-induced flaky class is empty at the root — and the film of any failing run is a repro case that works forever, on any machine, byte-for-byte.</p>
+        <div class="r">schedule-independence + films · demo 2 ↑</div>
+      </div>
+      <div class="cap">
+        <div class="dom">GAMES &amp; SIMULATION</div>
+        <h3>Lockstep worlds that don't desync</h3>
+        <p>Rollback netcode, replays, and cheat detection all rest on one fragile prayer: every client computes the identical frame. For everything kept inside the deterministic envelope — simulation, inputs, seeds, versions — that prayer becomes a theorem. A <b>9,883-byte machine in every client</b>, replays as byte-exact films, and divergence detectable as a hash mismatch. Desync closed by physics, not patches, for the envelope you commit to it.</p>
+        <div class="r">determinism + 9.9KB wasm · this page runs it</div>
+      </div>
+      <div class="cap">
+        <div class="dom">COMPUTE MARKETS</div>
+        <h3>Rent strangers' CPUs without trusting strangers</h3>
+        <p>Decentralized compute keeps re-learning the same lesson: the hard part isn't distribution, it's <b>believing the results.</b> TRVM's admission layer assumes workers lie — every import re-verified, every derived record receiver-computed, twenty forgery and omission attacks rejected by battery. Honest print: today that's <i>secure acceptance</i>, not yet cheap outsourcing — accepted work totals ~2.31× what workers submit (verification alone ~1.31×) — and the path down is stated, not hidden.</p>
+        <div class="r">the forgery battery · 20 attack classes rejected</div>
+      </div>
+      <div class="cap">
+        <div class="dom">BUILD &amp; CI</div>
+        <h3>A cache keyed by meaning</h3>
+        <p>Content-addressed build caches already run at planet scale — keyed by <b>syntactic</b> hashes, so a refactor, a rename, or a reformat is a cache miss. Semantic addressing keys the cache by what code <b>means</b>: the spelling washes out, the hit rate survives the refactor, and "already computed" becomes true across teams that never met.</p>
+        <div class="r">canonicalize → address · ~18% dedup measured · demo 3 ↑</div>
+      </div>
+      <div class="cap">
+        <div class="dom">EDGE &amp; CITIZEN SCIENCE</div>
+        <h3>A supercomputer made of open tabs</h3>
+        <p>The machine is smaller than this paragraph's image would be. It runs in browsers, phones, and routers; nodes can be slow, mismatched, and unreliable, because <b>churn can't conflict with or corrupt facts that already replicated</b> — closing the tab loses nothing anyone else already holds, though work that never synced can still be lost and progress can still slow.</p>
+        <div class="r">9,883 bytes + union merge · you are node zero</div>
+      </div>
+    </div>
+    <p style="margin-top:34px;font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);max-width:none">
+    Honest print: none of these are shipped products. All of them are the same primitives you watched run in demos 1–3 —
+    which is what "substrate" means. Scale limits live in <a href="#boundaries">slot 0x0B</a>.</p>
+  </div>
+</section>
+
+<!-- ============ 0x09 · the economics ============ -->
+<section class="machine" id="economics">
+  <div class="inner">
+    <div class="slot">slot 0x09 · the economics of computation</div>
+    <h2>Compute is becoming a commodity.<br>The commodity has a units problem.</h2>
+    <p>Major derivatives exchanges have announced <b>compute futures</b> to list alongside power and
+    natural gas. GPUs collateralize billion-dollar credit facilities. Agent-payment rails are clearing
+    <b>machine-to-machine micropayments at real scale</b>, and their own post-mortems name the missing layer:
+    trustworthy <b>offchain metering and usage receipts</b>. Every market needs three things —
+    a unit both sides accept, an invoice neither side can fake, and a rule for what actually
+    needs a ledger. This machine has unusually sharp answers to all three. <b>None of them is a token.</b></p>
+    <div class="law-grid">
+      <div class="law"><div class="id"><span>THE UNIT</span><span class="tier">DEMONSTRATED ↑</span></div>
+        <div class="txt">A meter that can't be argued with.</div>
+        <div class="why">GPU-hours vary by silicon, thermals, and drivers — exchanges resort to energy-normalized indices just to make compute tradable. Under a fixed engine and strategy, an <b style="color:#B9D2C8">interaction count</b> is machine- and schedule-invariant: four isolated machines billed identically in demo 2, and either side can audit the bill by replay. Across strategies the count can differ — which is exactly why Binding Law 4 exists: <b style="color:#B9D2C8">every cost names its strategy</b>. Wall-clock inflates per device; a strategy-named interaction count is as hard as units get.</div></div>
+      <div class="law"><div class="id"><span>THE INVOICE</span><span class="tier">DEMONSTRATED ↑</span></div>
+        <div class="txt">The receipt is the proof of delivery.</div>
+        <div class="why">Agent-payment stacks are converging on periodic settlement against usage receipts — which only works if the receipt can't be forged. A <b style="color:#B9D2C8">film</b> is a receipt that replays: the invoice and the delivery are the same bytes, verification is hash equality, and Law 6 guarantees no two different deliveries share a receipt.</div></div>
+      <div class="law"><div class="id"><span>THE COMMONS</span><span class="tier">MEASURED</span></div>
+        <div class="txt">Computation you mint once.</div>
+        <div class="why">Canonical addressing makes a finished computation <b style="color:#B9D2C8">non-rival</b>: once a verified reduction reaches the shared store, repetition falls to a lookup for everyone who can reach it. ~18% of all work deduplicated at toy scale — compute converted from an expense you burn into an asset the whole network owns.</div></div>
+      <div class="law"><div class="id"><span>THE COST OF TRUST</span><span class="tier res">MEASURED · OPEN</span></div>
+        <div class="txt">Secure acceptance currently costs 2.31× the submitted work. We publish that.</div>
+        <div class="why">The ledger, from the battery: worker-paid <b style="color:#B9D2C8">425,895</b> · verifier re-execution <b style="color:#B9D2C8">556,426</b> · unique canonical work <b style="color:#B9D2C8">328,730</b> · total physical <b style="color:#B9D2C8">982,321</b>. Total accepted cost ≈2.31× worker-paid; verification alone ≈1.31×. That is <i>secure acceptance under full re-execution</i> — not yet profitable outsourcing. The path down is stated, not hidden: traces, redundancy, stakes.</div></div>
+    </div>
+    <div style="margin-top:36px;display:grid;grid-template-columns:1fr 1fr;gap:14px" class="econ-split">
+      <div style="background:var(--machine-2);border:1px solid var(--wire);border-radius:9px;padding:22px 24px">
+        <div style="font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--phosphor);margin-bottom:12px">MONOTONE · NEEDS NO LEDGER</div>
+        <p style="font-size:16px;max-width:none">Computations, evaluations, derivations, receipts-as-facts, dedup.
+        These only ever grow — so they merge by <b>set union</b>, coordination-free, on any topology, with no chain,
+        no consensus, and no one to ask. This half of the economy is what the demos above run.</p>
+      </div>
+      <div style="background:var(--machine-2);border:1px solid var(--brass-soft);border-radius:9px;padding:22px 24px">
+        <div style="font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--brass);margin-bottom:12px">AFFINE · NEEDS A LEDGER</div>
+        <p style="font-size:16px;max-width:none">Spending, ownership, exclusivity — anything that can be used <b>at most once</b>.
+        The repo's first distributed rule says it plainly: claim facts merge by union; <b>receipts do not blindly merge.</b>
+        This half needs consensus, and it's where a floor like box-and-box's closed, double-entry resource rung belongs.</p>
+      </div>
+    </div>
+    <p style="margin-top:26px"><b>TRVM doesn't ship a coin. It ships the boundary</b> — the exact line where an
+    economy stops being coordination-free. Most projects in this space sell you a ledger for everything;
+    the mathematics says half of everything never needed one.</p>
+    <p style="margin-top:18px;font-family:var(--mono);font-size:12px;color:#5C756C;max-width:none">
+    Honest print: nothing here is for sale — no token, no chain, no yield. The affine half is future work with
+    named mechanisms; verification asymmetry is an open problem stated in <a href="#boundaries" style="color:#7C948B">slot 0x0B</a>.</p>
+  </div>
+</section>
+
+<!-- ============ 0x0A · the constitution ============ -->
+<section class="machine" id="laws">
+  <div class="inner">
+    <div class="slot">slot 0x0A · the constitution</div>
+    <h2>Every law is a retracted claim.</h2>
+    <p>TRVM's invariants are <b>documented failures converted into permanent rules</b>, indexed in
+    <span class="k">LAWS.md</span> and enforced by <span class="k">tools/laws_check.py</span> — citing an
+    undefined or reserved law fails the build. <b>7 canonical laws. 4 reserved IDs</b> whose original text
+    was lost: held, unciteable, never machine-reconstructed.</p>
+    <div class="law-grid">
+      <div class="law"><div class="id"><span>BINDING LAW 4</span><span class="tier">CANONICAL</span></div>
+        <div class="txt">Every reported reduction cost must name the reduction strategy under which it was measured.</div>
+        <div class="why">ratified 2026-07-22 from three surviving battery citations — the metering contract the economics section leans on</div></div>
+      <div class="law"><div class="id"><span>BINDING LAW 5</span><span class="tier">CANONICAL</span></div>
+        <div class="txt">A numeric threshold may change representation, never meaning.</div>
+        <div class="why">earned by: a period-33 clock compiled as a saturating one-shot — model and machine diverged at t=33</div></div>
+      <div class="law"><div class="id"><span>BINDING LAW 6</span><span class="tier">CANONICAL</span></div>
+        <div class="txt">If two states can lead to different futures, their Film bytes must differ.</div>
+        <div class="why">a receipt is an observable effect, not bookkeeping — replay must be able to tell the worlds apart</div></div>
+      <div class="law"><div class="id"><span>LAW 26</span><span class="tier">CANONICAL</span></div>
+        <div class="txt">A fault-injection test must assert the fault actually fired.</div>
+        <div class="why">earned by: 7 of 8 "partition" runs that ended before the partition began</div></div>
+      <div class="law"><div class="id"><span>LAWS 1 · 2 · 3 · 7</span><span class="tier res">RESERVED</span></div>
+        <div class="txt">Canonical statements lost. IDs held. No authority, no citation, no reuse.</div>
+        <div class="why">an agent may never backfill a constitution — restoration requires recovered text or an explicit human ruling</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 0x0B · boundaries ============ -->
+<section class="bounds" id="boundaries">
+  <div class="inner">
+    <div class="slot">slot 0x0B · what we have not shown</div>
+    <h2>A claim without its boundary is marketing.</h2>
+    <div class="bound-list">
+      <div class="bound"><span class="no">B1</span><p><b>No parallel speedup has been demonstrated.</b> The swarm proves coordination-free <i>correctness</i>; at toy scale, worker startup dominates. Speedup is the open runtime problem, said out loud on every run.</p></div>
+      <div class="bound"><span class="no">B2</span><p><b>Semantic identity exists exactly where reduction terminates.</b> Non-normalizing terms fall back to structural identity — a stated tier boundary, not a hidden one.</p></div>
+      <div class="bound"><span class="no">B3</span><p><b>Distribution results so far are one host</b> — simulated networks, real OS processes, real isolated WASM workers. Separate physical machines: designed, not done.</p></div>
+      <div class="bound"><span class="no">B4</span><p><b>Two conformance sections have honestly uncovered gaps</b> (§6.4, §6.5), printed at every run rather than rounded away.</p></div>
+      <div class="bound"><span class="no">B5</span><p><b>WRL beyond the frozen core slice is design, not implementation.</b> The 0.1 core is grounded and sealed; the wider language document tiers itself Core / Experimental / Proposed and means it. The bench is an alpha.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 0x0C · reproduce ============ -->
+<section class="machine" id="reproduce">
+  <div class="inner">
+    <div class="slot">slot 0x0C · reproduce</div>
+    <h2>Don't trust this page. It's marketing.<br>The battery isn't.</h2>
+    <p>Cold clone to full verification in about two minutes. Requirements: <span class="k">gcc</span>,
+    <span class="k">python3</span>, <span class="k">node</span>. No package manager, no network, no accounts.</p>
+    <div class="repro-code"><span class="c"># everything: native self-test, conformance vectors,</span>
+<span class="c"># WASM identity, coordination-free swarm, semilattice laws</span>
+git clone https://github.com/c-u-l8er/TRVM &amp;&amp; cd TRVM
+make test
+<span class="g">  --- summary: 13/13 passed ---</span>
+<span class="g">==== TRVM full battery complete ====</span>
+
+<span class="c"># the constitution check</span>
+python3 tools/laws_check.py --strict
+<span class="g">RESULT: OK</span>
+
+<span class="c"># the bench (from the release archive) — read-only install, self-proving id</span>
+./forge-bench</div>
+  </div>
+</section>
+
+<!-- ============ 0x0D · context ============ -->
+<section class="machine" id="context" style="padding-top:0">
+  <div class="inner">
+    <div class="slot">slot 0x0D · where this sits</div>
+    <h2>The substrate under the floor.</h2>
+    <p>An un-weakenable governance floor — <span class="k">u ⊗ 0̲ = 0̲</span>, a forbidden action annihilates —
+    only stays un-weakenable if the machine beneath it gives the same verdict under every schedule.
+    Annihilation is order-independent; TRVM is the substrate where order doesn't exist.
+    <b>box-and-box decides. TRVM makes the decision the same everywhere.</b></p>
+    <div class="ctx">
+      <a href="https://ampersandboxdesign.com">
+        <div class="t">box-and-box → the floor</div>
+        <div class="s">the governance kernel of the [&amp;] stack — feasible ▸ permitted ▸ best, a proof for every verdict</div>
+      </a>
+      <a href="https://opensentience.org">
+        <div class="t">OpenSentience → the research arm</div>
+        <div class="s">open protocols for machine cognition — where TRVM's spec, paper, and findings live</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="inner">
+    <div>TRVM · a term-rewriting virtual machine<br>Apache-2.0 · spec + conformance vectors · findings published with their retractions</div>
+    <div style="text-align:right">an <a href="https://ampersandboxdesign.com">[&amp;] Ampersand Box Design</a> research program<br><a href="https://opensentience.org">opensentience.org</a> · © 2026</div>
+  </div>
+</footer>
+
+<script>
+const WASM_B64 = "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";
+const $ = id => document.getElementById(id);
+const enc = new TextEncoder(), dec = new TextDecoder();
+let BIN = null, EX = null, loadErr = null;
+
+(async () => {
+  try {
+    BIN = Uint8Array.from(atob(WASM_B64), c => c.charCodeAt(0));
+    const { instance } = await WebAssembly.instantiate(BIN, {});
+    EX = instance.exports;
+  } catch (e) { loadErr = e.message || String(e); }
+})();
+
+function esc(s){ return s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+/* run a term on a given export set */
+function reduce(ex, src){
+  const bytes = enc.encode(src);
+  new Uint8Array(ex.memory.buffer).set(bytes, ex.input_ptr());
+  const n = ex.run(bytes.length);
+  if (n < 0) throw new Error("input too large for the machine's buffer");
+  return { nf: dec.decode(new Uint8Array(ex.memory.buffer, ex.output_ptr(), n)),
+           ints: Number(ex.last_interactions()) };
+}
+
+/* FNV-1a 64 demo hash */
+function fnv64(str){
+  let h = 0xcbf29ce484222325n;
+  const P = 0x100000001b3n, M = 0xFFFFFFFFFFFFFFFFn;
+  for (const b of enc.encode(str)) { h ^= BigInt(b); h = (h * P) & M; }
+  return h.toString(16).padStart(16, "0");
+}
+
+/* ---------- demo 1: reducer ---------- */
+const PRESETS = [
+  { label: "β-reduction",        term: "(λx.λt.(t x) λy.y)" },
+  { label: "church 2 · applied", term: "((λf.λx.(f (f x)) g) z)" },
+  { label: "NOT true",           term: "(λb.λt.λf.((b f) t) λT.λF.T)" },
+  { label: "duplicate a λ",      term: "!&0{a,b}=λx.x;(a b)" },
+  { label: "superposition",      term: "({λx.x,λy.y} λz.z)" },
+  { label: "3 + 4",              term: "((λn.λm.λs.λz.((n s) ((m s) z)) λs.λz.(s (s (s z)))) λs.λz.(s (s (s (s z)))))" },
+];
+PRESETS.forEach(p => {
+  const b = document.createElement("button");
+  b.className = "chip"; b.type = "button"; b.textContent = p.label;
+  b.addEventListener("click", () => { $("term-in").value = p.term; runTerm(); });
+  $("chips").appendChild(b);
+});
+function runTerm(){
+  const out = $("term-out"), src = $("term-in").value.trim();
+  if (!src) { out.innerHTML = '<span class="meta">type a term first — λ or \\ both parse.</span>'; return; }
+  if (loadErr) { out.innerHTML = '<span class="meta">WASM failed to load: ' + esc(loadErr) + '</span>'; return; }
+  if (!EX) { out.innerHTML = '<span class="meta">runtime still decoding — try again in a moment.</span>'; return; }
+  try {
+    const t0 = performance.now();
+    const r = reduce(EX, src);
+    const ms = performance.now() - t0;
+    out.innerHTML = '<span class="ok">normal form</span>\n<span class="nf">' + esc(r.nf) + '</span>\n' +
+      '<span class="meta">interactions=' + r.ints + ' · ' + ms.toFixed(2) + ' ms · address ' + fnv64(r.nf) +
+      ' · reduced in your browser by the binary that passes make test</span>';
+  } catch (e) { out.innerHTML = '<span class="meta">runtime error: ' + esc(e.message || String(e)) + '</span>'; }
+}
+$("run-btn").addEventListener("click", runTerm);
+$("term-in").addEventListener("keydown", e => { if (e.key === "Enter") runTerm(); });
+$("cta-proof").addEventListener("click", () => {
+  $("term-in").value = PRESETS[5].term;
+  document.querySelector(".terminal").scrollIntoView({behavior:"smooth", block:"center"});
+  runTerm();
+});
+
+/* ---------- demo 2: isolation race ---------- */
+const RACE_TERM = "((λn.λm.λs.λz.((n s) ((m s) z)) λs.λz.(s (s (s z)))) λs.λz.(s (s (s (s z)))))";
+$("race-term").textContent = "term: church 3 + 4";
+const lanesEl = $("lanes");
+function laneShell(i){
+  const d = document.createElement("div");
+  d.className = "lane";
+  d.innerHTML = '<div class="hd"><span>MACHINE ' + i + '</span><span class="st" id="st'+i+'">booting…</span></div><div id="body'+i+'"></div>';
+  return d;
+}
+$("race-btn").addEventListener("click", async () => {
+  if (loadErr || !BIN) { $("merge-bar").innerHTML = '<span>WASM unavailable: ' + esc(loadErr||'still decoding') + '</span>'; return; }
+  lanesEl.innerHTML = "";
+  $("merge-bar").innerHTML = '<span style="color:#5C756C">machines running…</span>';
+  const N = 4, results = [];
+  for (let i = 1; i <= N; i++) lanesEl.appendChild(laneShell(i));
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  for (let i = 1; i <= N; i++) {
+    /* a genuinely fresh instance: its own module compile, its own linear memory */
+    const { instance } = await WebAssembly.instantiate(BIN.slice(), {});
+    const t0 = performance.now();
+    const r = reduce(instance.exports, RACE_TERM);
+    const ms = (performance.now() - t0).toFixed(2);
+    const addr = fnv64(r.nf);
+    results.push(addr);
+    const show = () => {
+      $("st"+i).textContent = "normal form reached";
+      $("body"+i).innerHTML = '<div class="nf">' + esc(r.nf) + '</div>' +
+        '<div class="addr">interactions=' + r.ints + ' · ' + ms + ' ms<br>address ' + addr + '</div>';
+    };
+    if (reduced) show(); else setTimeout(show, 120 * i);
+    if (i === N) {
+      const done = () => {
+        const uniq = [...new Set(results)];
+        $("merge-bar").innerHTML = uniq.length === 1
+          ? '<span class="good">MERGE = UNION → 1 distinct fact</span><span>' + N + '/' + N + ' machines agree · address ' + uniq[0] + ' · nothing to reconcile, no one to ask</span>'
+          : '<span style="color:var(--brass)">divergence detected — this would falsify the thesis; please report it</span>';
+      };
+      if (reduced) done(); else setTimeout(done, 120 * N + 220);
+    }
+  }
+});
+
+/* ---------- demo 3: identity & diff ---------- */
+function idRun(paneId, resId){
+  const src = $(paneId).value.trim();
+  if (!src) return null;
+  const r = reduce(EX, src);
+  const addr = fnv64(r.nf);
+  $(resId).innerHTML = 'canonical form <span class="nf">' + esc(r.nf) + '</span><br>address <b style="color:#B9D2C8">' + addr + '</b> · interactions=' + r.ints;
+  return addr;
+}
+$("cmp-btn").addEventListener("click", () => {
+  const v = $("verdict");
+  if (loadErr || !EX) { v.className = "badge idle"; v.textContent = "runtime unavailable"; return; }
+  try {
+    const a = idRun("idA", "resA"), b = idRun("idB", "resB");
+    if (a === null || b === null) { v.className="badge idle"; v.textContent="both panes need a term"; return; }
+    if (a === b) { v.className = "badge same"; v.textContent = "IDENTICAL — same address, same identity"; }
+    else { v.className = "badge moved"; v.textContent = "MOVED — the meaning changed, so the address changed"; }
+  } catch (e) { v.className = "badge idle"; v.textContent = "error: " + (e.message || e); }
+});
+
+/* ---------- forge bench tabs ---------- */
+const AUTHOR = [
+  ["CANVAS", "Drag components, draw routes. Every edit is an edit to the <b>semantic graph</b>, not to text."],
+  ["WRL", "The text projection, with format-on-save to the canonical spelling, completion, and typed diagnostics."],
+  ["WORLD", "The sealed active world and the draft that revisions it — commit is explicit, never silent."],
+  ["SCENARIO", "Typed claim scripts driving the run — the golden demo's rotor edits live here."],
+];
+const EVIDENCE = [
+  ["FILM + IDENTITY", "The byte-exact receipt of the run, and the world's <b>sem- id</b>, recomputed live."],
+  ["SEMANTIC DIFF", "Candidate vs sealed: <b>IDENTICAL</b> or <b>MOVED</b>, decided by identity — the demo you just ran above."],
+  ["PARITY", "ic_ref == ic32 == Fixture oracle, per run. The native machine is never trusted alone."],
+  ["PROVENANCE", "Which claims were accepted, in which epoch, under which acceptance policy — receipts all the way down."],
+];
+function renderBench(list){
+  $("bench-panels").innerHTML = list.map(([t,d]) =>
+    '<div class="bpanel"><div class="t">' + t + '</div><div class="d">' + d + '</div></div>').join("");
+}
+function selectTab(which){
+  $("tab-author").setAttribute("aria-selected", which === "a");
+  $("tab-evidence").setAttribute("aria-selected", which === "e");
+  renderBench(which === "a" ? AUTHOR : EVIDENCE);
+}
+$("tab-author").addEventListener("click", () => selectTab("a"));
+$("tab-evidence").addEventListener("click", () => selectTab("e"));
+renderBench(AUTHOR);
+</script>
+</body>
+</html>

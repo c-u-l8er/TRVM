@@ -1,0 +1,89 @@
+{
+  "canonical_world_source": "profile forge.world.core.v1\n\n[spinner:sp](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:ob]{pose}\n\n[spinner:sp] --socket--> [orb:ob]\n",
+  "canvas_layout": {
+    "edges": [
+      {
+        "edge_key": "SocketControl:sp->ob",
+        "presentation": {
+          "control_points": [],
+          "label_position": "mid",
+          "line_length": 0,
+          "paint": "#ee6c4d",
+          "texture_style": "solid"
+        }
+      }
+    ],
+    "layout_version": "canvas-layout.v1",
+    "nodes": [
+      {
+        "object_id": "ob",
+        "presentation": {
+          "collapsed": false,
+          "color": "#4d5061",
+          "height": 90,
+          "label_style": "default",
+          "layer": 0,
+          "width": 140,
+          "x": 80,
+          "y": 80
+        }
+      },
+      {
+        "object_id": "sp",
+        "presentation": {
+          "collapsed": false,
+          "color": "#bc4b51",
+          "height": 90,
+          "label_style": "default",
+          "layer": 0,
+          "width": 140,
+          "x": 280,
+          "y": 80
+        }
+      }
+    ],
+    "profile_id": "forge.world.core.v1"
+  },
+  "default_scenario_document_id": "idle",
+  "difficulty": "intro",
+  "expected_edit_effect": "Adding an object moves the candidate SemanticArtifactID to a new world identity.",
+  "expected_replay_bundle_ids": {
+    "idle": "replay-63d8d1bc6e9f4b8c8d2a4b8e0b2d7a0f206b03f88c7b333de7c4d07baab18786"
+  },
+  "expected_scenario_digests": {
+    "idle": "scen-fa0713e39096c55af16a41f47fd98024fe281caee6cdff1849340d4e726ca89b"
+  },
+  "guide_steps": [
+    "Run the idle scenario to confirm the blank world folds cleanly.",
+    "Open the WRL editor: the world has exactly a Spinner and an Orb.",
+    "Add a pulser (every 2) and wire it to the Spinner to drive it.",
+    "Author a scenario in the scenario panel, then Run it."
+  ],
+  "name": "Blank Spinner World",
+  "purpose": "Start from the minimal legal world and build up your own: no pulser, no authored claims, one idle epoch.",
+  "scenarios": [
+    {
+      "name": "idle",
+      "scenario": {
+        "epochs": [
+          {
+            "claims": [],
+            "epoch": 1,
+            "label": "idle"
+          }
+        ],
+        "initial_runtime": {
+          "numeric_faults": []
+        },
+        "scenario_version": "scenario.v1",
+        "world_semantic_id": "sem-0a8dab601c61885ed341396de1a7ec32dd4225b081d6b3b156a443ad59ee4c9f"
+      },
+      "scenario_digest": "scen-fa0713e39096c55af16a41f47fd98024fe281caee6cdff1849340d4e726ca89b"
+    }
+  ],
+  "short_description": "The smallest valid Spinner->Orb scaffold: one Spinner, one Orb, one SocketControl connection.",
+  "suggested_first_edit": "Add a pulser and wire it to the Spinner's sig_in port to drive it.",
+  "template_id": "forge.template.blank-spinner.v1",
+  "template_version": "forge.template.v1",
+  "world_semantic_id": "sem-0a8dab601c61885ed341396de1a7ec32dd4225b081d6b3b156a443ad59ee4c9f"
+}
