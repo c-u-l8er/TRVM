@@ -465,15 +465,20 @@ function renderTemplateCards() {
   if (!host) return;
   const list = state.templates;
   if (!list || !list.length) {
-    host.innerHTML = '<p class="fr-templates-empty">No templates available.</p>';
+    // fail closed: only the template subsystem is unavailable — Open Existing
+    // Project + the running workspace remain fully usable (PC35).
+    host.innerHTML = '<p class="fr-templates-empty">Templates are unavailable '
+      + 'right now — you can still open an existing project below.</p>';
     return;
   }
   if (card) card.classList.add("fr-wide");
+  host.setAttribute("role", "list");
   host.innerHTML = "";
   list.forEach((t) => {
     const rec = t.template_id === "forge.template.golden-admit.v1";
     const el = document.createElement("div");
     el.className = "tpl-card" + (rec ? " tpl-recommended" : "");
+    el.setAttribute("role", "listitem");
     const diff = rec ? "recommended" : (t.difficulty || "");
     el.innerHTML =
       '<div class="tpl-head"><span class="tpl-name"></span>' +
@@ -485,8 +490,14 @@ function renderTemplateCards() {
     el.querySelector(".tpl-name").textContent = t.name;
     el.querySelector(".tpl-diff").textContent = diff;
     el.querySelector(".tpl-desc").textContent = t.short_description || "";
-    el.querySelector(".tpl-explore").onclick = () => enterExploreTemplate(t.template_id);
-    el.querySelector(".tpl-use").onclick = () => doUseTemplate(t.template_id);
+    const bx = el.querySelector(".tpl-explore");
+    const bu = el.querySelector(".tpl-use");
+    // accessible names so the ambiguous "Explore"/"Use" labels announce which
+    // template they act on (keyboard + screen-reader; presentation only).
+    bx.setAttribute("aria-label", "Explore " + t.name + " (read-only preview)");
+    bu.setAttribute("aria-label", "Use " + t.name + " (create an editable project)");
+    bx.onclick = () => enterExploreTemplate(t.template_id);
+    bu.onclick = () => doUseTemplate(t.template_id);
     host.appendChild(el);
   });
 }
@@ -504,6 +515,30 @@ function loadTemplateScenarios(m) {
   state.scenPreset = m.default_scenario_document_id;
   renderPresetOptions();
   applyPreset(state.scenPreset);
+}
+// v0.7-3.1: rehydrate the scenario presets from a PROJECT's OWN persisted
+// scenario documents (returned by /api/project/open, /api/project/fork, and
+// /api/template/use), rather than the global demo /api/scenario endpoint. This
+// is the reopen fix: once a project is created (from any template) it owns its
+// scenario documents and no longer depends on the template catalog, so a
+// reopened Blank restores its one-epoch idle scenario — not Golden/Bench. Each
+// persisted doc {name, scenario_digest, scenario} becomes a preset keyed by
+// name; `selectedId` is the bound default (a NAME). Returns false when the
+// project carries no persisted scenarios (a legacy V1 project) so the caller
+// can fall back to the global presets.
+function loadProjectScenarios(scenarioDocs, selectedId) {
+  if (!Array.isArray(scenarioDocs) || scenarioDocs.length === 0) return false;
+  const presets = {};
+  scenarioDocs.forEach((s) => {
+    presets[s.name] = { id: s.name, label: s.name, scenario: s.scenario,
+                        scenario_digest: s.scenario_digest };
+  });
+  state.presets = presets;
+  state.scenPreset = (selectedId && presets[selectedId])
+    ? selectedId : scenarioDocs[0].name;
+  renderPresetOptions();
+  applyPreset(state.scenPreset);
+  return true;
 }
 function hideFirstRun() { const ov = $("#first-run"); if (ov) ov.classList.add("hidden"); }
 
@@ -629,7 +664,10 @@ async function doUseTemplate(templateId) {
       state.projects = r.projects;
       state.currentTemplate = null; state.templateManifest = m;
       setExplore(false); hideFirstRun();
-      await openSession(f.pid, () => loadTemplateScenarios(m));
+      // v0.7-3.1: the new project owns its scenario documents (seeded from the
+      // template at creation), so openSession rehydrates them from the project
+      // itself — no template loader is threaded through.
+      await openSession(f.pid);
       setView("author");
       setStatus(`created project ${f.pid} from “${m.name}” ✓`, "ok");
       return;
@@ -904,7 +942,7 @@ async function restoreLastSession() {
   }
   return false;
 }
-async function openSession(pid, scenarioLoader) {
+async function openSession(pid) {
   state.session = pid;
   const r = await api("/api/project/open", { project_id: pid });
   if (!r.ok) { setStatus(r.error || "open error", "err"); return; }
@@ -915,10 +953,13 @@ async function openSession(pid, scenarioLoader) {
   $("#sem-id").textContent = v.active_semantic_id || v.candidate_semantic_id || "";
   renderLibrary();
   state.dirty = false; renderDirty();
-  // A template-derived project seeds its OWN scenarios; a normal project uses the
-  // global demo presets. The loader is picked by the caller so the run below folds
-  // the right default scenario against the project's world.
-  await (scenarioLoader ? scenarioLoader() : loadScenario());
+  // v0.7-3.1: a project owns its scenario documents. Rehydrate the presets from
+  // the project-open payload for EVERY reopen (never infer from the originating
+  // template, never re-read the catalog), so a reopened Blank restores its idle
+  // scenario and the Bench its 9-epoch acceptance run. A legacy V1 project has no
+  // persisted scenario docs, so we fall back to the global demo presets.
+  if (!loadProjectScenarios(r.scenario_documents, r.selected_scenario_document_id))
+    await loadScenario();
   await doRun();
   setStatus(`opened project ${pid} · rev ${v.semantic_revision} ✓`, "ok");
   await refreshRecovery();

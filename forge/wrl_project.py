@@ -500,6 +500,14 @@ def _active_world_id_of(doc):
             else doc["active_world_semantic_id"])
 
 
+def _selected_scenario_of(doc):
+    """The project's bound default scenario document name (V2), or None for a
+    legacy V1 project (which has no persisted scenario selection)."""
+    return (doc["selected_scenario_document_id"]
+            if project_version_of(doc) == PROJECT_V2_VERSION
+            else None)
+
+
 # --------------------------------------------------------- TrashEntryV1 (v0.5.1)
 def validate_trash_entry(entry):
     """Structural gate for a TrashEntryV1 tombstone (typed WRL_BAD_TRASH). The
@@ -1300,17 +1308,21 @@ class ProjectSessionCache:
         return self.open(project_id, name)
 
     def create_from_source(self, project_id, name, world_source,
-                           scenarios=None, selected_scenario_document_id=None):
+                           scenarios=None, selected_scenario_document_id=None,
+                           layout=None):
         """Create a BRAND-NEW project seeded from an EXPLICIT world source +
         scenario documents (the v0.7-3 "Use Template" instantiation path). Mirrors
         `create_new` but lowers `world_source` instead of the cache default, and
         seeds the given `scenarios` ({name, scenario_digest, scenario} entries)
-        with an initial `selected_scenario_document_id`. Refuses to clobber an
-        existing id (WRL_PROJECT_EXISTS). The new project is a fully-independent
+        with an initial `selected_scenario_document_id`. An optional `layout`
+        (a curated CanvasLayoutV1, e.g. the template manifest's) seeds the initial
+        presentation -- reconciled onto the lowered graph, moving no identity, and
+        persisted with the project so a later reopen restores it. Refuses to clobber
+        an existing id (WRL_PROJECT_EXISTS). The new project is a fully-independent
         ForgeProjectV2 whose subsequent mutable state never touches the source it
         was seeded from."""
         prog = W.lower_program(SG.desugar_core(world_source), W.parse_wrl_core)
-        session = CG.new_session(prog, project_id)
+        session = CG.new_session(prog, project_id, layout=layout)
         if self._version == PROJECT_V2_VERSION:
             doc = session_to_project_v2(
                 session, project_id, name or project_id, scenarios=scenarios,

@@ -45,7 +45,7 @@ def _chk(cond, msg):
 
 class Fixture:
     def __init__(self, pulsers, relays, doors, edges, spinners=None,
-                 orbs=None, sockets=None, configurable=None):
+                 orbs=None, sockets=None, configurable=None, mailboxes=None):
         # round 12 (3b.5a): spinners = {role: (w, n, rotor4)} at the
         # LEGACY numeric policy (proc-e2.3 per-product trunc0, no sat);
         # orbs = [roles]; sockets = [(spinner, orb)] -- socket edges are
@@ -57,6 +57,13 @@ class Fixture:
         # the v0.6 default). "fixed" vs "configurable" is a PERMISSION
         # distinction, not a state-layout distinction: every v0.6 spinner
         # carries its rotor as state regardless.
+        # IR v1.1 / Mailbox Slice A (D7): MailboxDecl, the SIXTH built-in
+        # role. {mailbox_id: (width, capacity)}. Additive and defaulted, so
+        # every pre-v1.1 fixture is byte-for-byte unchanged.
+        # D8: a mailbox has NO structural port and NO structural edge --
+        # sends address it by id exactly as SetRotor names a spinner. It is
+        # therefore absent from the edge/port machinery entirely.
+        self.mailboxes = dict(mailboxes or {})
         self.spinners = dict(spinners or {})
         self.orbs = list(orbs or [])
         self.sockets = list(sockets or [])
@@ -84,7 +91,8 @@ class Fixture:
         self.relays = sorted(relays)
         self.doors = sorted(doors)
         roles = (list(self.pulsers) + self.relays + self.doors
-                 + sorted(self.spinners) + self.orbs)
+                 + sorted(self.spinners) + self.orbs
+                 + sorted(self.mailboxes))
         for r in roles:
             _chk(_ROLE.match(r) and "__" not in r,
                  f"bad role identifier {r!r} (alnum/_ only, no '__')")
@@ -120,6 +128,17 @@ class Fixture:
             ctl = [s for (s, oo) in self.sockets if oo == o]
             _chk(len(ctl) <= 1, f"{o}: controller exclusivity violated "
                  f"(model rejects the second socket LINK as controlled)")
+        for m, spec in self.mailboxes.items():
+            _chk(isinstance(spec, tuple) and len(spec) == 2,
+                 f"{m}: mailbox spec must be (width, capacity)")
+            w_, cap = spec
+            _chk(isinstance(w_, int) and 0 < w_ <= 32,
+                 f"{m}: mailbox body lane width out of range")
+            _chk(isinstance(cap, int) and cap >= 1,
+                 f"{m}: mailbox capacity must be >= 1 (D7)")
+            _chk(not [e for e in self.edges if m in e],
+                 f"{m}: a mailbox has NO structural edge (D8) -- sends "
+                 f"address it by id, never by wire")
 
     def kinds(self):
         k = {r: "pulser" for r in self.pulsers}
@@ -127,6 +146,7 @@ class Fixture:
         k.update({r: "door" for r in self.doors})
         k.update({r: "spinner" for r in self.spinners})
         k.update({r: "orb" for r in self.orbs})
+        k.update({r: "mailbox" for r in self.mailboxes})
         return k
 
     def controller_of(self, orb):

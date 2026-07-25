@@ -1,0 +1,261 @@
+diff --git a/forge/spinner_bench.js b/forge/spinner_bench.js
+index 7812a5e..c2ef2f6 100644
+--- a/forge/spinner_bench.js
++++ b/forge/spinner_bench.js
+@@ -505,6 +505,30 @@ function loadTemplateScenarios(m) {
+   renderPresetOptions();
+   applyPreset(state.scenPreset);
+ }
++// v0.7-3.1: rehydrate the scenario presets from a PROJECT's OWN persisted
++// scenario documents (returned by /api/project/open, /api/project/fork, and
++// /api/template/use), rather than the global demo /api/scenario endpoint. This
++// is the reopen fix: once a project is created (from any template) it owns its
++// scenario documents and no longer depends on the template catalog, so a
++// reopened Blank restores its one-epoch idle scenario — not Golden/Bench. Each
++// persisted doc {name, scenario_digest, scenario} becomes a preset keyed by
++// name; `selectedId` is the bound default (a NAME). Returns false when the
++// project carries no persisted scenarios (a legacy V1 project) so the caller
++// can fall back to the global presets.
++function loadProjectScenarios(scenarioDocs, selectedId) {
++  if (!Array.isArray(scenarioDocs) || scenarioDocs.length === 0) return false;
++  const presets = {};
++  scenarioDocs.forEach((s) => {
++    presets[s.name] = { id: s.name, label: s.name, scenario: s.scenario,
++                        scenario_digest: s.scenario_digest };
++  });
++  state.presets = presets;
++  state.scenPreset = (selectedId && presets[selectedId])
++    ? selectedId : scenarioDocs[0].name;
++  renderPresetOptions();
++  applyPreset(state.scenPreset);
++  return true;
++}
+ function hideFirstRun() { const ov = $("#first-run"); if (ov) ov.classList.add("hidden"); }
+ 
+ // -- read-only Golden Demo exploration -----------------------------------------
+@@ -629,7 +653,10 @@ async function doUseTemplate(templateId) {
+       state.projects = r.projects;
+       state.currentTemplate = null; state.templateManifest = m;
+       setExplore(false); hideFirstRun();
+-      await openSession(f.pid, () => loadTemplateScenarios(m));
++      // v0.7-3.1: the new project owns its scenario documents (seeded from the
++      // template at creation), so openSession rehydrates them from the project
++      // itself — no template loader is threaded through.
++      await openSession(f.pid);
+       setView("author");
+       setStatus(`created project ${f.pid} from “${m.name}” ✓`, "ok");
+       return;
+@@ -904,7 +931,7 @@ async function restoreLastSession() {
+   }
+   return false;
+ }
+-async function openSession(pid, scenarioLoader) {
++async function openSession(pid) {
+   state.session = pid;
+   const r = await api("/api/project/open", { project_id: pid });
+   if (!r.ok) { setStatus(r.error || "open error", "err"); return; }
+@@ -915,10 +942,13 @@ async function openSession(pid, scenarioLoader) {
+   $("#sem-id").textContent = v.active_semantic_id || v.candidate_semantic_id || "";
+   renderLibrary();
+   state.dirty = false; renderDirty();
+-  // A template-derived project seeds its OWN scenarios; a normal project uses the
+-  // global demo presets. The loader is picked by the caller so the run below folds
+-  // the right default scenario against the project's world.
+-  await (scenarioLoader ? scenarioLoader() : loadScenario());
++  // v0.7-3.1: a project owns its scenario documents. Rehydrate the presets from
++  // the project-open payload for EVERY reopen (never infer from the originating
++  // template, never re-read the catalog), so a reopened Blank restores its idle
++  // scenario and the Bench its 9-epoch acceptance run. A legacy V1 project has no
++  // persisted scenario docs, so we fall back to the global demo presets.
++  if (!loadProjectScenarios(r.scenario_documents, r.selected_scenario_document_id))
++    await loadScenario();
+   await doRun();
+   setStatus(`opened project ${pid} · rev ${v.semantic_revision} ✓`, "ok");
+   await refreshRecovery();
+diff --git a/forge/spinner_bench.py b/forge/spinner_bench.py
+index 6c4c662..0614380 100644
+--- a/forge/spinner_bench.py
++++ b/forge/spinner_bench.py
+@@ -67,7 +67,6 @@ import os
+ import re
+ import sys
+ import json
+-import copy
+ import threading
+ import collections
+ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+@@ -1102,15 +1101,29 @@ def _project_new_payload(req):
+                 "view": _draft_view(sess)}
+ 
+ 
++def _project_scenario_docs(pid):
++    """The persisted scenario documents + bound default for a project, read
++    straight off the durable project document. A reopen uses THESE (not the global
++    golden/bench presets, and not the originating template catalog) so the UI
++    always presents the project's OWN scenarios -- e.g. a reopened Blank project
++    restores its one-epoch idle scenario, not Golden/Bench. Once a project is
++    created it owns its scenario documents and no longer depends on any template."""
++    doc = _PROJECT_CACHE._store.load(_pid(pid))
++    return (PJ._scenarios_of(doc), PJ._selected_scenario_of(doc))
++
++
+ def _project_open_payload(req):
+     pid = req.get("project_id")
+     with _DRAFT_LOCK:
+         try:
+             sess = _PROJECT_CACHE.open(_pid(pid))
++            scen, sel = _project_scenario_docs(pid)
+         except Exception as ex:
+             return _err(ex)
+         _LAST_SESSION.set(_pid(pid))
+-        return {"ok": True, "project_id": _pid(pid), "view": _draft_view(sess)}
++        return {"ok": True, "project_id": _pid(pid), "view": _draft_view(sess),
++                "scenario_documents": scen,
++                "selected_scenario_document_id": sel}
+ 
+ 
+ def _project_fork_payload(req):
+@@ -1120,12 +1133,15 @@ def _project_fork_payload(req):
+     with _DRAFT_LOCK:
+         try:
+             sess = _PROJECT_CACHE.fork(_pid(src), pid, name)
++            scen, sel = _project_scenario_docs(pid)
+         except Exception as ex:
+             return _err(ex)
+         _LAST_SESSION.set(pid)
+         return {"ok": True, "project_id": pid,
+                 "projects": _PROJECT_CACHE.list_infos(),
+-                "view": _draft_view(sess)}
++                "view": _draft_view(sess),
++                "scenario_documents": scen,
++                "selected_scenario_document_id": sel}
+ 
+ 
+ def _project_rename_payload(req):
+@@ -1213,7 +1229,11 @@ def _template_preview_payload(req):
+     with _DRAFT_LOCK:
+         prog = W.lower_program(SG.desugar_core(m["canonical_world_source"]),
+                                W.parse_wrl_core)
+-        sess = CG.new_session(prog, _DEMO_ID)
++        # seed the curated manifest layout so the preview shows the template's
++        # intended presentation (reconciled onto the graph, moves no identity).
++        # CanvasSession owns the deep-copy + validation of the seed, so the
++        # shared catalog layout object is never mutated by the session.
++        sess = CG.new_session(prog, _DEMO_ID, layout=m["canvas_layout"])
+         _DEMO_SESSIONS[_DEMO_ID] = sess
+         return {"ok": True, "template_id": template_id, "template": m,
+                 "view": _draft_view(sess)}
+@@ -1241,15 +1261,19 @@ def _template_use_payload(req):
+         try:
+             sess = _PROJECT_CACHE.create_from_source(
+                 pid, name, m["canonical_world_source"], scenarios=scenarios,
+-                selected_scenario_document_id=m["default_scenario_document_id"])
++                selected_scenario_document_id=m["default_scenario_document_id"],
++                layout=m["canvas_layout"])
+         except Exception as ex:
+             return _err(ex)
+         _write_provenance(pid, template_id)
+         _LAST_SESSION.set(pid)
++        scen, sel = _project_scenario_docs(pid)
+         return {"ok": True, "project_id": pid, "template_id": template_id,
+                 "created_from_template": _read_provenance(pid),
+                 "projects": _PROJECT_CACHE.list_infos(),
+-                "view": _draft_view(sess)}
++                "view": _draft_view(sess),
++                "scenario_documents": scen,
++                "selected_scenario_document_id": sel}
+ 
+ 
+ def _project_save_payload(req):
+diff --git a/forge/wrl_converge.py b/forge/wrl_converge.py
+index ca23dc5..bc7fc49 100644
+--- a/forge/wrl_converge.py
++++ b/forge/wrl_converge.py
+@@ -147,9 +147,23 @@ class CanvasSession:
+     """A canvas editing session over ONE world: a WorldDraft (semantic identity)
+     bound to a CanvasLayoutV1 (presentation). Construct via `new_session`."""
+ 
+-    def __init__(self, draft):
++    def __init__(self, draft, layout=None):
+         self.draft = draft
+-        self.layout = self._layout_from_draft(seed=None)
++        # `layout` (optional) is a curated CanvasLayoutV1 to SEED the presentation
++        # from -- e.g. a template's manifest layout. It is reconciled onto the
++        # draft's working graph exactly like any prior layout: surviving objects /
++        # edges keep the seeded presentation, newcomers get the deterministic
++        # default, and anything not in the graph is dropped. Presentation NEVER
++        # feeds the semantic id, so seeding a layout moves no identity.
++        #
++        # The session OWNS the seed contract: it deep-copies (so a caller can
++        # never share a mutable presentation object with the session) and
++        # validates (`validate_layout_v1`) at THIS API boundary, so a malformed
++        # curated layout fails closed here rather than silently reconciling. A
++        # caller need not pre-copy or pre-validate.
++        seed = (CV.validate_layout_v1(copy.deepcopy(layout))
++                if layout is not None else None)
++        self.layout = self._layout_from_draft(seed=seed)
+         self._layout_history = []      # pre-edit layout snapshots, parallel undo
+         self.commits = []              # append-only commit log (session bookkeeping)
+         # v0.5.1 workspace state (all non-identity sidecars):
+@@ -358,10 +372,12 @@ class CanvasSession:
+ 
+ 
+ # ------------------------------------------------------------- construction
+-def new_session(program_or_artifact, draft_id):
+-    """Open a CanvasSession over a sealed world: a fresh WorldDraft plus the
+-    deterministic default CanvasLayoutV1 for its graph."""
+-    return CanvasSession(D.new_draft(program_or_artifact, draft_id))
++def new_session(program_or_artifact, draft_id, layout=None):
++    """Open a CanvasSession over a sealed world: a fresh WorldDraft plus a
++    CanvasLayoutV1 for its graph. With no `layout` the deterministic default
++    layout is used; a curated `layout` (e.g. a template manifest's) is reconciled
++    onto the draft's working graph (presentation only -- moves no identity)."""
++    return CanvasSession(D.new_draft(program_or_artifact, draft_id), layout=layout)
+ 
+ 
+ # ------------------------------------------------- workspace serialization (v0.5.1)
+diff --git a/forge/wrl_project.py b/forge/wrl_project.py
+index 150bc25..7846678 100644
+--- a/forge/wrl_project.py
++++ b/forge/wrl_project.py
+@@ -500,6 +500,14 @@ def _active_world_id_of(doc):
+             else doc["active_world_semantic_id"])
+ 
+ 
++def _selected_scenario_of(doc):
++    """The project's bound default scenario document name (V2), or None for a
++    legacy V1 project (which has no persisted scenario selection)."""
++    return (doc["selected_scenario_document_id"]
++            if project_version_of(doc) == PROJECT_V2_VERSION
++            else None)
++
++
+ # --------------------------------------------------------- TrashEntryV1 (v0.5.1)
+ def validate_trash_entry(entry):
+     """Structural gate for a TrashEntryV1 tombstone (typed WRL_BAD_TRASH). The
+@@ -1300,17 +1308,21 @@ class ProjectSessionCache:
+         return self.open(project_id, name)
+ 
+     def create_from_source(self, project_id, name, world_source,
+-                           scenarios=None, selected_scenario_document_id=None):
++                           scenarios=None, selected_scenario_document_id=None,
++                           layout=None):
+         """Create a BRAND-NEW project seeded from an EXPLICIT world source +
+         scenario documents (the v0.7-3 "Use Template" instantiation path). Mirrors
+         `create_new` but lowers `world_source` instead of the cache default, and
+         seeds the given `scenarios` ({name, scenario_digest, scenario} entries)
+-        with an initial `selected_scenario_document_id`. Refuses to clobber an
+-        existing id (WRL_PROJECT_EXISTS). The new project is a fully-independent
++        with an initial `selected_scenario_document_id`. An optional `layout`
++        (a curated CanvasLayoutV1, e.g. the template manifest's) seeds the initial
++        presentation -- reconciled onto the lowered graph, moving no identity, and
++        persisted with the project so a later reopen restores it. Refuses to clobber
++        an existing id (WRL_PROJECT_EXISTS). The new project is a fully-independent
+         ForgeProjectV2 whose subsequent mutable state never touches the source it
+         was seeded from."""
+         prog = W.lower_program(SG.desugar_core(world_source), W.parse_wrl_core)
+-        session = CG.new_session(prog, project_id)
++        session = CG.new_session(prog, project_id, layout=layout)
+         if self._version == PROJECT_V2_VERSION:
+             doc = session_to_project_v2(
+                 session, project_id, name or project_id, scenarios=scenarios,

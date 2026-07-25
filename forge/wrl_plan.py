@@ -80,8 +80,19 @@ CompiledProgram = namedtuple(
 # canonical `auto` / DEFAULT_ONEHOT_MAX rule, matching the Fixture oracle.
 # ===================================================================
 class _PlanView:
+    # `mailboxes` duck-types the Fixture's own `{id: (w, cap)}` attribute, so
+    # `admit.mailboxes_of` reads a production plan view and the independent
+    # Fixture oracle through the SAME accessor. It is deliberately NOT consumed
+    # by `compile_step_v6`: a mailbox is declared here and provably ignored by
+    # the backend, which is a stronger statement of D8 than omitting it (an
+    # omitted declaration makes D8 unfalsifiable at this layer).
+    # `admit_policy_id` travels WITH the view for the same reason: the runner
+    # must execute the semantics the sealed artifact names, and the only way to
+    # guarantee that is for the declarations and the policy that governs them to
+    # arrive from one object with one provenance.
     __slots__ = ("pulsers", "spinners", "orbs", "relays", "doors",
-                 "edges", "sockets", "_conf", "_encoding", "_onehot_max")
+                 "mailboxes", "admit_policy_id", "edges", "sockets", "_conf",
+                 "_encoding", "_onehot_max")
 
     def __init__(self, plan, profile=None):
         self.pulsers = {p["id"]: tuple(p["clock"]) for p in plan["pulsers"]}
@@ -92,6 +103,9 @@ class _PlanView:
         self.orbs = list(plan["orbs"])
         self.relays = list(plan["relays"])
         self.doors = list(plan["doors"])
+        self.mailboxes = {m["id"]: (m["w"], m["cap"])
+                          for m in plan.get("mailboxes") or ()}
+        self.admit_policy_id = plan["admit_policy_id"]
         self.edges = [tuple(e) for e in plan["signal_edges"]]
         self.sockets = [tuple(x) for x in plan["socket_controls"]]
         if profile is None:
@@ -107,6 +121,7 @@ class _PlanView:
         k.update({r: "door" for r in self.doors})
         k.update({r: "spinner" for r in self.spinners})
         k.update({r: "orb" for r in self.orbs})
+        k.update({r: "mailbox" for r in self.mailboxes})
         return k
 
     def controller_of(self, orb):
@@ -282,11 +297,20 @@ def _backend_content_hash(step, fields):
 # source into these parts and call it, so the two plans are BYTE-identical.
 # ===================================================================
 def _plan_from_parts(sem_id, profile_id, semantic_policies, pulsers, relays,
-                     doors, spinners, orbs, sig_edges, sockets, conf):
+                     doors, spinners, orbs, sig_edges, sockets, conf,
+                     mailboxes=None):
     """pulsers: {id: clock-tuple}; spinners: {id: (w, n, rotor-tuple)};
     conf: {spinner_id: bool}; relays/doors/orbs: [id]; sig_edges/sockets:
-    [(src, dst)]. Everything is canonicalized (sorted) so declaration order
-    cannot leak into the plan."""
+    [(src, dst)]; mailboxes: {id: (w, cap)}. Everything is canonicalized
+    (sorted) so declaration order cannot leak into the plan.
+
+    D8 -- a mailbox is NOT a physical object, so it is deliberately absent from
+    `object_order`/`object_index` and from all three neutral signatures. A
+    mailbox world and its mailbox-free twin therefore share an IDENTICAL
+    physical object index and identical signatures, while their plans (and
+    SemanticArtifactIDs) differ. That is the precise, testable statement of
+    'the mailbox contributes nothing physical'."""
+    mailboxes = dict(mailboxes or {})
     order = sorted(list(pulsers) + list(relays) + list(doors)
                    + list(spinners) + list(orbs))
     plan = {
@@ -308,6 +332,8 @@ def _plan_from_parts(sem_id, profile_id, semantic_policies, pulsers, relays,
                       "configurable": bool(conf.get(s, True))}
                      for s in sorted(spinners)],
         "orbs": sorted(orbs),
+        "mailboxes": [{"id": m, "w": mailboxes[m][0], "cap": mailboxes[m][1]}
+                      for m in sorted(mailboxes)],
         "signal_edges": sorted([list(e) for e in sig_edges]),
         "socket_controls": sorted([list(x) for x in sockets]),
     }
@@ -330,6 +356,7 @@ def artifact_to_compile_plan_v1(artifact):
         sem_id = WC.semantic_artifact_id(artifact)
         art = WC.canonicalize_artifact_v1(artifact)
     pulsers, relays, doors, spinners, orbs, conf = {}, [], [], {}, [], {}
+    mailboxes = {}
     for o in art["objects"]:
         role, name, cfg = o["role"], o["object_id"], o["static_config"]
         if role == "Pulser":
@@ -343,13 +370,16 @@ def artifact_to_compile_plan_v1(artifact):
             conf[name] = bool(cfg.get("configurable"))
         elif role == "Orb":
             orbs.append(name)
+        elif role == WC.MAILBOX_ROLE:
+            mailboxes[name] = (cfg["w"], cfg["cap"])
     sig_edges = [(e["src"], e["dst"]) for e in art["edges"]
                  if e["kind"] == "SignalWire"]
     sockets = [(e["src"], e["dst"]) for e in art["edges"]
                if e["kind"] == "SocketControl"]
     return _plan_from_parts(sem_id, art["profile_id"],
                             art["semantic_policies"], pulsers, relays, doors,
-                            spinners, orbs, sig_edges, sockets, conf)
+                            spinners, orbs, sig_edges, sockets, conf,
+                            mailboxes)
 
 
 # ------------------------------------------------- Fixture -> CompilePlanV1
@@ -360,12 +390,21 @@ def fixture_to_compile_plan_v1(fx, sem_id, semantic_policies=None,
     not itself carry the semantic id or policy bundle, so they are supplied by
     the caller (the sealed artifact's own values), keeping the Fixture a pure
     structural builder."""
-    semantic_policies = semantic_policies or {
-        "rulepack_id": WC.RULEPACK_ID,
-        "numeric_policy_ids": list(WC.NUMERIC_POLICY_IDS),
-        "admit_policy_id": WC.ADMIT_POLICY_ID,
-        "film_schema_id": WC.FILM_SCHEMA_ID,
-    }
+    mailboxes = {m: tuple(spec)
+                 for m, spec in (getattr(fx, "mailboxes", None) or {}).items()}
+    if semantic_policies is None:
+        # The DEFAULT bundle is role-derived, exactly as `graph_to_ir` derives
+        # it, so a mailbox-bearing Fixture cannot silently claim the
+        # mailbox-free admit policy and produce a plan that disagrees with the
+        # one the frozen IR produces for the same world (D1).
+        _surface = WC.semantic_surface_for_roles(
+            [WC.MAILBOX_ROLE] if mailboxes else [])
+        semantic_policies = {
+            "rulepack_id": WC.RULEPACK_ID,
+            "numeric_policy_ids": list(WC.NUMERIC_POLICY_IDS),
+            "admit_policy_id": _surface["admit_policy_id"],
+            "film_schema_id": _surface["film_schema_id"],
+        }
     profile_id = profile_id or WC.PROFILE_ID
     pulsers = {r: tuple(spec) for r, spec in fx.pulsers.items()}
     spinners = {s: (w_, n_, tuple(rq))
@@ -374,7 +413,7 @@ def fixture_to_compile_plan_v1(fx, sem_id, semantic_policies=None,
     return _plan_from_parts(sem_id, profile_id, semantic_policies, pulsers,
                             list(fx.relays), list(fx.doors), spinners,
                             list(fx.orbs), list(fx.edges), list(fx.sockets),
-                            conf)
+                            conf, mailboxes)
 
 
 # ----------------------------------------------- plan -> Forge IR (binding)
@@ -410,12 +449,23 @@ def _plan_to_artifact(plan):
                         "static_config": cfg,
                         "state_schema_ref": "state.%s.v1" % role.lower(),
                         "ports": WC.object_ports(role)})
+    # Mailboxes live OUTSIDE `object_order` (they are not physical, D8) but they
+    # ARE part of the semantic artifact, so the reconstruction must restore them
+    # or a mailbox plan could never re-hash to the id it claims. Object ORDER is
+    # irrelevant here because `semantic_artifact_id` re-canonicalizes.
+    for m in plan.get("mailboxes") or ():
+        objects.append({"object_id": m["id"], "role": WC.MAILBOX_ROLE,
+                        "static_config": {"w": m["w"], "cap": m["cap"]},
+                        "state_schema_ref": "state.%s.v1"
+                                            % WC.MAILBOX_ROLE.lower(),
+                        "ports": WC.object_ports(WC.MAILBOX_ROLE)})
     edges = [{"kind": "SignalWire", "src": s, "dst": d}
              for s, d in plan["signal_edges"]]
     edges += [{"kind": "SocketControl", "src": s, "dst": d}
               for s, d in plan["socket_controls"]]
+    _surface = WC.semantic_surface_for_roles([o["role"] for o in objects])
     return {
-        "ir_version": WC.IR_VERSION,
+        "ir_version": _surface["ir_version"],
         "profile_id": plan["profile_id"],
         "semantic_policies": {
             "rulepack_id": plan["rulepack_id"],
@@ -423,7 +473,7 @@ def _plan_to_artifact(plan):
             "admit_policy_id": plan["admit_policy_id"],
             "film_schema_id": plan["film_schema_id"],
         },
-        "schemas": dict(WC.SCHEMA_IDS),
+        "schemas": WC.schemas_for_roles([o["role"] for o in objects]),
         "objects": objects,
         "edges": edges,
     }
@@ -433,8 +483,8 @@ def _plan_to_artifact(plan):
 _PLAN_KEYS = ("compile_plan_version", "semantic_artifact_id", "profile_id",
               "rulepack_id", "numeric_policy_ids", "admit_policy_id",
               "film_schema_id", "object_order", "object_index", "pulsers",
-              "relays", "doors", "spinners", "orbs", "signal_edges",
-              "socket_controls", "state_layout_signature",
+              "relays", "doors", "spinners", "orbs", "mailboxes",
+              "signal_edges", "socket_controls", "state_layout_signature",
               "epoch_input_signature", "observable_signature")
 _PLAN_KEY_SET = frozenset(_PLAN_KEYS)
 
@@ -473,6 +523,29 @@ def validate_compile_plan_v1(plan):
                                 for i, oid in enumerate(plan["object_order"])}:
         WC._fail(WRL_BAD_COMPILE_PLAN,
                  "object_index is not the object_order bijection")
+    # Mailboxes are declared but NOT physical: they must be canonically sorted,
+    # well-formed, and must NOT collide with a physical object id (a name may
+    # not be both a mailbox and a lowered object).
+    mb_ids = [m["id"] for m in plan["mailboxes"]]
+    if mb_ids != sorted(mb_ids) or len(set(mb_ids)) != len(mb_ids):
+        WC._fail(WRL_BAD_COMPILE_PLAN,
+                 "mailboxes are not a canonically sorted, duplicate-free list")
+    for m in plan["mailboxes"]:
+        if set(m) != {"id", "w", "cap"}:
+            WC._fail(WRL_BAD_COMPILE_PLAN,
+                     "mailbox %r has fields %s (expected id/w/cap)"
+                     % (m.get("id"), sorted(m)))
+        if not (isinstance(m["w"], int)
+                and 1 <= m["w"] <= WC.MAILBOX_WIDTH_MAX):
+            WC._fail(WRL_BAD_COMPILE_PLAN,
+                     "mailbox %s: body width out of range" % (m["id"],))
+        if not (isinstance(m["cap"], int) and m["cap"] >= 1):
+            WC._fail(WRL_BAD_COMPILE_PLAN,
+                     "mailbox %s: capacity must be >= 1 (D7)" % (m["id"],))
+    if set(mb_ids) & set(plan["object_order"]):
+        WC._fail(WRL_BAD_COMPILE_PLAN,
+                 "mailbox id(s) %s collide with declared physical objects"
+                 % sorted(set(mb_ids) & set(plan["object_order"])))
     order = set(plan["object_order"])
     for src, dst in plan["signal_edges"]:
         if src not in order or dst not in order:

@@ -1,5 +1,44 @@
 # Forge Spinner Bench -- Release Notes
 
+## v0.7.0-alpha.5 -- Visual / Responsive Closure
+
+A **presentation-only** closure on top of `v0.7.0-alpha.4` (which is **not**
+replaced -- its release archive remains). This slice makes the workspace usable
+across small/tablet/desktop widths and improves accessibility: **no new semantic
+profile, IR version, artifact identity, actor role, edge type, graph
+transaction, authoring op, or server capability.** The demo world still seals to
+the frozen `DEMO_WORLD_SEMANTIC_ID` and every fold is byte-identical to v0.6-4.
+
+### What is new
+
+- **Responsive layout.** The six-panel grid now collapses from 3 columns to 2
+  (<=1024px) to a single scrollable column (<=760px), and the header/toolbar
+  wrap, so there is no horizontal overflow at 320x700, 375x812, 768x1024,
+  1024x768, 1280x800, or 1440x900. Grid children are pinned `min-width:0` so long
+  identity strings + wide tables shrink to their column instead of forcing a
+  scrollbar.
+- **Read-only Explore is obvious at every breakpoint.** The read-only banner is
+  sticky and carries a lock glyph + a text "Read-only" tag (shape + text, never
+  color alone), and the whole workspace gets a dashed frame while exploring.
+- **Accessibility.** A single visible `:focus-visible` ring on every interactive
+  control; the template chooser is fully keyboard-operable with accessible
+  per-template button names; a `prefers-reduced-motion` block disables the guide
+  push, progress-bar fill, and hover transitions; status text carries a glyph so
+  it never depends on color alone.
+- **Guided rail on narrow screens.** Below 760px the guide becomes a bottom sheet
+  and stops pushing the workspace.
+
+Window resizing only re-flows CSS -- it never touches JS state, the draft, or any
+identity. The template subsystem still fails closed independently: if the catalog
+is unavailable the chooser says so while Open Existing Project + the running
+workspace stay fully usable.
+
+### Version
+
+`BENCH_VERSION`, the browser header, `GET /api/health`, this file, the
+Quickstart, the landing `README.md`, and the release archive name all report
+**v0.7.0-alpha.5**.
+
 ## v0.7.0-alpha.4 -- Immutable Template Catalog
 
 A closure on top of `v0.7.0-alpha.3` (which is **not** replaced -- its release

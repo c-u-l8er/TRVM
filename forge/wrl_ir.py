@@ -31,8 +31,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import wrl_canonical as WC
 from wrl_canonical import (
     IR_VERSION, PROFILE_ID, RULEPACK_ID, ADMIT_POLICY_ID, FILM_SCHEMA_ID,
-    NUMERIC_POLICY_IDS, SCHEMA_IDS,
-    ROLE_IDS, EDGE_KINDS, PORTS,
+    semantic_surface_for_roles, mailbox_decls_of_artifact, roles_of_artifact,
+    NUMERIC_POLICY_IDS, SCHEMA_IDS, SCHEMA_IDS_V1_1, schemas_for_roles,
+    ROLE_IDS, MAILBOX_ROLE, EDGE_KINDS, PORTS,
     WrlUnsupported, WrlValidationError,
     WRL_UNSUPPORTED_FEATURE, WRL_EPOCH_RANGE, WRL_NUMERIC_RANGE,
     validate_graph, canonicalize_graph, validate_port_projection, object_ports,
@@ -349,16 +350,23 @@ def graph_to_ir(g):
     edges = []
     for kind, s, d in sorted(g.edges):
         edges.append({"kind": kind, "src": s, "dst": d})
+    # D6/Q2: the ENTIRE semantic surface follows the ROLES PRESENT -- IR
+    # revision, ADMIT policy, film schema and runtime state schema are decided
+    # together by one selector so they cannot drift apart. A mailbox-free world
+    # emits the frozen v1 values byte-for-byte, so every existing
+    # SemanticArtifactID is preserved exactly.
+    _roles = [r for r, _n, _c in g.nodes]
+    surface = semantic_surface_for_roles(_roles)
     art = {
-        "ir_version": IR_VERSION,
+        "ir_version": surface["ir_version"],
         "profile_id": g.profile,
         "semantic_policies": {
             "rulepack_id": RULEPACK_ID,
             "numeric_policy_ids": list(NUMERIC_POLICY_IDS),
-            "admit_policy_id": ADMIT_POLICY_ID,
-            "film_schema_id": FILM_SCHEMA_ID,
+            "admit_policy_id": surface["admit_policy_id"],
+            "film_schema_id": surface["film_schema_id"],
         },
-        "schemas": dict(SCHEMA_IDS),
+        "schemas": schemas_for_roles(_roles),
         "objects": objects,
         "edges": edges,
     }
@@ -380,6 +388,7 @@ def ir_to_fixture(art):
                                  "adapter serves only %s" % (PROFILE_ID,))
     pulsers, relays, doors, spinners, orbs, configurable = \
         {}, [], [], {}, [], set()
+    mailboxes = {}
     for o in art["objects"]:
         role, name, cfg = o["role"], o["object_id"], o["static_config"]
         if role == "Pulser":
@@ -394,6 +403,10 @@ def ir_to_fixture(art):
                 configurable.add(name)
         elif role == "Orb":
             orbs.append(name)
+        elif role == MAILBOX_ROLE:
+            # MailboxDecl -> the oracle's mailbox surface. D8: a mailbox
+            # contributes NO edge, so it never appears in sig_edges/sockets.
+            mailboxes[name] = (cfg["w"], cfg["cap"])
     sig_edges = [(e["src"], e["dst"]) for e in art["edges"]
                  if e["kind"] == "SignalWire"]
     sockets = [(e["src"], e["dst"]) for e in art["edges"]
@@ -401,17 +414,27 @@ def ir_to_fixture(art):
     conf = None if configurable == set(spinners) else configurable
     return Fixture(pulsers, relays, doors, sig_edges,
                    spinners=spinners, orbs=orbs, sockets=sockets,
-                   configurable=conf)
+                   configurable=conf, mailboxes=mailboxes or None)
 
 
 # =============================================================== programs
-def _initial_claim_state():
+def _initial_claim_state(artifact=None):
     """The initial CLAIM projection only (facts, receipts, capacity faults).
     The physical world init (clock/rotor/pose/wire) is a function of the
     Fixture, built by the runner via init_state_v6 -- this partial object is
-    deliberately NOT called the full initial runtime state (Slice 2.1)."""
-    return {"claim_facts": [], "acceptance_receipts": [],
-            "fact_capacity_fault": 0, "receipt_capacity_fault": 0}
+    deliberately NOT called the full initial runtime state (Slice 2.1).
+
+    D6: the mailbox sibling fields appear here IFF the artifact declares a
+    mailbox, matching the runtime state schema the artifact declares. A
+    mailbox-free program's projection is byte-identical to pre-v1.1."""
+    st = {"claim_facts": [], "acceptance_receipts": [],
+          "fact_capacity_fault": 0, "receipt_capacity_fault": 0}
+    decls = mailbox_decls_of_artifact(artifact) if artifact else {}
+    if decls:
+        st["mailbox_states"] = {mb: {"inbox": [], "next_inbox": []}
+                                for mb in sorted(decls)}
+        st["mailbox_capacity_fault"] = 0
+    return st
 
 
 def lower_graph(g):
@@ -426,7 +449,8 @@ def lower_graph(g):
     sealed = WC.SealedArtifact(art)
     run_plan = {"periods": g.periods, "epoch0": 1}
     epoch_inputs = [{"claim_batch": list(batch)} for batch in g.batches]
-    return LoweredProgram(sealed, sealed.semantic_id, _initial_claim_state(),
+    return LoweredProgram(sealed, sealed.semantic_id,
+                          _initial_claim_state(art),
                           run_plan, epoch_inputs, g)
 
 

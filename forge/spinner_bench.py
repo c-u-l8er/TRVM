@@ -67,7 +67,6 @@ import os
 import re
 import sys
 import json
-import copy
 import threading
 import collections
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -103,7 +102,7 @@ from forge_state import init_state_v6, state_to_film_args_v6
 SKIP_NATIVE = os.environ.get("TRVM_SKIP_NATIVE") == "1"
 HOST = os.environ.get("SPINNER_BENCH_HOST", "127.0.0.1")
 PORT = int(os.environ.get("SPINNER_BENCH_PORT", "8765"))
-BENCH_VERSION = "v0.7.0-alpha.4"
+BENCH_VERSION = "v0.7.0-alpha.5"
 
 # The ic_ref reducer (forge_runtime.ref_reduce/native_reduce) resets and reads MODULE-GLOBAL
 # runtime state, so two folds must never run concurrently. Serialize ONLY the
@@ -396,10 +395,15 @@ def _admit_projection(view, claim, cfg_map, resets):
     recognition, the applied EpochControl, and both capacity-fault latches."""
     sp_names = set(view.spinners)
     ob_names = set(view.orbs)
+    # IR v1.1 Slice A guard 3: pass the DECLARED mailbox set (empty until
+    # MailboxDecl lands) rather than None, so an undeclared Send target
+    # canonicalizes to INVALID_TARGET here exactly as it does in the film.
+    mb_names = set(AD.mailboxes_of(view))
     facts = [{"writer": f["writer_id"], "sequence": f["sequence"],
               "digest": "%0*x" % (AD._HEX, f["digest"]),
               "payload_key": AD._pk_str(f["payload_key"]),
-              "payload": AD._payload_str(f["payload"], sp_names, ob_names)}
+              "payload": AD._payload_str(f["payload"], sp_names, ob_names,
+                                         mb_names)}
              for f in sorted(claim.get("facts", []), key=AD._fact_key)]
     receipts = []
     for ek in sorted(claim.get("receipts", {})):
@@ -464,7 +468,10 @@ def _run_traj(src, reducer, reducer_name, scenario=None, progress=None,
     for o in initial_faults:
         if ("fault_" + o) in world:
             world["fault_" + o] = 1
-    claim = AD.init_claimstate()
+    # The runtime state shape and the acceptance policy BOTH come from the
+    # sealed artifact (via the plan view), never from a module default: a world
+    # must execute the semantics its own SemanticArtifactID names.
+    claim = AD.init_claimstate(view)
     step, _ = C.compile_step_v6(view)
     sp0 = spins[0] if spins else None
     ob0 = orbs[0] if orbs else None
@@ -476,7 +483,8 @@ def _run_traj(src, reducer, reducer_name, scenario=None, progress=None,
         if cancel is not None and cancel():
             raise WJ.JobCancelled()
         ep = 1 + e
-        claim, cfg_map, resets = AD.admit_step(claim, batch, ep, view)
+        claim, cfg_map, resets = AD.admit_step(
+            claim, batch, ep, view, policy_id=view.admit_policy_id)
         ec = C.enc_config_bundle(view, cfg_map, resets)
         world = C.dec_state_v6(view, reducer(
             f"(({step} {ec}) {C.enc_state_v6(view, world)})"))
@@ -526,14 +534,19 @@ def _run_traj_fixture(src, reducer, scenario=None, progress=None, cancel=None):
     for o in initial_faults:
         if ("fault_" + o) in world:
             world["fault_" + o] = 1
-    claim = AD.init_claimstate()
+    # The Fixture is an INDEPENDENT oracle, so the state is seeded from the
+    # Fixture's own declarations -- but the policy still comes from the sealed
+    # artifact. If the two disagreed about which mailboxes exist, the oracle
+    # cross-check would (correctly) fail rather than agree by construction.
+    claim = AD.init_claimstate(fx)
     step, _ = C.compile_step_v6(view)
     films = []
     for e, (label, batch) in enumerate(script):
         if cancel is not None and cancel():
             raise WJ.JobCancelled()
         ep = 1 + e
-        claim, cfg_map, resets = AD.admit_step(claim, batch, ep, fx)
+        claim, cfg_map, resets = AD.admit_step(
+            claim, batch, ep, fx, policy_id=view.admit_policy_id)
         ec = C.enc_config_bundle(view, cfg_map, resets)
         world = C.dec_state_v6(view, reducer(
             f"(({step} {ec}) {C.enc_state_v6(view, world)})"))
@@ -1102,15 +1115,29 @@ def _project_new_payload(req):
                 "view": _draft_view(sess)}
 
 
+def _project_scenario_docs(pid):
+    """The persisted scenario documents + bound default for a project, read
+    straight off the durable project document. A reopen uses THESE (not the global
+    golden/bench presets, and not the originating template catalog) so the UI
+    always presents the project's OWN scenarios -- e.g. a reopened Blank project
+    restores its one-epoch idle scenario, not Golden/Bench. Once a project is
+    created it owns its scenario documents and no longer depends on any template."""
+    doc = _PROJECT_CACHE._store.load(_pid(pid))
+    return (PJ._scenarios_of(doc), PJ._selected_scenario_of(doc))
+
+
 def _project_open_payload(req):
     pid = req.get("project_id")
     with _DRAFT_LOCK:
         try:
             sess = _PROJECT_CACHE.open(_pid(pid))
+            scen, sel = _project_scenario_docs(pid)
         except Exception as ex:
             return _err(ex)
         _LAST_SESSION.set(_pid(pid))
-        return {"ok": True, "project_id": _pid(pid), "view": _draft_view(sess)}
+        return {"ok": True, "project_id": _pid(pid), "view": _draft_view(sess),
+                "scenario_documents": scen,
+                "selected_scenario_document_id": sel}
 
 
 def _project_fork_payload(req):
@@ -1120,12 +1147,15 @@ def _project_fork_payload(req):
     with _DRAFT_LOCK:
         try:
             sess = _PROJECT_CACHE.fork(_pid(src), pid, name)
+            scen, sel = _project_scenario_docs(pid)
         except Exception as ex:
             return _err(ex)
         _LAST_SESSION.set(pid)
         return {"ok": True, "project_id": pid,
                 "projects": _PROJECT_CACHE.list_infos(),
-                "view": _draft_view(sess)}
+                "view": _draft_view(sess),
+                "scenario_documents": scen,
+                "selected_scenario_document_id": sel}
 
 
 def _project_rename_payload(req):
@@ -1213,7 +1243,11 @@ def _template_preview_payload(req):
     with _DRAFT_LOCK:
         prog = W.lower_program(SG.desugar_core(m["canonical_world_source"]),
                                W.parse_wrl_core)
-        sess = CG.new_session(prog, _DEMO_ID)
+        # seed the curated manifest layout so the preview shows the template's
+        # intended presentation (reconciled onto the graph, moves no identity).
+        # CanvasSession owns the deep-copy + validation of the seed, so the
+        # shared catalog layout object is never mutated by the session.
+        sess = CG.new_session(prog, _DEMO_ID, layout=m["canvas_layout"])
         _DEMO_SESSIONS[_DEMO_ID] = sess
         return {"ok": True, "template_id": template_id, "template": m,
                 "view": _draft_view(sess)}
@@ -1241,15 +1275,19 @@ def _template_use_payload(req):
         try:
             sess = _PROJECT_CACHE.create_from_source(
                 pid, name, m["canonical_world_source"], scenarios=scenarios,
-                selected_scenario_document_id=m["default_scenario_document_id"])
+                selected_scenario_document_id=m["default_scenario_document_id"],
+                layout=m["canvas_layout"])
         except Exception as ex:
             return _err(ex)
         _write_provenance(pid, template_id)
         _LAST_SESSION.set(pid)
+        scen, sel = _project_scenario_docs(pid)
         return {"ok": True, "project_id": pid, "template_id": template_id,
                 "created_from_template": _read_provenance(pid),
                 "projects": _PROJECT_CACHE.list_infos(),
-                "view": _draft_view(sess)}
+                "view": _draft_view(sess),
+                "scenario_documents": scen,
+                "selected_scenario_document_id": sel}
 
 
 def _project_save_payload(req):

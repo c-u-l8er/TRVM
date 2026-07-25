@@ -41,7 +41,13 @@ FILM_SCHEMA_ID = "film.v0.7"
 NUMERIC_POLICY_IDS = ("POLICY_FORGE",)
 LOWERING_PROFILE_VERSION = "1.0"
 
-ROLE_IDS = ("Pulser", "Relay", "Door", "Spinner", "Orb")
+# IR v1.1 / Mailbox Slice A, RULING Q2: `Mailbox` is the SIXTH sanctioned
+# role. The addition is strictly ADDITIVE -- a world that declares no Mailbox
+# canonicalizes to byte-identical bytes and therefore keeps its exact prior
+# SemanticArtifactID (the frozen demo still seals `sem-8ae91fe9...fe4a`).
+# Per D8 there is NO new edge kind: a mailbox is addressed by id, never wired.
+ROLE_IDS = ("Pulser", "Relay", "Door", "Spinner", "Orb", "Mailbox")
+MAILBOX_ROLE = "Mailbox"
 EDGE_KINDS = ("SignalWire", "SocketControl")
 
 # frozen schema block (the only accepted artifact schemas)
@@ -50,7 +56,86 @@ SCHEMA_IDS = {
     "epoch_input_schema": "EpochInputV1",
     "observable_schema": "EpochResultV1",
 }
+# D6: a mailbox-bearing world carries `mailbox_states` / `mailbox_capacity_fault`
+# as NEW SIBLING runtime fields, so it declares a DIFFERENT runtime state
+# schema. The two blocks are MUTUALLY EXCLUSIVE and `schemas_for_roles` decides
+# which one an artifact must carry: a mailbox-free world may not claim v1_1 and
+# a mailbox-bearing world may not hide behind v1. That is what makes the extra
+# runtime surface visible in the SemanticArtifactID instead of implicit.
+SCHEMA_IDS_V1_1 = dict(SCHEMA_IDS, runtime_state_schema="RuntimeStateV1_1")
 STATE_SCHEMA_REFS = {"state.%s.v1" % r.lower() for r in ROLE_IDS}
+
+# --------------------------------------------- IR v1.1 mailbox semantic surface
+# A mailbox-bearing world does not merely declare an extra role: it selects a
+# DIFFERENT ADMIT policy, a DIFFERENT runtime state schema, a DIFFERENT film
+# schema, and a DIFFERENT IR revision. All four move together or not at all.
+#
+# They are therefore derived by ONE function from the role set, because four
+# independent selectors are four opportunities to drift -- and a drifted
+# selector is the worst possible failure here: an artifact whose id claims one
+# semantics while the runner executes another.
+IR_VERSION_V1_1 = "1.1"
+MAILBOX_ADMIT_POLICY_ID = "admit_mailbox_deliver_all_v1"
+# Frozen Film v0.7 never reserved `MailboxEnqueue` / `MailboxDeliver` /
+# `MailboxReject`, the gated `admit_mailbox:` projection, or a mailbox state
+# projection. A second implementation reading `film.v0.7` is therefore entitled
+# to implement the pre-mailbox meaning of that identifier, so a mailbox world
+# MUST NOT claim it. The mailbox film schema is a distinct id.
+FILM_SCHEMA_ID_MAILBOX = "film.v0.7.mailbox.v1"
+# Frozen bound shared with the Fixture oracle, which enforces `0 < w <= 32`.
+# The canonical validator must not admit an artifact its own sanctioned oracle
+# rejects, so the upper bound is stated ONCE, here, and both sides read it.
+MAILBOX_WIDTH_MAX = 32
+
+
+def semantic_surface_for_roles(roles):
+    """The FOUR role-derived semantic identity fields, decided together.
+
+    This is the single source of truth for "what semantics does a world
+    carrying these roles have?". `Mailbox` present selects the entire v1.1
+    mailbox surface; absent, every field is exactly its frozen v1 value, so a
+    mailbox-free world is byte-identical and keeps its prior
+    SemanticArtifactID."""
+    has_mailbox = MAILBOX_ROLE in set(roles)
+    return {
+        "ir_version": IR_VERSION_V1_1 if has_mailbox else IR_VERSION,
+        "runtime_state_schema": ("RuntimeStateV1_1" if has_mailbox
+                                 else "RuntimeStateV1"),
+        "admit_policy_id": (MAILBOX_ADMIT_POLICY_ID if has_mailbox
+                            else ADMIT_POLICY_ID),
+        "film_schema_id": (FILM_SCHEMA_ID_MAILBOX if has_mailbox
+                           else FILM_SCHEMA_ID),
+    }
+
+
+def schemas_for_roles(roles):
+    """The schema block an artifact carrying these roles MUST declare.
+
+    Derived from `semantic_surface_for_roles` rather than chosen separately, so
+    the runtime state schema can never disagree with the admit policy."""
+    return dict(SCHEMA_IDS,
+                runtime_state_schema=
+                semantic_surface_for_roles(roles)["runtime_state_schema"])
+
+
+def roles_of_artifact(artifact):
+    """The role ids an artifact declares, in artifact order."""
+    return tuple(o.get("role") for o in (artifact.get("objects") or ()))
+
+
+def mailbox_decls_of_artifact(artifact):
+    """`{mailbox_id: (width, capacity)}` read off a canonical artifact.
+
+    The SEMANTIC source of truth for the mailbox set. ADMIT must read the
+    mailbox declarations from the artifact that was hashed into the
+    SemanticArtifactID -- never from the backend compile plan, which per D8
+    carries nothing about mailboxes because a mailbox is not physical."""
+    out = {}
+    for o in (artifact.get("objects") or ()):
+        if o.get("role") == MAILBOX_ROLE:
+            cfg = o.get("static_config") or {}
+            out[o.get("object_id")] = (cfg.get("w"), cfg.get("cap"))
+    return out
 
 # the required non-null single-valued semantic policy ids
 REQUIRED_POLICY_IDS = ("rulepack_id", "admit_policy_id", "film_schema_id")
@@ -66,6 +151,12 @@ PORTS = {
     "Door":    {"out": (),           "in": ("sig_in",)},
     "Spinner": {"out": ("socket",),  "in": ("sig_in",)},
     "Orb":     {"out": (),           "in": ("pose",)},
+    # D8: a Mailbox has NO structural port. It is addressed by id exactly as
+    # `SetRotor` names a spinner. Because edge validation is entirely
+    # port-driven, this single empty entry is what makes every attempt to wire
+    # a mailbox fail WRL_ILLEGAL_PORT_PAIR -- D8 is enforced structurally,
+    # not by a special case.
+    "Mailbox": {"out": (),           "in": ()},
 }
 # the required (src_out_port, dst_in_port) for each structural edge kind
 EDGE_PORTS = {
@@ -88,6 +179,12 @@ ROLE_CONFIG_SCHEMA = {
     "Spinner": {"surface_keys": ("w", "n", "rotor", "configurable"),
                 "static_config_keys": ("w", "n", "rotor", "configurable")},
     "Orb":     {"surface_keys": (), "static_config_keys": ()},
+    # MailboxDecl (D7): `w` is the message body width, `cap` the per-period
+    # capacity governing `mailbox_capacity_fault`. Both are STATIC world
+    # structure, so both belong to the SemanticArtifactID -- widening a
+    # mailbox is a different world, exactly as re-rotoring a spinner is.
+    "Mailbox": {"surface_keys": ("w", "cap"),
+                "static_config_keys": ("w", "cap")},
 }
 
 # frozen exact key sets for the sealed artifact records (Phase 3B.5.1). A sealed
@@ -366,6 +463,31 @@ def _validate_config(role, name, cfg):
             _fail(WRL_NUMERIC_RANGE,
                   "spinner %s: rotor lanes out of [0, 2^%d)" % (name, w_),
                   primary_locator=loc, field_path="static_config.rotor")
+    elif role == MAILBOX_ROLE:
+        # MailboxDecl (D7). `w` bounds a message body lane, `cap` bounds how
+        # many messages may be enqueued for one period. `cap` must be >= 1:
+        # a zero-capacity mailbox could never accept a send, so it would be a
+        # world that silently rejects everything -- exactly the class of
+        # quiet failure Slice A's guards exist to prevent.
+        for key in ("w", "cap"):
+            if cfg.get(key) is None:
+                _fail(WRL_UNSUPPORTED_FEATURE,
+                      "mailbox %s: missing %r" % (name, key),
+                      primary_locator=loc, field_path="static_config.%s" % key)
+        w_, cap_ = cfg["w"], cfg["cap"]
+        # Bound stated ONCE (MAILBOX_WIDTH_MAX) and shared with the Fixture
+        # oracle. Previously the canonical validator accepted any w > 0 while
+        # the oracle required w <= 32, so an artifact could seal successfully
+        # and then be rejected by its own sanctioned oracle.
+        if not (isinstance(w_, int) and 1 <= w_ <= MAILBOX_WIDTH_MAX):
+            _fail(WRL_NUMERIC_RANGE,
+                  "mailbox %s: body width must be in 1..%d"
+                  % (name, MAILBOX_WIDTH_MAX),
+                  primary_locator=loc, field_path="static_config.w")
+        if not (isinstance(cap_, int) and cap_ >= 1):
+            _fail(WRL_NUMERIC_RANGE,
+                  "mailbox %s: capacity must be >= 1" % (name,),
+                  primary_locator=loc, field_path="static_config.cap")
 
 
 # --------------------------------------------------------------- canonicalize
@@ -452,10 +574,13 @@ def validate_artifact_v1(artifact):
     if not isinstance(artifact, dict):
         _fail(WRL_MALFORMED_ARTIFACT, "artifact must be an object")
     _reject_unknown(artifact, ARTIFACT_FIELDS, "artifact")
-    if artifact.get("ir_version") != IR_VERSION:
+    # ir_version is now ROLE-DERIVED (v1.1 mailbox surface), so the exact
+    # value is checked below once the roles are known. Here we only reject
+    # revisions this compiler does not serve at all.
+    if artifact.get("ir_version") not in (IR_VERSION, IR_VERSION_V1_1):
         _fail(WRL_MALFORMED_ARTIFACT,
-              "unsupported ir_version %r (only %s)"
-              % (artifact.get("ir_version"), IR_VERSION))
+              "unsupported ir_version %r (only %s / %s)"
+              % (artifact.get("ir_version"), IR_VERSION, IR_VERSION_V1_1))
     if artifact.get("profile_id") != PROFILE_ID:
         _fail(WRL_UNSUPPORTED_FEATURE,
               "unknown profile %r; this compiler only serves %s"
@@ -477,15 +602,41 @@ def validate_artifact_v1(artifact):
         _fail(WRL_UNSEALED_POLICY,
               "numeric_policy_ids must be a non-empty list of ids")
 
-    if artifact.get("schemas") != SCHEMA_IDS:
-        _fail(WRL_MALFORMED_ARTIFACT,
-              "unknown schema block %r (only %s)"
-              % (artifact.get("schemas"), SCHEMA_IDS))
-
     objects = artifact.get("objects")
     edges = artifact.get("edges")
     if not isinstance(objects, list) or not isinstance(edges, list):
         _fail(WRL_MALFORMED_ARTIFACT, "objects/edges must be lists")
+
+    # D6/Q2: the schema block is DETERMINED BY THE ROLES PRESENT, so it cannot
+    # be chosen independently of the world. A mailbox-free world must declare
+    # RuntimeStateV1 and a mailbox-bearing world must declare RuntimeStateV1_1;
+    # either mismatch is a typed rejection rather than a silent acceptance.
+    try:
+        _roles = [o["role"] for o in objects]
+    except (KeyError, TypeError) as ex:
+        _fail(WRL_MALFORMED_ARTIFACT, "malformed object record: %r" % (ex,))
+    _surface = semantic_surface_for_roles(_roles)
+    _want_schemas = schemas_for_roles(_roles)
+    if artifact.get("schemas") != _want_schemas:
+        _fail(WRL_MALFORMED_ARTIFACT,
+              "schema block %r does not match the roles present (expected %s)"
+              % (artifact.get("schemas"), _want_schemas))
+
+    # The SAME derivation governs the other three semantic identity fields, so
+    # a mailbox-bearing artifact CANNOT name the mailbox-free ADMIT policy, the
+    # frozen film schema, or IR v1.0 -- and a mailbox-free artifact cannot
+    # borrow the mailbox surface. Without this an artifact's identity could
+    # claim one semantics while the runner executed another.
+    if artifact.get("ir_version") != _surface["ir_version"]:
+        _fail(WRL_MALFORMED_ARTIFACT,
+              "ir_version %r does not match the roles present (expected %r)"
+              % (artifact.get("ir_version"), _surface["ir_version"]))
+    for _key in ("admit_policy_id", "film_schema_id"):
+        if pol.get(_key) != _surface[_key]:
+            _fail(WRL_UNSEALED_POLICY,
+                  "semantic_policies.%s is %r but the roles present require "
+                  "%r -- the artifact must name the semantics it executes"
+                  % (_key, pol.get(_key), _surface[_key]))
 
     try:
         for o in objects:

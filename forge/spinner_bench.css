@@ -509,3 +509,93 @@ body.guide-open main { transition: margin-right .15s ease; margin-right: 284px; 
   font-weight: 600; }
 .dlg .dlg-btn:focus-visible { outline: 2px solid var(--accent);
   outline-offset: 2px; }
+
+/* ==================== v0.7-4 Visual / Responsive Closure ====================
+   Presentation only — no new semantic identity, schema, template content,
+   runtime, authoring op, or server capability. Everything below is layout,
+   focus, motion, and read-only cueing; the frozen demo still seals to
+   DEMO_WORLD_SEMANTIC_ID and every fold is byte-identical. */
+
+/* (1) Keyboard: a single, consistent, visible focus ring on every interactive
+   control (chooser cards, toolbar, library, dialogs, table inputs). Uses
+   :focus-visible so it appears for keyboard/AT users without a mouse-click halo. */
+:where(button, select, textarea, input, a, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 5px;
+}
+
+/* (2) No horizontal overflow: grid/flex children default to min-width:auto, which
+   lets long code strings + wide tables push the track past the viewport. Pinning
+   min-width:0 (and capping the grid) lets every panel shrink to its column. */
+.grid { max-width: 100%; }
+.panel { min-width: 0; }
+.library select { min-width: 0; }
+
+/* (3) Non-color status cues (never rely on color alone): glyph + text. */
+.status.ok::before { content: "\2713\00a0"; }   /* ✓ */
+.status.err::before { content: "\2717\00a0"; }   /* ✗ */
+
+/* (4) Read-only Explore is visually obvious at EVERY breakpoint: the banner is
+   sticky, carries a lock glyph + a text "Read-only" tag (shape + text, not color
+   alone), and the whole workspace gets a dashed frame so the mode reads at a
+   glance even after scrolling. */
+.explore-banner { position: sticky; top: 0; z-index: 30; }
+.explore-banner .eb-tag::before { content: "\1F512\00a0"; }   /* 🔒 */
+body.explore main { outline: 2px dashed var(--warn); outline-offset: -5px;
+  border-radius: 6px; }
+
+/* (5) Responsive matrix. The default (desktop, >=1024px) keeps the 3×3 /
+   2-column view grids above. Below that we progressively collapse to a single
+   scrollable column so 768/375/320-wide viewports never overflow and every
+   panel keeps a usable minimum height. Window resizing only re-flows CSS — it
+   never touches JS state, identity, or the draft. */
+@media (max-width: 1024px) {
+  main.grid,
+  body[data-view="author"] .grid,
+  body[data-view="evidence"] .grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: none;
+    grid-auto-rows: minmax(260px, 1fr);
+    overflow-y: auto;
+  }
+  #panel-diff, #panel-scenario,
+  body[data-view="author"] #panel-scenario,
+  body[data-view="evidence"] #panel-diff { grid-column: span 2; }
+}
+@media (max-width: 760px) {
+  main.grid,
+  body[data-view="author"] .grid,
+  body[data-view="evidence"] .grid {
+    grid-template-columns: 1fr;
+    grid-auto-rows: minmax(300px, auto);
+    overflow-y: auto;
+  }
+  #panel-diff, #panel-scenario,
+  body[data-view="author"] #panel-scenario,
+  body[data-view="evidence"] #panel-diff { grid-column: auto; }
+  /* the guided rail becomes a bottom sheet and no longer pushes the workspace */
+  body.guide-open main { margin-right: 0; }
+  .guide-rail { top: auto; bottom: 0; left: 0; right: 0; width: auto;
+    max-height: 46vh; border-radius: 10px 10px 0 0; }
+  header { flex-wrap: wrap; gap: .5rem .8rem; }
+  .toolbar { width: 100%; }
+  .diff-cols { flex-direction: column; }
+}
+@media (max-width: 420px) {
+  h1 { font-size: .95rem; }
+  header { padding: .5rem .6rem; }
+  .grid { padding: 6px; gap: 6px; }
+  .fr-card { padding: 1.1rem 1.1rem; }
+}
+
+/* (6) Respect reduced-motion: kill transitions/animations/smooth-scroll so the
+   guide push, progress-bar fill, and hover filters don't animate for users who
+   ask the OS to reduce motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}

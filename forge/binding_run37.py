@@ -62,9 +62,11 @@ SKIP_NATIVE = os.environ.get("TRVM_SKIP_NATIVE") == "1"
 # The alpha-cut consistency battery tracks the CURRENT source version. Each prior
 # release ARCHIVE is unchanged; v0.7.0-alpha.2 was the First-Run State Closure
 # (binding_run38.py, OA1-OA12), v0.7.0-alpha.3 was the Error and Progress UX
-# Closure (binding_run39.py, PB1-PB20), and v0.7.0-alpha.4 is the Immutable
-# Template Catalog (binding_run40.py, PC1-PC24).
-ALPHA = "v0.7.0-alpha.4"
+# Closure (binding_run39.py, PB1-PB20), v0.7.0-alpha.4 was the Immutable
+# Template Catalog (binding_run40.py, PC1-PC24) + v0.7-3.1 reopen closure
+# (binding_run41.py, PC25-PC30), and v0.7.0-alpha.5 is the Visual / Responsive
+# Closure (binding_run42.py, PC31-PC38).
+ALPHA = "v0.7.0-alpha.5"
 
 
 def _load(path, name):

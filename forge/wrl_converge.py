@@ -147,9 +147,23 @@ class CanvasSession:
     """A canvas editing session over ONE world: a WorldDraft (semantic identity)
     bound to a CanvasLayoutV1 (presentation). Construct via `new_session`."""
 
-    def __init__(self, draft):
+    def __init__(self, draft, layout=None):
         self.draft = draft
-        self.layout = self._layout_from_draft(seed=None)
+        # `layout` (optional) is a curated CanvasLayoutV1 to SEED the presentation
+        # from -- e.g. a template's manifest layout. It is reconciled onto the
+        # draft's working graph exactly like any prior layout: surviving objects /
+        # edges keep the seeded presentation, newcomers get the deterministic
+        # default, and anything not in the graph is dropped. Presentation NEVER
+        # feeds the semantic id, so seeding a layout moves no identity.
+        #
+        # The session OWNS the seed contract: it deep-copies (so a caller can
+        # never share a mutable presentation object with the session) and
+        # validates (`validate_layout_v1`) at THIS API boundary, so a malformed
+        # curated layout fails closed here rather than silently reconciling. A
+        # caller need not pre-copy or pre-validate.
+        seed = (CV.validate_layout_v1(copy.deepcopy(layout))
+                if layout is not None else None)
+        self.layout = self._layout_from_draft(seed=seed)
         self._layout_history = []      # pre-edit layout snapshots, parallel undo
         self.commits = []              # append-only commit log (session bookkeeping)
         # v0.5.1 workspace state (all non-identity sidecars):
@@ -358,10 +372,12 @@ class CanvasSession:
 
 
 # ------------------------------------------------------------- construction
-def new_session(program_or_artifact, draft_id):
-    """Open a CanvasSession over a sealed world: a fresh WorldDraft plus the
-    deterministic default CanvasLayoutV1 for its graph."""
-    return CanvasSession(D.new_draft(program_or_artifact, draft_id))
+def new_session(program_or_artifact, draft_id, layout=None):
+    """Open a CanvasSession over a sealed world: a fresh WorldDraft plus a
+    CanvasLayoutV1 for its graph. With no `layout` the deterministic default
+    layout is used; a curated `layout` (e.g. a template manifest's) is reconciled
+    onto the draft's working graph (presentation only -- moves no identity)."""
+    return CanvasSession(D.new_draft(program_or_artifact, draft_id), layout=layout)
 
 
 # ------------------------------------------------- workspace serialization (v0.5.1)

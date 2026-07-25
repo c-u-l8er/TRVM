@@ -8,7 +8,7 @@ it through the real **WRL → IR → CompilePlan → TRVM** pipeline, folds it w
 interaction-calculus runtime, and shows the sealed identity plus the per-epoch
 film. It is the reference authoring surface for the TRVM Forge world model.
 
-> **Status: Public Alpha (v0.7.0-alpha.4).** The `forge.world.core.v1` profile,
+> **Status: Public Alpha (v0.7.0-alpha.5).** The `forge.world.core.v1` profile,
 > the identity rules, and the Golden Demo are **frozen** and parity-checked
 > (`ic_ref == ic32`); the product interface remains **alpha**. Expect UI and doc
 > changes; the on-disk formats are versioned and forward-only.

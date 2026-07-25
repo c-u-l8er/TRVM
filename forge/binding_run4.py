@@ -10,14 +10,16 @@ forge.world.core.v1) end to end on the grounded deterministic-circuit-world:
   W1 adapter fidelity: WRL text -> IR v1 -> Fixture reproduces the hand-built
      mkfx(8,4) fixture EXACTLY (pulsers/doors/edges/spinners/orbs/sockets).
   W2 IR shape: the emitted artifact carries the frozen top-level form
-     (profile, five-role registry closure, two-edge closure, admit policy id).
+     (profile, role registry closure, two-edge closure, admit policy id).
   W3 Film v0.7 trajectory parity: the SAME WRL program, run through the
      adapter fixture, folds over K epochs in ONE IC term whose single native
      normalization renders the IDENTICAL v0.7 film trajectory as the golden
      admit_step + world-step (ic_ref == ic32 == golden).
-  W4 unsupported-feature diagnostics: async ~~ route, a capability gate, a
-     sixth role, and an out-of-registry edge each raise WrlUnsupported with a
-     clear message -- NEVER a speculative lowering.
+  W4 unsupported-feature diagnostics: async ~~ route, a capability gate, an
+     out-of-registry role, and an out-of-registry edge each raise
+     WrlUnsupported with a clear message -- NEVER a speculative lowering.
+     The `~~` ROUTE stays unsupported at the text surface after Slice A
+     (Slice B owns emission) even though the Mailbox ROLE is now sanctioned.
 
 W3 reuses the 3b.5f-2b fold harness (binding_run3o) since the adapter fixture
 equals binding_run3o.FX; this shows the WRL front-end feeds the proven
@@ -170,15 +172,28 @@ def w4_diagnostics():
             print(f"  W4 diagnostic [{name}]: {ex}")
             continue
         raise AssertionError(f"{name} should have been rejected")
-    # sixth (out-of-registry) role at the IR stage
+    # out-of-registry role at the IR stage.
+    #
+    # This probe USED to use "Mailbox", but IR v1.1 / Slice A ruling Q2 made
+    # Mailbox the SANCTIONED sixth role, so that spelling now rejects only
+    # because its MailboxDecl config is incomplete -- which would leave this
+    # check passing for the wrong reason and no longer testing registry
+    # closure at all. It uses a genuinely unregistered role instead.
     g = parse_wrl("profile forge.world.core.v1\nperiods 1\ndoor d0\n")
-    g.nodes.append(("Mailbox", "mb0", {}))
+    g.nodes.append(("Portal", "pt0", {}))
     try:
         graph_to_ir(g)
     except WrlUnsupported as ex:
-        print(f"  W4 diagnostic [sixth role]: {ex}")
+        print(f"  W4 diagnostic [out-of-registry role]: {ex}")
     else:
-        raise AssertionError("sixth role should have been rejected")
+        raise AssertionError("out-of-registry role should have been rejected")
+    # ...and the sanctioned sixth role is admitted when well-formed (Q2).
+    g = parse_wrl("profile forge.world.core.v1\nperiods 1\ndoor d0\n")
+    g.nodes.append(("Mailbox", "mb0", {"w": 4, "cap": 2}))
+    art_mb = graph_to_ir(g)
+    assert art_mb["schemas"]["runtime_state_schema"] == "RuntimeStateV1_1", \
+        "a mailbox-bearing artifact must declare the v1_1 runtime state schema"
+    print("  W4 diagnostic [sanctioned Mailbox]: admitted, schema RuntimeStateV1_1")
     # out-of-registry edge kind is gated at graph_to_ir (edge-closure guard)
     g2 = parse_wrl("profile forge.world.core.v1\nperiods 1\nrelay a\nrelay b\n")
     g2.edges.append(("AsyncMsg", "a", "b"))

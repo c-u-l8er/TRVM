@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""build_forge_release.py -- the ALLOWLISTED Forge release builder (v0.7.0-alpha.4).
+"""build_forge_release.py -- the ALLOWLISTED Forge release builder (v0.7.0-alpha.5).
 
 GPT-5.6's v0.6.5 ruling: a distributable release must be built from an EXPLICIT
 allowlist -- it copies only approved files and FAILS if any forbidden path (local
