@@ -1,0 +1,4576 @@
+[
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "r0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "p1"
+    },
+    {
+     "dst": "sp",
+     "kind": "SignalWire",
+     "src": "r0"
+    },
+    {
+     "dst": "ob",
+     "kind": "SocketControl",
+     "src": "sp"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "ob",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p1",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "once",
+       1
+      ]
+     }
+    },
+    {
+     "object_id": "r0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "sp",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-6ce5d9b0a058ef5ee7a04a5362d67a2b6c87376259e9206e16bbf339dc091e32"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[orb:ob]{pose}\n[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p1](mode=once, epoch=1){sig_out}\n[relay:r0]{sig_in, sig_out}\n[spinner:sp](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [d0]\n[r0] --sig--> [sp]\n[sp] --socket--> [ob]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-8ae91fe9cbc5fd086ce4356d587c403211e5c7b2b3ebdd316496367429ecfe4a",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[relay:r0]{sig_in, sig_out}\n[spinner:sp](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:ob]{pose}\n[pulser:p1](once at 1){sig_out}\n[door:d0]{sig_in}\n\n[pulser:p0] --sig--> [relay:r0]\n[relay:r0] --sig--> [spinner:sp]\n[spinner:sp] --socket--> [orb:ob]\n[pulser:p1] --sig--> [door:d0]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "p0"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-3367285ed7536806fee096080cadeaedc1bded0f294e21fd1a33f96d16774478"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n\n[p0] --sig--> [d0]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-c36f172c0b12f8b54642ef57e9da4f4b54f5ea7f1d1979b2ba25d815f3ed1fa9",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[door:d0]{sig_in}\n\n[p0] --sig--> [d0]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "r0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "r0"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "r0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-e24210aa8005a2a8e1fbcbb7ef6a68cf62679df2398cb8d241bee2618d7fe613"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n[relay:r0]{sig_in, sig_out}\n\n[p0] --sig--> [r0]\n[r0] --sig--> [d0]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-186bb9c317755a1dffe2dd0c8e445e1a7cfe883516fbebf77da353b303d57fd3",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[relay:r0]{sig_in, sig_out}\n[door:d0]{sig_in}\n\n[p0] --sig--> [r0]\n[r0] --sig--> [d0]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "s0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "o0",
+     "kind": "SocketControl",
+     "src": "s0"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "o0",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "s0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-625494635629d60106e7caea35850fcedfcf3237847b08062fd3144eea6eccc5"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[orb:o0]{pose}\n[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n[spinner:s0](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n\n[p0] --sig--> [s0]\n[s0] --socket--> [o0]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-f006ee6231aad59230148e459d6389b8da4ef7e3262f8355b9ba6ab65696d582",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[spinner:s0](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:o0]{pose}\n\n[p0] --sig--> [s0]\n[s0] --socket--> [o0]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "r0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "r1",
+     "kind": "SignalWire",
+     "src": "p1"
+    },
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "r0"
+    },
+    {
+     "dst": "d1",
+     "kind": "SignalWire",
+     "src": "r1"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p1",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "r0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-668f8727a864d638cb64e00d603ce37f9aa9287f0a6eeea671399271e91642a1"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p1](mode=periodic, period=3, phase=0){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[r0] --sig--> [d0]\n[r1] --sig--> [d1]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-a5a3c5172574ab9382ccca51e72f9eee9ea6a0fb74cf46f33e02619b3af12c15",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[pulser:p1](every 3){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[r0] --sig--> [d0]\n[r1] --sig--> [d1]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "r0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "s0",
+     "kind": "SignalWire",
+     "src": "p1"
+    },
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "r0"
+    },
+    {
+     "dst": "o0",
+     "kind": "SocketControl",
+     "src": "s0"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o0",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p1",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "r0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "s0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-f8890df9501a25862d77b5866d82e35391371a17adb91a747713b0f75ae90149"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[orb:o0]{pose}\n[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p1](mode=periodic, period=3, phase=0){sig_out}\n[relay:r0]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [s0]\n[r0] --sig--> [d0]\n[s0] --socket--> [o0]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-98d5ceea80dd6dde977788f880a39c18a966c614db0655d38193924756f75073",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[pulser:p1](every 3){sig_out}\n[relay:r0]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:o0]{pose}\n[door:d0]{sig_in}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [s0]\n[r0] --sig--> [d0]\n[s0] --socket--> [o0]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "r0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "r1",
+     "kind": "SignalWire",
+     "src": "p1"
+    },
+    {
+     "dst": "r2",
+     "kind": "SignalWire",
+     "src": "r0"
+    },
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "r1"
+    },
+    {
+     "dst": "d1",
+     "kind": "SignalWire",
+     "src": "r2"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p1",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "r0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-cd75813ee2adadc275923e6d9e0a3f1193a4f99b7dd0712ac3d38891d87f3235"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p1](mode=periodic, period=3, phase=0){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[r0] --sig--> [r2]\n[r1] --sig--> [d0]\n[r2] --sig--> [d1]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-149f120f36735c72b3acb35351b9cc80a1e3a38decefd7662480732541ea5a46",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[pulser:p1](every 3){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[r0] --sig--> [r2]\n[r1] --sig--> [d0]\n[r2] --sig--> [d1]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "r0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "r1",
+     "kind": "SignalWire",
+     "src": "p1"
+    },
+    {
+     "dst": "r2",
+     "kind": "SignalWire",
+     "src": "p2"
+    },
+    {
+     "dst": "s0",
+     "kind": "SignalWire",
+     "src": "r0"
+    },
+    {
+     "dst": "s1",
+     "kind": "SignalWire",
+     "src": "r1"
+    },
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "r2"
+    },
+    {
+     "dst": "o0",
+     "kind": "SocketControl",
+     "src": "s0"
+    },
+    {
+     "dst": "o1",
+     "kind": "SocketControl",
+     "src": "s1"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o0",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o1",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p1",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p2",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       4,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "r0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "s0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    },
+    {
+     "object_id": "s1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-188c45dd3455aff4341db8813f569438bac63f50c9caf37b2e4697e2ddc87fef"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[orb:o0]{pose}\n[orb:o1]{pose}\n[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p1](mode=periodic, period=3, phase=0){sig_out}\n[pulser:p2](mode=periodic, period=4, phase=0){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n[spinner:s1](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[r0] --sig--> [s0]\n[r1] --sig--> [s1]\n[r2] --sig--> [d0]\n[s0] --socket--> [o0]\n[s1] --socket--> [o1]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-0a638b80ca5887bad446aff10df961e3a464b1ea7507ddb9a28885f6f1a30a0c",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[pulser:p1](every 3){sig_out}\n[pulser:p2](every 4){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[spinner:s1](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:o0]{pose}\n[orb:o1]{pose}\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[r0] --sig--> [s0]\n[r1] --sig--> [s1]\n[r2] --sig--> [d0]\n[s0] --socket--> [o0]\n[s1] --socket--> [o1]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "r0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "r1",
+     "kind": "SignalWire",
+     "src": "p1"
+    },
+    {
+     "dst": "r2",
+     "kind": "SignalWire",
+     "src": "p2"
+    },
+    {
+     "dst": "r3",
+     "kind": "SignalWire",
+     "src": "p3"
+    },
+    {
+     "dst": "s0",
+     "kind": "SignalWire",
+     "src": "r0"
+    },
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "r1"
+    },
+    {
+     "dst": "d1",
+     "kind": "SignalWire",
+     "src": "r2"
+    },
+    {
+     "dst": "d2",
+     "kind": "SignalWire",
+     "src": "r3"
+    },
+    {
+     "dst": "o0",
+     "kind": "SocketControl",
+     "src": "s0"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o0",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p1",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p2",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       4,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p3",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "r0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r3",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "s0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-6859907ba97cf7c3df64e366630a55804424f8fd48019fd9294e8f83e5e76856"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[door:d2]{sig_in}\n[orb:o0]{pose}\n[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p1](mode=periodic, period=3, phase=0){sig_out}\n[pulser:p2](mode=periodic, period=4, phase=0){sig_out}\n[pulser:p3](mode=periodic, period=2, phase=0){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[relay:r3]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[p3] --sig--> [r3]\n[r0] --sig--> [s0]\n[r1] --sig--> [d0]\n[r2] --sig--> [d1]\n[r3] --sig--> [d2]\n[s0] --socket--> [o0]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-344c4e16c97cef90642433c29cc2371c3e2559024dae144676b7cac76c1d5f0d",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[pulser:p1](every 3){sig_out}\n[pulser:p2](every 4){sig_out}\n[pulser:p3](every 2){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[relay:r3]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:o0]{pose}\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[door:d2]{sig_in}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[p3] --sig--> [r3]\n[r0] --sig--> [s0]\n[r1] --sig--> [d0]\n[r2] --sig--> [d1]\n[r3] --sig--> [d2]\n[s0] --socket--> [o0]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "r0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "r1",
+     "kind": "SignalWire",
+     "src": "p1"
+    },
+    {
+     "dst": "r2",
+     "kind": "SignalWire",
+     "src": "p2"
+    },
+    {
+     "dst": "r3",
+     "kind": "SignalWire",
+     "src": "p3"
+    },
+    {
+     "dst": "r4",
+     "kind": "SignalWire",
+     "src": "p4"
+    },
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "r0"
+    },
+    {
+     "dst": "d1",
+     "kind": "SignalWire",
+     "src": "r1"
+    },
+    {
+     "dst": "d2",
+     "kind": "SignalWire",
+     "src": "r2"
+    },
+    {
+     "dst": "d3",
+     "kind": "SignalWire",
+     "src": "r3"
+    },
+    {
+     "dst": "d4",
+     "kind": "SignalWire",
+     "src": "r4"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d3",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d4",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p1",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p2",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       4,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p3",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p4",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "r0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r3",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r4",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-dd55dad3a337c58b3446fbc85e15c5fbc4ddbeb026721d3ef906ba01f50bf5a3"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[door:d2]{sig_in}\n[door:d3]{sig_in}\n[door:d4]{sig_in}\n[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p1](mode=periodic, period=3, phase=0){sig_out}\n[pulser:p2](mode=periodic, period=4, phase=0){sig_out}\n[pulser:p3](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p4](mode=periodic, period=3, phase=0){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[relay:r3]{sig_in, sig_out}\n[relay:r4]{sig_in, sig_out}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[p3] --sig--> [r3]\n[p4] --sig--> [r4]\n[r0] --sig--> [d0]\n[r1] --sig--> [d1]\n[r2] --sig--> [d2]\n[r3] --sig--> [d3]\n[r4] --sig--> [d4]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-c6de954bfe0d51c210d585da0878e4bc221259be0f2faae254c19f15d3b8b1b9",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[pulser:p1](every 3){sig_out}\n[pulser:p2](every 4){sig_out}\n[pulser:p3](every 2){sig_out}\n[pulser:p4](every 3){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[relay:r3]{sig_in, sig_out}\n[relay:r4]{sig_in, sig_out}\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[door:d2]{sig_in}\n[door:d3]{sig_in}\n[door:d4]{sig_in}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[p3] --sig--> [r3]\n[p4] --sig--> [r4]\n[r0] --sig--> [d0]\n[r1] --sig--> [d1]\n[r2] --sig--> [d2]\n[r3] --sig--> [d3]\n[r4] --sig--> [d4]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "r0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "r1",
+     "kind": "SignalWire",
+     "src": "p1"
+    },
+    {
+     "dst": "r2",
+     "kind": "SignalWire",
+     "src": "p2"
+    },
+    {
+     "dst": "r3",
+     "kind": "SignalWire",
+     "src": "p3"
+    },
+    {
+     "dst": "r4",
+     "kind": "SignalWire",
+     "src": "p4"
+    },
+    {
+     "dst": "r5",
+     "kind": "SignalWire",
+     "src": "p5"
+    },
+    {
+     "dst": "s0",
+     "kind": "SignalWire",
+     "src": "r0"
+    },
+    {
+     "dst": "s1",
+     "kind": "SignalWire",
+     "src": "r1"
+    },
+    {
+     "dst": "s2",
+     "kind": "SignalWire",
+     "src": "r2"
+    },
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "r3"
+    },
+    {
+     "dst": "d1",
+     "kind": "SignalWire",
+     "src": "r4"
+    },
+    {
+     "dst": "d2",
+     "kind": "SignalWire",
+     "src": "r5"
+    },
+    {
+     "dst": "o0",
+     "kind": "SocketControl",
+     "src": "s0"
+    },
+    {
+     "dst": "o1",
+     "kind": "SocketControl",
+     "src": "s1"
+    },
+    {
+     "dst": "o2",
+     "kind": "SocketControl",
+     "src": "s2"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d3",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o0",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o1",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o2",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p1",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p2",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       4,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p3",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p4",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p5",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       4,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "r0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r3",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r4",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r5",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "s0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    },
+    {
+     "object_id": "s1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    },
+    {
+     "object_id": "s2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-9f443e56a9264f219ed0b7044c62c6395c9d0d470435e6d1a97954b7fdd33de4"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[door:d2]{sig_in}\n[door:d3]{sig_in}\n[orb:o0]{pose}\n[orb:o1]{pose}\n[orb:o2]{pose}\n[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p1](mode=periodic, period=3, phase=0){sig_out}\n[pulser:p2](mode=periodic, period=4, phase=0){sig_out}\n[pulser:p3](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p4](mode=periodic, period=3, phase=0){sig_out}\n[pulser:p5](mode=periodic, period=4, phase=0){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[relay:r3]{sig_in, sig_out}\n[relay:r4]{sig_in, sig_out}\n[relay:r5]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n[spinner:s1](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n[spinner:s2](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[p3] --sig--> [r3]\n[p4] --sig--> [r4]\n[p5] --sig--> [r5]\n[r0] --sig--> [s0]\n[r1] --sig--> [s1]\n[r2] --sig--> [s2]\n[r3] --sig--> [d0]\n[r4] --sig--> [d1]\n[r5] --sig--> [d2]\n[s0] --socket--> [o0]\n[s1] --socket--> [o1]\n[s2] --socket--> [o2]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-dad2bf663de4d97e7b3ec6cf0ddd95cccbb712693b99bb1ce81dbafa01a434a4",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[pulser:p1](every 3){sig_out}\n[pulser:p2](every 4){sig_out}\n[pulser:p3](every 2){sig_out}\n[pulser:p4](every 3){sig_out}\n[pulser:p5](every 4){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[relay:r3]{sig_in, sig_out}\n[relay:r4]{sig_in, sig_out}\n[relay:r5]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[spinner:s1](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[spinner:s2](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:o0]{pose}\n[orb:o1]{pose}\n[orb:o2]{pose}\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[door:d2]{sig_in}\n[door:d3]{sig_in}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[p3] --sig--> [r3]\n[p4] --sig--> [r4]\n[p5] --sig--> [r5]\n[r0] --sig--> [s0]\n[r1] --sig--> [s1]\n[r2] --sig--> [s2]\n[r3] --sig--> [d0]\n[r4] --sig--> [d1]\n[r5] --sig--> [d2]\n[s0] --socket--> [o0]\n[s1] --socket--> [o1]\n[s2] --socket--> [o2]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "r0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "r1",
+     "kind": "SignalWire",
+     "src": "p1"
+    },
+    {
+     "dst": "r2",
+     "kind": "SignalWire",
+     "src": "p2"
+    },
+    {
+     "dst": "r3",
+     "kind": "SignalWire",
+     "src": "p3"
+    },
+    {
+     "dst": "r4",
+     "kind": "SignalWire",
+     "src": "p4"
+    },
+    {
+     "dst": "r5",
+     "kind": "SignalWire",
+     "src": "p5"
+    },
+    {
+     "dst": "r6",
+     "kind": "SignalWire",
+     "src": "p6"
+    },
+    {
+     "dst": "r7",
+     "kind": "SignalWire",
+     "src": "p7"
+    },
+    {
+     "dst": "s0",
+     "kind": "SignalWire",
+     "src": "r0"
+    },
+    {
+     "dst": "s1",
+     "kind": "SignalWire",
+     "src": "r1"
+    },
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "r2"
+    },
+    {
+     "dst": "d1",
+     "kind": "SignalWire",
+     "src": "r3"
+    },
+    {
+     "dst": "d2",
+     "kind": "SignalWire",
+     "src": "r4"
+    },
+    {
+     "dst": "d3",
+     "kind": "SignalWire",
+     "src": "r5"
+    },
+    {
+     "dst": "d4",
+     "kind": "SignalWire",
+     "src": "r6"
+    },
+    {
+     "dst": "d5",
+     "kind": "SignalWire",
+     "src": "r7"
+    },
+    {
+     "dst": "o0",
+     "kind": "SocketControl",
+     "src": "s0"
+    },
+    {
+     "dst": "o1",
+     "kind": "SocketControl",
+     "src": "s1"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d3",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d4",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d5",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o0",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o1",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p1",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p2",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       4,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p3",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p4",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p5",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       4,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p6",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p7",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "r0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r3",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r4",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r5",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r6",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r7",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "s0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    },
+    {
+     "object_id": "s1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-7092426e7e9aef998ee27838d47bbd601b27acd49450ee0793425f701019c7ef"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[door:d2]{sig_in}\n[door:d3]{sig_in}\n[door:d4]{sig_in}\n[door:d5]{sig_in}\n[orb:o0]{pose}\n[orb:o1]{pose}\n[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p1](mode=periodic, period=3, phase=0){sig_out}\n[pulser:p2](mode=periodic, period=4, phase=0){sig_out}\n[pulser:p3](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p4](mode=periodic, period=3, phase=0){sig_out}\n[pulser:p5](mode=periodic, period=4, phase=0){sig_out}\n[pulser:p6](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p7](mode=periodic, period=3, phase=0){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[relay:r3]{sig_in, sig_out}\n[relay:r4]{sig_in, sig_out}\n[relay:r5]{sig_in, sig_out}\n[relay:r6]{sig_in, sig_out}\n[relay:r7]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n[spinner:s1](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[p3] --sig--> [r3]\n[p4] --sig--> [r4]\n[p5] --sig--> [r5]\n[p6] --sig--> [r6]\n[p7] --sig--> [r7]\n[r0] --sig--> [s0]\n[r1] --sig--> [s1]\n[r2] --sig--> [d0]\n[r3] --sig--> [d1]\n[r4] --sig--> [d2]\n[r5] --sig--> [d3]\n[r6] --sig--> [d4]\n[r7] --sig--> [d5]\n[s0] --socket--> [o0]\n[s1] --socket--> [o1]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-5aa5c2cef916b038086be77dd12ce6c1bd3f323f6da40a7e53ba78d2ed01295e",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[pulser:p1](every 3){sig_out}\n[pulser:p2](every 4){sig_out}\n[pulser:p3](every 2){sig_out}\n[pulser:p4](every 3){sig_out}\n[pulser:p5](every 4){sig_out}\n[pulser:p6](every 2){sig_out}\n[pulser:p7](every 3){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[relay:r3]{sig_in, sig_out}\n[relay:r4]{sig_in, sig_out}\n[relay:r5]{sig_in, sig_out}\n[relay:r6]{sig_in, sig_out}\n[relay:r7]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[spinner:s1](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:o0]{pose}\n[orb:o1]{pose}\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[door:d2]{sig_in}\n[door:d3]{sig_in}\n[door:d4]{sig_in}\n[door:d5]{sig_in}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[p3] --sig--> [r3]\n[p4] --sig--> [r4]\n[p5] --sig--> [r5]\n[p6] --sig--> [r6]\n[p7] --sig--> [r7]\n[r0] --sig--> [s0]\n[r1] --sig--> [s1]\n[r2] --sig--> [d0]\n[r3] --sig--> [d1]\n[r4] --sig--> [d2]\n[r5] --sig--> [d3]\n[r6] --sig--> [d4]\n[r7] --sig--> [d5]\n[s0] --socket--> [o0]\n[s1] --socket--> [o1]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "p0"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-26fcc05521f60a4da149d502a7a80ae371d9c2ca1abb2ef3ba7a4de59db9933a"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[pulser:p0](mode=periodic, period=3, phase=0){sig_out}\n\n[p0] --sig--> [d0]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-ef296619c87aac30b2aff2ac3f73c1e85bc44c30637ae4307c0a920cb3ab2b61",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 3){sig_out}\n[door:d0]{sig_in}\n\n[p0] --sig--> [d0]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "p0"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o9",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-d59a4252be4623cbf51662864d0fb6e19d38953c8d82697e51f59523e2003efc"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[orb:o9]{pose}\n[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n\n[p0] --sig--> [d0]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-f52660b8725135e727805fe7f60bd644aef6f2875942a1ac878f031d35502bbf",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[door:d0]{sig_in}\n[orb:o9]{pose}\n\n[p0] --sig--> [d0]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "p0"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o9",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       4,
+       0
+      ]
+     }
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-7dd80e5a42fc4ba7bc571da335cf762814e9c947d2272bea6ffa1da99eb9b306"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[orb:o9]{pose}\n[pulser:p0](mode=periodic, period=4, phase=0){sig_out}\n\n[p0] --sig--> [d0]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-bca3396c7a7355c5558369e2661a3c2554b89e6080167ee44b53e435dc9e0b7e",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 4){sig_out}\n[door:d0]{sig_in}\n[orb:o9]{pose}\n\n[p0] --sig--> [d0]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "r0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "r1",
+     "kind": "SignalWire",
+     "src": "p1"
+    },
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "r0"
+    },
+    {
+     "dst": "d1",
+     "kind": "SignalWire",
+     "src": "r1"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       5,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p1",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "r0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-63d318ec41e0c655dfed862333fe55f31ca5b47d5020745779585420a2252baa"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[pulser:p0](mode=periodic, period=5, phase=0){sig_out}\n[pulser:p1](mode=periodic, period=3, phase=0){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[r0] --sig--> [d0]\n[r1] --sig--> [d1]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-d7e364a5cee77458dbe728691d27011365a49234985c43b06ae869f390d99296",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 5){sig_out}\n[pulser:p1](every 3){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[r0] --sig--> [d0]\n[r1] --sig--> [d1]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "r0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "r1",
+     "kind": "SignalWire",
+     "src": "p1"
+    },
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "r0"
+    },
+    {
+     "dst": "d1",
+     "kind": "SignalWire",
+     "src": "r1"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o9",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p1",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "r0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-29cd45ab050878447c772c6a6488093a6e1365b84c6e6c130483eb54a736785e"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[orb:o9]{pose}\n[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p1](mode=periodic, period=3, phase=0){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[r0] --sig--> [d0]\n[r1] --sig--> [d1]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-75c7e5413358ee6188c97505991d2ea5ecc98aad86cf363cf164d5145c2fc3e0",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[pulser:p1](every 3){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[orb:o9]{pose}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[r0] --sig--> [d0]\n[r1] --sig--> [d1]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "r0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "r1",
+     "kind": "SignalWire",
+     "src": "p1"
+    },
+    {
+     "dst": "r2",
+     "kind": "SignalWire",
+     "src": "p2"
+    },
+    {
+     "dst": "s0",
+     "kind": "SignalWire",
+     "src": "r0"
+    },
+    {
+     "dst": "s1",
+     "kind": "SignalWire",
+     "src": "r1"
+    },
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "r2"
+    },
+    {
+     "dst": "o0",
+     "kind": "SocketControl",
+     "src": "s0"
+    },
+    {
+     "dst": "o1",
+     "kind": "SocketControl",
+     "src": "s1"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o0",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o1",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       6,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p1",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p2",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       4,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "r0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "s0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    },
+    {
+     "object_id": "s1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-22fe3d3b85a082d34b86ba2454d041eb595a07cf686b478eb233638b28d1344f"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[orb:o0]{pose}\n[orb:o1]{pose}\n[pulser:p0](mode=periodic, period=6, phase=0){sig_out}\n[pulser:p1](mode=periodic, period=3, phase=0){sig_out}\n[pulser:p2](mode=periodic, period=4, phase=0){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n[spinner:s1](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[r0] --sig--> [s0]\n[r1] --sig--> [s1]\n[r2] --sig--> [d0]\n[s0] --socket--> [o0]\n[s1] --socket--> [o1]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-e4c94f57c10f1824ec0ec75fceab2f9b286522eecc3a2464871d451a6b099aa5",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 6){sig_out}\n[pulser:p1](every 3){sig_out}\n[pulser:p2](every 4){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[spinner:s1](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:o0]{pose}\n[orb:o1]{pose}\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[r0] --sig--> [s0]\n[r1] --sig--> [s1]\n[r2] --sig--> [d0]\n[s0] --socket--> [o0]\n[s1] --socket--> [o1]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "r0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "r1",
+     "kind": "SignalWire",
+     "src": "p1"
+    },
+    {
+     "dst": "r2",
+     "kind": "SignalWire",
+     "src": "p2"
+    },
+    {
+     "dst": "s0",
+     "kind": "SignalWire",
+     "src": "r0"
+    },
+    {
+     "dst": "s1",
+     "kind": "SignalWire",
+     "src": "r1"
+    },
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "r2"
+    },
+    {
+     "dst": "o0",
+     "kind": "SocketControl",
+     "src": "s0"
+    },
+    {
+     "dst": "o1",
+     "kind": "SocketControl",
+     "src": "s1"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o0",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o1",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o9",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p1",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p2",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       4,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "r0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "s0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    },
+    {
+     "object_id": "s1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-439f0d6cae5f65791b98bd0d6bdee10a61d96080229d30f6b9e73dd29eddb240"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[orb:o0]{pose}\n[orb:o1]{pose}\n[orb:o9]{pose}\n[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p1](mode=periodic, period=3, phase=0){sig_out}\n[pulser:p2](mode=periodic, period=4, phase=0){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n[spinner:s1](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[r0] --sig--> [s0]\n[r1] --sig--> [s1]\n[r2] --sig--> [d0]\n[s0] --socket--> [o0]\n[s1] --socket--> [o1]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-8a976a0d12fd8ade265898c0fd6dd0915af415f2f2f3592047b969d092ca99e8",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[pulser:p1](every 3){sig_out}\n[pulser:p2](every 4){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[spinner:s1](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:o0]{pose}\n[orb:o1]{pose}\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[orb:o9]{pose}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[r0] --sig--> [s0]\n[r1] --sig--> [s1]\n[r2] --sig--> [d0]\n[s0] --socket--> [o0]\n[s1] --socket--> [o1]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "r0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "r1",
+     "kind": "SignalWire",
+     "src": "p1"
+    },
+    {
+     "dst": "r2",
+     "kind": "SignalWire",
+     "src": "p2"
+    },
+    {
+     "dst": "r3",
+     "kind": "SignalWire",
+     "src": "p3"
+    },
+    {
+     "dst": "r4",
+     "kind": "SignalWire",
+     "src": "p4"
+    },
+    {
+     "dst": "r5",
+     "kind": "SignalWire",
+     "src": "p5"
+    },
+    {
+     "dst": "s0",
+     "kind": "SignalWire",
+     "src": "r0"
+    },
+    {
+     "dst": "s1",
+     "kind": "SignalWire",
+     "src": "r1"
+    },
+    {
+     "dst": "s2",
+     "kind": "SignalWire",
+     "src": "r2"
+    },
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "r3"
+    },
+    {
+     "dst": "d1",
+     "kind": "SignalWire",
+     "src": "r4"
+    },
+    {
+     "dst": "d2",
+     "kind": "SignalWire",
+     "src": "r5"
+    },
+    {
+     "dst": "o0",
+     "kind": "SocketControl",
+     "src": "s0"
+    },
+    {
+     "dst": "o1",
+     "kind": "SocketControl",
+     "src": "s1"
+    },
+    {
+     "dst": "o2",
+     "kind": "SocketControl",
+     "src": "s2"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d3",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o0",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o1",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o2",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       7,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p1",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p2",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       4,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p3",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       7,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p4",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p5",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       4,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "r0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r3",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r4",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r5",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "s0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    },
+    {
+     "object_id": "s1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    },
+    {
+     "object_id": "s2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-2c7341d9dcccfec8dc6d956580df7dd60f1899c02927d955834850c92ac01798"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[door:d2]{sig_in}\n[door:d3]{sig_in}\n[orb:o0]{pose}\n[orb:o1]{pose}\n[orb:o2]{pose}\n[pulser:p0](mode=periodic, period=7, phase=0){sig_out}\n[pulser:p1](mode=periodic, period=3, phase=0){sig_out}\n[pulser:p2](mode=periodic, period=4, phase=0){sig_out}\n[pulser:p3](mode=periodic, period=7, phase=0){sig_out}\n[pulser:p4](mode=periodic, period=3, phase=0){sig_out}\n[pulser:p5](mode=periodic, period=4, phase=0){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[relay:r3]{sig_in, sig_out}\n[relay:r4]{sig_in, sig_out}\n[relay:r5]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n[spinner:s1](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n[spinner:s2](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[p3] --sig--> [r3]\n[p4] --sig--> [r4]\n[p5] --sig--> [r5]\n[r0] --sig--> [s0]\n[r1] --sig--> [s1]\n[r2] --sig--> [s2]\n[r3] --sig--> [d0]\n[r4] --sig--> [d1]\n[r5] --sig--> [d2]\n[s0] --socket--> [o0]\n[s1] --socket--> [o1]\n[s2] --socket--> [o2]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-d1cb22dc3b1aa89856323d557ed0bdad56e4510fa353f8fc819fa5d194d31088",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 7){sig_out}\n[pulser:p1](every 3){sig_out}\n[pulser:p2](every 4){sig_out}\n[pulser:p3](every 7){sig_out}\n[pulser:p4](every 3){sig_out}\n[pulser:p5](every 4){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[relay:r3]{sig_in, sig_out}\n[relay:r4]{sig_in, sig_out}\n[relay:r5]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[spinner:s1](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[spinner:s2](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:o0]{pose}\n[orb:o1]{pose}\n[orb:o2]{pose}\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[door:d2]{sig_in}\n[door:d3]{sig_in}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[p3] --sig--> [r3]\n[p4] --sig--> [r4]\n[p5] --sig--> [r5]\n[r0] --sig--> [s0]\n[r1] --sig--> [s1]\n[r2] --sig--> [s2]\n[r3] --sig--> [d0]\n[r4] --sig--> [d1]\n[r5] --sig--> [d2]\n[s0] --socket--> [o0]\n[s1] --socket--> [o1]\n[s2] --socket--> [o2]\n"
+ },
+ {
+  "artifact": {
+   "edges": [
+    {
+     "dst": "r0",
+     "kind": "SignalWire",
+     "src": "p0"
+    },
+    {
+     "dst": "r1",
+     "kind": "SignalWire",
+     "src": "p1"
+    },
+    {
+     "dst": "r2",
+     "kind": "SignalWire",
+     "src": "p2"
+    },
+    {
+     "dst": "r3",
+     "kind": "SignalWire",
+     "src": "p3"
+    },
+    {
+     "dst": "r4",
+     "kind": "SignalWire",
+     "src": "p4"
+    },
+    {
+     "dst": "r5",
+     "kind": "SignalWire",
+     "src": "p5"
+    },
+    {
+     "dst": "s0",
+     "kind": "SignalWire",
+     "src": "r0"
+    },
+    {
+     "dst": "s1",
+     "kind": "SignalWire",
+     "src": "r1"
+    },
+    {
+     "dst": "s2",
+     "kind": "SignalWire",
+     "src": "r2"
+    },
+    {
+     "dst": "d0",
+     "kind": "SignalWire",
+     "src": "r3"
+    },
+    {
+     "dst": "d1",
+     "kind": "SignalWire",
+     "src": "r4"
+    },
+    {
+     "dst": "d2",
+     "kind": "SignalWire",
+     "src": "r5"
+    },
+    {
+     "dst": "o0",
+     "kind": "SocketControl",
+     "src": "s0"
+    },
+    {
+     "dst": "o1",
+     "kind": "SocketControl",
+     "src": "s1"
+    },
+    {
+     "dst": "o2",
+     "kind": "SocketControl",
+     "src": "s2"
+    }
+   ],
+   "ir_version": "1.0",
+   "objects": [
+    {
+     "object_id": "d0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "d3",
+     "ports": {
+      "in": [
+       "sig_in"
+      ]
+     },
+     "role": "Door",
+     "state_schema_ref": "state.door.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o0",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o1",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o2",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "o9",
+     "ports": {
+      "in": [
+       "pose"
+      ]
+     },
+     "role": "Orb",
+     "state_schema_ref": "state.orb.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "p0",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p1",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p2",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       4,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p3",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       2,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p4",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       3,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "p5",
+     "ports": {
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Pulser",
+     "state_schema_ref": "state.pulser.v1",
+     "static_config": {
+      "clock": [
+       "periodic",
+       4,
+       0
+      ]
+     }
+    },
+    {
+     "object_id": "r0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r3",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r4",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "r5",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "sig_out"
+      ]
+     },
+     "role": "Relay",
+     "state_schema_ref": "state.relay.v1",
+     "static_config": {}
+    },
+    {
+     "object_id": "s0",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    },
+    {
+     "object_id": "s1",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    },
+    {
+     "object_id": "s2",
+     "ports": {
+      "in": [
+       "sig_in"
+      ],
+      "out": [
+       "socket"
+      ]
+     },
+     "role": "Spinner",
+     "state_schema_ref": "state.spinner.v1",
+     "static_config": {
+      "configurable": true,
+      "n": 8,
+      "rotor": [
+       181,
+       0,
+       0,
+       181
+      ],
+      "w": 16
+     }
+    }
+   ],
+   "profile_id": "forge.world.core.v1",
+   "schemas": {
+    "epoch_input_schema": "EpochInputV1",
+    "observable_schema": "EpochResultV1",
+    "runtime_state_schema": "RuntimeStateV1"
+   },
+   "semantic_policies": {
+    "admit_policy_id": "admit_candidate_min_firstreceipt_v1",
+    "film_schema_id": "film.v0.7",
+    "numeric_policy_ids": [
+     "POLICY_FORGE"
+    ],
+    "rulepack_id": "forge.world.core.rules.v1"
+   }
+  },
+  "binding": {
+   "kind": "proved",
+   "publisher": "wrlm.tools.build_pool",
+   "publisher_version": "1",
+   "source_sha256": "sha256-94c830acbc88bf871a3cb685ab70715aa2bd2e6d3285e4229c2165ecd8e0e8f9"
+  },
+  "engine_version": "v0.7.0-alpha.5",
+  "formatted_source": "profile forge.world.core.v1\n\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[door:d2]{sig_in}\n[door:d3]{sig_in}\n[orb:o0]{pose}\n[orb:o1]{pose}\n[orb:o2]{pose}\n[orb:o9]{pose}\n[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p1](mode=periodic, period=3, phase=0){sig_out}\n[pulser:p2](mode=periodic, period=4, phase=0){sig_out}\n[pulser:p3](mode=periodic, period=2, phase=0){sig_out}\n[pulser:p4](mode=periodic, period=3, phase=0){sig_out}\n[pulser:p5](mode=periodic, period=4, phase=0){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[relay:r3]{sig_in, sig_out}\n[relay:r4]{sig_in, sig_out}\n[relay:r5]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n[spinner:s1](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n[spinner:s2](w=16, n=8, rotor=181.0.0.181, configurable){sig_in, socket}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[p3] --sig--> [r3]\n[p4] --sig--> [r4]\n[p5] --sig--> [r5]\n[r0] --sig--> [s0]\n[r1] --sig--> [s1]\n[r2] --sig--> [s2]\n[r3] --sig--> [d0]\n[r4] --sig--> [d1]\n[r5] --sig--> [d2]\n[s0] --socket--> [o0]\n[s1] --socket--> [o1]\n[s2] --socket--> [o2]\n",
+  "lower_result_version": "forge.lower-result.v1",
+  "record_version": "wrlm.worldrecord.v1",
+  "semantic_id": "sem-8d2daec3947708f7398c54fb71950880c49c1f89367b8ae65e9674884eb6486c",
+  "source": "profile forge.world.core.v1\n\n[pulser:p0](every 2){sig_out}\n[pulser:p1](every 3){sig_out}\n[pulser:p2](every 4){sig_out}\n[pulser:p3](every 2){sig_out}\n[pulser:p4](every 3){sig_out}\n[pulser:p5](every 4){sig_out}\n[relay:r0]{sig_in, sig_out}\n[relay:r1]{sig_in, sig_out}\n[relay:r2]{sig_in, sig_out}\n[relay:r3]{sig_in, sig_out}\n[relay:r4]{sig_in, sig_out}\n[relay:r5]{sig_in, sig_out}\n[spinner:s0](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[spinner:s1](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[spinner:s2](w=16, n=8, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:o0]{pose}\n[orb:o1]{pose}\n[orb:o2]{pose}\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n[door:d2]{sig_in}\n[door:d3]{sig_in}\n[orb:o9]{pose}\n\n[p0] --sig--> [r0]\n[p1] --sig--> [r1]\n[p2] --sig--> [r2]\n[p3] --sig--> [r3]\n[p4] --sig--> [r4]\n[p5] --sig--> [r5]\n[r0] --sig--> [s0]\n[r1] --sig--> [s1]\n[r2] --sig--> [s2]\n[r3] --sig--> [d0]\n[r4] --sig--> [d1]\n[r5] --sig--> [d2]\n[s0] --socket--> [o0]\n[s1] --socket--> [o1]\n[s2] --socket--> [o2]\n"
+ }
+]

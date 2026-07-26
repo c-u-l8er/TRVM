@@ -377,13 +377,53 @@ live Forge caller --lower_source--> LowerResultV1
                     offline generation, no engine present, forever after
 ```
 
-`capture()` refuses unless all five bindings hold: the artifact's bytes derive `semantic_id`; the engine reports that same id; **both adapter paths agree on content, not just identity** (same `sem-` with different contents would mean the adapter pair is broken and a generator could build tasks about a world that never ran); the source is non-empty; the collections are closed. `validate_record_v1` re-checks the binding on reopen, because a stored record is still only bytes.
+`capture()` refuses unless all five bindings hold: the artifact's bytes derive `semantic_id`; the engine reports that same id; **both adapter paths agree on content, not just identity** (same `sem-` with different contents would mean the adapter pair is broken and a generator could build tasks about a world that never ran); the source arrives **sealed to the result it produced**; the collections are closed. `validate_record_v1` re-checks the binding on reopen, because a stored record is still only bytes.
+
+Binding 4 was originally weaker than that sentence claimed, and review caught it. `capture` used to take a free `source=` argument, so `capture(real_result, real_artifact, source="this is not WRL")` **succeeded** — and minted a sealed, internally consistent, entirely false `case-`. Verifying the report before accepting it found it slightly worse than stated: the counterfeit revalidated cleanly on reopen. The source now arrives only inside a `LoweredSourceEnvelopeV1 {source, source_sha256, lower_result, publisher, publisher_version}`, and **there is no `source=` parameter left**, so the crossed call cannot be spelled rather than merely being rejected.
+
+The engine is deterministic (`lower_source` twice → byte-identical, matching the stored fixture), which makes something stronger than the sealed envelope available: `capture(envelope, artifact, lower=forge_api.lower_source)` **re-lowers the sealed source and requires it to reproduce the same `sem-`**. So a record records *how strong its own binding is* — `binding.kind` is `proved` (demonstrated here, engine injected) or `asserted` (inherited from whoever sealed the envelope), with the publisher named. It is stored, never implied, and `is_proved()` is a first-class predicate so a corpus builder can filter on it. Zero forge dependency survives: the engine arrives by injection, and the batteries prove the same path with a captured replay function over a finite domain — a real engine *is* a function from source to result, and a captured pool is that function restricted.
 
 `taskbundle.make_task_for(record, …)` is then the blessed path, and it makes the scope ruling **mechanical** rather than merely stated: invalid source cannot become a record, so it cannot reach a `base_world` at all (R3c).
 
-Battery `TRVM/wrlm/test_worldrecord.py` — **8/8**. R18 is the payoff: a serialized record reopens in a clean subprocess with no engine and no `sys.path` help and generates the byte-identical `task-` and `case-`. Verified additionally against the **live** engine (`forge_api.lower_source` at `v0.7.0-alpha.5`), which reproduces the frozen `sem-8ae91fe9…fe4a` and captures cleanly.
+Battery `TRVM/wrlm/test_worldrecord.py` — **11/11**. R18 is the payoff: a serialized record reopens in a clean subprocess with no engine and no `sys.path` help and generates the byte-identical `task-` and `case-`. Verified additionally against the **live** engine (`forge_api.lower_source` at `v0.7.0-alpha.5`), which reproduces the frozen `sem-8ae91fe9…fe4a` and captures cleanly.
 
-Still open for step 2: `generator.py` (deterministic `generate(world_record, stratum, seed) → SealedTask`, no ambient RNG), `coverage.py` (least-covered-cell selection, counting proposed *and* accepted-nondegenerate-unique), `families.py` (two families only — exact target transformation, and structural goal satisfaction). Remaining R-checks R4–R17 land with those.
+### The coverage policy — three things it refuses to do
+
+A generator that maximises a coverage ledger produces exactly the corpus that ledger describes and nothing else. The ledger is therefore not bookkeeping; it **is** the specification of the training distribution, and it belongs somewhere it can be argued with. Three proposed dimensions were rejected, each for a reason that generalises:
+
+| Rejected | Why it fails |
+|---|---|
+| `base_semantic_id` as a cell dimension | One cell per world is *identity* diversity, not semantic diversity. Two trivial renamings of one six-node topology land in different cells and look like progress; one rich world supporting twenty genuinely different tasks looks "full" after one. `sem-` is kept for reuse caps, split blocking and provenance — it just never gets to say what *diverse* means |
+| declared `difficulty` as a cell dimension | The generator owns the label, so balancing on it is a closed loop: relabel the tasks, watch the ledger go green, change nothing about the population. `difficulty` survives as provenance, **derived from the tier so it cannot drift**. `tier` carries the contract instead, because a tier is derived and checked rather than asserted |
+| one flat Cartesian cell | 2 families × 3 tiers × 4 sizes × 4 shapes × 4 budgets × 2 presentations = 768 cells *before* topology, roles, density or cycles. Nearly all would sit empty forever |
+
+The ratified primary cell is `(family, tier, base_size_bucket, objective_shape, witness_edit_budget, presentation_form)`, with ~20 **secondary factors** measured by marginal and pairwise coverage rather than crossed into the cell — the standard combinatorial-testing move of using low-order interactions as a tractable stand-in for an unreachable full state space.
+
+Every coordinate is **derived from the produced task and its base world, then compared with the cell that was requested**; a candidate whose derived cell disagrees is *rejected, not relabelled*. A cell that could be asserted would be a cell that could be faked, and a faked cell is a silently mis-shaped training distribution.
+
+Two naming disciplines carried over from the `capture()` hole. `witness_edit_budget` is the length of the generator's constructive witness and is **not** called `minimal_edit_distance`, because minimality has not been proved. `base_shape_id` (1-WL colour refinement, renaming-invariant) is prefixed `shape-`, derives no other id, and is **not** a rung on the identity ladder. Its guarantee is deliberately one-sided — isomorphic worlds always agree, non-isomorphic worlds may also agree — so collisions **over-merge**, forcing distinct worlds to share a cap and a split. Under-merging would leak a world's twin across a split boundary, which is the failure it exists to prevent; over-merging only costs coverage.
+
+`mentions_explicit_object_id` is measured from day one rather than discovered later: a corpus dominated by `id_is("p0")` goals teaches name-directed patching — find the string, edit near it — instead of structural reasoning. That is a plausible way to score well on this benchmark while learning nothing it was built to teach. Measured on the shipped corpus: **10 yes / 189 no**.
+
+### Selection, and why the tie-break is hashed
+
+Five deterministic phases: the `(family, tier)` partition furthest from quota **by ratio** (so a family with a large valid domain cannot swallow the corpus) → the cell in it with the largest deficit → **ties broken by `sha256(corpus_seed ‖ spec_version ‖ canonical_cell_bytes)`, never lexicographically** (a lexicographic tie-break permanently privileges whichever enum value sorts first and re-privileges it after every reset) → a bounded batch of candidates → the survivor adding the most new marginal and pairwise coverage, ties by lowest `case-`. That last step is the only place a `case-` tie-break belongs, for the simple reason that before it no case exists.
+
+Only `accepted_unique` satisfies a quota. All **eight** outcome counters are retained, because *an under-covered cell* and *a generator that cannot inhabit the cell it claims* are opposite problems that look identical if you count only successes.
+
+Train/validation/test are assigned on `base_shape_id`, not on `case-` and not on `sem-`: splitting by case lets a world and its own relabelling land on opposite sides, which is contamination with extra steps.
+
+### What step 2 shipped
+
+`coverage.py`, `families.py`, `generator.py`, plus `envelope.py` for the closure above and `tools/build_pool.py` — the **only** script that touches the engine, deliberately outside the package, run once to write `fixtures/pool.json` and `fixtures/pool_records.json` (21 worlds, **all `binding=proved`**).
+
+Batteries: `test_worldrecord.py` 11/11 + `test_generator.py` **14/14 (R4–R17)**, both first-run green. R5, R9 and R17 mechanize their rulings by **parsing** the module that states them — a law about a seam that is checked by string search is a law a comment can satisfy. R17 parses all 14 package modules for engine imports and additionally asserts `tools/build_pool.py` *does* import forge, so the separation cannot be satisfied vacuously by nobody importing forge anywhere.
+
+Measured corpus (`corpus_seed = "seed-A"`, 21-world pool, quota 2): **199 accepted**, 104 of 768 cells inhabited, 95 filled to quota, 1598 factor pairs seen, 0 duplicate `case-` accepted, 0 unsatisfiable, 0 invalid. Byte-reproducible across runs and different under a different seed.
+
+**The honest gap: 664 cells are empty, and the counters say why.** `attempt_bound_exhausted = 673` — this pool *cannot inhabit* most of its own declared domain. The emptiness is uniform across every coordinate (no value of any coordinate is more than ~92% empty and none is 100%), so every marginal value is reachable and the gaps are **interaction** gaps, not a structural hole in the cell design. The remedy is a larger pool, not a different cell — and the reason that is knowable at all is the seven retained failure counters.
+
+Still open for step 2: nothing. Steps 3–10 remain paper only.
 
 Proposed object set: ~~`TaskBundleV1`~~ (shipped), ~~`WorldRecordV1`~~ (shipped, added to the set), `ProposalV1`, `CandidateWorldV1`, `TargetSpecV1`, `GoalSpecV1`, `ProducerFactV1`, `EpisodeReceiptV1`, `EvaluationReportV1`, `AdmissionDecisionV1`, `InteractiveEpisodeKernelV1`.
 
