@@ -1,6 +1,6 @@
 # WRLM Research Brief
 
-**Status:** design converged on paper across three review rounds (Claude ↔ GPT-5.6, 2026-07-26). **Build-order step 1 (`GoalSpecV1`) is shipped** — see §10. Steps 2–10 remain paper only and are not authorized.
+**Status:** design converged on paper across three review rounds (Claude ↔ GPT-5.6, 2026-07-26). **Build-order step 1 is shipped in full** — `GoalSpecV1`, `TaskBundleV1` and the one engine adapter — see §10. Steps 2–10 remain paper only and are not authorized.
 
 **Scope:** this document is the design of record for WRLM-0 and its evaluation. It supersedes nothing in the shipped stack; WRL, TRVM, TRAAVIIS and Forge are unchanged and remain authoritative for their own layers.
 
@@ -259,7 +259,7 @@ Affordable configuration: `N = 100 tasks, 3 paid trajectories × 3 tiers = 9 pai
 
 ## 10. Build order (step 1 shipped; steps 2–10 agreed on paper only)
 
-1. ~~**`GoalSpecV1` closed AST** + sealing into task identity~~ — **SHIPPED** `TRVM/wrlm/goalspec.py`, battery `TRVM/wrlm/test_goalspec.py` (G0–G13, 14/14, 0.2s)
+1. ~~**`GoalSpecV1` closed AST** + sealing into task identity~~ — **SHIPPED, both halves.** `TRVM/wrlm/goalspec.py` (G0–G13, 14/14) and `TRVM/wrlm/taskbundle.py` + `worldview.py` (W1–W6 / T1–T12, 18/18)
 2. Task generators + coverage-stratified generation over generator-defined difficulty strata
 3. `TargetSpecV1` alongside, tier-gated
 4. **D′ host** (parse → diagnose → seal → diff → derive → apply → assert), with the six laws as the test battery
@@ -295,7 +295,31 @@ Four typed codes: `WRLM_BAD_GOAL`, `WRLM_GOAL_SORT`, `WRLM_GOAL_BOUNDS`, `WRLM_S
 
 Battery `TRVM/wrlm/test_goalspec.py` — **G0–G13, 14/14, 0.2s**. G13 evaluates 11 predicates against the **real frozen demo artifact**, and first proves the vendored fixture *is* that world by re-deriving `sem-8ae91fe9…fe4a` from its own bytes with pure `json`+`hashlib`.
 
-Proposed object set: `TaskBundleV1`, `ProposalV1`, `CandidateWorldV1`, `TargetSpecV1`, `GoalSpecV1`, `ProducerFactV1`, `EpisodeReceiptV1`, `EvaluationReportV1`, `AdmissionDecisionV1`, `InteractiveEpisodeKernelV1`.
+### What step 1's second half shipped — `task-`, the rung below an attempt
+
+A goal is not a task. A task is a goal *plus the world it starts from*, plus enough provenance to say where it came from, under one id. `TRVM/wrlm/taskbundle.py` closes the chain `sem-` (world, forge) → `goal-` (objective) → **`task-`** (the pair + provenance); everything above it (`episode-`, `bundle-`) already exists in TRAAVIIS.
+
+```
+TaskBundleV1 = {task_version, base_world{semantic_id, source},
+                objective{goal, goal_spec_id, target_semantic_id},
+                stratum{family, tier, difficulty},
+                generator{generator_id, generator_version, seed}}
+task_id = "task-" + sha256(canonical bytes)
+```
+
+Three laws carry the weight:
+
+- **An objective is mandatory.** A bundle may carry a goal, a `target_semantic_id`, or both — never neither. A task with no objective is unfalsifiable, which is exactly the failure class the `sem-` spine exists to remove. (`WRLM_TASK_NO_OBJECTIVE`.)
+- **A carried id is never trusted.** `goal_spec_id` is re-derived from the goal node and compared; storing it is a convenience for readers, believing it would make the seal decorative. (`WRLM_TASK_ID_MISMATCH`.)
+- **Degeneracy is refused, and the check is split in two.** `target == base` is caught by the *pure* validator because it needs no world. A goal the base world *already satisfies* cannot be — deciding that requires the objects and edges — so it lives in an explicitly impure `check_task_nondegenerate(task, base_view)`, called by a generator that has the world in hand. That split is what lets a task be validated offline, in a corpus, with no engine present. (`WRLM_TASK_DEGENERATE`.)
+
+`difficulty` is a coarse **declared** ordinal owned by the generator, not a fitted latent trait — at 2–4 examinees an IRT parameter is unidentified (§6), so the honest move is a stratum the analysis can condition on.
+
+**`TRVM/wrlm/worldview.py` — the one adapter.** `forge_api.lower_source()` returns a `LowerResultV1` whose `graph.nodes[*]` keys the object as **`id`**; a canonical artifact keys it as **`object_id`**. Letting the evaluator accept both shapes would be the beginning of an identity bug — two spellings of "the same" world, silently interchangeable. So the rename happens once, here, under test, and `goalspec` reads exactly one shape. The adapter pins `forge.lower-result.v1` and fails loudly on a bump rather than mis-evaluating against a shape it no longer understands; a source that did not lower becomes `NotLoweredError` carrying the **engine's own** typed diagnostics, never a paraphrase. It imports nothing from `forge/`.
+
+Battery `TRVM/wrlm/test_taskbundle.py` — **W1–W6 + T1–T12, 18/18, 0.2s**. W1 asserts the shape *mismatch* itself, so the adapter cannot quietly become dead weight; W2 proves a lowered source and the stored artifact converge on the same view; T12 runs the end-to-end shape a WRLM-0 episode takes — engine payload → view → `task-` → unsolved at attempt 0, solved once the world gains the object the goal asks for.
+
+Proposed object set: ~~`TaskBundleV1`~~ (shipped), `ProposalV1`, `CandidateWorldV1`, `TargetSpecV1`, `GoalSpecV1`, `ProducerFactV1`, `EpisodeReceiptV1`, `EvaluationReportV1`, `AdmissionDecisionV1`, `InteractiveEpisodeKernelV1`.
 
 ---
 

@@ -87,6 +87,8 @@ deserialized artifact dict, so `wrlm/` stays independently importable.
 import hashlib
 import json
 
+from errors import WrlmError
+
 GOALSPEC_VERSION = "wrlm.goal.v1"
 
 # Bounds. These are part of the contract: they are what keeps `S` tractable.
@@ -140,17 +142,13 @@ _COMMUTATIVE = ("all", "any", "filter_all", "filter_any")
 
 
 # ------------------------------------------------------------------ exceptions
-class GoalSpecError(Exception):
+class GoalSpecError(WrlmError):
     """A typed structural rejection carrying a STABLE machine code and a dotted
     AST path (e.g. `where.args.1.role`) naming the offending node. The path is
-    an AST locator, not a source span -- WRLM has no surface syntax."""
+    an AST locator, not a source span -- WRLM has no surface syntax.
 
-    def __init__(self, code, message, path=None):
-        super().__init__("[%s] %s%s" % (code, message,
-                                        "" if path is None else " at %s" % path))
-        self.code = code
-        self.message = message
-        self.path = path
+    Subclasses the layer-wide `WrlmError` so `except WrlmError` catches goal
+    rejections alongside world-view and task rejections."""
 
 
 # stable error codes (the validation contract)
