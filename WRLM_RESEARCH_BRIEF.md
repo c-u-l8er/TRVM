@@ -1,6 +1,6 @@
 # WRLM Research Brief
 
-**Status:** design converged on paper across three review rounds (Claude ↔ GPT-5.6, 2026-07-26). No code written. No slice authorized.
+**Status:** design converged on paper across three review rounds (Claude ↔ GPT-5.6, 2026-07-26). **Build-order step 1 (`GoalSpecV1`) is shipped** — see §10. Steps 2–10 remain paper only and are not authorized.
 
 **Scope:** this document is the design of record for WRLM-0 and its evaluation. It supersedes nothing in the shipped stack; WRL, TRVM, TRAAVIIS and Forge are unchanged and remain authoritative for their own layers.
 
@@ -257,9 +257,9 @@ Affordable configuration: `N = 100 tasks, 3 paid trajectories × 3 tiers = 9 pai
 
 ---
 
-## 10. Build order (agreed on paper only — no slice authorized)
+## 10. Build order (step 1 shipped; steps 2–10 agreed on paper only)
 
-1. **`GoalSpecV1` closed AST** + sealing into task identity — everything else depends on it, including `S`
+1. ~~**`GoalSpecV1` closed AST** + sealing into task identity~~ — **SHIPPED** `TRVM/wrlm/goalspec.py`, battery `TRVM/wrlm/test_goalspec.py` (G0–G13, 14/14, 0.2s)
 2. Task generators + coverage-stratified generation over generator-defined difficulty strata
 3. `TargetSpecV1` alongside, tier-gated
 4. **D′ host** (parse → diagnose → seal → diff → derive → apply → assert), with the six laws as the test battery
@@ -269,6 +269,31 @@ Affordable configuration: `N = 100 tasks, 3 paid trajectories × 3 tiers = 9 pai
 8. `box-and-box` acceptance policy + certificates
 9. Two-stage admission (artifact / behavioral)
 10. `wrlm.adapter.v1` substrate registration
+
+### What step 1 actually shipped
+
+`TRVM/wrlm/goalspec.py` — no dependency on `forge/` (the v1 vocabulary is duplicated and **pinned by parsing** `wrl_canonical.py`, never by importing or grepping it).
+
+**Two-sorted closed AST**, 4 goal kinds + 9 filter kinds, exact-key validation:
+
+```
+Goal   ::= all[Goal*] | any[Goal*] | not(Goal) | count(domain, where, cmp, n)
+Filter ::= filter_all | filter_any | filter_not
+         | role_is | id_is | config_eq | degree        -- object-sorted
+         | edge_kind_is | endpoint(side, where)        -- edge-sorted
+```
+
+`count` is the only quantifier and subsumes the rest: `exists` = `count ≥ 1`, `forall P` = `count(¬P) = 0`, `exactly n` = `count = n`. `all[]` is TRUE, `any[]` is FALSE. `endpoint` is the single legal sort crossing (an edge filter ranging over the object the edge names); every other crossing is `WRLM_GOAL_SORT`.
+
+**Decidability, concretely.** Every quantifier ranges over `artifact["objects"]` / `artifact["edges"]` — finite lists materialized before evaluation. No recursion, no fixpoint, no reachability operator, no floats. `MAX_GOAL_DEPTH = 8` / `MAX_GOAL_NODES = 64` bound the AST itself so an adversarial goal cannot blow up `S` even on a small world. Evaluation is a terminating fold, `O(|AST| × (|O|+|E|) × |E|)` worst case, and is **total** — a dangling endpoint or a malformed world yields `False`, never an exception.
+
+**Identity.** `goal-<sha256>` over canonical bytes, same discipline as `sem-` (`sort_keys=True, separators=(",",":")`). Canonicalization is **order + dedupe only**, on the commutative idempotent combinators. Stated caveat, because it bears on task identity: `not(not(X))` and `X` are semantically equal but seal to **different** ids. Goal identity is syntactic up to commutativity — it is not a decision procedure for goal equivalence and must never be used as one.
+
+Four typed codes: `WRLM_BAD_GOAL`, `WRLM_GOAL_SORT`, `WRLM_GOAL_BOUNDS`, `WRLM_SEALED_IMMUTABLE`. `SealedGoal` mirrors `SealedArtifact` — canonical bytes are the object, id is re-derived from them, `.node` is a fresh copy, writes refused, `open_sealed_goal(blob, expect_id=…)` refuses a mismatch.
+
+**Deliberate v1 boundaries** (not oversights): structural only — goals are predicates over the sealed *static* artifact, not over films; no reachability operator (bounded and decidable, but it materially complicates `S`, so deferred until `S` exists and can be measured).
+
+Battery `TRVM/wrlm/test_goalspec.py` — **G0–G13, 14/14, 0.2s**. G13 evaluates 11 predicates against the **real frozen demo artifact**, and first proves the vendored fixture *is* that world by re-deriving `sem-8ae91fe9…fe4a` from its own bytes with pure `json`+`hashlib`.
 
 Proposed object set: `TaskBundleV1`, `ProposalV1`, `CandidateWorldV1`, `TargetSpecV1`, `GoalSpecV1`, `ProducerFactV1`, `EpisodeReceiptV1`, `EvaluationReportV1`, `AdmissionDecisionV1`, `InteractiveEpisodeKernelV1`.
 
