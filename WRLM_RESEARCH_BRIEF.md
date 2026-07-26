@@ -1,6 +1,6 @@
 # WRLM Research Brief
 
-**Status:** design converged on paper across three review rounds (Claude ↔ GPT-5.6, 2026-07-26). **Build-order step 1 is shipped in full** — `GoalSpecV1`, `TaskBundleV1` and the one engine adapter — see §10. Steps 2–10 remain paper only and are not authorized.
+**Status:** design converged on paper across three review rounds (Claude ↔ GPT-5.6, 2026-07-26). **Build-order step 1 is shipped and CLOSED** — `GoalSpecV1`, `TaskBundleV1`, the one engine adapter, and a five-gap verifier-hardening pass. **Step 2 has begun** with `WorldRecordV1`. See §10. Steps 3–10 remain paper only and are not authorized.
 
 **Scope:** this document is the design of record for WRLM-0 and its evaluation. It supersedes nothing in the shipped stack; WRL, TRVM, TRAAVIIS and Forge are unchanged and remain authoritative for their own layers.
 
@@ -257,10 +257,10 @@ Affordable configuration: `N = 100 tasks, 3 paid trajectories × 3 tiers = 9 pai
 
 ---
 
-## 10. Build order (step 1 shipped; steps 2–10 agreed on paper only)
+## 10. Build order (step 1 closed; step 2 begun; steps 3–10 agreed on paper only)
 
-1. ~~**`GoalSpecV1` closed AST** + sealing into task identity~~ — **SHIPPED, both halves.** `TRVM/wrlm/goalspec.py` (G0–G13, 14/14) and `TRVM/wrlm/taskbundle.py` + `worldview.py` (W1–W6 / T1–T12, 18/18)
-2. Task generators + coverage-stratified generation over generator-defined difficulty strata
+1. ~~**`GoalSpecV1` closed AST** + sealing into task identity~~ — **SHIPPED and CLOSED.** `TRVM/wrlm/goalspec.py` (G0–G13, 14/14) and `TRVM/wrlm/taskbundle.py` + `worldview.py` + `errors.py` (W0–W9 / T1–T14, 24/24)
+2. Task generators + coverage-stratified generation over generator-defined difficulty strata — **begun:** `WorldRecordV1` shipped (`TRVM/wrlm/worldrecord.py`, R-battery 8/8). `generator.py`, `coverage.py`, `families.py` still to build
 3. `TargetSpecV1` alongside, tier-gated
 4. **D′ host** (parse → diagnose → seal → diff → derive → apply → assert), with the six laws as the test battery
 5. **$0 baselines** `∅`, `∅+`, `R`, `S` — mandatory spending gate, run before any paid call
@@ -319,7 +319,73 @@ Three laws carry the weight:
 
 Battery `TRVM/wrlm/test_taskbundle.py` — **W1–W6 + T1–T12, 18/18, 0.2s**. W1 asserts the shape *mismatch* itself, so the adapter cannot quietly become dead weight; W2 proves a lowered source and the stored artifact converge on the same view; T12 runs the end-to-end shape a WRLM-0 episode takes — engine payload → view → `task-` → unsolved at attempt 0, solved once the world gains the object the goal asks for.
 
-Proposed object set: ~~`TaskBundleV1`~~ (shipped), `ProposalV1`, `CandidateWorldV1`, `TargetSpecV1`, `GoalSpecV1`, `ProducerFactV1`, `EpisodeReceiptV1`, `EvaluationReportV1`, `AdmissionDecisionV1`, `InteractiveEpisodeKernelV1`.
+### Step 1 contract closure — the verifier is attack surface
+
+A review pass (GPT-5.6, 2026-07-26) found four contract gaps in the shipped step 1, and building the reproductions turned up a fifth. All five were verified empirically before being accepted; all five are now closed, with a check each.
+
+| # | Gap | Why it mattered | Closed by |
+|---|---|---|---|
+| 1 | `from_artifact` **trusted** a caller's `semantic_id` | `{"objects":[],"edges":[]}` could present itself as any world in the corpus. A target-bearing task is scored by comparing `sem-`, so this was a direct **false-positive** path: an empty world claiming to be the solution | identity is now **derived**; a supplied id is an *assertion* that is checked, never believed (W7) |
+| 2 | The layer was not importable as a package | `import wrlm.taskbundle` → `ModuleNotFoundError`. The batteries only passed because they inserted their own directory on `sys.path`. Step 2 would have developed against a layout TRAAVIIS could not import | `__init__.py` + package-relative imports; W0 asks a **clean subprocess** with no path help, because a test that patches `sys.path` cannot prove importability |
+| 3 | "Total on malformed data" was **too strong a claim** | `{"objects": 1}` raised an untyped `TypeError`; `deserialize_*(123)` likewise | malformed containers are typed rejections at the adapter; the evaluator is genuinely total; deserializers type-check their input (W8, W9) |
+| 4 | `from_artifact` **silently dropped** non-dict members | A corrupt artifact quietly shrank into a smaller *valid-looking* world — under which a goal like "no Spinner exists" would **pass** | members are typed rejections, never filtered (W8) |
+| 5 | `satisfied_by` returned `False` for a target clause scored against a bare artifact | The same world gave opposite verdicts through two spellings. A **solved** episode silently scored as **failed** | an identity-less world is now a typed rejection with a fix-it message (T13) |
+
+Gap 5 was the worst of the five and the least visible. A crash gets noticed; a silently unrewarded success gets *trained against*.
+
+That framing is not ours alone. Ray, *Before the Model Learns the Bug: Fuzzing RLVR Verifiers* (arXiv 2606.01066), fuzzes reward verifiers and reports five failure classes — malformed-input handling, false negatives, false positives, normalization inconsistency, and identity/state-consistency failures — which map almost one-to-one onto gaps 3, 5, 1+4, the `case-`/`task-` split below, and gap 1 again. Its thesis is a timing argument: catch verifier bugs *before* a model internalizes them. WRLM has not generated its first task, so this is exactly the right moment to pay that cost, and the reason the closures preceded any generator work.
+
+### `case-` vs `task-` — the statistical unit is not the receipt
+
+`task-` includes `family`, `difficulty`, `generator_id`, `generator_version` and `seed`. That is correct for provenance and **wrong** for counting. A generator emitting one problem under 20 seeds mints 20 distinct `task-` ids; treating those as 20 independent trials multiplies *n* by 20 and shrinks every confidence interval by ~4.5× on nothing at all.
+
+So the two questions are split, both **derived** from the bundle's own bytes and neither stored (there is nothing here for a generator to misreport):
+
+```
+case-   what the model is ASKED       base sem- + presented source + canonical objective
+task-   that case, plus HOW it arose  + family, difficulty, generator, version, seed
+```
+
+Both `sem-` and presented source belong in a case: sugar and its numeric twin seal to the **same** `sem-` while showing the model **different text**, so they are genuinely different questions about the same world. Coverage ledgers and all statistical analysis deduplicate on `case-`; receipts carry `task-`.
+
+This is the in-corpus half of a problem the 2026 contamination literature treats as the default assumption rather than an edge case — exact and near-duplicate items *within* and *across* benchmarks, with measured inflation on held-out duplicates in the 10–11pp range. We cannot control what a model saw in pretraining, but we can refuse to manufacture duplicates ourselves and then count them as evidence.
+
+### Scope ruling: `base_world` means a sealed VALID world
+
+The planned diagnostic-repair family starts from *invalid* WRL. Invalid WRL has no `sem-`. So the repair family **cannot** be honestly expressed as a `TaskBundleV1`, and it is out of scope for WRLM-0 step 2. Repair examples remain useful as training records; they are not benchmark instances yet.
+
+The workaround that must not happen is pairing invalid source with some other world's `sem-` — an internally contradictory bundle. When the family's turn comes it gets its own object, keyed on what it actually has:
+
+```
+DraftRepairTaskV1 = {draft_source, diagnostics, origin_semantic_id?,
+                     objective (target sem- or "seals at all"), mutation provenance}
+```
+
+### `WorldRecordV1` — why step 2 starts here and not with a generator
+
+`TaskBundleV1.base_world = {semantic_id, source}` is an **unverifiable pairing inside a pure validator**: deciding whether *this* source lowers to *that* `sem-` requires the engine, and the whole point of the pure/impure split is that tasks validate offline. So the pair sits at the base of every task as a claim nobody local can check.
+
+The fix is not to weaken `base_world` — it is to move verification to the one moment someone *does* have an engine, and make the result durable:
+
+```
+live Forge caller --lower_source--> LowerResultV1
+                                          |
+                                 capture + verify   (once)
+                                          |
+                                    WorldRecordV1
+                                          |
+                    offline generation, no engine present, forever after
+```
+
+`capture()` refuses unless all five bindings hold: the artifact's bytes derive `semantic_id`; the engine reports that same id; **both adapter paths agree on content, not just identity** (same `sem-` with different contents would mean the adapter pair is broken and a generator could build tasks about a world that never ran); the source is non-empty; the collections are closed. `validate_record_v1` re-checks the binding on reopen, because a stored record is still only bytes.
+
+`taskbundle.make_task_for(record, …)` is then the blessed path, and it makes the scope ruling **mechanical** rather than merely stated: invalid source cannot become a record, so it cannot reach a `base_world` at all (R3c).
+
+Battery `TRVM/wrlm/test_worldrecord.py` — **8/8**. R18 is the payoff: a serialized record reopens in a clean subprocess with no engine and no `sys.path` help and generates the byte-identical `task-` and `case-`. Verified additionally against the **live** engine (`forge_api.lower_source` at `v0.7.0-alpha.5`), which reproduces the frozen `sem-8ae91fe9…fe4a` and captures cleanly.
+
+Still open for step 2: `generator.py` (deterministic `generate(world_record, stratum, seed) → SealedTask`, no ambient RNG), `coverage.py` (least-covered-cell selection, counting proposed *and* accepted-nondegenerate-unique), `families.py` (two families only — exact target transformation, and structural goal satisfaction). Remaining R-checks R4–R17 land with those.
+
+Proposed object set: ~~`TaskBundleV1`~~ (shipped), ~~`WorldRecordV1`~~ (shipped, added to the set), `ProposalV1`, `CandidateWorldV1`, `TargetSpecV1`, `GoalSpecV1`, `ProducerFactV1`, `EpisodeReceiptV1`, `EvaluationReportV1`, `AdmissionDecisionV1`, `InteractiveEpisodeKernelV1`.
 
 ---
 

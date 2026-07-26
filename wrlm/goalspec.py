@@ -87,7 +87,7 @@ deserialized artifact dict, so `wrlm/` stays independently importable.
 import hashlib
 import json
 
-from errors import WrlmError
+from .errors import WrlmError
 
 GOALSPEC_VERSION = "wrlm.goal.v1"
 
@@ -372,6 +372,9 @@ def serialize_goal(node):
 
 
 def deserialize_goal(blob):
+    if not isinstance(blob, (str, bytes, bytearray)):
+        _fail(WRLM_BAD_GOAL, "goal bytes must be str or bytes, got %s"
+              % type(blob).__name__, None)
     try:
         node = json.loads(blob.decode() if isinstance(blob, bytes) else blob)
     except (ValueError, UnicodeDecodeError) as e:
@@ -461,10 +464,19 @@ class _World(object):
 
     def __init__(self, artifact):
         art = artifact if isinstance(artifact, dict) else {}
-        objs = art.get("objects") or ()
-        edges = art.get("edges") or ()
-        self.objects = [o for o in objs if isinstance(o, dict)]
-        self.edges = [e for e in edges if isinstance(e, dict)]
+        # A non-list container yields an EMPTY domain rather than raising: the
+        # evaluator's advertised contract is totality, so "I cannot see any
+        # objects here" must answer False, not crash a scoring loop.
+        #
+        # This is the last line of defence, not the first. A malformed
+        # container is a TYPED rejection at the `worldview` boundary; anything
+        # arriving here has bypassed the adapter, and the safe answer for an
+        # unreadable world is the empty one.
+        objs, edges = art.get("objects"), art.get("edges")
+        self.objects = ([o for o in objs if isinstance(o, dict)]
+                        if isinstance(objs, (list, tuple)) else [])
+        self.edges = ([e for e in edges if isinstance(e, dict)]
+                      if isinstance(edges, (list, tuple)) else [])
         self.by_id = {}
         for o in self.objects:
             oid = o.get("object_id")

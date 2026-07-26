@@ -9,9 +9,12 @@ import ast
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Run either way: `python3 test_x.py` from inside wrlm/, or
+# `python3 -m wrlm.test_x` from TRVM/. The library itself uses
+# package-relative imports, so the PARENT dir is what must be on the path.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import goalspec as G
+from wrlm import goalspec as G
 
 FAILED = []
 
