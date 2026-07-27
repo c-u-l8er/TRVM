@@ -31,14 +31,244 @@ from compiler import NOT
 
 import admit as AD
 
-WK = AD.WK           # writer / sequence reduced width (4)
-WD = AD.WD           # payload digest reduced width (8)
-WKIND = 1            # payload kind tag (SetRotor=0 | ResetFault=1)
-WIDX = 3             # target index (spinner/orb), sentinel = count
-WLANE = 8            # rotor lane width (reduced proof profile)
+# ------------------------------------------------------------- PROFILES
+# There are now TWO proof profiles, because there had to be. `WKIND` was one
+# bit, sized for exactly `SetRotor=0 | ResetFault=1`, and D9's `Send` carries
+# kind tag 2 -- which does not fit in one bit. Widening `WKIND` in place was
+# rejected: it is not merely a size change, it silently rewrites what every
+# already-sealed 52-bit term MEANS.
+#
+# Concretely, and this is the reason the split exists rather than a widen:
+# `_cat` packs MSB-first, so growing the kind field pushes its HIGH bit up to
+# b[36] and leaves b[35] -- the only bit the v1 decoder reads -- at ZERO for a
+# Send. A naively widened v1 would therefore decode a Send as a SetRotor, not
+# as the ResetFault one might guess, and the message body would land squarely
+# in the pose lanes r0..r3. The failure mode of an in-place widen is not a
+# misclassified message; it is a silently moved rotor. So v1 is frozen and v2
+# is a separate, named, artifact-selected profile.
+#
+# A profile is a passive record of widths. Every term-former takes one, and
+# `PROFILE_V1`'s widths are exactly the previously-hardcoded globals, so v1
+# terms are byte-identical across the split (gated: `ic_v1_term_fingerprints`).
+class Profile(object):
+    """Immutable width record for one IC proof profile."""
 
-CKEY_W = WD + WKIND + WIDX + 4 * WLANE          # 44
-FKEY_W = 2 * WK + CKEY_W                         # 52
+    __slots__ = ("name", "WK", "WD", "WKIND", "WIDX", "WLANE",
+                 "CKEY_W", "FKEY_W", "EKEY_W", "FKEY_ALLONES", "KINDS")
+
+    def __init__(self, name, wkind, widx, wlane, kinds):
+        self.name = name
+        self.WK = AD.WK                 # writer / sequence reduced width (4)
+        self.WD = AD.WD                 # payload digest reduced width (8)
+        self.WKIND = wkind              # payload kind tag width
+        self.WIDX = widx                # target index, sentinel = count
+        self.WLANE = wlane              # rotor lane width
+        self.KINDS = kinds              # decoded kind tags, ascending
+        self.CKEY_W = self.WD + wkind + widx + 4 * wlane
+        self.FKEY_W = 2 * self.WK + self.CKEY_W
+        self.EKEY_W = 2 * self.WK       # event key (writer|seq)
+        self.FKEY_ALLONES = (1 << self.FKEY_W) - 1
+        assert max(kinds) < (1 << wkind), (
+            "profile %s: kind tag %d does not fit in WKIND=%d"
+            % (name, max(kinds), wkind))
+
+    # THE layout. `_cat` packs MSB-first, so this tuple -- read left to right
+    # -- is the fkey's bit order, and it is the only place that order is
+    # written down. It used to be written down three times (the packer's field
+    # list, the unpacker's width table, and a set of hand-added LSB offsets),
+    # which is the same forked-vocabulary defect this commit exists to fix one
+    # level down: three spellings agree until they don't, and the one that
+    # disagrees is a field silently read at another field's address.
+    @property
+    def FIELDS(self):
+        return (("writer", self.WK), ("sequence", self.WK),
+                ("digest", self.WD), ("kind", self.WKIND), ("idx", self.WIDX),
+                ("r0", self.WLANE), ("r1", self.WLANE),
+                ("r2", self.WLANE), ("r3", self.WLANE))
+
+    @property
+    def CKEY_FIELDS(self):
+        """The ckey is the fkey minus its writer/sequence prefix."""
+        return self.FIELDS[2:]
+
+    def lo(self, name):
+        """LSB bit offset of a named fkey field, DERIVED from `FIELDS`.
+
+        The lanes occupy the bottom, so every offset above them moves when
+        WKIND moves. Deriving them is what makes a second profile safe: a
+        literal offset is right for v1 and quietly wrong for v2.
+        """
+        off = self.FKEY_W
+        for n, w in self.FIELDS:
+            off -= w
+            if n == name:
+                return off
+        raise KeyError(name)
+
+    @property
+    def IDX_LO(self):
+        return self.lo("idx")
+
+    @property
+    def KIND_LO(self):
+        return self.lo("kind")
+
+    @property
+    def DIGEST_LO(self):
+        return self.lo("digest")
+
+    def __repr__(self):
+        return "<Profile %s ckey=%d fkey=%d>" % (self.name, self.CKEY_W,
+                                                 self.FKEY_W)
+
+
+# The frozen one. Route-free worlds stay here, byte-for-byte.
+PROFILE_V1 = Profile("admit.ic.v1.core52", wkind=1, widx=3, wlane=8,
+                     kinds=(AD.KIND_SETROTOR, AD.KIND_RESETFAULT))
+
+# The Send-capable one. `WKIND` 1->2 is the ONLY width that moves: CKEY_W
+# 44->45 and FKEY_W 52->53 follow from it, and EKEY_W stays 8 because it is
+# 2*WK and WK does not move. `WIDX` deliberately does NOT shrink to 2 to pay
+# for it -- see binding_run49 R12f/R12g, which builds a legal six-mailbox
+# world whose sentinel index needs WIDX >= 3.
+PROFILE_V2 = Profile("admit.ic.v2.mailbox53", wkind=2, widx=3, wlane=8,
+                     kinds=(AD.KIND_SETROTOR, AD.KIND_RESETFAULT, AD.KIND_SEND))
+
+PROFILES = {PROFILE_V1.name: PROFILE_V1, PROFILE_V2.name: PROFILE_V2}
+
+
+def profile_for_artifact(artifact):
+    """Select the proof profile from the artifact's OWN declared semantics.
+
+    The choice of profile changes what a packed key MEANS, so it cannot be a
+    parameter the caller supplies -- a caller that picks v1 for a route-bearing
+    world does not get a refusal, it gets a rotor moved by a message body. The
+    only safe source is content that has already been through the sealing gate.
+
+    So a raw dict is SEALED here rather than read: sealing validates, and a
+    caller cannot shortcut it by handing over something that merely looks
+    canonical. The discriminator is whether the world declares async routes,
+    because routes are the only thing that mints a kind-2 `Send` -- scenario-
+    authored sends are out of scope and writer 15 is reserved. A world with
+    mailboxes but no routes therefore stays on v1, which is deliberate: it
+    keeps the frozen byte-identical surface as wide as it can honestly be.
+    """
+    import wrl_canonical as WC
+    if not isinstance(artifact, WC.SealedArtifact):
+        artifact = WC.seal_artifact(artifact)
+    return PROFILE_V2 if WC.routes_of_artifact(artifact.artifact) else PROFILE_V1
+
+
+# ---------------------------------------------------------- ACCEPT RULES
+# Slice B commit 5c. The proof PROFILE and the acceptance POLICY are two
+# different semantic axes, and until this commit the lowering had only the
+# first of them.
+#
+# THE DEFECT, stated exactly. `ic_accept` computed ONE ACCEPT rule -- leader,
+# i.e. the minimum CandidateKey of each event key -- no matter what the sealed
+# world declared. `ic_map` computed the SAME rule a second time to decide which
+# operations were eligible. So a world whose seal says
+#
+#     semantic_policies["admit_policy_id"] = "admit_mailbox_deliver_all_v1"
+#
+# was reduced under `admit_candidate_min_firstreceipt_v1`. On a UNIQUE event
+# key the two rules agree, which is why every row before commit 5c was green;
+# on an EQUIVOCAL one they disagree completely -- golden mints no receipt and
+# delivers nothing, the lowering picked a winner, minted a receipt and
+# enqueued a message. A world's own routes cannot mint two candidates under one
+# event key, but an authored ScenarioV1 batch is a legal run input and can, so
+# the divergence was reachable rather than theoretical.
+#
+# WHY IT IS SELECTED FROM THE SEAL AND NOTHING ELSE. The ruling names five
+# sources this must NOT be derived from -- the v2 proof profile, mailbox
+# presence, `mcap`, the existence of a `Send`, and any unsealed caller option
+# -- and they are forbidden for one reason each time: they CORRELATE with the
+# policy today. Every one of them would work, would need no test to change, and
+# would be wrong the first time a world declared the other combination. The
+# only honest source is the field the world sealed.
+#
+# WHY A RECORD RATHER THAN A FLAG. `Profile` above is a passive record for the
+# same reason: a rule is a NAME with laws, and a boolean parameter threaded
+# through four call frames is a name nobody has to say out loud. The table is
+# keyed by `admit`'s OWN policy ids, imported not respelled, so a policy that
+# exists in golden and not here is a KeyError at selection rather than a
+# silently defaulted reduction.
+class AcceptRule(object):
+    """Immutable record naming one ADMIT seam-1 (`resolve_candidates`) rule,
+    as the IC lowering implements it.
+
+    `reject_equivocal` is the whole of the difference between the two ruled
+    policies at ACCEPT: whether an event key carrying more than one distinct
+    candidate is resolved to its minimum (False -- the frozen behaviour) or
+    refused outright (True). Everything downstream -- no receipt, no MAP
+    eligibility, no mailbox enqueue, the retained facts -- follows from that
+    one bit, exactly as it does in golden's `_resolve_candidates_unique`.
+    """
+
+    def __init__(self, policy_id, reject_equivocal):
+        self.policy_id = policy_id
+        self.reject_equivocal = bool(reject_equivocal)
+
+    def __repr__(self):
+        return "<AcceptRule %s reject_equivocal=%s>" % (self.policy_id,
+                                                        self.reject_equivocal)
+
+
+# The frozen one. Its terms, fingerprints and leader/min-candidate behaviour
+# are un-moved by commit 5c and binding_run51 T7e measures that.
+ACCEPT_MIN = AcceptRule(AD.ACCEPTANCE_POLICY_ID, False)
+ACCEPT_UNIQUE = AcceptRule(AD.MAILBOX_POLICY_ID, True)
+
+ACCEPT_RULES = {r.policy_id: r for r in (ACCEPT_MIN, ACCEPT_UNIQUE)}
+
+
+def accept_rule_for_policy(policy_id):
+    """The IC ACCEPT rule for a declared `admit_policy_id`.
+
+    `None` selects the frozen rule, matching `admit.get_policy`, so that every
+    caller written before commit 5c reduces byte-identically. An UNKNOWN id is
+    refused: golden's `get_policy` refuses it too, and a lowering that quietly
+    fell back to leader-min would reintroduce exactly the divergence this
+    commit closes -- one layer lower and with no film to show it.
+    """
+    if policy_id is None:
+        return ACCEPT_MIN
+    if policy_id not in ACCEPT_RULES:
+        raise KeyError("no IC ACCEPT rule for admit_policy_id %r; known: %s"
+                       % (policy_id, sorted(ACCEPT_RULES)))
+    return ACCEPT_RULES[policy_id]
+
+
+def accept_rule_for_artifact(artifact):
+    """Select the ACCEPT rule from the artifact's OWN sealed declaration.
+
+    The same shape as `profile_for_artifact` and for the same reason: a raw
+    dict is SEALED here rather than read, so a caller cannot shortcut the
+    validating gate by handing over something that merely looks canonical.
+
+    The policy id is fetched through `wrl_fold.admit_policy_of` -- the ONE
+    spelling of "what policy did this world declare" -- rather than re-read
+    from `semantic_policies` here. A second reader of one sealed field is the
+    fork this whole slice keeps finding, and it is invisible until the two
+    disagree.
+    """
+    import wrl_canonical as WC
+    import wrl_fold as WF
+    if not isinstance(artifact, WC.SealedArtifact):
+        artifact = WC.seal_artifact(artifact)
+    return accept_rule_for_policy(WF.admit_policy_of(artifact.artifact))
+
+
+# Module-level names are the V1 profile's widths, unchanged. Existing readers
+# (binding_run3l/3m/3n/3o, binding_run49) keep resolving `X.FKEY_W` to 52.
+WK = PROFILE_V1.WK
+WD = PROFILE_V1.WD
+WKIND = PROFILE_V1.WKIND
+WIDX = PROFILE_V1.WIDX
+WLANE = PROFILE_V1.WLANE
+
+CKEY_W = PROFILE_V1.CKEY_W                       # 44
+FKEY_W = PROFILE_V1.FKEY_W                       # 52
 
 
 # ---------------------------------------------------------------- packing
@@ -52,23 +282,40 @@ def _cat(fields):
     return acc
 
 
-def ckey_fields(fx, payload):
+def ckey_fields(fx, payload, prof=PROFILE_V1):
     d = AD.pdigest(payload)
     pk = AD.payload_key(fx, payload)             # (kind, idx, r0, r1, r2, r3)
-    return [(d, WD), (pk[0], WKIND), (pk[1], WIDX),
-            (pk[2], WLANE), (pk[3], WLANE), (pk[4], WLANE), (pk[5], WLANE)]
+    # Keyed by NAME, not by position: the point of driving the packer from the
+    # layout table is that reordering the table reorders the packed bits, and a
+    # positional zip would instead pair a value with the next field's WIDTH.
+    vals = {"digest": d, "kind": pk[0], "idx": pk[1],
+            "r0": pk[2], "r1": pk[3], "r2": pk[4], "r3": pk[5]}
+    return [(vals[n], w) for n, w in prof.CKEY_FIELDS]
 
 
-def pack_ckey(fx, payload):
+def pack_ckey(fx, payload, prof=PROFILE_V1):
     """Packed CandidateKey: integer `<` == golden (digest, payload_key)
     tuple order; integer `==` == golden candidate distinctness."""
-    return _cat(ckey_fields(fx, payload))
+    return _cat(ckey_fields(fx, payload, prof))
 
 
-def pack_fkey(fx, writer_id, sequence, payload):
+def pack_fkey(fx, writer_id, sequence, payload, prof=PROFILE_V1):
     """Packed ClaimFactKey (set identity): writer | sequence | ckey."""
-    return _cat([(int(writer_id), WK), (int(sequence), WK)]
-                + ckey_fields(fx, payload))
+    return _cat([(int(writer_id), prof.WK), (int(sequence), prof.WK)]
+                + ckey_fields(fx, payload, prof))
+
+
+def unpack_fkey(k, prof=PROFILE_V1):
+    """Inverse of `pack_fkey` -> (writer, sequence, digest, kind, idx,
+    r0, r1, r2, r3). The packer had no inverse, which was fine while every
+    consumer was a comparison circuit; it is not fine now, because "kind 2
+    survives the round trip" is a claim that cannot be checked without one."""
+    out, off = {}, prof.FKEY_W
+    for name, w in prof.FIELDS:                  # MSB-first, as `_cat` packs
+        off -= w
+        out[name] = (k >> off) & ((1 << w) - 1)
+    assert off == 0, "fkey field widths do not tile FKEY_W"
+    return out
 
 
 # ------------------------------------------------------- IC key mechanisms
@@ -128,32 +375,32 @@ from compiler import Alloc as _Alloc, LetChain as _LC
 from lower_e2a import PAIR as _PAIR
 from compiler import TUPN as _TUPN, NOT as _NOT
 
-FKEY_ALLONES = (1 << FKEY_W) - 1
+FKEY_ALLONES = PROFILE_V1.FKEY_ALLONES
 
 
-def enc_factvec(keys, cap=None):
+def enc_factvec(keys, cap=None, prof=PROFILE_V1):
     from admit import MAX_FACTS
     cap = cap or MAX_FACTS
     ks = sorted(keys)
     assert len(ks) <= cap
-    slots = [BL.enc_operand(k, FKEY_W) for k in ks]
-    slots += [BL.enc_operand(FKEY_ALLONES, FKEY_W)] * (cap - len(ks))
+    slots = [BL.enc_operand(k, prof.FKEY_W) for k in ks]
+    slots += [BL.enc_operand(prof.FKEY_ALLONES, prof.FKEY_W)] * (cap - len(ks))
     return _TUPN(slots)
 
 
-def dec_factvec(t, cap=None):
+def dec_factvec(t, cap=None, prof=PROFILE_V1):
     from admit import MAX_FACTS
     cap = cap or MAX_FACTS
     xs = _spine(t, cap)
     out = []
     for x in xs:
-        k = dec_operand(x, FKEY_W)
-        if k != FKEY_ALLONES:
+        k = dec_operand(x, prof.FKEY_W)
+        if k != prof.FKEY_ALLONES:
             out.append(k)
     return out
 
 
-def ic_insert_sorted(cap):
+def ic_insert_sorted(cap, prof=PROFILE_V1):
     """λVEC.λNK.λVALID -> VEC'. Insert-if-absent of key NK into a sorted
     (ascending, ALL-ONES-padded) MAX_FACTS-slot vector by UNROLLED
     COMPARE-SHIFT (GPT-5.6's pinned mechanism). If NK is already present or
@@ -164,8 +411,8 @@ def ic_insert_sorted(cap):
     Per slot i (carry starts = NK): lt = carry < key_i; out_i = lt?carry:key_i;
     carry' = lt?key_i:carry. Duplicate guard: pres = OR_i eq(NK,key_i); when
     (pres OR NOT VALID) each out_i is muxed back to the ORIGINAL key_i."""
-    ltu = BL.dyn_case("ltu", FKEY_W)
-    eq = BL.dyn_case("eq", FKEY_W)
+    ltu = BL.dyn_case("ltu", prof.FKEY_W)
+    eq = BL.dyn_case("eq", prof.FKEY_W)
     VEC, NK, VALID = _v("VEC"), _v("NK"), _v("VLD")
     ks = [_v("k") for _ in range(cap)]
     A = _Alloc()
@@ -215,9 +462,9 @@ def ic_insert_sorted(cap):
 CNTW = 4                                   # count width (0..15; occ<=6, new<=4)
 
 
-def _isallones(k, eq):
+def _isallones(k, eq, prof=PROFILE_V1):
     u = _v("u")
-    ao = BL.enc_operand(FKEY_ALLONES, FKEY_W)
+    ao = BL.enc_operand(prof.FKEY_ALLONES, prof.FKEY_W)
     return f"((({eq} {k}) {ao}) λ{u}.{u})"     # bare bool: k == ALL-ONES
 
 
@@ -232,12 +479,12 @@ def _sum_bools(srcs, cw):
     return acc
 
 
-def ic_observe(vec_src, batch_srcs, cap):
+def ic_observe(vec_src, batch_srcs, cap, prof=PROFILE_V1):
     """Term computing TUP(new_fact_vec, fact_capacity_fault) for one atomic
     batch OBSERVE. vec_src is an occupied-prefix sorted fkey vector (cap
     slots); batch_srcs is a python list of encoded batch fkeys."""
     bcap = len(batch_srcs)
-    eq = BL.dyn_case("eq", FKEY_W)
+    eq = BL.dyn_case("eq", prof.FKEY_W)
 
     VEC = _v("VEC")
     oA = _Alloc()
@@ -256,10 +503,11 @@ def ic_observe(vec_src, batch_srcs, cap):
         return f"(({a} {T}) {b})"              # Scott OR
 
     # occupied_j = NOT(batch slot j is ALL-ONES); used in novel_j + valid_j
-    occ_bools = [L.let(NOT(_isallones(bc[j][0], eq)), 2, "occ") for j in range(bcap)]
+    occ_bools = [L.let(NOT(_isallones(bc[j][0], eq, prof)), 2, "occ")
+                 for j in range(bcap)]
 
     # present_i = NOT(vec slot i is ALL-ONES)   -> occ count
-    pres_bools = [NOT(_isallones(kc[i][0], eq)) for i in range(cap)]
+    pres_bools = [NOT(_isallones(kc[i][0], eq, prof)) for i in range(cap)]
     occ_op = _sum_bools(pres_bools, CNTW)
 
     # novel_j = occupied_j AND notinvec_j AND firstinbatch_j
@@ -295,7 +543,7 @@ def ic_observe(vec_src, batch_srcs, cap):
     cur = vins
     for j in range(bcap):
         valid = f"(({fits[j]} {occ_bools[j][1]}) {F})"
-        cur = f"((({ic_insert_sorted(cap)} {cur}) {bc[j][cap + bcap]}) {valid})"
+        cur = f"((({ic_insert_sorted(cap, prof)} {cur}) {bc[j][cap + bcap]}) {valid})"
     body = _PAIR(cur, fault)
 
     inner = "".join(A.prefix) + L.wrap(body)
@@ -313,29 +561,71 @@ def ic_observe(vec_src, batch_srcs, cap):
 # (writer|seq|min-ckey) as the receipt operand (epoch/outcome are reconstructed
 # at projection). First receipt authoritative -> only event keys WITHOUT an
 # existing receipt are `needed`; atomic (all-or-none) with receipt_capacity_fault.
-EKEY_W = 2 * WK                                # event key width (writer|seq)
+EKEY_W = PROFILE_V1.EKEY_W                     # event key width (writer|seq)
 
 
-def _ekey_of(fkey_src):
+def _successor_shares_ekey(mine, nxt, next_present_src, isallones, prefeq,
+                           andv):
+    """THE equivocation test, written once.
+
+    `ic_accept` and `ic_map` both compute per-slot ACCEPT eligibility, and they
+    have to agree exactly -- a slot that mints no receipt must also drive no
+    operation, or an equivocal Send would be refused a receipt and enqueued
+    anyway. Commit 5b already carried that duplication for the leader rule;
+    adding a second duplicated rule beside it is how the two drift. The
+    POINTER bookkeeping stays at each call site (their `ekf` use-counts differ)
+    but the RULE is this one expression.
+
+    True when the next slot is OCCUPIED and carries the SAME event key -- i.e.
+    this slot is not the last of its group, so its event key has more than one
+    distinct candidate. Occupancy is part of the test rather than assumed from
+    ALL-ONES padding sorting last: an event key of all-ones bits is legal
+    arithmetic, and a padding slot must not be mistaken for a rival candidate.
+    """
+    return andv(NOT(isallones(next_present_src)), prefeq(mine, nxt))
+
+
+def _ekey_of(fkey_src, prof=PROFILE_V1):
     """Extract the top EKEY_W bits (event key) of an fkey operand -> EKEY_W op."""
-    a = [_v("a") for _ in range(FKEY_W)]
-    return f"({fkey_src} λ" + ".λ".join(a) + f".{_TUPN(a[CKEY_W:])})"
+    a = [_v("a") for _ in range(prof.FKEY_W)]
+    return f"({fkey_src} λ" + ".λ".join(a) + f".{_TUPN(a[prof.CKEY_W:])})"
 
 
-def ic_accept(fvec_src, rvec_src, cap, rcap):
+def ic_accept(fvec_src, rvec_src, cap, rcap, prof=PROFILE_V1, rule=None):
     """Term computing TUP(new_receipt_vec, receipt_capacity_fault) for one
     atomic ACCEPT. fvec_src = sorted fact vector (cap slots); rvec_src =
-    sorted receipt vector (rcap slots of accepted-fact fkeys)."""
+    sorted receipt vector (rcap slots of accepted-fact fkeys).
+
+    `rule` is the `AcceptRule` the sealed world DECLARES (commit 5c). It
+    defaults to `ACCEPT_MIN`, whose emitted term is byte-identical to every
+    pre-5c caller's: the additions below are all inside `if unique:` branches
+    placed AFTER the statements they follow, so under the frozen rule not one
+    allocation, let-binding or gensym moves.
+
+    Under `ACCEPT_UNIQUE` a slot must also be the LAST of its event key, not
+    merely the first. The fact vector is sorted and ALL-ONES padded, so an
+    event key's candidates are adjacent: `leader` already means "no predecessor
+    shares my event key", and the added test means "no successor does either".
+    Together they are `len(candidates) == 1` -- golden's `_resolve_candidates_
+    unique` -- without a pairwise scan the term cannot afford.
+
+    The successor comparison is recomputed from FRESH ekey copies rather than
+    shared with slot i+1's own `notprev`. Sharing would be cheaper by one
+    equality per adjacency and would have reordered the frozen path's let
+    chain, and gate 5 of the ruling says that path may not move.
+    """
     from admit import MAX_EVENTS
-    eqf = BL.dyn_case("eq", FKEY_W)
-    eq8 = BL.dyn_case("eq", EKEY_W)
+    rule = ACCEPT_MIN if rule is None else rule
+    unique = rule.reject_equivocal
+    eqf = BL.dyn_case("eq", prof.FKEY_W)
+    eq8 = BL.dyn_case("eq", prof.EKEY_W)
 
     def strip(one):
         u = _v("u")
         return f"({one} λ{u}.{u})"
 
     def isallones(k):
-        ao = BL.enc_operand(FKEY_ALLONES, FKEY_W)
+        ao = BL.enc_operand(prof.FKEY_ALLONES, prof.FKEY_W)
         return strip(f"(({eqf} {k}) {ao})")
 
     def prefeq(a, b):
@@ -354,21 +644,29 @@ def ic_accept(fvec_src, rvec_src, cap, rcap):
     fs = [_v("f") for _ in range(cap)]
     rs = [_v("r") for _ in range(rcap)]
     A = _Alloc()
-    # f_i: present(1) + ekey-extract(1) + insert-operand(1)
-    fc = [A.copies(fs[i], 3) for i in range(cap)]
+    # f_i: present(1) + ekey-extract(1) + insert-operand(1), and under the
+    # equivocation-rejecting rule a SECOND present, read by slot i-1 asking
+    # whether its successor is occupied at all (index 3).
+    fc = [A.copies(fs[i], 3 + (1 if unique and i >= 1 else 0))
+          for i in range(cap)]
     # r_j: present(1) + ekey-extract(1)
     rc = [A.copies(rs[j], 2) for j in range(rcap)]
     L = _LC()
 
     # receipt presents (each used cap times in inrcpt + 1 in rocc) and ekeys
     pr = [L.let(NOT(isallones(rc[j][0])), cap + 1, "pr") for j in range(rcap)]
-    ekr = [L.let(_ekey_of(rc[j][1]), cap, "ekr") for j in range(rcap)]
+    ekr = [L.let(_ekey_of(rc[j][1], prof), cap, "ekr") for j in range(rcap)]
     rocc = _sum_bools([pr[j][cap] for j in range(rcap)], CNTW)
 
-    # fact ekeys: current(i>=1) + previous(i<cap-1) + inrcpt(rcap)
+    # fact ekeys: current(i>=1) + previous(i<cap-1) + inrcpt(rcap), and under
+    # the unique rule one more as the successor test's `mine` (i<cap-1) and one
+    # more as its `nxt` (i>=1).
     ek_uses = [(1 if i >= 1 else 0) + (1 if i < cap - 1 else 0) + rcap
+               + ((1 if i < cap - 1 else 0) + (1 if i >= 1 else 0)
+                  if unique else 0)
                for i in range(cap)]
-    ekf = [L.let(_ekey_of(fc[i][1]), ek_uses[i], "ekf") for i in range(cap)]
+    ekf = [L.let(_ekey_of(fc[i][1], prof), ek_uses[i], "ekf")
+           for i in range(cap)]
     ekf_ptr = [0] * cap
 
     needed = []
@@ -387,7 +685,17 @@ def ic_accept(fvec_src, rvec_src, cap, rcap):
             ekf_ptr[i] += 1
             inr = e if inr is None else orv(e, inr)
         inr = inr if inr is not None else F
-        needed.append(L.let(andv(leader, NOT(inr)), 2, "nd"))
+        accept_i = andv(leader, NOT(inr))
+        if unique and i < cap - 1:
+            mine = ekf[i][ekf_ptr[i]]; ekf_ptr[i] += 1
+            nxt = ekf[i + 1][ekf_ptr[i + 1]]; ekf_ptr[i + 1] += 1
+            accept_i = andv(accept_i, NOT(_successor_shares_ekey(
+                mine, nxt, fc[i + 1][3], isallones, prefeq, andv)))
+        needed.append(L.let(accept_i, 2, "nd"))
+    # RULING Q4 / gate: capacity is tested against the keys that actually MINT
+    # a receipt, so an event key REFUSED for equivocation reserves no slot.
+    # That falls out for free here -- `needed` is already the accepted set
+    # under either rule -- and it is the same order golden runs in.
     n_needed = _sum_bools([needed[i][0] for i in range(cap)], CNTW)
 
     fits_raw = f"(({ic_fits(CNTW, MAX_EVENTS)} {rocc}) {n_needed})"
@@ -397,7 +705,7 @@ def ic_accept(fvec_src, rvec_src, cap, rcap):
     cur = rins
     for i in range(cap):
         valid = andv(fits[i], needed[i][1])
-        cur = f"((({ic_insert_sorted(rcap)} {cur}) {fc[i][2]}) {valid})"
+        cur = f"((({ic_insert_sorted(rcap, prof)} {cur}) {fc[i][2]}) {valid})"
     body = _PAIR(cur, fault)
 
     inner = "".join(A.prefix) + L.wrap(body)
@@ -416,47 +724,154 @@ def ic_accept(fvec_src, rvec_src, cap, rcap):
 # SetRotor -- an argmax by canon key = fkey with the writer/seq fields swapped.
 # fault_bundle = TUPN([reset_ob]) = OR of accepted-Applied ResetFault ob.
 #
-# fkey bit layout (LSB-first, 52 bits): r3[0:8] r2[8:16] r1[16:24] r0[24:32]
-#   idx[32:35] kind[35] digest[36:44] seq[44:48] writer[48:52].
-def _kindidx_of(fkey_src):
-    """-> TUP(is_setrotor, is_resetfault, valid_target)."""
-    b = [_v("b") for _ in range(FKEY_W)]
-    s1, s2 = _v("s"), _v("s")
-    la = _lab()
-    valid = f"(({NOT(b[32])} (({NOT(b[33])} {NOT(b[34])}) {F})) {F})"   # idx==0
-    body = (f"!&{la}{{{s1},{s2}}}={b[35]};"
-            + _TUPN([NOT(s1), s2, valid]))                # kind==0 -> SetRotor
+# fkey bit layout (LSB-first). Under v1 (52 bits) this is
+#   r3[0:8] r2[8:16] r1[16:24] r0[24:32] idx[32:35] kind[35] digest[36:44]
+#   seq[44:48] writer[48:52]
+# and under v2 (53 bits) everything from `kind` up shifts by one. The offsets
+# used to be written here as literals, which is exactly the property that made
+# a second profile dangerous: a wider kind field silently reinterprets bits
+# that the reader still addresses by their old numbers. They are derived now.
+def _kindidx_of(fkey_src, prof=PROFILE_V1):
+    """-> TUP(is_setrotor, is_resetfault[, is_send], valid_target).
+
+    The v1 shape is a two-way partition read off a SINGLE bit: `is_setrotor`
+    and `is_resetfault` are literal complements, so there is no third case for
+    an unrecognised kind to land in -- every kind is one of the two, by
+    construction rather than by check. That is safe only while exactly two
+    kinds exist, and it is the precise mechanism by which a widened kind field
+    would have decoded a `Send` as a `SetRotor`.
+
+    The v2 shape therefore decodes each kind by matching its FULL tag, so the
+    cases are mutually exclusive by construction and are NOT exhaustive: an
+    unrecognised tag (2 bits admit a 4th pattern that `payload_key` never
+    mints) sets no flag at all and is inert. Inert is the correct failure --
+    an op the profile does not understand must not be executed as some other
+    op that it does.
+    """
+    b = [_v("b") for _ in range(prof.FKEY_W)]
+    A = _Alloc()
+
+    # valid_target = idx == 0, as a right-folded AND over the WIDX bits.
+    ix = [b[prof.IDX_LO + i] for i in range(prof.WIDX)]
+    valid = NOT(ix[-1])
+    for src in reversed(ix[:-1]):
+        valid = f"(({NOT(src)} {valid}) {F})"
+
+    kb = [b[prof.KIND_LO + i] for i in range(prof.WKIND)]
+
+    if prof.WKIND == 1:
+        # v1, preserved verbatim: one bit, two complementary outputs.
+        s1, s2 = _v("s"), _v("s")
+        la = _lab()
+        body = (f"!&{la}{{{s1},{s2}}}={kb[0]};"
+                + _TUPN([NOT(s1), s2, valid]))            # kind==0 -> SetRotor
+        return f"({fkey_src} λ" + ".λ".join(b) + f".{body})"
+
+    # v2+: one flag per DECLARED kind, each an equality against the whole tag.
+    # Each kind bit is consumed once per declared kind, so it is dup'd first.
+    kc = [A.copies(kb[i], len(prof.KINDS)) for i in range(prof.WKIND)]
+    flags = []
+    for n, tag in enumerate(prof.KINDS):
+        lits = []
+        for i in range(prof.WKIND):
+            src = kc[i][n]
+            lits.append(src if (tag >> i) & 1 else NOT(src))
+        acc = lits[-1]
+        for src in reversed(lits[:-1]):
+            acc = f"(({src} {acc}) {F})"
+        flags.append(acc)
+    body = "".join(A.prefix) + _TUPN(flags + [valid])
     return f"({fkey_src} λ" + ".λ".join(b) + f".{body})"
 
 
-def _pose_of(fkey_src):
+def _pose_of(fkey_src, prof=PROFILE_V1):
     """-> enc_pose((r0,r1,r2,r3), WLANE) extracted from the fkey ckey lanes."""
-    b = [_v("b") for _ in range(FKEY_W)]
-    pose = _TUPN([_TUPN(b[24:32]), _TUPN(b[16:24]),
-                  _TUPN(b[8:16]), _TUPN(b[0:8])])
+    b = [_v("b") for _ in range(prof.FKEY_W)]
+    w = prof.WLANE
+    pose = _TUPN([_TUPN(b[3 * w:4 * w]), _TUPN(b[2 * w:3 * w]),
+                  _TUPN(b[w:2 * w]), _TUPN(b[0:w])])
     return f"({fkey_src} λ" + ".λ".join(b) + f".{pose})"
 
 
-def _canon_of(fkey_src):
+def _canon_of(fkey_src, prof=PROFILE_V1):
     """Canonical MAP key operand: (seq, writer, ckey) == fkey with the
     writer/seq 4-bit fields swapped -> integer `<` is golden canonical order."""
-    b = [_v("b") for _ in range(FKEY_W)]
-    canon = _TUPN(b[0:44] + b[48:52] + b[44:48])
+    b = [_v("b") for _ in range(prof.FKEY_W)]
+    c, k = prof.CKEY_W, prof.WK
+    canon = _TUPN(b[0:c] + b[c + k:c + 2 * k] + b[c:c + k])
     return f"({fkey_src} λ" + ".λ".join(b) + f".{canon})"
 
 
-def ic_map(fvec_src, rvec_src, cap, rcap):
-    """Term -> EpochControl TUP(rotor_bundle, fault_bundle) for the fixture."""
-    eqf = BL.dyn_case("eq", FKEY_W)
-    eq8 = BL.dyn_case("eq", EKEY_W)
-    ltu = BL.dyn_case("ltu", FKEY_W)
+def ic_map(fvec_src, rvec_src, cap, rcap, prof=PROFILE_V1, mcap=0, rule=None):
+    """Term -> EpochControl for the fixture.
+
+    Without a mailbox the result is TUP(rotor_bundle, fault_bundle) -- exactly
+    the frozen EpochControl `compile_step_v6` consumes, byte for byte. With one
+    (`mcap` > 0 under a Send-capable profile) the result is
+    PAIR(EpochControl, mailbox_bundle): the frozen EpochControl UNCHANGED,
+    beside a second field.
+
+    Beside, and deliberately not inside. binding_run49's R12 measured that a
+    mailbox costs the world state nothing -- a mailbox lives in CLAIM state,
+    not world state -- so the world's input must not grow a third field. That
+    is also what makes this commit an ADDITION rather than a correction, which
+    is the whole reason commit 5a left `is_send` decoded-but-inert.
+
+    The mailbox stage mirrors golden `_commit_deliveries`:
+
+        canonically order accepted deliveries
+            -> test MAILBOX capacity
+            -> append ALL or NONE
+
+    The stage needs a RANK, not a sort, and that is not an approximation of
+    golden's `sorted(..., key=_msg_key)`. A mailbox's contents are a SET: every
+    point at which golden can observe them -- `_roll_mailboxes`, `_msgs_str`,
+    the ledger -- re-sorts by `_msg_key` first, and capacity is all-or-none so
+    no ordering decides who is dropped. Which slot holds which message is
+    therefore a packing detail with no observable consequence, and the rank is
+    a one-hot counter threaded across the slots, shifted by one every time an
+    eligible Send is passed.
+
+    Slot k holds the WHOLE ClaimFactKey of the fact ranked k, not its pose. A
+    message renders as `w.s.digest.payload_key->mailbox[body]`, so a bundle
+    carrying only the body could not reproduce the film; the fkey already IS
+    the message identity (Slice A §1 borrows ADMIT identity wholesale rather
+    than inventing a message id), and `FKEY_ALLONES` is the empty slot exactly
+    as it is in the fact vector.
+
+    Capacity is ATOMIC, per Correction 2 -- never evict, never partially
+    apply. So overflow is not a per-message drop: if the accepted sends exceed
+    `mcap`, `mb_fault` latches and EVERY slot is suppressed. A partial append
+    would be the more "helpful" behaviour and is precisely the one the golden
+    model forbids.
+
+    `rule` (commit 5c) is the sealed world's `AcceptRule`, and it must be the
+    SAME one `ic_accept` was given. MAP recomputes per-slot ACCEPT eligibility
+    rather than receiving it, so a rule threaded into one and not the other is
+    a world where an equivocal Send is refused a receipt and enqueued anyway --
+    which is the ruling's "rejected sends never reach mailbox enqueue" gate,
+    failing. `ic_reduce` is what guarantees they agree; nothing else builds
+    both terms.
+
+    Note this is deliberately NOT a Send-specific refusal. ACCEPT resolves the
+    event key BEFORE MAP applies operation-specific behaviour, so under the
+    equivocation-rejecting policy an equivocal SetRotor is refused on exactly
+    the same rule -- as it is in golden, whose `resolve_candidates` never sees
+    a payload kind.
+    """
+    rule = ACCEPT_MIN if rule is None else rule
+    unique = rule.reject_equivocal
+    eqf = BL.dyn_case("eq", prof.FKEY_W)
+    eq8 = BL.dyn_case("eq", prof.EKEY_W)
+    ltu = BL.dyn_case("ltu", prof.FKEY_W)
 
     def strip(one):
         u = _v("u")
         return f"({one} λ{u}.{u})"
 
     def isallones(k):
-        return strip(f"(({eqf} {k}) {BL.enc_operand(FKEY_ALLONES, FKEY_W)})")
+        return strip(f"(({eqf} {k}) "
+                     f"{BL.enc_operand(prof.FKEY_ALLONES, prof.FKEY_W)})")
 
     def prefeq(a, b):
         return strip(f"(({eq8} {a}) {b})")
@@ -467,26 +882,43 @@ def ic_map(fvec_src, rvec_src, cap, rcap):
     def andv(a, b):
         return f"(({a} {b}) {F})"
 
+    # A mailbox stage exists only when the world declares one AND the profile
+    # can carry a Send. Both halves are required: `mcap` alone would mean
+    # emitting a bundle a v1 term has no kind tag to fill.
+    has_mb = bool(mcap) and AD.KIND_SEND in prof.KINDS
+
     fs = [_v("f") for _ in range(cap)]
     rs = [_v("r") for _ in range(rcap)]
     A = _Alloc()
-    # f_i: present(1)+ekey(1)+kindidx(1)+pose(1)+canon(1)
-    fc = [A.copies(fs[i], 5) for i in range(cap)]
+    # f_i: present(1)+ekey(1)+kindidx(1)+pose(1)+canon(1), +1 pose for the
+    # mailbox stage, which reads the SAME body lanes the rotor stage reads,
+    # and under the equivocation-rejecting rule +1 present read by slot i-1's
+    # successor test (the LAST index, which is why it is computed rather than
+    # written down).
+    _npres = 6 if has_mb else 5
+    fc = [A.copies(fs[i], _npres + (1 if unique and i >= 1 else 0))
+          for i in range(cap)]
     rc = [A.copies(rs[j], 2) for j in range(rcap)]
     L = _LC()
 
     pr = [L.let(NOT(isallones(rc[j][0])), cap, "pr") for j in range(rcap)]
-    ekr = [L.let(_ekey_of(rc[j][1]), cap, "ekr") for j in range(rcap)]
+    ekr = [L.let(_ekey_of(rc[j][1], prof), cap, "ekr") for j in range(rcap)]
 
     ek_uses = [(1 if i >= 1 else 0) + (1 if i < cap - 1 else 0) + rcap
+               + ((1 if i < cap - 1 else 0) + (1 if i >= 1 else 0)
+                  if unique else 0)
                for i in range(cap)]
-    ekf = [L.let(_ekey_of(fc[i][1]), ek_uses[i], "ekf") for i in range(cap)]
+    ekf = [L.let(_ekey_of(fc[i][1], prof), ek_uses[i], "ekf")
+           for i in range(cap)]
     ekf_ptr = [0] * cap
 
     # per-slot needed_i (== ACCEPT), kind/idx tuple, canon, pose
-    # each kind/idx 3-tuple is consumed once per field selection: is_set(1) +
+    # each kind/idx tuple is consumed once per field selection: is_set(1) +
     # is_reset(1) + valid(2, used in both eligibles) = 4 tuple copies.
-    ki = [L.let(_kindidx_of(fc[i][2]), 4, "ki") for i in range(cap)]
+    # 4 tuple copies without a mailbox (is_set, is_reset, valid x2); 6 with one
+    # (+ is_send, + the valid that gates it).
+    ki = [L.let(_kindidx_of(fc[i][2], prof), 6 if has_mb else 4, "ki")
+          for i in range(cap)]
     needed = []
     elig_set = []
     elig_rst = []
@@ -505,24 +937,68 @@ def ic_map(fvec_src, rvec_src, cap, rcap):
             ekf_ptr[i] += 1
             inr = e if inr is None else orv(e, inr)
         inr = inr if inr is not None else F
-        nd = L.let(andv(leader, NOT(inr)), 2, "nd")     # SetRotor + ResetFault
+        accept_i = andv(leader, NOT(inr))
+        if unique and i < cap - 1:
+            mine = ekf[i][ekf_ptr[i]]; ekf_ptr[i] += 1
+            nxt = ekf[i + 1][ekf_ptr[i + 1]]; ekf_ptr[i + 1] += 1
+            accept_i = andv(accept_i, NOT(_successor_shares_ekey(
+                mine, nxt, fc[i + 1][_npres], isallones, prefeq, andv)))
+        # SetRotor + ResetFault, and under a mailbox profile Send as well.
+        nd = L.let(accept_i, 3 if has_mb else 2, "nd")
         needed.append(nd)
-    # decompose each kind/idx tuple: (is_set, is_reset, valid); valid used 2x
+    # Decompose each kind/idx tuple. Its arity is one flag per DECLARED kind
+    # plus `valid`, so it is `len(KINDS)+1` under every profile -- 3 under v1,
+    # which is why the v1 selectors below still read `λa.λb.λc.<field>`.
+    #
+    # Commit 5a decoded `is_send` and then deliberately dropped it: a Send drove
+    # neither the rotor argmax nor the fault OR, so it was inert rather than
+    # aliased onto a rotor move. This commit selects it -- into the mailbox
+    # stage ONLY. It still must not reach the rotor argmax or the fault OR,
+    # and the battery asserts that separately rather than trusting the wiring.
+    names = "abcdefgh"[:len(prof.KINDS) + 1]
+    binders = "λ" + ".λ".join(names) + "."
+
+    def sel(src, field):
+        return f"({src} {binders}{names[field]})"
+
+    i_set = prof.KINDS.index(AD.KIND_SETROTOR)
+    i_rst = prof.KINDS.index(AD.KIND_RESETFAULT)
+    i_val = len(prof.KINDS)
     is_set = []
     is_rst = []
     val0 = []
     val1 = []
+    is_snd = []
+    val2 = []
     for i in range(cap):
-        is_set.append(f"({ki[i][0]} λa.λb.λc.a)")
-        is_rst.append(f"({ki[i][1]} λa.λb.λc.b)")
-        val0.append(f"({ki[i][2]} λa.λb.λc.c)")
-        val1.append(f"({ki[i][3]} λa.λb.λc.c)")
+        is_set.append(sel(ki[i][0], i_set))
+        is_rst.append(sel(ki[i][1], i_rst))
+        val0.append(sel(ki[i][2], i_val))
+        val1.append(sel(ki[i][3], i_val))
+        if has_mb:
+            is_snd.append(sel(ki[i][4], prof.KINDS.index(AD.KIND_SEND)))
+            val2.append(sel(ki[i][5], i_val))
     # eligible flags
+    elig_snd = []
     for i in range(cap):
         es = L.let(andv(needed[i][0], andv(is_set[i], val0[i])), 2, "es")
         er = andv(needed[i][1], andv(is_rst[i], val1[i]))
         elig_set.append(es)
         elig_rst.append(er)
+        if has_mb:
+            # Same acceptance gate as the control kinds -- an eligible Send is
+            # a LEADER (not an equivocation, not already receipted) whose
+            # target index resolves. `needed` therefore does the identical
+            # work here; only the kind flag differs.
+            #
+            # The copy count is exact and per-slot, because a dup whose output
+            # is never consumed is not free here. Every slot spends `mcap` on
+            # the rank selections and 1 on the overflow test; every slot but
+            # the LAST also spends (mcap+1) keeps and mcap moves on the shift.
+            # The last slot performs no shift -- its result would be dead.
+            n_snd = mcap + 1 + ((2 * mcap + 1) if i < cap - 1 else 0)
+            elig_snd.append(L.let(andv(needed[i][2], andv(is_snd[i], val2[i])),
+                                  n_snd, "eg"))
 
     reset_ob = None
     for i in range(cap):
@@ -530,10 +1006,10 @@ def ic_map(fvec_src, rvec_src, cap, rcap):
     reset_ob = reset_ob if reset_ob is not None else F
 
     # rotor argmax by canon: thread (best_canon, best_pose, have)
-    canon = [L.let(_canon_of(fc[i][3]), 2, "cn") for i in range(cap)]
-    pose = [_pose_of(fc[i][4]) for i in range(cap)]
-    best_c = BL.enc_operand(0, FKEY_W)
-    best_p = BL.enc_pose((0, 0, 0, 0), WLANE)
+    canon = [L.let(_canon_of(fc[i][3], prof), 2, "cn") for i in range(cap)]
+    pose = [_pose_of(fc[i][4], prof) for i in range(cap)]
+    best_c = BL.enc_operand(0, prof.FKEY_W)
+    best_p = BL.enc_pose((0, 0, 0, 0), prof.WLANE)
     have = F
     for i in range(cap):
         bc = L.let(best_c, 2, "bc")
@@ -548,7 +1024,54 @@ def ic_map(fvec_src, rvec_src, cap, rcap):
     cnc = _v("cnc")
     rotor_cfg = (f"λ{cnc}.λ{csr}."
                  f"(({have_f[0]} ({csr} {best_p})) {cnc})")
-    ec = _PAIR(_TUPN([rotor_cfg]), _TUPN([reset_ob]))
+    if not has_mb:
+        ec = _PAIR(_TUPN([rotor_cfg]), _TUPN([reset_ob]))
+    else:
+        # ---- mailbox stage: rank by one-hot, then atomic capacity ----------
+        # `oh` is a one-hot counter over 0..mcap of eligible Sends seen so far.
+        # Position mcap means "already full", so a Send passed while oh[mcap]
+        # is set is the one that breaks capacity -- that is the overflow test,
+        # and it needs no adder and no comparator.
+        EMPTY = BL.enc_operand(prof.FKEY_ALLONES, prof.FKEY_W)
+        # oh[k] is consumed once as a rank selector (or, at k == mcap, as the
+        # overflow test) and once as the shift's `keep`; every position but the
+        # top is additionally the NEXT position's `move` source. Hence 3 copies
+        # below the top and 2 at it.
+        def _oh_init():
+            return [L.let(T if k == 0 else F, 3 if k < mcap else 2, "oh")
+                    for k in range(mcap + 1)]
+
+        oh = _oh_init()
+        mkey = [L.let(fc[i][5], mcap, "mk") for i in range(cap)]
+        slots = [EMPTY] * mcap
+        overflow = F
+        for i in range(cap):
+            eg = elig_snd[i]
+            u = 0
+            # slot k takes fact i's KEY when i is eligible and its rank is k
+            for k in range(mcap):
+                take = andv(eg[u], oh[k][0]); u += 1
+                slots[k] = f"(({take} {mkey[i][k]}) {slots[k]})"
+            # a Send arriving at full capacity latches overflow
+            overflow = orv(andv(eg[u], oh[mcap][0]), overflow); u += 1
+            if i < cap - 1:
+                # shift the one-hot iff this slot was an eligible Send
+                nxt = []
+                for k in range(mcap + 1):
+                    keep = andv(NOT(eg[u]), oh[k][1]); u += 1
+                    move = (andv(eg[u], oh[k - 1][2]) if k > 0 else F)
+                    if k > 0:
+                        u += 1
+                    nxt.append(L.let(orv(keep, move),
+                                     3 if k < mcap else 2, "oh"))
+                oh = nxt
+            assert u == len(eg), (u, len(eg), i, mcap)
+        # Atomic all-or-none: one fault latch suppresses EVERY slot. A partial
+        # append is the failure mode Correction 2 names by name.
+        ovf = L.let(overflow, mcap + 1, "ov")
+        present = [f"(({NOT(ovf[k])} {slots[k]}) {EMPTY})" for k in range(mcap)]
+        mb_bundle = _TUPN(present + [ovf[mcap]])
+        ec = _PAIR(_PAIR(_TUPN([rotor_cfg]), _TUPN([reset_ob])), mb_bundle)
 
     inner = "".join(A.prefix) + L.wrap(ec)
     inner = f"({rvec_src} λ" + ".λ".join(rs) + f".{inner})"
@@ -564,8 +1087,21 @@ def ic_map(fvec_src, rvec_src, cap, rcap):
 # fact vector fv' feeds ACCEPT, MAP, and the output (dup'd three ways). The
 # result is TUP5(fact_vec', receipt_vec', epoch_control,
 #                fact_capacity_fault, receipt_capacity_fault).
-def ic_reduce(fv_in_src, rv_in_src, batch_srcs, cap, rcap):
-    obs = ic_observe(fv_in_src, batch_srcs, cap)      # TUP(fv', fobs)
+#
+# Under a mailbox profile (`mcap` > 0, Send-capable) the result is TUP6, with
+# the epoch's mailbox bundle as an ADDED sixth field. `epoch_control` keeps its
+# frozen two-field shape in BOTH arities -- the field that grows is the
+# reducer's own output, not the world's input, because that is where a mailbox
+# lives (binding_run49 R12).
+def ic_reduce(fv_in_src, rv_in_src, batch_srcs, cap, rcap, prof=PROFILE_V1,
+              mcap=0, rule=None):
+    # ONE rule object reaches BOTH stages. `ic_accept` decides who gets a
+    # receipt and `ic_map` decides who drives an operation, from the same
+    # per-slot eligibility computed twice; this line is the only thing making
+    # the two copies say the same thing. Threading it into one and defaulting
+    # the other is the exact shape of the defect commit 5c closes.
+    rule = ACCEPT_MIN if rule is None else rule
+    obs = ic_observe(fv_in_src, batch_srcs, cap, prof)   # TUP(fv', fobs)
     fvp = _v("fvp"); fobs = _v("fobs")
     A = _Alloc()
     fv_a, fv_m, fv_o = A.copies(fvp, 3)               # accept / map / output
@@ -575,10 +1111,16 @@ def ic_reduce(fv_in_src, rv_in_src, batch_srcs, cap, rcap):
     rvin = _v("rvin")
     R = _Alloc()
     rv_a, rv_m = R.copies(rvin, 2)                    # accept / map
-    acc = ic_accept(fv_a, rv_a, cap, rcap)            # TUP(rv', facc)
-    ecc = ic_map(fv_m, rv_m, cap, rcap)              # EpochControl
+    acc = ic_accept(fv_a, rv_a, cap, rcap, prof, rule)      # TUP(rv', facc)
+    ecc = ic_map(fv_m, rv_m, cap, rcap, prof, mcap, rule)   # EpochControl
     rvp = _v("rvp"); facc = _v("facc")
-    out = _TUPN([fv_o, rvp, ecc, fobs, facc])
+    if mcap and AD.KIND_SEND in prof.KINDS:
+        # ic_map handed back PAIR(EpochControl, mailbox_bundle); split it so
+        # the world still receives exactly the frozen EpochControl.
+        ecv, mbv = _v("ecv"), _v("mbv")
+        out = f"({ecc} λ{ecv}.λ{mbv}.{_TUPN([fv_o, rvp, ecv, fobs, facc, mbv])})"
+    else:
+        out = _TUPN([fv_o, rvp, ecc, fobs, facc])
     inner = "".join(A.prefix) + "".join(R.prefix) + f"({acc} λ{rvp}.λ{facc}.{out})"
     inner = f"(λ{rvin}.{inner} {rv_in_src})"
     return f"({obs} λ{fvp}.λ{fobs}.{inner})"

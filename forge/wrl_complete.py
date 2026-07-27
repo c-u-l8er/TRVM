@@ -49,8 +49,20 @@ class Completion(namedtuple("Completion", "context prefix candidates")):
 
 # --------------------------------------------------- frozen candidate reads
 def role_completions():
-    """The 5 frozen role surface tokens (pulser/relay/door/spinner/orb)."""
-    return tuple(sorted(_ROLE_TOKEN_OF[r] for r in WC.ROLE_IDS))
+    """The frozen role surface tokens an author can actually TYPE
+    (pulser/relay/door/spinner/orb).
+
+    Sourced from the WRL Core surface table, NOT from `WC.ROLE_IDS`. Those two
+    are not equal: a role can be in the registry with no text spelling (see
+    `wrl_ir.unwritable_role_ids`). Reading the registry and subscripting the
+    surface table with it made this function raise a bare KeyError the moment
+    that gap opened -- and a completion API that crashes on a legal registry is
+    worse than one that omits a candidate.
+
+    Offering an unwritable role would also be wrong on its own terms: a
+    completion is a promise that the text is acceptable if accepted, and
+    `[mailbox:m0]` is not."""
+    return tuple(sorted(W._ROLE_TOKEN))
 
 
 def edge_tag_completions():
@@ -91,11 +103,21 @@ def clock_form_completions():
 # ------------------------------------------------------- metadata manifest
 def surface_metadata():
     """The whole frozen WRL Core vocabulary as a structured manifest -- a PURE
-    projection of the registries, so it can never drift from what the parser
-    accepts. Suitable as the static backing data for an editor's completions."""
+    projection of the SURFACE table, so it can never drift from what the parser
+    accepts. Suitable as the static backing data for an editor's completions.
+
+    `roles` is keyed by surface lexeme and therefore covers exactly the roles
+    that can be written down. It previously walked `WC.ROLE_IDS` instead, which
+    made the "can never drift" claim false in both directions at once: it raised
+    KeyError on a registry role with no lexeme, and it would silently have
+    advertised such a role to an editor if it had not.
+
+    The gap itself is not hidden -- it is reported under `unwritable_roles`, so
+    a tool can SEE that the surface is a strict subset of the registry instead
+    of having to infer it from an absence."""
     roles = {}
-    for rid in WC.ROLE_IDS:
-        tok = _ROLE_TOKEN_OF[rid]
+    for tok in sorted(W._ROLE_TOKEN):
+        rid = W._ROLE_TOKEN[tok]
         roles[tok] = {
             "role_id": rid,
             "ports": list(port_completions(rid)),
@@ -110,6 +132,9 @@ def surface_metadata():
     return {
         "version": COMPLETE_VERSION,
         "roles": roles,
+        # registry roles with no surface lexeme. Normally `[]`. Reported rather
+        # than omitted so the surface/registry gap is VISIBLE to tooling.
+        "unwritable_roles": list(W.unwritable_role_ids()),
         "edge_tags": edges,
         "named_rotors": list(named_rotor_completions()),
         "clock_forms": list(clock_form_completions()),

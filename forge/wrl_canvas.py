@@ -124,6 +124,15 @@ def graph_to_canvas(g):
     so the default layout is a pure function of identity (declaration order
     cannot change the produced canvas)."""
     cg = WC.canonicalize_graph(g)
+    # NOTE (Slice B): this emitter has no route gate, for exactly the reason
+    # binding_run46 N10c records about the Mailbox role -- canvas.v1 is retired
+    # and FROZEN (§15.1.1 point 1), and adding a rejection to it would be a
+    # behaviour change to a frozen module. A route gate was written here and
+    # then REMOVED on that ground: the sanctioned door
+    # (`wrl_legacy.export_canvas_graph_v1`) already refuses, and it refuses by
+    # a COMPUTED round-trip rather than by naming a construct, so it needed no
+    # edit at all to learn about routes. binding_run47 P9 states that, and
+    # states honestly which of the two losses fires first.
     nodes = []
     for i, (role, name, cfg) in enumerate(cg.nodes):
         nodes.append({"object_id": name, "role": role,
@@ -192,8 +201,22 @@ def validate_canvas_v1(canvas):
                      "node missing semantic field(s) %s"
                      % sorted(_NODE_SEM - set(n)))
         if n["role"] not in _CFG_KEYS:
+            # This gate reads `_CFG_KEYS` -- canvas.v1's OWN role table -- not
+            # `WC.ROLE_IDS`. The two are not equal and the message must not
+            # pretend they are: it used to say the role was "not in the frozen
+            # v1 registry", which is FALSE for `Mailbox`, a registry role with
+            # ports and a config schema that this retired surface simply has no
+            # column for. That is the §18 defect verbatim (a rejection denying
+            # the existence of a role the registry defines), found a fifth time
+            # while building the Slice B importer. Correcting a message that
+            # states a falsehood is not an extension of the frozen surface.
+            unrepresentable = n["role"] in WC.ROLE_IDS
             WC._fail(WC.WRL_UNSUPPORTED_FEATURE,
-                     "role %r not in the frozen v1 registry" % (n["role"],))
+                     ("role %r is in the frozen v1 registry but has no "
+                      "canvas.v1 representation (canvas.v1 is retired; its "
+                      "role table is a frozen subset)" if unrepresentable
+                      else "role %r is not in the frozen v1 registry")
+                     % (n["role"],))
         _coerce_cfg(n["role"], n["static_config"])   # strict field check
     for c in canvas.get("connections", []):
         if not isinstance(c, dict):

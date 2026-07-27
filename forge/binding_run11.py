@@ -2,7 +2,7 @@
 
 3B-4 adds surface SUGAR that canonicalizes to the frozen numeric values via a
 source-to-source PRE-PASS (`wrl_sugar.desugar_core`) in front of the UNTOUCHED
-`parse_wrl_core`. So a sugared program and its numeric twin lower to identical
+`parse_wrl_legacy_document`. So a sugared program and its numeric twin lower to identical
 bytes -- sugar can never introduce a new identity, and the canonical formatter
 (3B-2) still emits the numeric surface, so sugar washes out like whitespace.
 
@@ -63,7 +63,7 @@ def _pulser_world(clock_expr):
 
 
 def _sem(src, sugared):
-    parse = SG.parse_core_sugared if sugared else W.parse_wrl_core
+    parse = SG.parse_legacy_sugared if sugared else W.parse_wrl_legacy_document
     return W.lower_program(src if sugared else src, parse).semantic_artifact_id
 
 
@@ -92,8 +92,8 @@ def main():
             lanes = SG.named_rotor(name, n)
             numeric = ".".join(str(v) for v in lanes)
             a = W.lower_program(SG.desugar_core(_spinner_world(name, w, n)),
-                                W.parse_wrl_core)
-            b = W.lower_program(_spinner_world(numeric, w, n), W.parse_wrl_core)
+                                W.parse_wrl_legacy_document)
+            b = W.lower_program(_spinner_world(numeric, w, n), W.parse_wrl_legacy_document)
             if (a.semantic_artifact_id != b.semantic_artifact_id
                     or a.sealed_artifact.artifact != b.sealed_artifact.artifact):
                 n1 = False
@@ -107,8 +107,8 @@ def main():
                    ("once at 5", "mode=once, epoch=5")]
     for concise, verbose in clock_pairs:
         a = W.lower_program(SG.desugar_core(_pulser_world(concise)),
-                            W.parse_wrl_core)
-        b = W.lower_program(_pulser_world(verbose), W.parse_wrl_core)
+                            W.parse_wrl_legacy_document)
+        b = W.lower_program(_pulser_world(verbose), W.parse_wrl_legacy_document)
         if (a.semantic_artifact_id != b.semantic_artifact_id
                 or a.sealed_artifact.artifact != b.sealed_artifact.artifact):
             n2 = False
@@ -140,9 +140,9 @@ def main():
     n5 = True
     for w, n in GEOM:
         lanes = ".".join(str(v) for v in SG.named_rotor("reverse_z", n))
-        fa = F.format_wrl_core(SG.parse_core_sugared(_spinner_world("reverse_z",
+        fa = F.format_wrl_core(SG.parse_legacy_sugared(_spinner_world("reverse_z",
                                                                     w, n)))
-        fb = F.format_wrl_core(W.parse_wrl_core(_spinner_world(lanes, w, n)))
+        fb = F.format_wrl_core(W.parse_wrl_legacy_document(_spinner_world(lanes, w, n)))
         if fa != fb or "reverse_z" in fa:
             n5 = False
     rep(n5, None, "N5) the formatter emits the numeric surface (named sugar "
@@ -153,7 +153,7 @@ def main():
     # the reject cases here are a genuinely-unknown name + a missing spinner n.)
     n6 = True
     try:
-        SG.parse_core_sugared(_spinner_world("barrel_roll", 8, 4))
+        SG.parse_legacy_sugared(_spinner_world("barrel_roll", 8, 4))
         n6 = False
     except WC.WrlValidationError as e:
         n6 = n6 and e.code == WC.WRL_UNSUPPORTED_FEATURE
@@ -173,7 +173,7 @@ def main():
            "[spinner:sp](w=8, n=4, rotor=identity)\n"
            "[spinner:sp](w=8, n=4, rotor=identity)\n"
            "[orb:ob]\n[p0] --sig--> [sp]\n[sp] --socket--> [ob]\n")
-    d = DG.diagnose_core(SG.desugar_core(dup))
+    d = DG.diagnose_legacy_document(SG.desugar_core(dup))
     n7 = (len(d) == 1 and d[0].code == WC.WRL_DUPLICATE_ID
           and d[0].canonical_object_id == "sp")
     rep(n7, None, "N7) 3B-3 diagnostics fire through desugar (dup id in a "
@@ -182,15 +182,15 @@ def main():
     # ---- N8 a full sugared world == its numeric twin (bytes + sem id)
     named_full = B7.W_CORE.replace("rotor=16.0.0.0", "rotor=identity") \
         .replace("(mode=periodic, period=2, phase=0)", "(every 2)")
-    a = W.lower_program(SG.desugar_core(named_full), W.parse_wrl_core)
-    b = W.lower_program(B7.W_CORE, W.parse_wrl_core)
+    a = W.lower_program(SG.desugar_core(named_full), W.parse_wrl_legacy_document)
+    b = W.lower_program(B7.W_CORE, W.parse_wrl_legacy_document)
     n8 = (a.semantic_artifact_id == b.semantic_artifact_id
           and a.sealed_artifact.artifact == b.sealed_artifact.artifact)
     rep(n8, None, "N8) a full sugared world (named rotor + concise clock) == "
                   "its numeric twin (bytes + sem id)")
 
     # ---- N9 a sugared world runs ic_ref == ic32 == golden (native)
-    prog = W.lower_program(SG.desugar_core(named_full), W.parse_wrl_core)
+    prog = W.lower_program(SG.desugar_core(named_full), W.parse_wrl_legacy_document)
     plan = P.artifact_to_compile_plan_v1(prog.sealed_artifact)
     view = P.plan_view(plan)
     fx = prog.as_fixture_for_test()

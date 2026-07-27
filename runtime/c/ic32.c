@@ -451,11 +451,101 @@ static void show_iter(Term t){
     sb_putc(0);                                                 // NUL-terminate
 }
 
-// ---------------------------------------------------------------- self-test
-static void reset_state(void){
-    hp = 1; interactions = 0; n_free = 0; n_bnd = 0; name_ctr = 0; sp = 0; dnsp = 0;
-    free1_n = 0; free2_n = 0; allocs = 0; live = 0; peak_live = 0;
+// ---------------------------------------------------------------- state reset
+// Two groups, and the distinction is load-bearing for the fold mode below.
+//
+// TRANSIENT state is scratch that one parse or one stringify builds and
+// consumes within the same call. Zeroing it is always correct.
+//
+// PERSISTENT state is built by the parser and read back later by the
+// stringifier. The free-name intern table is the whole of it: free_intern()
+// allocates a real heap slot per free name AND records the slot<->name
+// association in a side table that does not live in the heap. A restore that
+// copies the heap back but zeroes that table leaves the slot with no name, so
+// show_iter() falls through to bnd_name() and invents a binder name for a free
+// variable -- and two distinct free variables can then print as one
+// identifier. That is a well-formed term asserting an identity that does not
+// hold, which is worse than a crash.
+//
+// bnd_loc/bnd_nm/name_ctr look like they belong to the persistent group and do
+// not: bnd_name() is called only from the stringifier, so they are display
+// state assigned during readback and MUST be zeroed, or binder names leak
+// across epochs.
+static void reset_transient(void){
+    interactions = 0; n_bnd = 0; name_ctr = 0; sp = 0; dnsp = 0;
+    free1_n = 0; free2_n = 0; allocs = 0;
 }
+static void reset_state(void){
+    reset_transient();
+    n_free = 0;                               // persistent group
+    hp = 1; live = 0; peak_live = 0;
+}
+
+// ---------------------------------------------------------------- SnapshotV1
+// Path A: when the same term is reduced against many different arguments, the
+// parse of that fixed term is repeated work. Parse it once, keep the heap
+// slots it occupies, and restore them per epoch instead of re-parsing.
+//
+// The image alone is not the snapshot -- see reset_state above.
+#define SNAPSHOT_SCHEMA 1u
+
+typedef struct {
+    uint32_t  schema;        // refuse an image this build does not understand
+    uint64_t  step_hash;     // ...and one taken from a different term
+    uint32_t  hp;
+    long      live;
+    Term*     img;
+    size_t    img_bytes;
+    int       n_free;        // persistent: the free-name intern table
+    uint32_t* free_loc;
+    char    (*free_nm)[40];
+} SnapshotV1;
+
+static uint64_t snapshot_hash(const char* s, size_t n){
+    uint64_t h = 1469598103934665603ULL;                       // FNV-1a 64
+    for (size_t i=0;i<n;i++){ h ^= (unsigned char)s[i]; h *= 1099511628211ULL; }
+    return h;
+}
+
+// Must be called immediately after parsing the step term and BEFORE any
+// reduction. Taking it there is what makes zeroing the allocator free lists
+// correct rather than accidentally correct: every push onto free1/free2
+// happens inside a reduction rule and none in the parser, so at this point the
+// lists are provably empty.
+static void snapshot_capture(SnapshotV1* s, const char* step_src, size_t step_len){
+    s->schema    = SNAPSHOT_SCHEMA;
+    s->step_hash = snapshot_hash(step_src, step_len);
+    s->hp = hp; s->live = live;
+    s->img_bytes = (size_t)hp * sizeof(Term);
+    s->img = (Term*)malloc(s->img_bytes ? s->img_bytes : 1);
+    memcpy(s->img, heap, s->img_bytes);
+    s->n_free   = n_free;
+    s->free_loc = (uint32_t*)malloc((size_t)(n_free?n_free:1)*sizeof(uint32_t));
+    s->free_nm  = (char(*)[40])malloc((size_t)(n_free?n_free:1)*40);
+    memcpy(s->free_loc, free_loc, (size_t)n_free*sizeof(uint32_t));
+    memcpy(s->free_nm,  free_nm,  (size_t)n_free*40);
+}
+
+// Returns 0 on success, nonzero on refusal. The caller passes the hash of the
+// term it believes the snapshot describes; it is a precomputed integer rather
+// than the source bytes because re-hashing a multi-megabyte term every epoch
+// would cost more than the parse this mode exists to avoid. A snapshot from a
+// different term would restore a well-formed heap for the wrong program, so
+// this has to be a refusal and not a warning.
+static int snapshot_restore(const SnapshotV1* s, uint64_t step_hash){
+    if (s->schema    != SNAPSHOT_SCHEMA) return 1;
+    if (s->step_hash != step_hash)       return 2;
+    memcpy(heap, s->img, s->img_bytes);
+    hp = s->hp; live = s->live; peak_live = s->live;
+    reset_transient();
+    free_ensure(s->n_free);
+    memcpy(free_loc, s->free_loc, (size_t)s->n_free*sizeof(uint32_t));
+    memcpy(free_nm,  s->free_nm,  (size_t)s->n_free*40);
+    n_free = s->n_free;
+    return 0;
+}
+
+// ---------------------------------------------------------------- self-test
 static int one_test(const char* in, const char* expect){
     reset_state();
     P = in; Term t = parse_term(); ws();
@@ -637,6 +727,129 @@ int main(int argc, char** argv){
         printf("structure, so it sits in a binder slot. those leaks need substitution-aware\n");
         printf("collection / compiler-inserted erasers, not a bigger collector.\n");
         erase_on=1;
+        return 0;
+    }
+
+    // ------------------------------------------------------------- fold mode
+    // An EXPLICIT mode, requested by name. The one-shot stdin path below is
+    // unchanged and still parses directly; nothing about it is affected.
+    //
+    //   ic32 -fold    stepfile argsfile    parse once, restore per epoch
+    //   ic32 -reparse stepfile argsfile    re-parse the whole term per epoch
+    //
+    // -reparse is not here as a benchmark comparand. It is the behaviour -fold
+    // proposes to replace, so it is the only thing -fold can be required to
+    // preserve: the two are differentially tested against each other and any
+    // divergence in the printed normal form is a behaviour change.
+    //
+    // argsfile is: epoch count on the first line, then CONFIG and STATE on
+    // alternating lines. Epoch i reduces ((STEP CONFIG_i) STATE_i).
+    if (argc>3 && (!strcmp(argv[1],"-fold") || !strcmp(argv[1],"-reparse"))){
+        int reparse = !strcmp(argv[1],"-reparse");
+
+        FILE* fs = fopen(argv[2],"rb");
+        if (!fs){ fprintf(stderr,"cannot open %s\n", argv[2]); return 3; }
+        fseek(fs,0,SEEK_END); long slen = ftell(fs); fseek(fs,0,SEEK_SET);
+        char* sbuf = (char*)malloc((size_t)slen+1);
+        if (!sbuf || fread(sbuf,1,(size_t)slen,fs) != (size_t)slen){
+            fprintf(stderr,"short read %s\n", argv[2]); return 3; }
+        sbuf[slen]=0; fclose(fs);
+        while (slen>0 && (sbuf[slen-1]=='\n'||sbuf[slen-1]=='\r')) sbuf[--slen]=0;
+
+        FILE* fa = fopen(argv[3],"rb");
+        if (!fa){ fprintf(stderr,"cannot open %s\n", argv[3]); return 3; }
+        fseek(fa,0,SEEK_END); long alen = ftell(fa); fseek(fa,0,SEEK_SET);
+        char* abuf = (char*)malloc((size_t)alen+1);
+        if (!abuf || fread(abuf,1,(size_t)alen,fa) != (size_t)alen){
+            fprintf(stderr,"short read %s\n", argv[3]); return 3; }
+        abuf[alen]=0; fclose(fa);
+
+        int NEP = atoi(abuf);
+        if (NEP <= 0){ fprintf(stderr,"bad epoch count in %s\n", argv[3]); return 3; }
+        char* cur = strchr(abuf,'\n');
+        if (!cur){ fprintf(stderr,"truncated %s\n", argv[3]); return 3; }
+        cur++;
+        char** cfg = (char**)malloc((size_t)NEP*sizeof(char*));
+        char** stt = (char**)malloc((size_t)NEP*sizeof(char*));
+        for (int i=0;i<NEP;i++){
+            char* nl;
+            cfg[i]=cur; nl=strchr(cur,'\n');
+            if (!nl){ fprintf(stderr,"truncated %s at epoch %d\n", argv[3], i); return 3; }
+            *nl=0; cur=nl+1;
+            stt[i]=cur; nl=strchr(cur,'\n');
+            if (nl){ *nl=0; cur=nl+1; }
+            else if (i+1 < NEP){ fprintf(stderr,"truncated %s at epoch %d\n", argv[3], i); return 3; }
+        }
+
+        struct timespec a,b;
+        double parse_ms=0, reduce_ms=0, restore_ms=0;
+        long tot_itrs=0;
+
+        // parse the step term once
+        reset_state();
+        clock_gettime(CLOCK_MONOTONIC,&a);
+        P = sbuf; Term S = parse_term(); ws();
+        clock_gettime(CLOCK_MONOTONIC,&b);
+        double step_parse_ms = (b.tv_sec-a.tv_sec)*1e3 + (b.tv_nsec-a.tv_nsec)/1e6;
+
+        // Zeroed, so schema==0 and an unreachable restore would be REFUSED
+        // rather than reading whatever was on the stack.
+        SnapshotV1 snap = {0}; uint64_t step_hash = 0;
+        if (!reparse){
+            snapshot_capture(&snap, sbuf, (size_t)slen);
+            step_hash = snap.step_hash;
+        }
+
+        for (int i=0;i<NEP;i++){
+            Term root;
+            if (reparse){
+                size_t need = (size_t)slen + strlen(cfg[i]) + strlen(stt[i]) + 8;
+                char* whole = (char*)malloc(need);
+                snprintf(whole, need, "((%s %s) %s)", sbuf, cfg[i], stt[i]);
+                reset_state();
+                clock_gettime(CLOCK_MONOTONIC,&a);
+                P = whole; root = parse_term(); ws();
+                clock_gettime(CLOCK_MONOTONIC,&b);
+                parse_ms += (b.tv_sec-a.tv_sec)*1e3 + (b.tv_nsec-a.tv_nsec)/1e6;
+                free(whole);
+            } else {
+                clock_gettime(CLOCK_MONOTONIC,&a);
+                int rc = snapshot_restore(&snap, step_hash);
+                clock_gettime(CLOCK_MONOTONIC,&b);
+                if (rc){ fprintf(stderr,"snapshot restore refused rc=%d\n", rc); return 5; }
+                restore_ms += (b.tv_sec-a.tv_sec)*1e3 + (b.tv_nsec-a.tv_nsec)/1e6;
+
+                clock_gettime(CLOCK_MONOTONIC,&a);
+                P = cfg[i]; Term C = parse_term(); ws();
+                P = stt[i]; Term T = parse_term(); ws();
+                uint32_t A1 = alloc_n(2); heap[A1]=S;               heap[A1+1]=C;
+                uint32_t A2 = alloc_n(2); heap[A2]=MK(T_APP,0,A1);  heap[A2+1]=T;
+                root = MK(T_APP,0,A2);
+                clock_gettime(CLOCK_MONOTONIC,&b);
+                parse_ms += (b.tv_sec-a.tv_sec)*1e3 + (b.tv_nsec-a.tv_nsec)/1e6;
+            }
+
+            clock_gettime(CLOCK_MONOTONIC,&a);
+            Term nf = normal(root);
+            clock_gettime(CLOCK_MONOTONIC,&b);
+            reduce_ms += (b.tv_sec-a.tv_sec)*1e3 + (b.tv_nsec-a.tv_nsec)/1e6;
+            tot_itrs += interactions;
+
+            // stdout carries normal forms and stderr carries the timing record,
+            // so a divergence between the two modes is compared against normal
+            // forms only and cannot be masked or manufactured by timing text.
+            show_iter(nf); fputs(sb,stdout); putchar('\n');
+        }
+
+        fprintf(stderr,
+            "mode=%s schema=%u epochs=%d step_parse_once_ms=%.3f restore_ms=%.3f "
+            "parse_ms=%.3f reduce_ms=%.3f total_ms=%.3f per_epoch_ms=%.3f "
+            "itrs_per_epoch=%ld\n",
+            reparse?"reparse":"fold", SNAPSHOT_SCHEMA, NEP,
+            reparse?0.0:step_parse_ms, restore_ms, parse_ms, reduce_ms,
+            (reparse?0.0:step_parse_ms) + restore_ms + parse_ms + reduce_ms,
+            ((reparse?0.0:step_parse_ms) + restore_ms + parse_ms + reduce_ms)/NEP,
+            tot_itrs/NEP);
         return 0;
     }
 

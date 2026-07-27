@@ -83,6 +83,41 @@ output the Python reference hits its **recursion-depth limit** (deep `normal()`)
 *not* an interaction-count difference — the C runtime keeps going, handling 118K
 interactions on a 59049-deep result in ~5 ms.
 
+## Fold mode — reusing a parse across epochs (Path A)
+
+When the same term is reduced against many different arguments, re-parsing it every
+time is repeated work. In the WRL epoch loop the step term is byte-identical across
+epochs and is ~99.96% of the input, so the parse, not the reduction, is the cost.
+
+```
+./ic32 -fold    stepfile argsfile      # parse the step once, restore per epoch
+./ic32 -reparse stepfile argsfile      # re-parse the whole term per epoch
+```
+
+`argsfile` is an epoch count on the first line, then `CONFIG` and `STATE` on
+alternating lines; epoch *i* reduces `((STEP CONFIG_i) STATE_i)`. Normal forms go to
+stdout, one per epoch; the timing record goes to stderr. **Both are explicit modes —
+the one-shot stdin path is untouched and still parses directly.**
+
+`-reparse` is not here as a benchmark comparand. It is the behaviour `-fold` proposes
+to replace, so it is the only thing `-fold` can be *required* to preserve, and the two
+are differentially tested against each other.
+
+**The heap image is not the whole snapshot.** `SnapshotV1` also carries the free-name
+intern table, because `free_intern()` allocates a heap slot per free name *and*
+records the slot↔name association in a side table that does not live in the heap.
+Restoring the heap while zeroing that table leaves the slot nameless, `show_iter()`
+falls through to `bnd_name()`, and a free variable prints under an invented binder
+name — two distinct free variables can collapse onto one identifier, producing a
+well-formed term that asserts an identity which does not hold. `reset_transient()`
+and `reset_state()` exist to keep that distinction visible in the code: binder names
+(`bnd_*`, `name_ctr`) look similar but are assigned by the *stringifier*, so they must
+be zeroed.
+
+The snapshot records a schema version and a hash of the term it was taken from, and a
+restore refuses (exit 5) on either mismatch — a snapshot from a different term would
+otherwise restore a well-formed heap for the wrong program.
+
 ## Honest notes
 
 - **This is single-node and still tree-walking** (recursive `whnf`/`normal` over the
@@ -102,6 +137,10 @@ interactions on a 59049-deep result in ~5 ms.
   `ic_float` directly and validates cleanly) while keeping `SPEC.md`'s `tag|label|addr`
   word. The combinator model + `BND` boundary ports remain the basis for the
   *distribution* layer.
+- **Fold mode is a runtime capability, not yet a wired-in policy.** Nothing in the
+  epoch loop calls `-fold` yet; adding it is a separate change. The in-process step
+  hash check is cheap insurance rather than a strong gate — it becomes load-bearing
+  only once a snapshot outlives the invocation that took it.
 - **The Python recursion-limit caveat** above means the speedup numbers understate
   the gap at scale (Python simply can't run the larger cases without restructuring).
 

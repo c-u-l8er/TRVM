@@ -90,9 +90,13 @@ class _PlanView:
     # must execute the semantics the sealed artifact names, and the only way to
     # guarantee that is for the declarations and the policy that governs them to
     # arrive from one object with one provenance.
+    # `async_routes` travels for the SAME reason as `mailboxes`: declared here
+    # and provably ignored by `compile_step_v6`. A route emits a claim, and a
+    # claim is ADMIT's business, not the physical step function's -- so the
+    # backend must be able to see the declaration and demonstrably not use it.
     __slots__ = ("pulsers", "spinners", "orbs", "relays", "doors",
-                 "mailboxes", "admit_policy_id", "edges", "sockets", "_conf",
-                 "_encoding", "_onehot_max")
+                 "mailboxes", "async_routes", "admit_policy_id", "edges",
+                 "sockets", "_conf", "_encoding", "_onehot_max")
 
     def __init__(self, plan, profile=None):
         self.pulsers = {p["id"]: tuple(p["clock"]) for p in plan["pulsers"]}
@@ -105,6 +109,7 @@ class _PlanView:
         self.doors = list(plan["doors"])
         self.mailboxes = {m["id"]: (m["w"], m["cap"])
                           for m in plan.get("mailboxes") or ()}
+        self.async_routes = [dict(r) for r in plan.get("async_routes") or ()]
         self.admit_policy_id = plan["admit_policy_id"]
         self.edges = [tuple(e) for e in plan["signal_edges"]]
         self.sockets = [tuple(x) for x in plan["socket_controls"]]
@@ -170,28 +175,39 @@ class _PlanView:
 # leaves every plan signature (and thus the CompilePlanDigest) fixed while any
 # semantic change moves them.
 # ===================================================================
+def _layout_records(view, counter_detail):
+    """The encoded-state layout as hashable records, in `compiler.state_layout`
+    order -- the SAME walk the codecs and `_v6_fields` use, one module down.
+
+    `slay-` and `blay-` differ in exactly ONE place: what a counter carries (the
+    neutral clock, or the representation-full spec the profile chose). So that
+    is the parameter, and every other record is shared rather than written twice.
+    Before this, the two functions were near-identical 20-line copies whose only
+    real difference was a single sub-expression, which is the cheapest possible
+    way to let a layout change land in one signature and not the other.
+    """
+    recs = []
+    for kind, name in C.state_layout(view):
+        if kind == "counter":
+            recs.append(["counter", name, counter_detail(name)])
+        elif kind == "pose":
+            # A pose is named for its ORB but sized by that orb's CONTROLLING
+            # spinner; an uncontrolled orb falls back to the default width. The
+            # rule is `compiler.pose_width`, shared with both codecs rather than
+            # restated, so a signature cannot describe a width the encoder does
+            # not use.
+            recs.append(["pose", name, C.pose_width(view, name)])
+        elif kind == "rotor":
+            # A rotor is already named for the spinner, so it sizes itself.
+            recs.append(["rotor", name, view.spinners[name][0]])
+        else:
+            recs.append([kind, name])
+    return recs
+
+
 def _state_layout_signature(view):
-    ppl, wires, doors, relays = view.layout()
-    layout = []
-    for r in ppl:
-        layout.append(["counter", r, list(view.pulsers[r])])   # NEUTRAL clock
-    for f in wires:
-        layout.append(["wire", f])
-    for f in doors:
-        layout.append(["door", f])
-    for f in relays:
-        layout.append(["relay", f])
-    for o in view.orbs:
-        s = view.controller_of(o)
-        w_ = view.spinners[s][0] if s else 8
-        layout.append(["pose", o, w_])
-        layout.append(["fault", o])
-    for o in view.orbs:
-        s = view.controller_of(o)
-        if not s:
-            continue
-        layout.append(["rotor", s, view.spinners[s][0]])
-    return "slay-" + WC._sha(WC.serialize_artifact(layout))
+    return "slay-" + WC._sha(WC.serialize_artifact(_layout_records(
+        view, lambda r: list(view.pulsers[r]))))          # NEUTRAL clock
 
 
 def _epoch_input_signature(view):
@@ -233,27 +249,8 @@ def backend_layout_signature(view):
     """The representation-FULL encoded-state layout, from the profile-driven
     counter_spec. Moves with the counter_encoding/onehot_max the profile picks;
     it is NOT part of the plan and NOT part of the SemanticArtifactID."""
-    ppl, wires, doors, relays = view.layout()
-    layout = []
-    for r in ppl:
-        layout.append(["counter", r, list(view.counter_spec(r))])  # FULL spec
-    for f in wires:
-        layout.append(["wire", f])
-    for f in doors:
-        layout.append(["door", f])
-    for f in relays:
-        layout.append(["relay", f])
-    for o in view.orbs:
-        s = view.controller_of(o)
-        w_ = view.spinners[s][0] if s else 8
-        layout.append(["pose", o, w_])
-        layout.append(["fault", o])
-    for o in view.orbs:
-        s = view.controller_of(o)
-        if not s:
-            continue
-        layout.append(["rotor", s, view.spinners[s][0]])
-    return "blay-" + WC._sha(WC.serialize_artifact(layout))
+    return "blay-" + WC._sha(WC.serialize_artifact(_layout_records(
+        view, lambda r: list(view.counter_spec(r)))))     # FULL spec
 
 
 # The compiler emits the step function as a lambda-term STRING whose bound
@@ -298,7 +295,7 @@ def _backend_content_hash(step, fields):
 # ===================================================================
 def _plan_from_parts(sem_id, profile_id, semantic_policies, pulsers, relays,
                      doors, spinners, orbs, sig_edges, sockets, conf,
-                     mailboxes=None):
+                     mailboxes=None, async_routes=None):
     """pulsers: {id: clock-tuple}; spinners: {id: (w, n, rotor-tuple)};
     conf: {spinner_id: bool}; relays/doors/orbs: [id]; sig_edges/sockets:
     [(src, dst)]; mailboxes: {id: (w, cap)}. Everything is canonicalized
@@ -311,6 +308,22 @@ def _plan_from_parts(sem_id, profile_id, semantic_policies, pulsers, relays,
     SemanticArtifactIDs) differ. That is the precise, testable statement of
     'the mailbox contributes nothing physical'."""
     mailboxes = dict(mailboxes or {})
+    # Canonical RouteKey order, which per ruling Q4 also fixes each route's
+    # ADMIT `sequence`. Sorting here rather than trusting the caller means the
+    # plan cannot disagree with the artifact about which route is route 0.
+    routes = [{"source_id": r["source_id"], "route_tag": r["route_tag"],
+               "mailbox_id": r["mailbox_id"],
+               # `list`, not `tuple`, for the same reason a rotor is a list
+               # here: the plan is a JSON-shaped document and must survive a
+               # round-trip unchanged. A malformed body is passed THROUGH
+               # rather than coerced, so `validate_compile_plan_v1` gets to
+               # reject it with a typed error instead of a bare TypeError.
+               "body": (list(r["body"])
+                        if isinstance(r["body"], (tuple, list))
+                        else r["body"])}
+              for r in sorted((WC._canon_route(x)
+                               for x in (async_routes or ())),
+                              key=WC.route_key)]
     order = sorted(list(pulsers) + list(relays) + list(doors)
                    + list(spinners) + list(orbs))
     plan = {
@@ -334,6 +347,13 @@ def _plan_from_parts(sem_id, profile_id, semantic_policies, pulsers, relays,
         "orbs": sorted(orbs),
         "mailboxes": [{"id": m, "w": mailboxes[m][0], "cap": mailboxes[m][1]}
                       for m in sorted(mailboxes)],
+        # ALWAYS present (possibly empty), unlike the artifact's `async_routes`
+        # which is canonically OMITTED when empty. The two rules differ on
+        # purpose: the artifact is hashed, so a second encoding of "no routes"
+        # would be a second identity for one world; the plan is not hashed into
+        # any frozen id, and a plan with a fixed key set is one the strict
+        # `_PLAN_KEYS` gate can check without a special case.
+        "async_routes": routes,
         "signal_edges": sorted([list(e) for e in sig_edges]),
         "socket_controls": sorted([list(x) for x in sockets]),
     }
@@ -379,7 +399,7 @@ def artifact_to_compile_plan_v1(artifact):
     return _plan_from_parts(sem_id, art["profile_id"],
                             art["semantic_policies"], pulsers, relays, doors,
                             spinners, orbs, sig_edges, sockets, conf,
-                            mailboxes)
+                            mailboxes, art.get("async_routes"))
 
 
 # ------------------------------------------------- Fixture -> CompilePlanV1
@@ -413,7 +433,12 @@ def fixture_to_compile_plan_v1(fx, sem_id, semantic_policies=None,
     return _plan_from_parts(sem_id, profile_id, semantic_policies, pulsers,
                             list(fx.relays), list(fx.doors), spinners,
                             list(fx.orbs), list(fx.edges), list(fx.sockets),
-                            conf, mailboxes)
+                            conf, mailboxes,
+                            # The Fixture has no route surface yet (commit 4
+                            # folds it in). `getattr` rather than `fx.routes`
+                            # so this reads a future Fixture without a version
+                            # check, and reads today's as route-free.
+                            getattr(fx, "async_routes", None))
 
 
 # ----------------------------------------------- plan -> Forge IR (binding)
@@ -464,7 +489,7 @@ def _plan_to_artifact(plan):
     edges += [{"kind": "SocketControl", "src": s, "dst": d}
               for s, d in plan["socket_controls"]]
     _surface = WC.semantic_surface_for_roles([o["role"] for o in objects])
-    return {
+    art = {
         "ir_version": _surface["ir_version"],
         "profile_id": plan["profile_id"],
         "semantic_policies": {
@@ -477,6 +502,15 @@ def _plan_to_artifact(plan):
         "objects": objects,
         "edges": edges,
     }
+    # Routes are part of the SEMANTIC artifact, so the reconstruction must
+    # restore them or a route-bearing plan could never re-hash to the id it
+    # claims -- i.e. every route-bearing world would fail to compile. The
+    # `if` is the canonical-omission rule (ruling: no distinct "absent" vs
+    # `[]`), which is also why a route-free plan re-hashes byte-identically
+    # to its pre-Slice-B self.
+    if plan.get("async_routes"):
+        art["async_routes"] = [dict(r) for r in plan["async_routes"]]
+    return art
 
 
 # --------------------------------------------------------- plan validation
@@ -484,9 +518,69 @@ _PLAN_KEYS = ("compile_plan_version", "semantic_artifact_id", "profile_id",
               "rulepack_id", "numeric_policy_ids", "admit_policy_id",
               "film_schema_id", "object_order", "object_index", "pulsers",
               "relays", "doors", "spinners", "orbs", "mailboxes",
+              "async_routes",
               "signal_edges", "socket_controls", "state_layout_signature",
               "epoch_input_signature", "observable_signature")
 _PLAN_KEY_SET = frozenset(_PLAN_KEYS)
+
+
+def _validate_plan_routes(plan, mb_ids):
+    """The plan-side gate for `async_routes` (Slice B, ruled proof 7).
+
+    This deliberately RE-STATES the checks `wrl_canonical._validate_routes`
+    already makes rather than calling it. The plan is a SEPARATE document with a
+    separate shape -- flat id lists, no role registry, body as a list -- and a
+    plan can arrive from a file or a tampered dict without ever having been an
+    artifact. A gate that only ran on the artifact path would leave the plan
+    path ungated, which is the precise hole `validate_compile_plan_v1` exists to
+    close for every other field.
+
+    What is NOT re-stated: the Q5 source LAW (Pulser, `once`, epoch >= 1). The
+    plan carries the clock, so the source's role is checkable here, but the
+    plan is a lowering of an artifact that has already been validated, and
+    `_plan_to_artifact` re-hashes to the claimed SemanticArtifactID -- a route
+    whose source was swapped out from under the plan fails there, by identity,
+    which is the stronger check."""
+    routes = plan["async_routes"]
+    if not isinstance(routes, list):
+        WC._fail(WRL_BAD_COMPILE_PLAN, "async_routes must be a list")
+    if len(routes) > WC.MAX_ASYNC_ROUTES:
+        WC._fail(WRL_BAD_COMPILE_PLAN,
+                 "plan declares %d async routes (max %d)"
+                 % (len(routes), WC.MAX_ASYNC_ROUTES))
+    widths = {m["id"]: m["w"] for m in plan["mailboxes"]}
+    pulser_ids = {p["id"] for p in plan["pulsers"]}
+    keys = []
+    for r in routes:
+        if not isinstance(r, dict) or set(r) != set(WC.ROUTE_FIELDS):
+            WC._fail(WRL_BAD_COMPILE_PLAN,
+                     "async route has fields %s (expected %s)"
+                     % (sorted(r) if isinstance(r, dict) else r,
+                        list(WC.ROUTE_FIELDS)))
+        if r["source_id"] not in pulser_ids:
+            WC._fail(WRL_BAD_COMPILE_PLAN,
+                     "async route source %r is not a declared Pulser"
+                     % (r["source_id"],))
+        if r["mailbox_id"] not in mb_ids:
+            WC._fail(WRL_BAD_COMPILE_PLAN,
+                     "async route target %r is not a declared mailbox"
+                     % (r["mailbox_id"],))
+        # `.get`, not `[...]`: an undeclared target is rejected above, but a
+        # KeyError here would be an untyped crash standing in for a typed
+        # rejection if that check were ever weakened. `route_body_in_range`
+        # rejects a `None` width by its own guard.
+        if not WC.route_body_in_range(widths.get(r["mailbox_id"]), r["body"]):
+            WC._fail(WRL_BAD_COMPILE_PLAN,
+                     "async route %s: body %r is not %d lanes in [0, 2**%s)"
+                     % (WC.route_key(r).render(), r["body"],
+                        WC.ROUTE_BODY_LANES, widths.get(r["mailbox_id"])))
+        keys.append(WC.route_key(r))
+    if len(set(keys)) != len(keys):
+        WC._fail(WRL_BAD_COMPILE_PLAN,
+                 "async routes are not duplicate-free under RouteKey")
+    if keys != sorted(keys):
+        WC._fail(WRL_BAD_COMPILE_PLAN,
+                 "async routes are not in canonical RouteKey order")
 
 
 def validate_compile_plan_v1(plan):
@@ -546,6 +640,7 @@ def validate_compile_plan_v1(plan):
         WC._fail(WRL_BAD_COMPILE_PLAN,
                  "mailbox id(s) %s collide with declared physical objects"
                  % sorted(set(mb_ids) & set(plan["object_order"])))
+    _validate_plan_routes(plan, set(mb_ids))
     order = set(plan["object_order"])
     for src, dst in plan["signal_edges"]:
         if src not in order or dst not in order:

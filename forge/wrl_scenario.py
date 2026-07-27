@@ -31,6 +31,7 @@ lowers to the exact `(initial_faults, script)` the existing admit driver folds, 
 the golden demo expressed as a ScenarioV1 reproduces byte-identical films.
 """
 import wrl_canonical as WC
+import wrl_fold as FD
 from admit import mk_claim, WK, MAX_BATCH
 
 SCENARIO_VERSION = "scenario.v1"
@@ -154,6 +155,91 @@ def check_world_binding(scenario, world_semantic_id):
                  "rebind it through the scenario/world compatibility procedure"
                  % (got, world_semantic_id),
                  field_path="world_semantic_id")
+    return scenario
+
+
+def check_route_writer_reservation(scenario, artifact):
+    """Enforce the Q4 writer-namespace reservation: a scenario run against a
+    ROUTE-BEARING world may not itself write under `WC.ROUTE_WRITER_ID`.
+
+    A route mints a ClaimFact under that writer id, so a scenario claim wearing
+    the same id would land in the same writer namespace as world-generated
+    traffic. Depending on the sequence it would either collide on an event key
+    (silently becoming a `disputed` recognition against a claim the author never
+    wrote) or merely be indistinguishable from world traffic in the film. Both
+    are bugs that only ever show up at the film, which is the last place anyone
+    wants to discover them.
+
+    This is deliberately a COMPATIBILITY check and NOT part of
+    `validate_scenario_v1` (ruled explicitly). A ScenarioV1 is authored before it
+    is bound and is meant to be reusable across worlds; writer 15 stays perfectly
+    legal in every route-free world, which is every world that exists today.
+    Narrowing the document validator would retroactively invalidate stored
+    scenarios over a property of a world they may never be run against.
+
+    Route-bearing is read from the ARTIFACT, via the single accessor that knows
+    the canonical-omission rule -- never by spelling `art.get("async_routes")`
+    here, which is how the same question ends up answered four ways."""
+    if not WC.routes_of_artifact(artifact):
+        # Route-free: no reservation exists, so this is not merely "no
+        # violation found", it is "the rule does not apply". Returning early
+        # keeps the scan off the hot path for every world shipped so far.
+        return scenario
+    for e in scenario.get("epochs") or ():
+        for c in e.get("claims") or ():
+            if c.get("writer_id") == WC.ROUTE_WRITER_ID:
+                WC._fail(
+                    WC.WRL_ROUTE_WRITER_RESERVED,
+                    "epoch %s: claim writer_id %d is RESERVED for the %d async "
+                    "route(s) this world declares -- a route mints its facts "
+                    "under that writer, so a scenario claim sharing it would "
+                    "collide with world-generated traffic. Renumber the claim; "
+                    "writer ids 0..%d are yours."
+                    % (e.get("epoch"), WC.ROUTE_WRITER_ID,
+                       len(WC.routes_of_artifact(artifact)),
+                       WC.ROUTE_WRITER_ID - 1),
+                    field_path="epochs[%s].claims.writer_id" % (e.get("epoch"),))
+    return scenario
+
+
+def check_world_compatibility(scenario, artifact, world_semantic_id):
+    """The ONE door normal execution should use: a scenario is compatible with
+    the world it is about to run against.
+
+    Both halves are also callable by name, but they are composed here because
+    the failure mode of two independent checks is that a call site grows one and
+    not the other -- and the half that would be forgotten is whichever one was
+    added second. Today that is the per-epoch observation budget (commit 4),
+    which is also the newest reason this door exists: it is the FIRST check that
+    neither document could have made on its own."""
+    check_world_binding(scenario, world_semantic_id)
+    check_route_writer_reservation(scenario, artifact)
+    check_epoch_batch_capacity(scenario, artifact)
+    return scenario
+
+
+def check_epoch_batch_capacity(scenario, artifact):
+    """Commit 4: the world's routes and the scenario's claims must fit ONE
+    ADMIT observation batch, epoch by epoch.
+
+    Individually both documents are already bounded against the SAME number:
+    `validate_scenario_v1` caps a scenario epoch at `MAX_BATCH` claims and the
+    seal caps a world's co-firing routes at `MAX_ROUTE_COFIRE`. Four of each is
+    two legal documents and eight claims in one batch, which is an
+    AssertionError inside `admit_step` -- an untyped crash, raised by the
+    reducer, about two documents that both validated.
+
+    So it belongs HERE and nowhere else. Narrowing `validate_scenario_v1` would
+    make a scenario's legality depend on a world it may never run against, which
+    is the exact narrowing the Q4 ruling refused for the writer reservation; and
+    the seal cannot see a scenario at all.
+
+    The arithmetic lives in `wrl_fold`, next to the injection it is about, so
+    that the bound and the merge cannot drift apart."""
+    if not WC.routes_of_artifact(artifact):
+        return scenario                   # the rule does not apply (see above)
+    _, script = scenario_to_script(scenario)
+    FD.check_epoch_batch_capacity(artifact, [b for _lbl, b in script])
     return scenario
 
 

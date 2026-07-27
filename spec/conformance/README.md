@@ -31,7 +31,7 @@ contract `spec/SPEC.md §6` defines, made executable.
 
 | Check | Status | Where it runs |
 |---|---|---|
-| Cross-runtime normal-form vectors | **covered** | `runtime/python/conformance.py` (ic_float, ic_ref, ic32, ic32.wasm) |
+| Cross-runtime normal-form vectors | **covered** | `runtime/python/conformance.py` — 6 runtimes: `ic_float`, `ic_ref`, `ic32` (C), `ic32.wasm`, `ic32z` (Zig), `ic32m` (Mojo) |
 | §6.1 confluence (300 random orders) | **covered** | `runtime/python/inet.py` battery |
 | §6.2 distributed == sequential | **covered** | `distribution/dist_ic.py` (480 runs) |
 | §6.3 exactly-once boundary | **covered** | `inet.py` / `dist_ic.py` |
@@ -48,9 +48,25 @@ make test                              # everything below
 python3 runtime/python/conformance.py  # just the conformance runner
 ```
 
-The runner auto-detects which backends are present: it always checks the Python
-reference, additionally checks `ic32` if `runtime/c/ic32` is built, and additionally
-checks `ic32.wasm` if `node` is available.
+The runner auto-detects which backends are present. It always checks the Python
+reference; it additionally checks any of the following that exist:
+
+| Backend | Built by | Binary |
+|---|---|---|
+| `ic32` (C) | `make native` | `runtime/c/ic32` |
+| `ic32.wasm` | prebuilt; needs `node` | `runtime/wasm/ic32.wasm` |
+| `ic32(zig)` | `make zig` | `runtime/zig/ic32z` |
+| `ic32(mojo)` | `make mojo` | `runtime/mojo/ic32m` |
+
+A backend that is **not** built is reported as *skipped*, with a note naming the missing
+path — never silently treated as passing. This matters more than it looks: "0 failures"
+from a runner that checked nothing is precisely the failure mode a conformance suite
+exists to prevent, so an unbuilt backend must be visible rather than invisible. The same
+applies to the Zig and Mojo `make` targets, which skip (not fail) when their toolchain is
+absent, so the battery still runs end-to-end on a machine that has only a C compiler.
+
+Because only the normal form is normative (§1 above), the runner asserts **NF agreement**
+for every backend but pins `ref_interactions` to `ic_float` alone.
 
 ## Adding vectors
 

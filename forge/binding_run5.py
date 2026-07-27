@@ -65,6 +65,7 @@ sys.path.insert(0, HERE)
 import admit as AD
 import wrl_ir as W
 import wrl_canonical as WC
+import wrl_fold as FD
 import binding_run3o as O
 from binding_run3j import mkfx
 from admit import mk_claim
@@ -143,6 +144,20 @@ def _fx_sig(fx):
 
 
 def _batches_from_program(prog):
+    """The L-0 batch producer: a LoweredProgram's inline claim syntax, lowered
+    to the ordered batches the ADMIT driver folds.
+
+    SLICE B COMMIT 4 folds the world's own routes in here, which is why this
+    helper -- and not `wrl_ir.lower_graph` -- is the injection point on this
+    path. `lower_graph` would be the tidier home, but `wrl_ir` imports nothing
+    below `wrl_canonical` and a route's runtime image is an ADMIT envelope, so
+    folding there would put the frozen identity spine's neighbour on top of the
+    reducer. The batch list is the shape both producers already agree on, so it
+    is where they are made to agree about routes too (`wrl_fold`'s header).
+
+    Every L-0 battery reaches this one helper, so none of them needed editing,
+    and a route-free program takes `route_claims`'s early return -- the batches
+    are byte-identical to the pre-commit-4 ones, not merely equal to them."""
     out = []
     for e, ei in enumerate(prog.epoch_inputs):
         batch = []
@@ -151,7 +166,7 @@ def _batches_from_program(prog):
             seq = c["sequence"] if c["sequence"] is not None else e + 1
             batch.append(mk_claim(wid, seq, c["payload"]))
         out.append(batch)
-    return out
+    return FD.fold_batches(prog.artifact, out)
 
 
 # ------------------------------------------------------------------- checks
@@ -164,7 +179,7 @@ def c1_declaration_order():
 
 
 def c2_two_surface(bootstrap_sid):
-    core_sid, core_prog = _sid(CORE_SRC, W.parse_wrl_core)
+    core_sid, core_prog = _sid(CORE_SRC, W.parse_wrl_legacy_document)
     boot_prog = W.lower_program(BOOTSTRAP_SRC)
     assert core_sid == bootstrap_sid, \
         "bootstrap and core surfaces produced different SemanticArtifactIDs"
@@ -346,14 +361,14 @@ def c15_port_projection():
         src = ("profile forge.world.core.v1\nperiods 0\n"
                "[door:d0]{%s}\n" % ports)
         try:
-            W.lower_program(src, W.parse_wrl_core)
+            W.lower_program(src, W.parse_wrl_legacy_document)
         except W.WrlValidationError as ex:
             assert ex.code == WC.WRL_PORT_SIGNATURE, ex.code
         else:
             raise AssertionError("bogus/empty ports {%s} not rejected" % ports)
     # and the honest projection lowers the same as no braces (bootstrap)
     ok = W.lower_program("profile forge.world.core.v1\nperiods 0\n"
-                         "[door:d0]{sig_in}\n", W.parse_wrl_core)
+                         "[door:d0]{sig_in}\n", W.parse_wrl_legacy_document)
     boot = W.lower_program("profile forge.world.core.v1\nperiods 0\ndoor d0\n")
     assert (WC.serialize_artifact(ok.artifact)
             == WC.serialize_artifact(boot.artifact)), \
@@ -366,12 +381,12 @@ def c16_semicolon_lexis(base_sid):
     # `;` full-line and inline comments; `#` is NOT a comment (identity-reserved)
     commented = ("; a full-line WRL comment\n" + CORE_SRC).replace(
         "[orb:ob]{pose}", "[orb:ob]{pose}   ; inline comment")
-    sid, _ = _sid(commented, W.parse_wrl_core)
+    sid, _ = _sid(commented, W.parse_wrl_legacy_document)
     assert sid == base_sid, "semicolon comments changed the artifact"
     # a trailing `#tag` must NOT be stripped as a comment -> it breaks the node
     try:
         W.lower_program("profile forge.world.core.v1\nperiods 0\n"
-                        "[door:d0]{sig_in} #tag\n", W.parse_wrl_core)
+                        "[door:d0]{sig_in} #tag\n", W.parse_wrl_legacy_document)
     except W.WrlValidationError as ex:
         assert ex.code == WC.WRL_UNSUPPORTED_FEATURE, ex.code
     else:
@@ -483,7 +498,7 @@ def main():
     c14_rulepack_identity(art, base_sid)
     c15_port_projection()
     c16_semicolon_lexis(WC.semantic_artifact_id(
-        W.lower_program(CORE_SRC, W.parse_wrl_core).artifact))
+        W.lower_program(CORE_SRC, W.parse_wrl_legacy_document).artifact))
     c17_lowering_profile(art)
     c18_identity_first_order(art)
     c19_order_invariance(art)

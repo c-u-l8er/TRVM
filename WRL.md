@@ -34,7 +34,21 @@ Note: a few sections straddle tiers. §22 fact-union is **Core**; its distribute
 
 ### The frozen extract
 
-The **families** committed by this draft are frozen separately in **`WRL_CORE_0.1.md`** (the Phase 1 extract). When in conflict, `WRL_CORE_0.1.md` — not this draft — is authoritative for what is *actually settled*. This draft remains the full design rationale and forward map.
+The **families** committed by this draft are frozen separately in **`WRL_CORE_0.1.md`** (the Phase 1 extract, currently at revision **0.1.2**). When in conflict, `WRL_CORE_0.1.md` — not this draft — is authoritative for what is *actually settled*. This draft remains the full design rationale and forward map.
+
+### Implementation reality check (updated for Core 0.1.2, 2026-07-25)
+
+This draft was written ahead of the implementation, and the implementation has since settled several things the draft either assumes differently or does not mention at all. Read these four before building against any section:
+
+**1. "Grounded" splits in two.** A construct being *IR/runtime-grounded* (the canonical IR declares it, the runtime executes it, a battery covers it) is **not** the same as it being *surface-grounded* (WRL source can declare it, the formatter can emit it, it round-trips through the canonical bytes). Only surface-grounded constructs are eligible for promotion into a frozen family. See `WRL_CORE_0.1.md` §14b.
+
+**2. The mailbox is not a sixth role.** `MailboxDecl` is IR/runtime-grounded, but the `~~` route construct is **not surface-emittable** and has **no structural `EdgeDecl`**. Wherever this draft's §25 (Mailboxes, streams, backpressure) reads as though the async route is available, it is describing design, not shipped surface. An async route is not an ordinary structural edge — it does not settle within the period — so grounding it requires a **canonical logical route declaration distinct from `EdgeDecl`**.
+
+**3. A world and a run of a world are different documents.** This draft does not draw the distinction; the implementation does, and it is normative. `periods` and `[epoch:N]` claims are **run inputs** carried by a `ScenarioV1`, and they are deliberately **outside** the `SemanticArtifactID` — the same world can be run by many scenarios without its identity moving. Anywhere below that shows periods or epoch claims inline with world declarations is showing a **pre-boundary combined document**, which is now read only through an explicitly-named compatibility parser. See `WRL_CORE_0.1.md` §15.
+
+**4. Of the four route textures, only `--` is surface-grounded.** `~~`, `==`, and `!!` are all **partial**. In particular `==` is *not* nearly-done just because ADMIT accepts claims: the declaration `==` would introduce is authorization structure, whereas the frozen texture denotes an evidence-backed transition. It is grounded only when ADMIT enforces the claimant, the target, the operation family, **and** a named policy. See `WRL_CORE_0.1.md` §16.1.
+
+The steered promotion order toward Core 0.2 is recorded in `WRL_CORE_0.1.md` §16. It is **steered, not merely preferred** — each step supplies something the next one needs.
 
 ---
 
@@ -268,6 +282,8 @@ Position distinguishes the two senses of `*`:
 *@rider(300)     replication — spawn requests
 ```
 
+> **Surface status (Core 0.1.2).** Only the **replication-by-position** sense is implemented. It ships as bounded, identity-equivalent surface sugar: `[relay:r*3]` desugars to the three explicit declarations, seals to the same `SemanticArtifactID` the explicit spelling would, rejects absurd counts with a typed diagnostic before allocating, and preserves the authored spans for diagnostics and editor operations. **Wildcard matching remains reserved** — no lowering exists. See `WRL_CORE_0.1.md` §4 and §17.
+
 Human aliases are words; executable identity is a hash. `#name` names a thing; `@name` points at one or stamps one.
 
 ---
@@ -280,12 +296,14 @@ A route is a directed edge whose *texture* carries an operational guarantee. Dec
 
 Four textures are semantically irreducible. The reduction relation (§20) is defined over exactly these.
 
-| Texture | Class | Guarantee |
-|---|---|---|
-| `--x-->` | solid | deterministic local transition; settles within the period |
-| `~~x~~>` | async | asynchronous message; appended to a mailbox, observable next period |
-| `==x==>` | verified | evidence-backed / committed transition under a named policy |
-| `!!x!!>` | fault | crash, cancellation, rejection, or interrupt; engages supervision |
+| Texture | Class | Guarantee | Surface status |
+|---|---|---|---|
+| `--x-->` | solid | deterministic local transition; settles within the period | **surface-grounded** |
+| `~~x~~>` | async | asynchronous message; appended to a mailbox, observable next period | **partial** — IR/runtime-grounded, not surface-emittable, no structural `EdgeDecl` |
+| `==x==>` | verified | evidence-backed / committed transition under a named policy | **partial** — see the reality check, item 4 |
+| `!!x!!>` | fault | crash, cancellation, rejection, or interrupt; engages supervision | **partial** — fault *state* only; no supervision floor exists |
+
+> The *guarantee* column is frozen (`WRL_CORE_0.1.md` §5). The *surface status* column is the implementation reality as of Core 0.1.2: only the solid route can actually be written, emitted, and round-tripped today.
 
 ### 8.2 Derived textures (sugar)
 

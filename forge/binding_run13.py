@@ -106,7 +106,7 @@ def main():
         print(f"  [{tag}] {label}")
 
     WORLDS = B7.WORLDS
-    base = W.parse_wrl_core(B7.W_CORE)
+    base = W.parse_wrl_legacy_document(B7.W_CORE)
     art = W.graph_to_ir(base)
 
     # ---- H1 unknown top-level field -> rejected BEFORE sealing
@@ -160,7 +160,7 @@ def main():
     # ---- H6 every valid world still seals; id stable across re-seal + Sealed
     ok6 = True
     for _n, src in WORLDS:
-        av = W.graph_to_ir(W.parse_wrl_core(src))
+        av = W.graph_to_ir(W.parse_wrl_legacy_document(src))
         sid = WC.semantic_artifact_id(av)
         if (WC.semantic_artifact_id(av) != sid
                 or WC.SealedArtifact(av).semantic_id != sid):
@@ -169,9 +169,9 @@ def main():
                    "re-seal / SealedArtifact")
 
     # ---- H7 semantic_diff bridge law over an edit matrix
-    rotor_edit = W.parse_wrl_core(B7.W_CORE.replace("rotor=16.0.0.0",
+    rotor_edit = W.parse_wrl_legacy_document(B7.W_CORE.replace("rotor=16.0.0.0",
                                                     "rotor=0.16.0.0"))
-    no_socket = W.parse_wrl_core("\n".join(
+    no_socket = W.parse_wrl_legacy_document("\n".join(
         ln for ln in B7.W_CORE.splitlines() if "--socket--" not in ln))
     arts = [art, W.graph_to_ir(rotor_edit), W.graph_to_ir(no_socket)]
     ok7 = True
@@ -219,7 +219,7 @@ def main():
         if tuple(CP.config_key_completions(rid)) != want:
             ok11 = False
     for _n, src in WORLDS:
-        av = W.graph_to_ir(W.parse_wrl_core(src))
+        av = W.graph_to_ir(W.parse_wrl_legacy_document(src))
         for o in av["objects"]:
             allowed = set(WC.ROLE_CONFIG_SCHEMA[o["role"]]["static_config_keys"])
             if not set(o["static_config"]) <= allowed:
@@ -239,15 +239,15 @@ def main():
                     "across sugar + completion")
 
     # ---- H13 structural rejects carry canonical locators + field_path
-    okc, ec = _rejects(lambda: WC.validate_graph(W.parse_wrl_core(BAD_CLOCK)),
+    okc, ec = _rejects(lambda: WC.validate_graph(W.parse_wrl_legacy_document(BAD_CLOCK)),
                        WC.WRL_CLOCK_RANGE)
     okc = okc and ec.primary_locator == WC.ObjectKey("p0") \
         and ec.field_path == "static_config.clock"
-    oke, ee = _rejects(lambda: WC.validate_graph(W.parse_wrl_core(UNKNOWN_EP)),
+    oke, ee = _rejects(lambda: WC.validate_graph(W.parse_wrl_legacy_document(UNKNOWN_EP)),
                        WC.WRL_UNKNOWN_ENDPOINT)
     oke = oke and isinstance(ee.primary_locator, WC.EdgeKey) \
         and ee.field_path == "dst"
-    okp, ep = _rejects(lambda: WC.validate_graph(W.parse_wrl_core(WIRE_ORB)),
+    okp, ep = _rejects(lambda: WC.validate_graph(W.parse_wrl_legacy_document(WIRE_ORB)),
                        WC.WRL_ILLEGAL_PORT_PAIR)
     okp = okp and isinstance(ep.primary_locator, WC.EdgeKey) \
         and ep.related_locator == WC.ObjectKey("ob")
@@ -278,7 +278,7 @@ def main():
                     "stable under reformat")
 
     # ---- H15 the hardened pipeline still runs ic_ref == ic32 == golden
-    prog = W.lower_program(B7.W_CORE, W.parse_wrl_core)
+    prog = W.lower_program(B7.W_CORE, W.parse_wrl_legacy_document)
     plan = P.artifact_to_compile_plan_v1(prog.sealed_artifact)
     view = P.plan_view(plan)
     fx = prog.as_fixture_for_test()

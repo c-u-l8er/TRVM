@@ -29,10 +29,24 @@ import wrl_ir as W
 
 FORMAT_VERSION = "wrlfmt.v1"
 
-# canonical lowering vocab (reverse of wrl_ir's parse tables)
-_ROLE_LOWER = {"Pulser": "pulser", "Relay": "relay", "Door": "door",
-               "Spinner": "spinner", "Orb": "orb"}
-_EDGE_LOWER = {"SignalWire": "sig", "SocketControl": "socket"}
+# The emitter vocabulary is the parse tables INVERTED, not retyped.
+#
+# These two were hand-written mirrors of `wrl_ir._ROLE_TOKEN` / `_EDGE_TAG`.
+# That is the same defect the L-0 round found four times and §18 names: a
+# second spelling of one definition, which does not stay a copy. It was already
+# live -- adding `mailbox` to the Core surface would have left this table one
+# entry short, and the failure mode is a `KeyError` from inside the formatter
+# on a world that parses, seals and runs perfectly well.
+#
+# Inverting is safe precisely because the forward tables are injective (each
+# role has at most one lexeme); if that ever stops being true the inversion
+# silently picks one, so the assertion below states the assumption rather than
+# trusting it. `wrl_complete` already inverts `_ROLE_TOKEN` this way -- this
+# module was simply the copy that had not been converted yet.
+_ROLE_LOWER = {rid: tok for tok, rid in W._ROLE_TOKEN.items()}
+_EDGE_LOWER = {kind: tag for tag, kind in W._EDGE_TAG.items()}
+assert len(_ROLE_LOWER) == len(W._ROLE_TOKEN), "role lexemes are not injective"
+assert len(_EDGE_LOWER) == len(W._EDGE_TAG), "edge tags are not injective"
 
 
 def _emit_cfg(role, cfg):
@@ -47,6 +61,12 @@ def _emit_cfg(role, cfg):
         if cfg.get("configurable"):
             items.append("configurable")
         return "(%s)" % ", ".join(items)
+    if role == WC.MAILBOX_ROLE:
+        # Both keys always, in declaration order -- never "omit cap when it
+        # happens to be 1". A default that the emitter knows and the surface
+        # does not is how an identity-bearing field goes missing from the one
+        # artifact a human reads.
+        return "(w=%d, cap=%d)" % (cfg["w"], cfg["cap"])
     return ""
 
 
@@ -74,7 +94,34 @@ def format_wrl_core(g):
     out.append("")
     for kind, s, d in cg.edges:
         out.append("[%s] --%s--> [%s]" % (s, _EDGE_LOWER[kind], d))
+    # Slice B commit 3: routes emit AFTER the edges, in canonical RouteKey order
+    # (`canonicalize_graph` already sorted them). A route-free world therefore
+    # emits EXACTLY the pre-Slice-B text -- no blank separator, no empty
+    # section -- so no existing world's formatted bytes move.
+    #
+    # A route is not folded in among the edges even though it reads like one,
+    # because sorting a route into edge order would require one comparison key
+    # spanning two vocabularies (EdgeKey and RouteKey), and the two orderings
+    # are canonical for different reasons: an edge's order is presentational,
+    # while a route's order IS its minted ADMIT `sequence` (Q4). Interleaving
+    # them would make an identity-bearing order look like a formatting choice.
+    routes = WC.routes_of(cg)
+    if routes:
+        out.append("")
+        for r in routes:
+            out.append("[%s] ~~%s~~> [%s] (body=%s)"
+                       % (r["source_id"], r["route_tag"], r["mailbox_id"],
+                          _emit_body(r["body"])))
     return "\n".join(out) + "\n"
+
+
+def _emit_body(body):
+    """The four route body lanes, dot-separated -- the exact spelling
+    `wrl_ir._body_dots` parses. Arity is not asserted here: the emitter renders
+    whatever canonical form it was handed, and a body of the wrong arity cannot
+    reach a canonical graph (`_validate_routes` rejects it at the seal). A
+    length check here would be a second place that decides what a body is."""
+    return ".".join(str(int(v)) for v in body)
 
 
 # back-compat alias (the canvas module historically owned this name)

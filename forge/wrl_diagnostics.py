@@ -29,6 +29,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import wrl_ir as W
 import wrl_canonical as WC
 import wrl_spans as S
+import wrl_sugar as SG
 
 DIAG_VERSION = "diag.v1"
 DEFAULT_FILE_ID = S.DEFAULT_FILE_ID
@@ -248,3 +249,71 @@ def diagnose_core(src, file_id=DEFAULT_FILE_ID):
 def diagnose_bootstrap(src, file_id=DEFAULT_FILE_ID):
     """Bootstrap surface -> a tuple of Diagnostics (empty == clean)."""
     return _diagnose(src, W.parse_wrl_bootstrap, S._scan_bootstrap_spans, file_id)
+
+
+# ------------------------------------------------- the sugar-aware surface
+# A generated-coordinate diagnostic is not a smaller problem than a missing
+# one -- it is a WORSE one, because it looks authoritative while pointing at a
+# line the author never wrote (and, after value sugar, frequently at a column
+# past the end of that line). So the sugared mouth does not merely CARRY the
+# remapping seam, it is defined by it: every span leaves this module in
+# AUTHORED coordinates or not at all.
+#
+# The verdict is still owned entirely by the untouched validators. Remapping
+# moves only `primary_span` / `related_span`; `code`, `message`, the canonical
+# locators and `canonical_object_id` are all identity-side and pass through
+# verbatim, which is why a sugared diagnostic and its explicit twin agree on
+# everything except where they point.
+def _remapped(diags, sugar_map):
+    """Every Diagnostic's spans, moved from GENERATED to AUTHORED coordinates."""
+    return tuple(d._replace(
+        primary_span=(None if d.primary_span is None
+                      else sugar_map.remap_span(d.primary_span)),
+        related_span=(None if d.related_span is None
+                      else sugar_map.remap_span(d.related_span)))
+        for d in diags)
+
+
+def _sugar_diag(e, src, file_id):
+    """A PREPASS rejection -> a Diagnostic located on the authored line.
+
+    There is no graph and no desugared text at this point, so there are no
+    canonical locators to carry; the record degrades honestly to code + message
+    + the authored span, exactly as a parse-time rejection already does."""
+    span = SG.authored_span_for_line(src, SG.sugar_failure_line(src), file_id)
+    return Diagnostic(e.code, e.message, span, None, None, None, None, None)
+
+
+def diagnose_sugared(src, file_id=DEFAULT_FILE_ID):
+    """SUGARED WRL Core surface -> a tuple of Diagnostics in AUTHORED
+    coordinates (empty == clean).
+
+    Three failure tiers, all typed, none of them re-decided here:
+
+      prepass   the sugar itself is malformed or out of bounds. Located by
+                `wrl_sugar.sugar_failure_line`; no graph exists yet.
+      parse     the DESUGARED text is not parseable.
+      structural  the graph is built but the authoritative validator rejects it
+                -- including a rejection CAUSED by an expansion (a generated id
+                colliding with an explicit one, a fan-out that becomes an
+                illegal fan-in). Those are the interesting ones: the offending
+                element is text the author never typed, so without the remap the
+                diagnostic points into generated coordinates."""
+    try:
+        dtext, sugar_map = SG.desugar_core_mapped(src)
+    except WC.WrlValidationError as e:
+        return (_sugar_diag(e, src, file_id),)
+    return _remapped(
+        _diagnose(dtext, W.parse_wrl_core, S._scan_core_spans, file_id),
+        sugar_map)
+
+
+def diagnose_legacy_document(src, file_id=DEFAULT_FILE_ID):
+    """Pre-v0.4-0 COMBINED document -> a tuple of Diagnostics.
+
+    The legacy twin of `diagnose_core` (L-0 Q2). Without it, diagnosing a
+    combined document would report the document-boundary rejection INSTEAD of
+    the duplicate id or bad port the author actually wants to see -- one
+    structural complaint masking every real one."""
+    return _diagnose(src, W.parse_wrl_legacy_document, S._scan_core_spans,
+                     file_id)

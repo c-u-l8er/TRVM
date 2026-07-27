@@ -6,8 +6,9 @@ on the SAME artifact bytes and runtime films -- while presentation NEVER enters
 the SemanticArtifactID. This battery is the convergence proof (V1-V12):
 
   V1  text -> graph -> canvas -> graph -> ir retains the SemanticArtifactID
-      (and the artifact bytes, and the canonical claim batches).
-  V2  canvas -> graph -> WRL text -> graph -> ir retains the SemanticArtifactID.
+      (and the artifact bytes, and the canonical WORLD projection).
+  V2  canvas -> graph -> WRL text -> graph -> ir retains the SemanticArtifactID
+      (and provably DROPS the run inputs -- the canvas is a WORLD surface).
   V3  MOVING a node (presentation x/y) does NOT change the identity.
   V4  changing a connection's LINE GEOMETRY does NOT change the identity.
   V5  RECOLORING a node/edge does NOT change the identity.
@@ -29,6 +30,35 @@ the SemanticArtifactID. This battery is the convergence proof (V1-V12):
 
 V12 reuses the 3b.5f-2b fold harness (binding_run3o); the canvas-lowered
 fixture equals its mkfx(8,4).
+
+------------------------------------------------------------------------ L-0
+V1/V2 were RESTATED (GPT-5.6 ruling, Q1) alongside binding_run9's L1/L8. Both
+used to assert `base.graph.batches == prog.graph.batches` -- that a canvas
+round-trip preserved the claim batches. The v0.4-0 document boundary REPEALED
+that law for any hop that passes through a WORLD document, so the assertion is
+replaced by the pair it should always have been: the WORLD projection and the
+identity survive EXACTLY, and run inputs are asserted present-or-absent
+according to what each surface actually is.
+
+Restating it surfaced a genuine finding, recorded here rather than papered over:
+
+    CanvasGraphV1 was never migrated across the v0.4-0 document boundary.
+
+`graph_to_canvas` still emits top-level `periods` and `batches` keys -- it is a
+LEGACY COMBINED presentation document, the exact structural parallel of
+`parse_wrl_legacy_document`. Its TEXT emitter `graph_to_wrl_core` was migrated
+and correctly emits a world-only document, which is why V2 (the hop through
+text) is where the old law broke while V1 (canvas only) kept passing.
+
+This is not a live defect: the production canvas path is CanvasLayoutV1
+(`wrl_converge`, v0.4-4a), which is world-only by construction and which
+`wrl_converge` reaches through `validate_layout_v1` alone. CanvasGraphV1 now
+survives only in the Phase-3C-era batteries. Whether it should be given the
+same strict/legacy split as the text surface, or retired in favour of
+CanvasLayoutV1, is an OPEN QUESTION for GPT-5.6 -- it is a shipped surface, so
+it is not silently migrated here. V1 asserts the CURRENT truth (run inputs DO
+survive a CanvasGraphV1 hop) so that any future migration trips this battery
+loudly instead of passing by accident.
 """
 import os
 import sys
@@ -59,7 +89,26 @@ def _sid(prog):
 
 
 def _core_prog():
-    return W.lower_program(CORE_SRC, W.parse_wrl_core)
+    return W.lower_program(CORE_SRC, W.parse_wrl_legacy_document)
+
+
+# The RUN-INPUT fields of a canonical graph -- exactly what v0.4-0 moved out to
+# ScenarioV1, and exactly what a WORLD surface like CanvasGraphV1 does not carry.
+# Named by EXCLUSION so a field a later slice adds is covered by default.
+RUN_INPUT_FIELDS = ("periods", "batches")
+
+
+def _world(g):
+    """The canonical WORLD projection: every canonical field EXCEPT run inputs."""
+    cg = WC.canonicalize_graph(g)
+    return tuple((f, getattr(cg, f)) for f in sorted(vars(cg))
+                 if f not in RUN_INPUT_FIELDS)
+
+
+def _no_run_inputs(g):
+    """A graph that came back off a WORLD surface carries no run inputs."""
+    cg = WC.canonicalize_graph(g)
+    return cg.periods == 0 and all(len(b) == 0 for b in cg.batches)
 
 
 # ------------------------------------------------------------------- checks
@@ -70,7 +119,15 @@ def v1_text_to_canvas(base):
     assert _sid(prog2) == sid0, "text->canvas->graph changed the identity"
     assert (WC.serialize_artifact(base.artifact)
             == WC.serialize_artifact(prog2.artifact)), "artifact bytes differ"
-    assert base.graph.batches == prog2.graph.batches, "claim batches differ"
+    # L-0 restatement: the WORLD projection survives exactly. CanvasGraphV1 is a
+    # LEGACY COMBINED document (it still carries top-level periods/batches, the
+    # exact parallel of parse_wrl_legacy_document), so the run inputs survive
+    # this hop too -- which is why the assertion is about the world, not the
+    # batches. See the L-0 note in the module docstring.
+    assert _world(prog2.graph) == _world(base.graph), "world projection differs"
+    assert not _no_run_inputs(prog2.graph), (
+        "CanvasGraphV1 unexpectedly dropped its run inputs -- if it was migrated "
+        "to a world-only surface, this battery's V1/V2 split must be revisited")
     print("  V1 text->graph->canvas->graph retains SemanticArtifactID  OK")
     return sid0, canvas
 
@@ -78,9 +135,12 @@ def v1_text_to_canvas(base):
 def v2_canvas_to_text(sid0, base, canvas):
     g = CV.canvas_to_graph(canvas)
     text = CV.graph_to_wrl_core(g)
-    prog3 = W.lower_program(text, W.parse_wrl_core)
+    prog3 = W.lower_program(text, W.parse_wrl_legacy_document)
     assert _sid(prog3) == sid0, "canvas->graph->WRL text->graph changed identity"
-    assert base.graph.batches == prog3.graph.batches, "claim batches differ"
+    assert _world(prog3.graph) == _world(base.graph), "world projection differs"
+    assert _no_run_inputs(prog3.graph), "a canvas round-trip leaked run inputs"
+    # the emitted text is a WORLD document, so the STRICT world mouth accepts it
+    W.parse_wrl_core(text)
     print("  V2 canvas->graph->WRL text->graph retains SemanticArtifactID  OK")
 
 
@@ -128,7 +188,7 @@ def v7_reconnect():
            "[pulser:p0](mode=periodic, period=2, phase=0){sig_out}\n"
            "[door:d0]{sig_in}\n[door:d1]{sig_in}\n"
            "[pulser:p0] --sig--> [door:d0]\n")
-    prog = W.lower_program(src, W.parse_wrl_core)
+    prog = W.lower_program(src, W.parse_wrl_legacy_document)
     sid0 = _sid(prog)
     c = CV.graph_to_canvas(prog.graph)
     for conn in c["connections"]:
@@ -182,10 +242,10 @@ def v9_ports_and_inertness(sid0, canvas):
     # (b) the emitted WRL text ports are the SAME frozen signature the canvas
     #     derives; a text with the WRONG ports is a typed rejection.
     text = CV.graph_to_wrl_core(CV.canvas_to_graph(canvas))
-    assert _sid(W.lower_program(text, W.parse_wrl_core)) == sid0
+    assert _sid(W.lower_program(text, W.parse_wrl_legacy_document)) == sid0
     bad = text.replace("[orb:ob]{pose}", "[orb:ob]{sig_in}")
     try:
-        W.lower_program(bad, W.parse_wrl_core)
+        W.lower_program(bad, W.parse_wrl_legacy_document)
     except W.WrlValidationError as ex:
         assert ex.code == WC.WRL_PORT_SIGNATURE, ex.code
     else:
@@ -196,7 +256,7 @@ def v9_ports_and_inertness(sid0, canvas):
 
 def v10_three_surface(sid0, canvas):
     boot = W.lower_program(BOOTSTRAP_SRC)
-    core = W.lower_program(CORE_SRC, W.parse_wrl_core)
+    core = W.lower_program(CORE_SRC, W.parse_wrl_legacy_document)
     canv = CV.lower_canvas(canvas)
     b = WC.serialize_artifact(boot.artifact)
     assert b == WC.serialize_artifact(core.artifact) == \

@@ -36,7 +36,9 @@ from wrl_canonical import (
     ROLE_IDS, MAILBOX_ROLE, EDGE_KINDS, PORTS,
     WrlUnsupported, WrlValidationError,
     WRL_UNSUPPORTED_FEATURE, WRL_EPOCH_RANGE, WRL_NUMERIC_RANGE,
+    WRL_PORT_SIGNATURE,
     validate_graph, canonicalize_graph, validate_port_projection, object_ports,
+    port_projection,
     validate_artifact_v1, seal_artifact, serialize_artifact,
     deserialize_artifact, semantic_artifact_id, backend_artifact_id,
 )
@@ -49,6 +51,11 @@ class WrlGraph:
         self.periods = 0
         self.nodes = []      # (role, name, config_dict)
         self.edges = []      # (kind, src, dst)
+        # Slice B AsyncRouteDecl records: {source_id, route_tag, mailbox_id,
+        # body}. A SEPARATE list from `edges` and not a new edge kind, because
+        # D8 holds: a mailbox has no port and is never wired. A route is a
+        # static declaration that the world will emit one `Send`.
+        self.routes = []
         self.batches = []    # [ [claim, ...], ... ]  indexed by epoch
 
 
@@ -104,9 +111,67 @@ def _rotor_dots(tok):
     return tuple(int(x) for x in parts)
 
 
+def _body_dots(tok):
+    """`0.0.0.7` -> the four-lane route body tuple (Slice B commit 3).
+
+    Dot-separated like a rotor, and NOT `_rotor_dots` even though the two agree
+    on 4 today. A rotor's arity is the spinner's; a body's arity is
+    `WC.ROUTE_BODY_LANES`, which is derived from ADMIT's Send payload. They are
+    two constants that currently coincide, so calling `_rotor_dots` here would
+    read as a shared definition and would silently stop being right the moment
+    either arity moved -- with a diagnostic that said `rotor` about a body."""
+    parts = tok.split(".")
+    if len(parts) != WC.ROUTE_BODY_LANES:
+        raise WrlValidationError(
+            WRL_NUMERIC_RANGE,
+            "route body must have %d lanes, got %r"
+            % (WC.ROUTE_BODY_LANES, tok))
+    try:
+        return tuple(int(x) for x in parts)
+    except ValueError:
+        # `int()` raising ValueError here would be an untyped crash standing in
+        # for a typed rejection -- the exact defect mutation testing found in
+        # `route_body_in_range`. A non-numeric lane is a surface error and must
+        # arrive wearing a WRL_ code like every other one.
+        raise WrlValidationError(WRL_NUMERIC_RANGE,
+                                 "route body lanes must be integers, got %r"
+                                 % (tok,))
+
+
+# The WRL Core TEXT SURFACE: surface lexeme -> registry role id.
+#
+# This is a PROJECTION of `wrl_canonical.ROLE_IDS`, not a copy of it. Treating
+# this table as if it were the registry is what produced three separate defects
+# (a crashing completion API, a role that cannot be written down, and a
+# rejection message that denied the existence of a role the registry defines),
+# so the relationship is stated here rather than assumed at each call site.
+#
+# Slice B commit 1 adds `mailbox`, which makes the projection TOTAL today --
+# `unwritable_role_ids()` computes to `()`. That is a fact about the current
+# contents, NOT a new invariant: the next registry role arrives unwritable and
+# every consumer must keep handling that, so nothing downstream may start
+# assuming the two sets are equal. Totality is the state; projection is the law.
 _ROLE_TOKEN = {"pulser": "Pulser", "relay": "Relay", "door": "Door",
-               "spinner": "Spinner", "orb": "Orb"}
+               "spinner": "Spinner", "orb": "Orb", "mailbox": "Mailbox"}
 _EDGE_TAG = {"sig": "SignalWire", "socket": "SocketControl"}
+
+
+def writable_role_ids():
+    """The registry roles that WRL Core text can actually SPELL."""
+    return tuple(sorted(set(_ROLE_TOKEN.values())))
+
+
+def unwritable_role_ids():
+    """The registry roles with NO WRL Core surface lexeme -- roles that are
+    fully specified semantically (ports, config schema, identity) but that no
+    author can write down in text today.
+
+    This is deliberately COMPUTED, not a hand-listed allowlist. A hand-listed
+    one would be a fourth spelling of the same vocabulary and would drift in
+    exactly the way the other three did. Computed, it shrinks to `()` by itself
+    the moment a surface lexeme is added, and it grows by itself the moment a
+    role is added to the registry without one."""
+    return tuple(sorted(set(WC.ROLE_IDS) - set(_ROLE_TOKEN.values())))
 
 
 def _add_claim(g, epoch, wid, seq, body_tokens, rotor_parse):
@@ -186,17 +251,55 @@ def parse_wrl_bootstrap(text):
                 wid, seq = int(wm.group(1)), int(wm.group(2))
                 body = [b for b in body if not b.startswith("@")]
             _add_claim(g, epoch, wid, seq, body, _rotor_commas)
-        elif head in ("mailbox", "gate", "seal", "supervisor", "fragment",
+        elif head in _ROLE_TOKEN:
+            # A role the WRL CORE surface can spell, reached here only because
+            # the bootstrap chain above has no directive for it. `mailbox` used
+            # to sit in the reserved list below and be reported as "outside
+            # Forge Semantic IR v1" -- true when written, false since the v1.1
+            # registry admitted `Mailbox`, and false in a way that sends the
+            # author to look for a spec change that already happened.
+            #
+            # The bootstrap DSL is a frozen migration bridge, not a surface
+            # that grows: it gets no `mailbox` directive, and that is a
+            # DELIBERATE non-extension, so the message names the surface that
+            # does have one. Computed membership (`head in _ROLE_TOKEN`) means
+            # the next Core-writable role inherits this message instead of the
+            # wrong one.
+            raise WrlValidationError(
+                WRL_UNSUPPORTED_FEATURE,
+                "%r is a WRL Core role, but the bootstrap surface is a frozen "
+                "migration bridge and has no `%s` directive; write it in WRL "
+                "Core process notation instead" % (head, head))
+        elif head in ("gate", "seal", "supervisor", "fragment",
                       "stencil", "derive", "capability"):
             raise WrlValidationError(WRL_UNSUPPORTED_FEATURE,
                                      "%r is outside Forge Semantic IR v1 "
                                      "(profile %s); reserved/Proposed"
                                      % (head, PROFILE_ID))
-        elif "~~" in line or "!!" in line or "==" in line:
+        elif "~~" in line:
+            # `~~` USED to be grouped with `!!` and `==` under "transition
+            # classes, not IR v1 edges". That was true when written and is now
+            # false twice over: an AsyncRouteDecl IS an IR v1.1 construct, and
+            # it was never an edge in the first place (D8). Leaving the old
+            # message would send an author to look for a spec change that
+            # already happened -- the identical defect that the `mailbox`
+            # bootstrap rejection above was corrected for.
+            #
+            # The bootstrap DSL still gets no route directive, for the same
+            # reason it gets no `mailbox` one: it is a frozen migration bridge,
+            # not a surface that grows. So this is a DELIBERATE non-extension,
+            # and the message names the surface that does have the construct.
+            raise WrlValidationError(
+                WRL_UNSUPPORTED_FEATURE,
+                "async route texture `~~` in %r: routes are a WRL Core "
+                "construct, but the bootstrap surface is a frozen migration "
+                "bridge and has no route directive; write it in WRL Core "
+                "process notation instead" % (line,))
+        elif "!!" in line or "==" in line:
             raise WrlValidationError(WRL_UNSUPPORTED_FEATURE,
-                                     "route texture in %r: async ~~ / fault "
-                                     "!! / verified == are transition classes,"
-                                     " not IR v1 edges" % (line,))
+                                     "route texture in %r: fault !! / verified "
+                                     "== are transition classes, not IR v1 "
+                                     "edges" % (line,))
         else:
             raise WrlValidationError(WRL_UNSUPPORTED_FEATURE,
                                      "unrecognized WRL directive %r" % (head,))
@@ -213,6 +316,24 @@ _NODE_RE = re.compile(
 _EDGE_RE = re.compile(
     r"^\[(?:\w+:)?(\w+)\]\s*--(\w+)-->\s*\[(?:\w+:)?(\w+)\]$")
 _EPOCH_RE = re.compile(r"^\[epoch:(\d+)\]\s*(.*)$")
+
+# Slice B commit 3 -- the AsyncRouteDecl surface, ruled Q1:
+#
+#     [p0] ~~msg~~> [mb] (body=0.0.0.7)
+#
+# Deliberately shaped like the edge form (`--tag-->`) and deliberately NOT the
+# same shape: `~~` reads as asynchronous where `--` reads as a wire, and the
+# difference is exactly D8's -- an edge connects two PORTS and a route does not.
+# The role prefix is optional at both ends, as on an edge, because the role is
+# already fixed by the object's own declaration line.
+#
+# The body group is REQUIRED (Q1). It is not optional-with-a-default, because a
+# default the emitter knows and the surface does not is how an identity-bearing
+# field goes missing from the one artifact a human reads -- the same reason the
+# MailboxDecl emitter always writes both `w` and `cap`.
+_ROUTE_RE = re.compile(
+    r"^\[(?:\w+:)?(\w+)\]\s*~~(\w+)~~>\s*\[(?:\w+:)?(\w+)\]\s*(\([^)]*\))?$")
+_ROUTE_KEYS = ("body",)
 
 
 def _paren_kv(group):
@@ -241,16 +362,161 @@ def _ports_set(group):
     return {t.strip() for t in body.split(",") if t.strip()}
 
 
+# ------------------------------------------------------- the document boundary
+# v0.4-0 moved RUN INPUTS (`periods N` and `[epoch:N] ...` claim batches) out of
+# the world document and into ScenarioV1. They never entered the
+# SemanticArtifactID (D3). But the PARSER kept accepting them, which left the
+# language with TWO MOUTHS: `wrl_draft.replace_world_source` rejected exactly
+# the syntax `parse_wrl_core` silently swallowed.
+#
+# GPT-5.6's ruling (L-0 Q2): the STRICT world parser is NORMATIVE. The permissive
+# behaviour survives only behind an explicitly-named compatibility path, so that
+# accepting run-input syntax is always a decision a caller made on purpose.
+#
+#     parse_wrl_core(text)            -- strict WORLD source
+#     parse_wrl_legacy_document(text) -- pre-v0.4-0 COMBINED document
+#     split_legacy_document(text)     -- the migration TARGET: world | run inputs
+WRL_WORLD_SOURCE_HAS_SCENARIO = "WRL_WORLD_SOURCE_HAS_SCENARIO"
+
+# THE AUTHORITATIVE run-input line forms, and the ONLY definition of them.
+#
+# These are ANCHORED LINE FORMS, not substrings, and the distinction is
+# load-bearing. A substring test for `periods` also fires on an object named
+# `[orb:periods_display]`; a substring test for `@` is far worse still, because
+# `@` is frozen for WORLD addressing/placement and therefore appears in
+# perfectly ordinary world source. A scanner built from substrings will
+# eventually classify a legal world document as scenario material, which is the
+# one mistake the document boundary exists to prevent.
+#
+# `SetRotor` / `ResetFault` are deliberately ABSENT: they are operation names
+# INSIDE a claim, and every claim line is already caught by the `[epoch:` form.
+# Listing them separately would add no coverage and two more false-positive
+# surfaces (an object may legitimately be named `[relay:ResetFault_gate]`).
+#
+# Anything that needs to recognize run-input syntax -- parsers, splitters,
+# lexical assertions in the batteries -- MUST consume `is_run_input_line` rather
+# than re-spell these forms. A second, hand-rolled spelling is not a copy, it is
+# a fork: it drifts silently and its drift is invisible until it misclassifies.
+WRL_WORLD_SOURCE_HAS_SCENARIO_FORMS = (r"^\s*periods\b", r"^\s*\[epoch:")
+_RUN_INPUT_RE = re.compile("|".join(WRL_WORLD_SOURCE_HAS_SCENARIO_FORMS))
+
+
+def is_run_input_line(line):
+    """True when one line carries ScenarioV1 run-input syntax (`periods N` or
+    an `[epoch:N] ...` claim batch).
+
+    Matches the ANCHORED line forms, so it is correct on a RAW line as well as a
+    stripped one. The caller is still responsible for removing any `;` comment
+    first -- a `periods` inside a comment is prose, not syntax."""
+    return _RUN_INPUT_RE.match(line) is not None
+
+
+# retained private alias: this predicate is called on already-stripped lines
+# throughout the parser body.
+_is_run_input_line = is_run_input_line
+
+
+def _run_input_lines(text):
+    """Every (1-based line number, stripped line) carrying ScenarioV1 syntax."""
+    out = []
+    for n, raw in enumerate(text.splitlines(), start=1):
+        line = raw.split(";", 1)[0].strip()
+        if _is_run_input_line(line):
+            out.append((n, line))
+    return out
+
+
 def parse_wrl_core(text):
-    """WRL process notation -> canonical WRL graph. Node:
-    `[role:name](k=v, ...){ports}`; edge: `[a] --tag--> [b]`; claim:
-    `[epoch:N] @w,s Op args`. Lowers to the SAME canonical graph as the
-    bootstrap surface (two-surface equivalence).
+    """STRICT WRL Core WORLD source -> canonical WRL graph. Node:
+    `[role:name](k=v, ...){ports}`; edge: `[a] --tag--> [b]`. Lowers to the SAME
+    canonical graph as the bootstrap surface (two-surface equivalence).
+
+    RUN INPUTS ARE NOT WORLD SOURCE. A `periods N` line or an `[epoch:N] ...`
+    claim is refused with WRL_WORLD_SOURCE_HAS_SCENARIO; they belong to
+    ScenarioV1. To read a pre-v0.4-0 combined document, call
+    `parse_wrl_legacy_document` and say so.
 
     Lexical law (Slice 2.1): comments are `;` (full-line or inline) because
     slash/`#` forms are reserved -- `#` is preserved for content identity and
     tags and is NEVER treated as a comment marker here. A `{ports}` brace group
     is a CHECKED projection of the role's frozen ports, not decoration."""
+    offenders = _run_input_lines(text)
+    if offenders:
+        n, line = offenders[0]
+        raise WrlValidationError(
+            WRL_WORLD_SOURCE_HAS_SCENARIO,
+            "run inputs are not world source: line %d, %r -- run inputs live in "
+            "ScenarioV1 (v0.4-0 document boundary). Use "
+            "parse_wrl_legacy_document() to read a combined document."
+            % (n, line))
+    return _parse_core_permissive(text)
+
+
+def parse_wrl_legacy_document(text):
+    """COMPATIBILITY PATH -- a pre-v0.4-0 COMBINED document (world source with
+    run inputs inlined) -> the combined canonical WRL graph, byte-for-byte what
+    `parse_wrl_core` returned before the boundary was enforced.
+
+    A MIGRATION BRIDGE, not the normative surface. New code should parse a world
+    with `parse_wrl_core` and carry run inputs as a ScenarioV1."""
+    return _parse_core_permissive(text)
+
+
+def _split_line_ending(chunk):
+    """One `splitlines(keepends=True)` chunk -> (content, ending). The ending is
+    whatever the file actually used (`\\n`, `\\r\\n`, `\\r`, or `""` on a final
+    line with no terminator) and is echoed back verbatim."""
+    for end in ("\r\n", "\n", "\r"):
+        if chunk.endswith(end):
+            return chunk[:-len(end)], end
+    return chunk, ""
+
+
+def split_legacy_document(text):
+    """The migration TARGET for the legacy path: a combined document ->
+    `(world_source, run_input_source)` -- two texts, the first of which parses
+    STRICTLY and the second of which is the ScenarioV1 material.
+
+    The split is LEXICAL and POSITION-PRESERVING. Every line goes to exactly one
+    side and none is rewritten; the side that does NOT receive a line gets an
+    empty line in its place. The precise invariant is:
+
+        for every line N of the input, N sits at index N of whichever side
+        received it, and the two sides RECOMBINE to the input exactly.
+
+    (Stated that way rather than as "both sides have the same line count",
+    because a final EMPTY line with no terminator is textually invisible: if the
+    input's last line is unterminated and lands on one side, the other side's
+    trailing placeholder cannot be represented at all. That costs nothing --
+    it is empty and last -- but claiming equal counts would be false.)
+
+    That property is the whole point of splitting this way rather than
+    compacting. A migration bridge that renumbered lines would hand every
+    downstream diagnostic, span and editor annotation a coordinate that no
+    longer refers to the document the author is looking at -- the same defect
+    that makes generated coordinates useless for sugared source. Line endings
+    (`\\n`, `\\r\\n`, `\\r`) and the presence or absence of a final terminator
+    are preserved exactly, so a CRLF document does not silently become LF.
+
+    Because no line is rewritten and no line moves, no identity can move across
+    the split. Note that the run-input side of a document with NO run inputs is
+    therefore blank lines rather than the empty string; test it with
+    `.strip()`."""
+    world, runs = [], []
+    for chunk in text.splitlines(keepends=True):
+        content, end = _split_line_ending(chunk)
+        if _is_run_input_line(content.split(";", 1)[0].strip()):
+            runs.append(content + end)
+            world.append(end)
+        else:
+            world.append(content + end)
+            runs.append(end)
+    return "".join(world), "".join(runs)
+
+
+def _parse_core_permissive(text):
+    """The historical parser body: accepts world source AND run inputs. Reached
+    only through the two named entry points above."""
     g = WrlGraph()
     for raw in text.splitlines():
         line = raw.split(";", 1)[0].strip()
@@ -276,6 +542,47 @@ def parse_wrl_core(text):
             _add_claim(g, epoch, wid, seq, body, _rotor_dots)
             continue
 
+        if "~~" in line:
+            # Tested BEFORE the edge form and keyed on the TEXTURE, not on a
+            # successful match. Falling through to `_NODE_RE` would report
+            # "unrecognized WRL notation" for a route with one tilde too few --
+            # a message that denies the construct exists, which is precisely
+            # the failure the Mailbox rejection was corrected for in commit 1.
+            m = _ROUTE_RE.match(line)
+            if not m:
+                raise WrlValidationError(
+                    WRL_UNSUPPORTED_FEATURE,
+                    "bad async route notation %r -- the form is "
+                    "`[src] ~~tag~~> [mailbox] (body=b0.b1.b2.b3)`" % (line,))
+            src, tag, dst = m.group(1), m.group(2), m.group(3)
+            if m.group(4) is None:
+                raise WrlValidationError(
+                    WRL_UNSUPPORTED_FEATURE,
+                    "async route %s ~~%s~~> %s has no body; the body group is "
+                    "REQUIRED (a route with an implied body would put an "
+                    "identity-bearing field in the compiler and not in the "
+                    "source)" % (src, tag, dst))
+            kv, flags = _paren_kv(m.group(4))
+            unknown = sorted(set(kv) - set(_ROUTE_KEYS)) + sorted(flags)
+            if unknown:
+                raise WrlValidationError(
+                    WRL_UNSUPPORTED_FEATURE,
+                    "async route %s ~~%s~~> %s has unknown key(s) %s (only %s)"
+                    % (src, tag, dst, unknown, list(_ROUTE_KEYS)))
+            if "body" not in kv:
+                raise WrlValidationError(
+                    WRL_UNSUPPORTED_FEATURE,
+                    "async route %s ~~%s~~> %s is missing `body`"
+                    % (src, tag, dst))
+            # Endpoint roles, the one-shot source law, the body range and the
+            # duplicate/budget rules are ALL the seal's -- `_validate_routes`
+            # already owns them and owns them for a route that arrived from any
+            # surface. The parser's job stops at "this line says a route".
+            g.routes.append({"source_id": src, "route_tag": tag,
+                             "mailbox_id": dst,
+                             "body": _body_dots(kv["body"])})
+            continue
+
         if "-->" in line:
             m = _EDGE_RE.match(line)
             if not m:
@@ -295,12 +602,54 @@ def parse_wrl_core(text):
                                      "unrecognized WRL notation %r" % (line,))
         rtok, name = m.group(1), m.group(2)
         if rtok not in _ROLE_TOKEN:
+            # Two DIFFERENT rejections wear the same code, and conflating them
+            # produced a message that denied the existence of a role the
+            # registry defines. `mailbox` is a real v1 registry role with ports
+            # and a config schema; it simply has no text spelling yet. Telling
+            # an author it "is not in the registry" sends them to fix the wrong
+            # thing entirely.
+            hit = [r for r in unwritable_role_ids() if r.lower() == rtok.lower()]
+            if hit:
+                raise WrlValidationError(
+                    WRL_UNSUPPORTED_FEATURE,
+                    "role %r is in the frozen v1 registry but has no WRL Core "
+                    "surface form yet" % (hit[0],))
             raise WrlValidationError(WRL_UNSUPPORTED_FEATURE,
                                      "role %r not in the frozen v1 registry"
                                      % (rtok,))
         role = _ROLE_TOKEN[rtok]
         if m.group(4) is not None:            # visible ports are checked, not ignored
-            validate_port_projection(role, _ports_set(m.group(4)))
+            validate_port_projection(role, _ports_set(m.group(4)), name)
+        elif not port_projection(role):
+            # A role with ports may ABBREVIATE by omitting the brace group --
+            # frozen behaviour, and harmless, because the omission cannot be
+            # confused with anything: the signature is non-empty, so there is
+            # no reading under which the author meant "no ports".
+            #
+            # A role whose frozen signature is EMPTY has no such luck. `[...]`
+            # and `[...]{}` would mean the same thing, so an author who simply
+            # forgot the block writes something indistinguishable from an
+            # author who deliberately declared emptiness -- and for Mailbox the
+            # emptiness is the whole point (D8: not wireable). So the ruling
+            # requires `{}` to be WRITTEN, and it is required here.
+            #
+            # The condition is COMPUTED from the frozen port table, not spelled
+            # `role == "Mailbox"`. A named role would be a fork of the table
+            # that has to be edited by whichever commit adds the next portless
+            # role -- and the forgetting would be silent, because the parser
+            # would simply keep accepting the abbreviation.
+            # Raised through `WC._fail` rather than `raise WrlValidationError`
+            # so it arrives LOCATED. The surrounding parser predates the
+            # locator spine and still raises bare; a new rejection introduced
+            # in the same commit that discharges the locator obligation has no
+            # excuse to be the next unlocated one.
+            WC._fail(
+                WRL_PORT_SIGNATURE,
+                "%s %s: the port block is required and must be written `{}` -- "
+                "%s has an empty frozen port signature, so an omitted block "
+                "cannot be told apart from a forgotten one"
+                % (role, name, role),
+                primary_locator=WC.ObjectKey(name), field_path="ports")
         kv, flags = _paren_kv(m.group(3))
         if role == "Pulser":
             mode = kv.get("mode", "periodic")
@@ -322,6 +671,21 @@ def parse_wrl_core(text):
                    "configurable": ("configurable" in flags
                                     or kv.get("configurable") == "true")}
             g.nodes.append(("Spinner", name, cfg))
+        elif role == MAILBOX_ROLE:
+            # MailboxDecl (D7) surface form: `[mailbox:mb](w=8, cap=4){}`.
+            # `w` and `cap` are REQUIRED -- but "required" is enforced by the
+            # SEAL, not here. `_validate_config` already rejects a missing
+            # `w`/`cap` with a located, typed diagnostic, and it does so for a
+            # mailbox that arrived from ANY surface (Core text, a canvas, a
+            # draft edit, a deserialized artifact). A parse-time check would be
+            # a second place that decides what "required" means, and the two
+            # would eventually disagree about a value like `w=0` -- which is
+            # present, so a presence check passes it, and out of range, so the
+            # validator does not. Absence flows through as None exactly as the
+            # Spinner branch above has always done.
+            cfg = {"w": int(kv["w"]) if "w" in kv else None,
+                   "cap": int(kv["cap"]) if "cap" in kv else None}
+            g.nodes.append((MAILBOX_ROLE, name, cfg))
         else:
             g.nodes.append((role, name, {}))
     return g
@@ -370,6 +734,13 @@ def graph_to_ir(g):
         "objects": objects,
         "edges": edges,
     }
+    # Canonically omitted when empty (Slice B commit 2): a route-free world
+    # emits EXACTLY the pre-Slice-B key set, so its bytes -- and therefore its
+    # SemanticArtifactID -- are unchanged.
+    routes = WC.routes_of(g)
+    if routes:
+        art["async_routes"] = [dict(r) for r in
+                               sorted(routes, key=WC.route_key)]
     validate_artifact_v1(art)          # seal-before-return
     return art
 
@@ -386,6 +757,26 @@ def ir_to_fixture(art):
     if art["profile_id"] != PROFILE_ID:
         raise WrlValidationError(WRL_UNSUPPORTED_FEATURE,
                                  "adapter serves only %s" % (PROFILE_ID,))
+    # COMMIT 4 LIFTED THE ROUTE REFUSAL THAT STOOD HERE.
+    #
+    # Through commits 2 and 3 this function refused a route-bearing artifact,
+    # because a Fixture built from one would have silently dropped the routes
+    # and become an oracle for a DIFFERENT world -- a cross-check that agrees
+    # about the wrong thing, which is worse than none.
+    #
+    # Commit 4 makes the dropping correct rather than silent. A route's runtime
+    # image is a CLAIM (`wrl_fold.route_claims`), not structure: it has no
+    # ports, no state, no edge, and it changes nothing the Fixture models. The
+    # Fixture of a route-bearing world is therefore EXACTLY the Fixture of its
+    # route-free twin, and the whole difference between the two worlds now
+    # lives in the observation batch, where the reducer can see it.
+    #
+    # That is a claim, so binding_run49 proves it rather than asserting it (the
+    # EXPLICIT TWIN proof): the route-bearing world folded with its injected
+    # claim must produce films byte-identical to the route-free twin folded
+    # with the same claim written out by hand as a scenario claim. Note that
+    # the twin is route-free, so writer 15 is legal against it -- the Q4
+    # reservation is exactly what makes the twin expressible.
     pulsers, relays, doors, spinners, orbs, configurable = \
         {}, [], [], {}, [], set()
     mailboxes = {}

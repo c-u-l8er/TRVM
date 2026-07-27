@@ -340,7 +340,7 @@ def main():
     s13.apply_text(_rq("j13", 0, VALID_SRC))
     cand13 = s13.candidate_semantic_id
     txt13 = s13.to_text()
-    reparsed = W.lower_graph(W.parse_wrl_core(txt13)).semantic_artifact_id
+    reparsed = W.lower_graph(W.parse_wrl_legacy_document(txt13)).semantic_artifact_id
     # re-applying the canonical text of the current graph is a semantic no-op
     r_again = s13.apply_text(_rq("j13b", s13.semantic_revision, txt13))
     j13 = (reparsed == cand13
@@ -399,7 +399,7 @@ def main():
     cand17 = s17.candidate_semantic_id
     res17 = s17.commit(_commit(s17.semantic_revision, cand17))
     sealed17 = res17["sealed_artifact"]
-    prog17 = W.lower_program(s17.to_text(), W.parse_wrl_core)
+    prog17 = W.lower_program(s17.to_text(), W.parse_wrl_legacy_document)
     view17 = P.plan_view(P.artifact_to_compile_plan_v1(sealed17))
     fx17 = prog17.as_fixture_for_test()
     demo17 = SC.demo_scenario(sealed17.semantic_id)
