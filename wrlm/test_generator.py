@@ -17,8 +17,10 @@ Run:  python3 test_generator.py      (or: python3 -m wrlm.test_generator)
 import ast
 import copy
 import hashlib
+import itertools
 import json
 import os
+import random
 import subprocess
 import sys
 
@@ -325,9 +327,14 @@ def main():
     ok_unknown, d_unknown = raises(C.WRLM_BAD_COVERAGE, led.record, cell,
                                    "looks_fine")
     counted = led.counts(cell)["proposed"] == 50
-    check("R11) only accepted_unique satisfies a quota, but all eight outcomes "
-          "are retained -- 350 recorded failures move no deficit and are still "
-          "visible", unmoved and moved and counted and ok_unknown,
+    # Counted from OUTCOMES rather than written down: this label said "eight"
+    # and "350" for three more outcomes than that, and a number in a passing
+    # test's prose is a number nobody re-reads.
+    n_out = len(C.OUTCOMES)
+    check("R11) only accepted_unique satisfies a quota, but all %d outcomes "
+          "are retained -- %d recorded failures move no deficit and are still "
+          "visible" % (n_out, 50 * (n_out - 1)),
+          unmoved and moved and counted and ok_unknown,
           "unmoved=%s moved=%s counted=%s %s" % (unmoved, moved, counted,
                                                  d_unknown))
 
@@ -596,36 +603,321 @@ def main():
                                              len(off_domain)))
 
     # ------------------------------------------------------------------ R22
-    # The reconciliation that makes the change safe to believe: narrowing the
-    # domain changed the DENOMINATOR and not the corpus. Both runs saturate, and
-    # the set of cells actually inhabited is identical -- so every cell removed
-    # was one that had been sitting empty, and none of them was empty because
-    # the generator had not got round to it yet.
+    # The reconciliation that makes the narrowing safe to believe. Both runs are
+    # saturated -- neither reaches its acceptance limit -- so what separates them
+    # is the domain and nothing else.
+    #
+    # THE LOAD-BEARING HALF is that no cell the narrowing removed was ever
+    # inhabited by either run. That is the whole justification for deleting 448
+    # cells from the published denominator, and it is a claim about the corpus
+    # rather than about the generator's mood.
+    #
+    # The second half USED to assert set equality, and that assertion was true
+    # only while the corpus sat well inside the reuse caps. It is not a law, and
+    # widening `propose_goals` is what showed it: with 226 cells now reachable
+    # instead of 104, the caps bind, and the caps are a FINITE budget per
+    # (family, tier) that the greedy selector spends in whatever order marginal
+    # deficits suggest. Padding the domain with 448 dead cells changes those
+    # marginal deficits, so the same budget gets spent on a different set -- and
+    # here the wide run reaches one fewer LIVE cell than the tight one.
+    #
+    # That is worth stating plainly, because it is stronger than the claim it
+    # replaces: a dead cell is not inert. It is not merely diluting a ratio, it
+    # is displacing real coverage. So the check keeps the inclusion --
+    # narrowing never COSTS a cell -- and reports the displacement instead of
+    # asserting it away.
     wide, _lw = GEN.generate_corpus(RECORDS, C.CoverageSpecV1("recon"),
-                                    limit=500, cells=full)
+                                    limit=900, cells=full)
     tight, _lt = GEN.generate_corpus(RECORDS, C.CoverageSpecV1("recon"),
-                                     limit=500, cells=cells)
+                                     limit=900, cells=cells)
     in_wide = {C.cell_key(i["cell"]) for i in wide}
     in_tight = {C.cell_key(i["cell"]) for i in tight}
     dead_keys = {C.cell_key(c) for c in excluded}
-    check("R22) narrowing moved the denominator, not the corpus: the same %d "
-          "cells are inhabited either way and none of the %d removed cells was "
-          "ever inhabited" % (len(in_tight), len(dead_keys)),
-          in_wide == in_tight and not (in_wide & dead_keys),
-          "wide=%d tight=%d overlap_with_dead=%d"
-          % (len(in_wide), len(in_tight), len(in_wide & dead_keys)))
+    saturated = len(wide) < 900 and len(tight) < 900
+    displaced = len(in_tight - in_wide)
+    check("R22) both runs saturate, no cell removed by the narrowing was ever "
+          "inhabited by either (%d dead cells), and narrowing costs nothing: "
+          "publishing the dead cells DISPLACES %d live cell(s) out of %d, "
+          "because the reuse caps are a finite budget the selector spends in "
+          "domain order" % (len(dead_keys), displaced, len(in_tight)),
+          saturated and not ((in_wide | in_tight) & dead_keys)
+          and not (in_wide - in_tight),
+          "wide=%d tight=%d lost_by_narrowing=%d overlap_with_dead=%d "
+          "saturated=%s" % (len(in_wide), len(in_tight),
+                            len(in_wide - in_tight),
+                            len((in_wide | in_tight) & dead_keys), saturated))
 
+    # ------------------------------------------------------------------ R23
+    # The witness simulator against the engine's real edit algebra. Each case
+    # names WHICH gate must fire, because the two gates mean different things:
+    # `WRLM_BAD_WITNESS` is the operation's own precondition and is in exact
+    # parity with `wrl_draft._apply_operation`, while `WRLM_WITNESS_NOT_CLOSED`
+    # is the referential closure the engine defers to its seal and this layer
+    # enforces early. A battery that only asked "does it fail" would let the two
+    # collapse into each other and could not notice the parity breaking.
+    base = {"objects": [{"object_id": "a", "role": "Pulser",
+                         "static_config": {}},
+                        {"object_id": "b", "role": "Door",
+                         "static_config": {}}],
+            "edges": [{"src": "a", "dst": "b", "kind": "SignalWire"}]}
+
+    def gate(witness):
+        try:
+            F.apply_witness(base, witness)
+        except WrlmError as exc:
+            return exc.code
+        return "ok"
+
+    algebra = [
+        # ------------------------------------------------- precondition gate
+        ("AddObject onto a live id", [F.op_add_object("a", "Door", {})],
+         F.WRLM_BAD_WITNESS),
+        ("RemoveObject of nothing", [F.op_remove_object("zz")],
+         F.WRLM_BAD_WITNESS),
+        ("SetObjectConfig on nothing", [F.op_set_config("zz", {"k": 1})],
+         F.WRLM_BAD_WITNESS),
+        ("duplicate edge", [F.op_add_edge("a", "b", "SignalWire")],
+         F.WRLM_BAD_WITNESS),
+        ("RemoveEdge of no edge", [F.op_remove_edge("b", "a", "SignalWire")],
+         F.WRLM_BAD_WITNESS),
+        # ------------------------------------------------------ closure gate
+        ("edge to a missing endpoint", [F.op_add_edge("a", "zz", "SignalWire")],
+         F.WRLM_WITNESS_NOT_CLOSED),
+        ("removal with an incident edge", [F.op_remove_object("b")],
+         F.WRLM_WITNESS_NOT_CLOSED),
+        # ------------------------------------------------- legal, and ORDERED
+        ("remove the edge THEN the object",
+         [F.op_remove_edge("a", "b", "SignalWire"), F.op_remove_object("b")],
+         "ok"),
+        ("add THEN configure",
+         [F.op_add_object("c", "Door", {}), F.op_set_config("c", {"k": 1})],
+         "ok"),
+        ("add THEN wire",
+         [F.op_add_object("c", "Door", {}),
+          F.op_add_edge("a", "c", "SignalWire")], "ok"),
+        ("configure twice",
+         [F.op_set_config("a", {"k": 1}), F.op_set_config("a", {"k": 2})],
+         "ok"),
+        ("remove then re-add the same edge",
+         [F.op_remove_edge("a", "b", "SignalWire"),
+          F.op_add_edge("a", "b", "SignalWire")], "ok"),
+        ("remove then re-add the same identity",
+         [F.op_remove_edge("a", "b", "SignalWire"), F.op_remove_object("b"),
+          F.op_add_object("b", "Relay", {}),
+          F.op_add_edge("a", "b", "SignalWire")], "ok"),
+    ]
+    wrong = ["%s -> %s (wanted %s)" % (lab, gate(w), want)
+             for lab, w, want in algebra if gate(w) != want]
+    # ...and the SAME legal sequences reversed must fail or land elsewhere, or
+    # "order matters" is a word rather than a fact. A case that already fails
+    # forwards proves nothing when reversed, so only the legal ones are turned
+    # round. `configure twice` reverses to a DIFFERENT world rather than to a
+    # failure, which is why the oracle in R24 compares results and not just
+    # legality.
+    ordered = [(lab, w) for lab, w, want in algebra
+               if want == "ok" and len(w) > 1]
+
+    def same_forward_and_back(w):
+        try:
+            a = json.dumps(F._norm(F.apply_witness(base, w)), sort_keys=True)
+            b = json.dumps(F._norm(F.apply_witness(base, list(reversed(w)))),
+                           sort_keys=True)
+        except WrlmError:
+            return False
+        return a == b
+
+    reversible = [lab for lab, w in ordered if same_forward_and_back(w)]
+    check("R23) all %d edit-algebra cases land on the gate they should, and "
+          "every one of the %d ordered witnesses breaks or moves when reversed"
+          % (len(algebra), len(ordered)),
+          not wrong and not reversible,
+          "wrong=%s reversible=%s" % (wrong, reversible))
+
+    # ------------------------------------------------------------------ R24
+    # The ordering predicate against a SEMANTIC oracle. `ordering_required` is
+    # syntactic -- it reads the operations and never touches a world. The oracle
+    # is the definition itself, brute-forced: permute the witness, and if any
+    # permutation fails or lands somewhere else, order mattered.
+    #
+    # The direction that must hold is completeness: the predicate may never say
+    # `independent` where the oracle says order matters. That is the failure the
+    # old predicate had, and it is silent -- the corpus simply contains fewer
+    # tier-3 tasks than the ledger claims, and the ledger is the thing that was
+    # supposed to notice. Over-reporting is permitted and MEASURED rather than
+    # waved through.
+    def order_matters(view, witness):
+        try:
+            want = json.dumps(F._norm(F.apply_witness(view, witness)),
+                              sort_keys=True)
+        except WrlmError:
+            return True
+        for perm in itertools.permutations(range(len(witness))):
+            try:
+                got = F.apply_witness(view, [witness[i] for i in perm])
+            except WrlmError:
+                return True
+            if json.dumps(F._norm(got), sort_keys=True) != want:
+                return True
+        return False
+
+    # Drawn from the SATURATED corpus, not the small one built at the top of
+    # this file: `corpus` stops at its limit long before the ordering-heavy
+    # cells are reached, so sampling it would test the predicate mostly on the
+    # short independent witnesses it already handled.
+    probes = [(VIEWS[i["task"]["base_world"]["semantic_id"]], i["witness"])
+              for i in tight if 2 <= len(i["witness"]) <= 5]
+    probes += [(base, w) for _lab, w in ordered]
+    unsound, over = [], 0
+    for view, wit in probes:
+        said = C.ordering_required(wit)
+        truth = order_matters(view, wit)
+        if truth and not said:
+            unsound.append([o["op"] for o in wit])
+        elif said and not truth:
+            over += 1
+    check("R24) over %d real witnesses the ordering predicate is never wrong in "
+          "the direction that hides difficulty; it over-reports %d"
+          % (len(probes), over), not unsound, "unsound=%s" % (unsound[:3],))
+
+    # ------------------------------------------------------------------ R25
+    # The three dependency classes the previous predicate missed, named one by
+    # one. This is the regression test for the actual defect rather than for the
+    # rewrite in general: each of these was reported INDEPENDENT, so each scored
+    # a tier below its own content.
+    missed = {
+        "add then configure the same object":
+            [F.op_add_object("c", "Door", {}), F.op_set_config("c", {"k": 1})],
+        "two config writes to one object":
+            [F.op_set_config("a", {"k": 1}), F.op_set_config("a", {"k": 2})],
+        "remove then re-add the same edge":
+            [F.op_remove_edge("a", "b", "SignalWire"),
+             F.op_add_edge("a", "b", "SignalWire")],
+    }
+    still_missed = [k for k, w in missed.items() if not C.ordering_required(w)]
+    # ...and the commuting case the fix must NOT sweep up with them. Two edges
+    # onto one node change its incidence twice and still commute; calling those
+    # ordered would put nearly the whole corpus in tier 3, which loses exactly
+    # as much information as the bug being fixed, arriving from the other side.
+    commuting = [F.op_add_edge("a", "c", "SignalWire"),
+                 F.op_add_edge("a", "d", "SignalWire")]
+    check("R25) each of the %d dependency classes the old predicate called "
+          "independent is now caught, and two edges onto one node still commute"
+          % len(missed),
+          not still_missed and not C.ordering_required(commuting),
+          "still_missed=%s swept_up=%s" % (still_missed,
+                                           C.ordering_required(commuting)))
+
+    # ------------------------------------------------------------------ R26
+    # Every proposal ends somewhere with a name. The gap this closes was not
+    # small: `off_cell` alone accounts for most of the run, and until it had a
+    # name that whole mass was the unexplained difference between `proposed` and
+    # the outcomes -- arithmetically indistinguishable from a counting bug.
+    gross, named = ledger.accounted()
+    tot = ledger.report(cells)["totals"]
+    check("R26) all %d proposals are accounted for by name, and the largest "
+          "category is the one that used to be invisible: off_cell=%d"
+          % (gross, tot["off_cell"]),
+          gross == named and gross > 0 and tot["off_cell"] > 0
+          and ledger.check_accounting(),
+          "gross=%d named=%d" % (gross, named))
+
+    # ------------------------------------------------------------------ R27
+    # The binding gate. `proved` means this layer re-lowered the world itself;
+    # `asserted` means it took the publisher's word. A benchmark built on the
+    # second is measuring the publisher, so the default admits only the first.
+    spec_default = C.CoverageSpecV1("bind")
+    faked = copy.deepcopy(RECORDS)
+    for rec in faked:
+        rec["binding"]["kind"] = "asserted"
+    check("R27) the default spec admits only %s, and a pool of %d worlds that "
+          "are merely asserted is refused rather than benchmarked"
+          % (list(spec_default.allowed_binding_kinds), len(faked)),
+          spec_default.allowed_binding_kinds == ("proved",)
+          and raises(GEN.WRLM_GENERATOR_EXHAUSTED,
+                     lambda: GEN.generate_corpus(faked, spec_default,
+                                                 limit=5, cells=cells)),
+          "allowed=%s" % (spec_default.allowed_binding_kinds,))
+
+    # ------------------------------------------------------------------ R28
+    # The repertoire gap, measured rather than described. `propose_goals` is the
+    # only source of `goal_satisfaction` tasks, so the set of
+    # (tier, shape, budget) triples it can EMIT is a hard ceiling on that
+    # family's coverage -- no pool of worlds, however large, supplies a goal
+    # shape nobody wrote down. Before the widening this reached 8 of the 29
+    # triples the family's own domain admits, which is exactly why the scaling
+    # curve read "saturated" at every pool size.
+    #
+    # Every proposal is also required to be WELL FORMED, SATISFIED by its own
+    # witness, and MINIMAL. The last one is the load-bearing one: the cheap way
+    # to fill a `5-8` budget cell is to append edits the goal does not need, and
+    # a proposer that did that would report depth it has not got. `n_min` is a
+    # count of proposals whose witness has a proper subsequence that already
+    # satisfies the goal -- checked by executing every subsequence, not by
+    # trusting the rule that built it.
+    reach, n_prop, n_bad, n_min = set(), 0, 0, 0
+    for rec in RECORDS:
+        bview = VIEWS[rec["semantic_id"]]
+        for goal, wit in F.propose_goals(bview, random.Random(0)):
+            n_prop += 1
+            try:
+                G.validate_goal_v1(goal)
+                reached = F.apply_witness(bview, wit)
+                ok = (0 < len(wit) <= F.MAX_WITNESS
+                      and G.evaluate_goal(goal, reached))
+            except WrlmError:
+                ok = False
+            if not ok:
+                n_bad += 1
+                continue
+            if not F.witness_is_minimal(bview, goal, wit):
+                n_min += 1
+            reach.add((F.derive_tier(goal, wit),
+                       F.derive_objective_shape(F.FAMILY_GOAL_SATISFACTION,
+                                                goal, wit),
+                       C.witness_budget_bucket(len(wit))))
+    want = F.feasible_triples(F.FAMILY_GOAL_SATISFACTION)
+    check("R28) the widened proposer reaches %d of the %d (tier, shape, budget) "
+          "triples its family admits -- up from 8 -- and across %d proposals "
+          "none is malformed, unsatisfied by its own witness, or padded"
+          % (len(reach & want), len(want), n_prop),
+          reach == want and n_bad == 0 and n_min == 0,
+          "reached=%d missing=%s bad=%d padded=%d out_of_domain=%s"
+          % (len(reach & want), sorted(want - reach), n_bad, n_min,
+             sorted(reach - want)))
+
+    # ------------------------------------------------------------------ R29
+    # And the check that keeps R28 honest in the other direction: minimality is
+    # a real predicate, not one that returns True for everything. A witness with
+    # one deliberately useless edit appended must be caught, and the same
+    # witness without it must pass.
+    pview = VIEWS[RECORDS[0]["semantic_id"]]
+    proles = sorted({o["role"] for o in pview["objects"]})
+    phave = sum(1 for o in pview["objects"] if o["role"] == proles[0])
+    pgoal = G.exactly("objects", G.role(proles[0]), phave + 1)
+    lean = [F.op_add_object("mz0", proles[0], {})]
+    padded = lean + [F.op_add_object("mz1", proles[-1], {})]
+    check("R29) minimality is a predicate and not a constant: the lean witness "
+          "passes and the same witness with one goal-irrelevant edit appended "
+          "is refused",
+          F.witness_is_minimal(pview, pgoal, lean)
+          and not F.witness_is_minimal(pview, pgoal, padded)
+          and G.evaluate_goal(pgoal, F.apply_witness(pview, padded)),
+          "lean=%s padded=%s"
+          % (F.witness_is_minimal(pview, pgoal, lean),
+             F.witness_is_minimal(pview, pgoal, padded)))
+
+    rep = ledger.report(cells)
     print()
     print("  domain %d cells of %d in the full product; %d inhabited, "
           "%d at quota" % (len(cells), len(full), len(in_tight),
                            sum(1 for c in cells
                                if _lt.accepted(c) >= _lt.spec.quota(c))))
-    print("  corpus %d over %d cells touched, %d filled; marginals %d, pairs %d"
-          % (len(corpus), ledger.report()["cells_touched"],
-             ledger.report()["cells_filled"],
-             ledger.report()["marginal_values_seen"],
-             ledger.report()["pairs_seen"]))
-    print("  totals %s" % json.dumps(ledger.report()["totals"], sort_keys=True))
+    print("  corpus %d over %d cells touched, %d inhabited, %d at quota "
+          "(quota mass %.3f); marginals %d, pairs %d"
+          % (len(corpus), rep["cells_touched"], rep["cells_inhabited"],
+             rep["cells_at_quota"], rep["quota_mass"],
+             rep["marginal_values_seen"], rep["pairs_seen"]))
+    print("  totals %s" % json.dumps(rep["totals"], sort_keys=True))
     print()
     if FAILED:
         print("FAILED: %s" % ", ".join(FAILED))

@@ -1,6 +1,6 @@
 # WRLM Research Brief
 
-**Status:** design converged on paper across three review rounds (Claude ↔ GPT-5.6, 2026-07-26). **Build-order step 1 is shipped and CLOSED** — `GoalSpecV1`, `TaskBundleV1`, the one engine adapter, and a five-gap verifier-hardening pass. **Step 2 has begun** with `WorldRecordV1`. See §10. Steps 3–10 remain paper only and are not authorized.
+**Status:** design converged on paper across three review rounds (Claude ↔ GPT-5.6, 2026-07-26). **Build-order step 1 is shipped and CLOSED** — `GoalSpecV1`, `TaskBundleV1`, the one engine adapter, and a five-gap verifier-hardening pass. **Build-order step 2 is shipped and CLOSED**, together with its two ordered sub-steps — `WorldRecordV1`, `envelope.py`, the derived coverage domain (`wrlm.coverage.v1.2`, 320 published cells), the widened goal repertoire (29/29 triples, 0 padded witnesses), and a 58-world proved pool inhabiting 298 of 320 cells. See §10. Steps 3–10 remain paper only and are not authorized.
 
 **Scope:** this document is the design of record for WRLM-0 and its evaluation. It supersedes nothing in the shipped stack; WRL, TRVM, TRAAVIIS and Forge are unchanged and remain authoritative for their own layers.
 
@@ -257,10 +257,10 @@ Affordable configuration: `N = 100 tasks, 3 paid trajectories × 3 tiers = 9 pai
 
 ---
 
-## 10. Build order (step 1 closed; step 2 begun; steps 3–10 agreed on paper only)
+## 10. Build order (steps 1–2 closed; steps 3–10 agreed on paper only)
 
 1. ~~**`GoalSpecV1` closed AST** + sealing into task identity~~ — **SHIPPED and CLOSED.** `TRVM/wrlm/goalspec.py` (G0–G13, 14/14) and `TRVM/wrlm/taskbundle.py` + `worldview.py` + `errors.py` (W0–W9 / T1–T14, 24/24)
-2. Task generators + coverage-stratified generation over generator-defined difficulty strata — **begun:** `WorldRecordV1` shipped (`TRVM/wrlm/worldrecord.py`, R-battery 8/8). `generator.py`, `coverage.py`, `families.py` still to build
+2. ~~Task generators + coverage-stratified generation over generator-defined difficulty strata~~ — **SHIPPED and CLOSED.** `worldrecord.py` + `envelope.py` (R1–R19, 11/11), `coverage.py` + `families.py` + `generator.py` (R4–R17, R20–R29, 25/25), `tools/build_pool.py` → a 58-world proved pool. Sub-steps 2.1 (widen `propose_goals`, 29/29 triples, 0 padded) and 2.2 (grow the pool, 298/320 cells) closed with it
 3. `TargetSpecV1` alongside, tier-gated
 4. **D′ host** (parse → diagnose → seal → diff → derive → apply → assert), with the six laws as the test battery
 5. **$0 baselines** `∅`, `∅+`, `R`, `S` — mandatory spending gate, run before any paid call
@@ -415,11 +415,11 @@ Train/validation/test are assigned on `base_shape_id`, not on `case-` and not on
 
 ### What step 2 shipped
 
-`coverage.py`, `families.py`, `generator.py`, plus `envelope.py` for the closure above and `tools/build_pool.py` — the **only** script that touches the engine, deliberately outside the package, run once to write `fixtures/pool.json` and `fixtures/pool_records.json` (21 worlds, **all `binding=proved`**).
+`coverage.py`, `families.py`, `generator.py`, plus `envelope.py` for the closure above and `tools/build_pool.py` — the **only** script that touches the engine, deliberately outside the package, run once to write `fixtures/pool.json` and `fixtures/pool_records.json` (**58 worlds**, all `binding=proved`).
 
-Batteries: `test_worldrecord.py` 11/11 + `test_generator.py` **17/17 (R4–R17, R20–R22)**, R4–R17 first-run green. R5, R9 and R17 mechanize their rulings by **parsing** the module that states them — a law about a seam that is checked by string search is a law a comment can satisfy. R17 parses all 14 package modules for engine imports and additionally asserts `tools/build_pool.py` *does* import forge, so the separation cannot be satisfied vacuously by nobody importing forge anywhere.
+Batteries: `test_worldrecord.py` 11/11 + `test_generator.py` **25/25 (R4–R17, R20–R29)**, R4–R17 first-run green. R5, R9 and R17 mechanize their rulings by **parsing** the module that states them — a law about a seam that is checked by string search is a law a comment can satisfy. R17 parses all 14 package modules for engine imports and additionally asserts `tools/build_pool.py` *does* import forge, so the separation cannot be satisfied vacuously by nobody importing forge anywhere.
 
-Measured corpus (`corpus_seed = "seed-A"`, 21-world pool, quota 2): **201 accepted**, **104 of 320 cells inhabited**, 97 filled to quota, splits 136/37/28, 0 duplicate `case-` accepted, 0 unsatisfiable, 0 invalid, 0 host faults. Byte-reproducible across runs and different under a different seed. (The pre-correction numbers were 199 accepted over a 768-cell domain — see below for why the denominator moved and the corpus did not.)
+Measured corpus (`corpus_seed = "seed-A"`, 58-world pool, quota 2, `wrlm.coverage.v1.2`): **527 accepted**, **298 of 320 cells inhabited (93%)**, 229 filled to quota, **quota mass 0.823**, splits 343/76/108, 0 duplicate `case-` accepted, 0 unsatisfiable, 0 invalid, 0 degenerate, 0 host faults. Byte-reproducible across runs and different under a different seed. (Earlier figures — 199 accepted over a 768-cell domain, then 201 over 320 — are kept below, because *why* they moved is the finding and the numbers are not.)
 
 #### The gap, and the correction to what was first said about it
 
@@ -435,30 +435,47 @@ The first version of this section reported 664 empty cells, observed that emptin
 
 **448 of the 768 published cells could never be inhabited by anything.** They were reported as under-coverage, which pointed at the pool for a fault that was in the domain. This is the ruling's own objection to cross-family shapes — *"not a sparse cell, a meaningless one"* — one level further down, and the module docstring had stated the principle while violating it.
 
-`valid_cells()` now publishes the 320, and computes that set **by calling the derivation functions** rather than by carrying a table of them; a table would be a second statement of the tier contract, free to drift from the first. `WRLM_CELL_UNKNOWN` — declared in the first draft and never raised — is now what refuses a contradictory cell. `COVERAGE_SPEC_VERSION` moves to `wrlm.coverage.v1.1`: the fields are unchanged, but a version is what promises a seed reproduces a corpus, and a corpus is drawn from a domain.
+`valid_cells()` now publishes the 320, and computes that set **by calling the derivation functions** rather than by carrying a table of them; a table would be a second statement of the tier contract, free to drift from the first. `WRLM_CELL_UNKNOWN` — declared in the first draft and never raised — is now what refuses a contradictory cell. `COVERAGE_SPEC_VERSION` moves to `wrlm.coverage.v1.2` (`v1.1` was the first narrowing; `v1.2` follows the ordering-predicate closure below): the fields are unchanged, but a version is what promises a seed reproduces a corpus, and a corpus is drawn from a domain.
 
-**R22 is the check that makes the change safe to believe.** Generating under both domains to saturation inhabits the *identical* 104 cells, and not one of the 448 removed cells was ever inhabited under the wide domain. The narrowing moved the denominator and left the corpus alone.
+**R22 is the check that makes the change safe to believe — and its second half had to be retracted.** The load-bearing half holds and is what justifies deleting 448 cells from the denominator: generating under both domains to saturation, *not one* of the removed cells was ever inhabited by either run, and narrowing never costs a cell (`in_wide ⊆ in_tight`).
 
-#### What is actually still missing, split by remedy
+The half that was retracted asserted **set equality**. That was true only while the corpus sat well inside the reuse caps, and widening the goal repertoire is what exposed it: with 226 cells now reachable instead of 104, `max_per_sem` and `max_per_shape` **bind**, and they are a *finite budget per `(family, tier)`* that the greedy selector spends in whatever order marginal deficits suggest. Padding the domain with 448 dead cells changes those marginal deficits, so the same budget lands on a different set — and the wide run reaches **one fewer live cell** than the tight one.
 
-Of the 320 real cells, 104 are built. Sweeping every proposal both family builders can make over the pool — with no cap, quota or attempt bound in the way — gives the cells the repertoire can reach at all:
+That is a stronger claim than the one it replaces: **a dead cell is not inert.** It does not merely dilute a ratio, it *displaces real coverage*. R22 now checks the inclusion and **reports** the displacement rather than asserting it away.
 
-- **reachable but not built: 0.** Caps, quota and the attempt bound blocked nothing. The selection machinery is not a bottleneck.
-- **not reachable: 216**, and the scaling curve separates the two causes cleanly. Recomputing reachability over random subsamples of 5/9/13/17/21 worlds:
+#### Step 2.1: widening the goal repertoire
 
-| pool | `target_transform` (of 88) | `goal_satisfaction` (of 232) |
-|---|---|---|
-| 5 | 9.2 | 37.6 |
-| 9 | 15.2 | 47.6 |
-| 13 | 26.0 | 52.8 |
-| 17 | 38.4 | 53.6 |
-| 21 | 48.0 | 56.0 |
+`goal_satisfaction` had saturated at every pool size — the last eight worlds bought 2.4 cells — and the cause was legible in `propose_goals`: six rules, of which the conjunction rule always emitted exactly two `AddObject`s and the alternative rule exactly one, so `conjunction` could only ever land in budget `2` and `alternative` only in budget `1`, **at any pool size whatsoever**. The gap was measured before it was touched: the old repertoire reached **8 of the 29** `(tier, shape, budget)` triples the family's own domain admits, with the 21 missing triples enumerated by name. No quantity of captured worlds supplies a goal shape nobody wrote down.
 
-`target_transform` climbs roughly linearly and has not begun to flatten — it is **pool-limited**, at about +2.4 cells per world, so filling 88 needs on the order of 40 worlds. `goal_satisfaction` has saturated: the last eight worlds bought 2.4 cells. It is **repertoire-limited**, and the reason is legible in `propose_goals` — the conjunction rule always emits exactly two `AddObject`s and the alternative rule always exactly one, so `conjunction` can only ever land in budget `2` and `alternative` only in budget `1`, at any pool size whatsoever. 176 of its 232 cells are unreachable until that rule set widens, and no quantity of captured worlds will change it.
+Eight rules replace the six, each written against a named gap — `k` more of a role; `k` fewer (ordered exactly when a victim is wired); two counts at once (including the `(1, 0)` case: two requirements, one edit, the cheapest possible statement of *change this without breaking that*); new objects each wired; the same move asked over the *edge* sort so it cannot be solved by matching ids in the goal text; a costed alternative; an alternative whose cheap arm is a wiring; and a prohibition carried alongside a requirement. Every ordered rule gets its ordering the honest way — an edge cannot name an object that does not exist yet, and an object cannot be removed while an edge still names it — both refusals the engine's own seal makes, and both enforced by `apply_witness_step`.
 
-So the answer to *"grow the pool or trim the domain?"* is neither, in that order: **trim the domain (done, 448 cells), then widen the goal repertoire, then grow the pool** — and only the last of the three is about capture.
+The ruling's constraint was *"do not unlock budgets by padding witnesses."* Stating in a docstring that the proposer does not pad is worth nothing, because the proposer is the thing under suspicion. So `witness_is_minimal(view, goal, witness)` **executes every proper subsequence** against the same evaluator the generator scores with, and returns False if any shorter one already satisfies the goal (bounded by `MAX_WITNESS = 8`, so ≤2⁸ evaluations). **R28** runs it over every proposal the widened function emits across the whole pool; **R29** proves it is a predicate and not a constant by feeding it one deliberately useless appended edit.
 
-Still open for step 2: nothing. Steps 3–10 remain paper only.
+Result: **29 of 29 triples reached**, 0 malformed, 0 unsatisfied by their own witness, **0 padded**.
+
+#### Step 2.2: growing the pool, and a false plateau
+
+Only after the widening did the pool become the binding constraint — exactly as the ruling ordered. `tools/build_pool.py` gains two generators: `strands()`, which makes a world a *multiset of chain lengths* (the original `chain()` varied how many objects there were and barely how they were arranged, so its worlds collapsed together under the 1-WL fingerprint `max_per_shape` caps on — twelve worlds sharing a shape are, to the cap, one world twelve times), and `neighbourhood()`, which emits a base world plus siblings at *deliberate distances*: 1 edit, 2 edits, 4 edits, a config bump, a relay spliced into a chain (ordered), a whole new strand (ordered, longer).
+
+The siblings are the point. `target_transform` diffs **two** captured worlds, so its witness budget is not a property of either world — it is a property of the **pool's geometry**. A pool whose worlds are all far apart fills the `5-8` cells, leaves `1` and `2` empty at every size, and reports the emptiness as difficulty. Hence: *neighbourhoods, not specimens.*
+
+The pool goes 21 → **58 proved worlds**. The original 21 records remain a **byte-identical prefix**, so every previously pinned `sem-` is unmoved.
+
+**The marginal-coverage stop rule the ruling asked for is unsound as specified.** Measured at complete-neighbourhood boundaries:
+
+| pool | inhabited /320 | `gs` /232 | `tt` /88 | at quota | quota mass | marginal |
+|---|---|---|---|---|---|---|
+| 30 | 262 | 194 | 68 | 108 | 0.578 | — |
+| 39 | 266 | 198 | 68 | 168 | 0.678 | +0.44/world |
+| 44 | 268 | 200 | 68 | 168 | 0.681 | +0.40/world |
+| 53 | **296** | 220 | 76 | 219 | 0.805 | **+3.11/world** |
+| 58 | **298** | 222 | 76 | 229 | 0.823 | +0.40/world |
+
+A **global** stop rule fires at 39 and again at 44, and would have halted at 268 cells — after which the very next neighbourhood delivered **+3.11 cells/world and 28 more cells**. Coverage is a function of what *region* the pool reaches, not of pool *size*, so the rule has to be evaluated **per region** (`base_size_bucket` × family), never globally. The pool is 58 rather than the ruling's preferred 48 because a neighbourhood must be kept **complete** — truncating one mid-way is precisely what manufactures the false plateau — and the complete-boundary options were 30/39/44/53/58.
+
+**Where the 22 remaining gaps are:** 14 of 22 sit in the `tiny` size bucket; by family, `target_transform` 12 and `goal_satisfaction` 10.
+
+Step 2 and its two sub-steps are closed. Steps 3–10 remain paper only. Three findings are flagged for ruling: the unsound global stop rule, the displacement result that retired R22's set equality, and the 58-vs-48 overshoot.
 
 Proposed object set: ~~`TaskBundleV1`~~ (shipped), ~~`WorldRecordV1`~~ (shipped, added to the set), `ProposalV1`, `CandidateWorldV1`, `TargetSpecV1`, `GoalSpecV1`, `ProducerFactV1`, `EpisodeReceiptV1`, `EvaluationReportV1`, `AdmissionDecisionV1`, `InteractiveEpisodeKernelV1`.
 

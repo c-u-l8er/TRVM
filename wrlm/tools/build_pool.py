@@ -107,6 +107,83 @@ def edit_variants():
     ]
 
 
+def strands(lengths, spin_at=(), free_orbs=0, bump=0):
+    """Independent `pulser -> relay* -> sink` chains, one per entry in `lengths`.
+
+    A world here is a MULTISET OF CHAIN LENGTHS, and that is the point: the
+    original `chain()` builder varies how MANY objects there are and barely
+    varies how they are arranged, so its worlds collapse together under the
+    1-WL fingerprint that `max_per_shape` caps on. Twelve worlds sharing a shape
+    are, to the reuse cap, one world twelve times.
+
+    `spin_at` terminates the named strands with a spinner and its orb instead of
+    a door, `free_orbs` appends unwired orbs (legal, and the cheapest way to
+    move an object count without touching topology), and `bump` shifts every
+    pulser's period at once.
+    """
+    decl, wire = [], []
+    for ci, n_relay in enumerate(lengths):
+        prev = "p%d" % ci
+        decl.append("[pulser:%s](every %d){sig_out}"
+                    % (prev, 2 + ((ci + bump) % 4)))
+        for j in range(n_relay):
+            here = "r%d_%d" % (ci, j)
+            decl.append("[relay:%s]{sig_in, sig_out}" % here)
+            wire.append("[%s] --sig--> [%s]" % (prev, here))
+            prev = here
+        if ci in spin_at:
+            decl.append("[spinner:s%d](w=16, n=8, rotor=quarter_turn_z, "
+                        "configurable){sig_in, socket}" % ci)
+            decl.append("[orb:o%d]{pose}" % ci)
+            wire.append("[%s] --sig--> [s%d]" % (prev, ci))
+            wire.append("[s%d] --socket--> [o%d]" % (ci, ci))
+        else:
+            decl.append("[door:d%d]{sig_in}" % ci)
+            wire.append("[%s] --sig--> [d%d]" % (prev, ci))
+    for i in range(free_orbs):
+        decl.append("[orb:fo%d]{pose}" % i)
+    return HEAD + "\n".join(decl) + "\n\n" + "\n".join(wire) + "\n"
+
+
+def neighbourhood(tag, lengths, spin_at=(), full=True):
+    """A base world and the near-siblings that make its DISTANCES measurable.
+
+    `target_transform` pairs two captured worlds and takes the diff, so its
+    witness budget is not a property of either world -- it is a property of the
+    pool's geometry. A pool of worlds that are all far apart fills the `5-8`
+    cells and leaves `1` and `2` empty at every size, and reports the emptiness
+    as difficulty. So each size gets a neighbourhood rather than a specimen, and
+    the siblings are placed at deliberate distances:
+
+        _cfg    1 edit,  unordered      -> local
+        _o1     1 edit,  unordered      -> local
+        _o2     2 edits, unordered      -> multi_local
+        _o4     4 edits, unordered      -> multi_local
+        _bump   one config per strand   -> multi_local
+        _deep   a relay spliced INTO a chain, so an edge must wait for an object
+                that does not exist yet   -> structural, ordered
+        _wide   a whole new strand       -> structural, ordered, longer
+
+    The unordered siblings also keep every other role count fixed, which is what
+    lets `_preservable` find a clause that is true at both ends -- the
+    `preservation` shape has no other source.
+    """
+    base = strands(lengths, spin_at)
+    grown = list(lengths)
+    grown[0] += 1
+    out = [(tag, base),
+           (tag + "_cfg", base.replace("(every 2)", "(every 9)", 1)),
+           (tag + "_o1", strands(lengths, spin_at, free_orbs=1)),
+           (tag + "_o2", strands(lengths, spin_at, free_orbs=2)),
+           (tag + "_deep", strands(grown, spin_at))]
+    if full:
+        out += [(tag + "_o4", strands(lengths, spin_at, free_orbs=4)),
+                (tag + "_bump", strands(lengths, spin_at, bump=1)),
+                (tag + "_wide", strands(list(lengths) + [0], spin_at)),
+                (tag + "_wider", strands(list(lengths) + [1], spin_at))]
+    return out
+
+
 CANDIDATES = [
     ("demo", DEMO),
     # tiny 2-4
@@ -135,7 +212,17 @@ def main():
     from wrlm import worldrecord as R
 
     pool, records, skipped = [], [], []
-    for name, src in CANDIDATES + edit_variants():
+    # The neighbourhoods are appended rather than folded into `CANDIDATES` so
+    # the ORIGINAL twelve-plus-nine stay first and in their original order: the
+    # pool is content-addressed per world, but the corpus is reproducible from
+    # `(pool, corpus_seed)`, and reordering the pool is a change to the corpus.
+    for name, src in (CANDIDATES + edit_variants()
+                      + neighbourhood("n_small", [1, 1])
+                      + neighbourhood("n_med", [1, 1, 1], spin_at=(0,))
+                      + neighbourhood("n_med2", [4, 2], full=False)
+                      + neighbourhood("n_large", [3, 3, 3, 3], spin_at=(0, 2))
+                      + neighbourhood("n_large2", [8, 5], spin_at=(0,),
+                                      full=False)):
         payload = forge_api.lower_source(src)
         if not payload.get("ok"):
             skipped.append((name, payload.get("error"),

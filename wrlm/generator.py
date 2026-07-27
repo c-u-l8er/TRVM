@@ -57,7 +57,12 @@ from . import worldrecord as R
 from .errors import WrlmError, fail
 
 GENERATOR_ID = "wrlm.generator.v1"
-GENERATOR_VERSION = "1"
+# Bumped with `wrlm.coverage.v1.2`. The version is hashed into every per-cell
+# RNG, so it is not decoration: leaving it at "1" while the witness algebra and
+# the ordering predicate changed underneath would mean two different corpora
+# answering to one seed, which is the one thing a reproducible benchmark cannot
+# allow.
+GENERATOR_VERSION = "2"
 
 WRLM_GENERATOR_EXHAUSTED = "WRLM_GENERATOR_EXHAUSTED"
 
@@ -101,7 +106,7 @@ def _build_goal_satisfaction(record, view, cell, rng):
         yield goal, witness, None, False
 
 
-def _build_target_transform(record, view, cell, pool, rng, views):
+def _build_target_transform(record, view, cell, pool, rng, views, outcomes):
     """Pair this base with another captured world it can actually reach.
 
     The target is never invented. It is a world some engine already sealed, so
@@ -119,6 +124,13 @@ def _build_target_transform(record, view, cell, pool, rng, views):
         try:
             F.verify_witness(view, witness, tview)
         except WrlmError:
+            # A diff that describes the right endpoint but cannot be EXECUTED --
+            # a step that strands an edge, say. Counted rather than skipped
+            # silently: this is the number that would go up first if the witness
+            # algebra and the engine's edit algebra drifted apart, and a silent
+            # `continue` would spend that signal on nothing.
+            outcomes["proposed"] += 1
+            outcomes["unsatisfiable_or_no_witness"] += 1
             continue
         # A preservation task additionally pins something that is ALREADY true
         # of the base and must survive: a second, harder question about the same
@@ -189,7 +201,7 @@ def generate_batch(ledger, cell, pool, attempt=0, views=None):
             proposals = _build_goal_satisfaction(record, view, cell, rng)
         else:
             proposals = _build_target_transform(record, view, cell, pool, rng,
-                                                views)
+                                                views, outcomes)
 
         for item in proposals:
             if len(survivors) >= BATCH:
@@ -205,7 +217,12 @@ def _try_candidate(ledger, cell, record, view, item, outcomes):
     form = cell["presentation_form"]
     presented = _presented(record, form)
     if form == "formatted" and presented == record["source"]:
-        return None      # this record has no distinct formatted twin to present
+        # Not a failed proposal: the CELL is unreachable from this record, because
+        # the record has no formatted twin distinct from its source. Named, so
+        # that "half the presentation axis is empty" reads as a property of the
+        # pool rather than as a generator that keeps missing.
+        outcomes["presentation_unavailable"] += 1
+        return None
 
     if cell["family"] == F.FAMILY_GOAL_SATISFACTION:
         goal, witness, _t, preservation = item
@@ -226,6 +243,7 @@ def _try_candidate(ledger, cell, record, view, item, outcomes):
             or C.witness_budget_bucket(len(witness)) != cell["witness_edit_budget"]
             or F.derive_objective_shape(cell["family"], goal, witness,
                                         preservation) != cell["objective_shape"]):
+        outcomes["off_cell"] += 1
         return None
 
     try:
@@ -263,10 +281,11 @@ def _try_candidate(ledger, cell, record, view, item, outcomes):
     derived = F.derive_cell(cell["family"], view, task, witness, record,
                             preservation)
     if C.cell_key(derived) != C.cell_key(cell):
-        # Not a fault and not a rejection reason: the proposal was simply for a
-        # different cell. It stays inside `proposed` and shows up as the gap
-        # between proposals and named outcomes, which is what an exploration
-        # miss actually is.
+        # Not a fault and not a rejection: the proposal was simply for a
+        # different cell. It used to be left as the unnamed gap between
+        # `proposed` and the named outcomes -- which made an exploration miss
+        # arithmetically indistinguishable from a counting bug.
+        outcomes["off_cell"] += 1
         return None
 
     case = T.case_id(task)
@@ -287,8 +306,25 @@ def generate_corpus(pool, spec, limit=200, cells=None):
     """
     for rec in pool:
         R.validate_record_v1(rec)
+    # The binding gate. A record whose `sem-` was inherited from a publisher
+    # rather than re-lowered here is `asserted`, and a benchmark built on those
+    # is measuring the publisher. Excluded records are COUNTED, not quietly
+    # dropped: a pool that halved on the way in and a pool that was always small
+    # produce the same corpus and call for opposite responses.
+    admitted = [r for r in pool
+                if r["binding"]["kind"] in spec.allowed_binding_kinds]
+    if not admitted:
+        fail(WRLM_GENERATOR_EXHAUSTED,
+             "no record in a pool of %d carries a binding in %s; every world "
+             "here is trusted rather than proved"
+             % (len(pool), list(spec.allowed_binding_kinds)), "pool")
+    excluded = len(pool) - len(admitted)
+    pool = admitted
+
     cells = cells or F.valid_cells()
     ledger = C.CoverageLedger(spec)
+    ledger.pool_admitted = len(admitted)
+    ledger.pool_excluded = excluded
     views = _views(pool)
     corpus, stalled = [], set()
 
@@ -306,6 +342,12 @@ def generate_corpus(pool, spec, limit=200, cells=None):
         for attempt in range(MAX_ATTEMPTS_PER_CELL):
             survivors, outcomes = generate_batch(ledger, cell, pool, attempt,
                                                  views)
+            # A batch keeps up to BATCH survivors and exactly one is accepted.
+            # The rest passed every gate and simply lost, which is neither an
+            # acceptance nor a rejection -- and leaving it as neither is what
+            # broke `proposed == sum(outcomes)`. `accepted_unique` is booked by
+            # `ledger.accept` below, so only the losers are booked here.
+            outcomes["candidate_not_selected"] += max(len(survivors) - 1, 0)
             for name, n in outcomes.items():
                 for _ in range(n):
                     ledger.record(cell, name)
@@ -329,6 +371,10 @@ def generate_corpus(pool, spec, limit=200, cells=None):
                        "task_id": T.task_bundle_id(chosen.task),
                        "cell": chosen.cell, "witness": chosen.witness,
                        "factors": chosen.factors})
+    # Every proposal ended somewhere with a name, or this raises. Checked at the
+    # end of the run rather than trusted, for the same reason the cell is derived
+    # rather than declared.
+    ledger.check_accounting()
     return corpus, ledger
 
 
