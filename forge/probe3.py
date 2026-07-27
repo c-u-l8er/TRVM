@@ -13,6 +13,7 @@ import sys
 
 sys.dont_write_bytecode = True
 
+import vector_files
 import wrl_projection as P
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -32,7 +33,7 @@ def ok(name, cond, detail=""):
 
 
 def main():
-    doc = json.load(open(os.path.join(HERE, "_vectors.json")))
+    doc = vector_files.load("_vectors.json")
     print("vector set %s -- %d vectors\n" % (doc["vector_version"],
                                              len(doc["vectors"])))
 

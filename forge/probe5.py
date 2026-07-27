@@ -27,16 +27,44 @@ this machine, holding everything else fixed:
     w=24    5.7s    20,890,304 chars
     w=32   17.3s    39,122,450 chars
     w=40   47.6s    61,842,093 chars
+    w=64  482.3s   154,713,682 chars     (peak RSS 2.5 GB)
 
-which puts w=64 near 1.6e8 characters of term. That is a cost cliff, not a
-hang, and it is not a defect in anything C.4 built -- but it does mean the
-artifact domain admits worlds that are cheaply VERIFIABLE and impractically
-EXECUTABLE, and those are not the same property. The BigInt vectors are
-identity vectors; they are carried through the admission step below like every
-other, and stop before the compiler on purpose, with the reason named rather
-than skipped silently.
+The w=64 row is MEASURED, and the distinction was worth the eight minutes it
+cost. The first version of this note stopped at w=40 and called w=64 "a cost
+cliff, not a hang" on the strength of the fit -- but the run it described had
+been killed at five minutes without ever returning, so "not a hang" was an
+inference wearing the clothes of an observation. In a file whose whole subject
+is that a plausible derived number is the thing to distrust, that was the wrong
+sentence to leave standing. Run to completion it does terminate, and the fit
+was good: predicted ~1.6e8, actual 1.547e8.
+
+So it is a cost cliff, and not a defect in anything C.4 built -- but it does
+mean the artifact domain admits worlds that are cheaply VERIFIABLE and
+expensively EXECUTABLE, and those are not the same property.
+
+And the cliff is worth paying once, because the headline claim is stronger on
+the far side of it. Both w=64 legs were built:
+
+    bigint-rotor        (V1)  482.3s
+    bigint-rotor-named  (V2)  573.2s
+
+    sem-4f927defd2e60b03f3511670b0aead801c09e67facaf283a3bb9cf3857bd65d2
+    bcnt-3f3aa11da1a0c6ff4c92133a1b7fa59fb4956ed4008ac8549ae37d5ffa6feff2
+
+-- the same seal and the same backend term from both encodings, at a magnitude
+where the wire's own exact-integer reader is the only reason the number
+survived the trip at all. That is C.4.1 and C.4.3 checked against each other:
+had `parseExactJson` rounded the lane, this term would differ and nothing else
+in the probe would have noticed.
+
+The default run stops before the compiler on those two vectors to stay fast;
+`--full` lifts the budget and takes about eighteen minutes. The budget is
+stated, the skip is printed with its reason, and the recorded answer above is
+asserted on a `--full` run rather than merely quoted -- a number that is only
+ever reported is a number nothing can falsify.
 
 Run from a COPY of forge/:  PYTHONDONTWRITEBYTECODE=1 python3 probe5.py
+                            PYTHONDONTWRITEBYTECODE=1 python3 probe5.py --full
 """
 import json
 import os
@@ -44,6 +72,7 @@ import sys
 
 sys.dont_write_bytecode = True
 
+import vector_files
 import wrl_canonical as WC
 import wrl_plan
 import wrl_projection as P
@@ -65,8 +94,19 @@ RUN_INPUT_KEYS = ("periods", "batches", "epoch_inputs", "run_plan",
 
 # Above this spinner width the backend term is large enough that compiling it
 # measures the machine rather than the protocol. See the module docstring: this
-# is a stated budget, not a hidden skip.
-COMPILE_WIDTH_BUDGET = 32
+# is a stated budget, not a hidden skip. `--full` lifts it, which costs about
+# eighteen minutes and roughly 2.5 GB of resident memory for the two w=64 legs.
+COMPILE_WIDTH_BUDGET = 10 ** 9 if "--full" in sys.argv else 32
+
+# The w=64 pair, measured out of band under the lifted budget (see the module
+# docstring for the timings). These are recorded so that the expensive run has
+# something to be checked AGAINST rather than merely reported, and so that a
+# reader who does not want to spend the eighteen minutes can still see what the
+# claim is. They are asserted only on a run that actually built the term.
+BIGINT_SEM = ("sem-4f927defd2e60b03f3511670b0aead801c09e67facaf283a3bb9cf3857"
+              "bd65d2")
+BIGINT_BCNT = ("bcnt-3f3aa11da1a0c6ff4c92133a1b7fa59fb4956ed4008ac8549ae37d5f"
+               "fa6feff2")
 
 passed = 0
 failed = 0
@@ -83,7 +123,7 @@ def ok(name, cond, detail=""):
 
 
 def main():
-    doc = json.load(open(os.path.join(HERE, "_vectors.json")))
+    doc = vector_files.load("_vectors.json")
     built = {}
     views = {}
 
@@ -120,8 +160,8 @@ def main():
             print("       -- not compiled: spinner w=%d exceeds the stated "
                   "budget of %d." % (width, COMPILE_WIDTH_BUDGET))
             print("          This world's IDENTITY is fully established above; "
-                  "only its\n          backend term is out of budget. See the "
-                  "module docstring.\n")
+                  "only its\n          backend term is out of budget. Re-run "
+                  "with --full to build it.\n")
             continue
 
         # The ordinary production compile path -- no wire-specific entry.
@@ -143,22 +183,36 @@ def main():
     # THE HEADLINE. A V2 record -- bytes the frozen V1 reader refuses outright
     # -- compiles, through the ordinary path, to the same backend term as the
     # V1 world it is an encoding of.
-    for v1, v2 in (("pinned-fixture", "named-relations"),):
+    for v1, v2 in (("pinned-fixture", "named-relations"),
+                   ("bigint-rotor", "bigint-rotor-named")):
+        # The execution view id is established for every vector, in budget or
+        # out of it, because deriving it costs nothing. Assert that much first
+        # and unconditionally.
+        a, b = views.get(v1), views.get(v2)
+        ok("%s/projects-to-the-same-view" % v2, a is not None and a == b,
+           a if a == b else "%s vs %s" % (a, b))
+
+        # The backend claim is a strictly stronger one and may only be made on
+        # a run that actually built the term. Out of budget, say so and say
+        # what the recorded answer is -- reporting a measurement is not the
+        # same act as passing a check, and this prints rather than scores.
         if v1 not in built or v2 not in built:
-            ok("%s/executes-as-%s" % (v2, v1), False, "a leg did not build")
+            print("       -- %s/executes-as-%s not checked: out of budget."
+                  % (v2, v1))
+            print("          Recorded under --full: %s" % BIGINT_BCNT)
             continue
         a, b = built[v1], built[v2]
         ok("%s/executes-as-%s" % (v2, v1), a == b,
            "same view id, same backend term" if a == b
            else "%s vs %s" % (a, b))
 
-    # The out-of-budget pair agrees on the thing that WAS established: the
-    # execution view id. Stating the weaker claim is the honest move -- the
-    # backend terms were never built, so nothing here may speak about them.
-    a = views.get("bigint-rotor")
-    b = views.get("bigint-rotor-named")
-    ok("bigint-rotor-named/projects-to-the-same-view", a is not None and a == b,
-       "%s (identity only; neither was compiled)" % a)
+    # The pinned w=64 answer, checked only when the term was really built.
+    if "bigint-rotor" in built:
+        sem, bcnt, _ = built["bigint-rotor"]
+        ok("bigint-rotor/matches-the-recorded-term",
+           (sem, bcnt) == (BIGINT_SEM, BIGINT_BCNT),
+           bcnt if (sem, bcnt) == (BIGINT_SEM, BIGINT_BCNT)
+           else "%s / %s" % (sem, bcnt))
 
     if "pinned-fixture" in built:
         ok("the-pinned-world-is-unmoved", built["pinned-fixture"][0] == DEMO_SEM,
