@@ -160,8 +160,10 @@ def main():
             C.validate_cell_v1(c)
     except WrlmError:
         all_valid = False
-    expect = (len(F.FAMILIES) * len(C.TIERS) * len(C.SIZE_BUCKETS) * 4
-              * len(C.WITNESS_BUDGET_BUCKETS) * len(C.PRESENTATION_FORMS))
+    # The published domain is the FEASIBLE subset of the Cartesian product, so
+    # the expected size is counted per family from its own reachable triples.
+    expect = sum(len(F.feasible_triples(fam)) for fam in F.FAMILIES) \
+        * len(C.SIZE_BUCKETS) * len(C.PRESENTATION_FORMS)
     # and the derivation can never PRODUCE another family's shape either
     leak = False
     for fam in F.FAMILIES:
@@ -500,7 +502,124 @@ def main():
                                          (proc.stderr.decode() or
                                           "").strip().splitlines()[-1:]))
 
+    # ------------------------------------------------------------------ R20
+    # A published cell that nothing can inhabit is not a hard cell, it is a
+    # contradiction, and counting it as empty measures the domain instead of the
+    # corpus. So every published cell must have a PREIMAGE -- exhibited here
+    # constructively, with witnesses built differently from the ones
+    # `families._probe_witness` uses (ordering arrives via a removal another op
+    # references, not an addition), so the two constructions cannot agree by
+    # sharing a mistake.
+    def wit(n, ordering):
+        if n < 1 or (ordering and n < 2):
+            return None
+        pad = [F.op_add_object("t%d" % i, "Orb", {}) for i in range(n - 2 * bool(
+            ordering))]
+        if not ordering:
+            return pad
+        return [F.op_remove_edge("a0", "b0", "SignalWire"),
+                F.op_remove_object("b0")] + pad
+
+    one = G.exactly("objects", G.role("Orb"), 2)
+    neg = {"kind": "not", "arg": one}
+    tt_goals = [(None, False), (one, True)]
+    gs_goals = [(one, False), (G.none("objects", G.role("Orb")), False),
+                (neg, False), ({"kind": "all", "args": [one, one]}, False),
+                ({"kind": "all", "args": [one, neg]}, False),
+                ({"kind": "any", "args": [one, one]}, False)]
+    preimage = {}
+    for fam, goals in ((F.FAMILY_TARGET_TRANSFORM, tt_goals),
+                       (F.FAMILY_GOAL_SATISFACTION, gs_goals)):
+        for goal, pres in goals:
+            for n in range(1, F.MAX_WITNESS + 1):
+                for ordering in (False, True):
+                    w = wit(n, ordering)
+                    if w is None or C.ordering_required(w) != ordering:
+                        continue
+                    preimage.setdefault(fam, set()).add(
+                        (F.derive_tier(goal, w, pres),
+                         F.derive_objective_shape(fam, goal, w, pres),
+                         C.witness_budget_bucket(n)))
+    dead_published = [c for c in cells
+                      if (c["tier"], c["objective_shape"],
+                          c["witness_edit_budget"]) not in preimage[c["family"]]]
+    # ...and narrowing must not have deleted a whole coordinate VALUE, which is
+    # the way an over-tight domain would hide instead of announce itself.
+    kept = {f: {c[f] for c in cells} for f in C.CELL_FIELDS}
+    complete = (kept["tier"] == set(C.TIERS)
+                and kept["base_size_bucket"] == {b[0] for b in C.SIZE_BUCKETS}
+                and kept["witness_edit_budget"] == {b[0] for b
+                                                    in C.WITNESS_BUDGET_BUCKETS}
+                and kept["presentation_form"] == set(C.PRESENTATION_FORMS)
+                and kept["family"] == set(F.FAMILIES)
+                and all({c["objective_shape"] for c in cells
+                         if c["family"] == f} == set(F.OBJECTIVE_SHAPES[f])
+                        for f in F.FAMILIES))
+    check("R20) every one of the %d published cells has a preimage under an "
+          "independently built witness, and narrowing deleted no coordinate "
+          "value" % len(cells),
+          not dead_published and complete,
+          "dead=%d complete=%s" % (len(dead_published), complete))
+
+    # ------------------------------------------------------------------ R21
+    # The excluded cells are excluded for a REASON that can be stated and
+    # refused, not merely omitted from a list.
+    full = []
+    for fam in F.FAMILIES:
+        for tier in C.TIERS:
+            for size, _a, _b in C.SIZE_BUCKETS:
+                for shape in F.OBJECTIVE_SHAPES[fam]:
+                    for bud, _c, _d in C.WITNESS_BUDGET_BUCKETS:
+                        for pres in C.PRESENTATION_FORMS:
+                            full.append(C.make_cell(fam, tier, size, shape,
+                                                    bud, pres))
+    excluded = [c for c in full if not F.cell_in_domain(c)]
+    refused = 0
+    for c in (C.make_cell(F.FAMILY_TARGET_TRANSFORM, 3, "tiny", "local", "1",
+                          "source"),
+              C.make_cell(F.FAMILY_TARGET_TRANSFORM, 1, "tiny", "structural",
+                          "2", "source"),
+              C.make_cell(F.FAMILY_GOAL_SATISFACTION, 1, "tiny", "conjunction",
+                          "1", "source")):
+        try:
+            F.check_cell_in_domain(c)
+        except WrlmError as exc:
+            if exc.code == C.WRLM_CELL_UNKNOWN:
+                refused += 1
+    off_domain = [i for i in corpus if not F.cell_in_domain(i["cell"])]
+    check("R21) the %d unreachable cells are refused by name (%s), not merely "
+          "left out, and the generator never emits one"
+          % (len(excluded), C.WRLM_CELL_UNKNOWN),
+          len(excluded) == len(full) - len(cells) and refused == 3
+          and not off_domain,
+          "excluded=%d refused=%d off=%d" % (len(excluded), refused,
+                                             len(off_domain)))
+
+    # ------------------------------------------------------------------ R22
+    # The reconciliation that makes the change safe to believe: narrowing the
+    # domain changed the DENOMINATOR and not the corpus. Both runs saturate, and
+    # the set of cells actually inhabited is identical -- so every cell removed
+    # was one that had been sitting empty, and none of them was empty because
+    # the generator had not got round to it yet.
+    wide, _lw = GEN.generate_corpus(RECORDS, C.CoverageSpecV1("recon"),
+                                    limit=500, cells=full)
+    tight, _lt = GEN.generate_corpus(RECORDS, C.CoverageSpecV1("recon"),
+                                     limit=500, cells=cells)
+    in_wide = {C.cell_key(i["cell"]) for i in wide}
+    in_tight = {C.cell_key(i["cell"]) for i in tight}
+    dead_keys = {C.cell_key(c) for c in excluded}
+    check("R22) narrowing moved the denominator, not the corpus: the same %d "
+          "cells are inhabited either way and none of the %d removed cells was "
+          "ever inhabited" % (len(in_tight), len(dead_keys)),
+          in_wide == in_tight and not (in_wide & dead_keys),
+          "wide=%d tight=%d overlap_with_dead=%d"
+          % (len(in_wide), len(in_tight), len(in_wide & dead_keys)))
+
     print()
+    print("  domain %d cells of %d in the full product; %d inhabited, "
+          "%d at quota" % (len(cells), len(full), len(in_tight),
+                           sum(1 for c in cells
+                               if _lt.accepted(c) >= _lt.spec.quota(c))))
     print("  corpus %d over %d cells touched, %d filled; marginals %d, pairs %d"
           % (len(corpus), ledger.report()["cells_touched"],
              ledger.report()["cells_filled"],

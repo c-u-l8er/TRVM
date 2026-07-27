@@ -31,6 +31,16 @@ combinatorial-testing move -- low-order factor interactions as a tractable stand
 for an unreachable full state space -- and it is what keeps "diverse" measurable
 instead of aspirational.
 
+Of those 768, **448 cannot be inhabited by anything**: `local` means one edit with
+nothing preserved and nothing ordered, which `derive_tier` calls tier 1, so
+`local x tier 3` is a contradiction rather than a hard cell. `families.valid_cells`
+publishes only the 320 combinations that have a preimage, and it computes that set
+by calling the derivation functions rather than by carrying a table of them. The
+first version of this module published all 768 and then reported the 448 as
+under-coverage -- which pointed at the pool for a fault that was in the domain.
+Marginal coverage could not have caught it: every coordinate VALUE was reachable,
+and only the COMBINATIONS were dead.
+
 The primary cell
 ----------------
 
@@ -70,7 +80,12 @@ import json
 
 from .errors import fail
 
-COVERAGE_SPEC_VERSION = "wrlm.coverage.v1"
+# v1.1 narrowed the published cell domain from 768 to the 320 combinations that
+# have a preimage. The cell FIELDS are unchanged, so this is not a v2 -- but it is
+# a version bump, because the version is what promises that a seed reproduces a
+# corpus, and a corpus is drawn from a domain. Two different domains answering to
+# one version string would make that promise quietly false.
+COVERAGE_SPEC_VERSION = "wrlm.coverage.v1.1"
 
 WRLM_BAD_COVERAGE = "WRLM_BAD_COVERAGE"    # malformed spec / cell / factor
 WRLM_CELL_UNKNOWN = "WRLM_CELL_UNKNOWN"    # cell outside the family's domain

@@ -308,9 +308,123 @@ def check_cell(requested, derived):
     return derived
 
 
+# ------------------------------------------- the domain, derived and not listed
+#
+# Publishing a cell nothing can inhabit is the defect the ruling already named
+# about cross-family shapes -- "not a sparse cell, a meaningless one" -- one level
+# further down. `local` MEANS one edit with nothing preserved and nothing ordered,
+# and `derive_tier` calls exactly that combination tier 1. So `local x tier 3` is
+# not a hard cell, it is a contradiction; a ledger that publishes it spends its
+# whole attempt budget failing to fill it and then reports the result as
+# under-coverage, which points at the pool for a fault that is in the domain.
+#
+# The reachable set is therefore COMPUTED, by running the two derivation
+# functions over each family's own (goal, preservation) domain against real
+# witnesses -- not written down as a table. A table would be a second statement
+# of the tier contract, free to drift from the first. This one cannot drift,
+# because it is not a second statement: it is the first one, called.
+
+
+def _probe_witness(n, ordering):
+    """A witness of length `n` whose `ordering_required` really is `ordering`.
+
+    Realised, never asserted. `ordering_required` reads the ops, so the only
+    honest way to enumerate its True branch is to build a witness that has an
+    edge op naming an object another op brings into existence. `None` means the
+    request is not a witness at all: one edit cannot depend on another.
+    """
+    if n < 1 or (ordering and n < 2):
+        return None
+    if not ordering:
+        return [op_set_config("probe%d" % i, {"probe": i}) for i in range(n)]
+    ops = [op_add_object("probe_new", "Door", {}),
+           op_add_edge("probe_src", "probe_new", "SignalWire")]
+    return ops + [op_set_config("probe%d" % i, {"probe": i})
+                  for i in range(n - 2)]
+
+
+def _goal_domain(family):
+    """Every (goal, preservation) shape this family's contract admits.
+
+    `target_transform` asks for a WORLD, so it carries no goal at all -- unless a
+    preservation clause pins something that has to survive the move, and that
+    clause is a single count. It never carries a conjunction. Sweeping every goal
+    against every family therefore over-reports reachability: it would call
+    `target_transform x tier 2 x local` live on the strength of a two-armed goal
+    that family never emits.
+    """
+    one = G.exactly("objects", G.role("Door"), 1)
+    if family == FAMILY_TARGET_TRANSFORM:
+        return [(None, False), (one, True)]
+    if family == FAMILY_GOAL_SATISFACTION:
+        nope = {"kind": "not", "arg": one}
+        return [(one, False),
+                (G.none("objects", G.role("Door")), False),
+                (nope, False),
+                ({"kind": "all", "args": [one, one]}, False),
+                ({"kind": "all", "args": [one, nope]}, False),
+                ({"kind": "any", "args": [one, one]}, False),
+                (G.wired("SignalWire", G.role("Pulser"),
+                         {"kind": "id_is", "object_id": "d0"}), False)]
+    fail(WRLM_BAD_FAMILY, "unknown family %r" % (family,), "family")
+
+
+_FEASIBLE = {}
+
+
+def feasible_triples(family):
+    """The `(tier, objective_shape, witness_edit_budget)` triples with a preimage.
+
+    Pure and memoised: the derivation functions read nothing outside their
+    arguments, so this enumeration is a fact about the code rather than a sample
+    of it.
+    """
+    if family not in _FEASIBLE:
+        out = set()
+        for goal, pres in _goal_domain(family):
+            for n in range(1, C.WITNESS_BUDGET_BUCKETS[-1][2] + 1):
+                for ordering in (False, True):
+                    w = _probe_witness(n, ordering)
+                    if w is None:
+                        continue
+                    if C.ordering_required(w) != ordering:
+                        # A probe that does not have the property it was built
+                        # to have would silently shrink the published domain,
+                        # and a domain that quietly loses cells is worse than
+                        # one that loudly refuses to be computed.
+                        fail(WRLM_BAD_WITNESS,
+                             "probe witness of %d ops does not realise "
+                             "ordering=%r" % (n, ordering), "witness")
+                    out.add((derive_tier(goal, w, pres),
+                             derive_objective_shape(family, goal, w, pres),
+                             C.witness_budget_bucket(n)))
+        _FEASIBLE[family] = frozenset(out)
+    return _FEASIBLE[family]
+
+
+def cell_in_domain(cell):
+    """Can any task at all land in this cell?"""
+    if cell["objective_shape"] not in OBJECTIVE_SHAPES.get(cell["family"], ()):
+        return False
+    return (cell["tier"], cell["objective_shape"],
+            cell["witness_edit_budget"]) in feasible_triples(cell["family"])
+
+
+def check_cell_in_domain(cell):
+    if not cell_in_domain(cell):
+        fail(C.WRLM_CELL_UNKNOWN,
+             "no task can inhabit %s: tier, objective shape and witness budget "
+             "are jointly underivable, so an empty count here would measure the "
+             "domain rather than the corpus" % C.cell_key(cell), "cell")
+    return cell
+
+
 def valid_cells(spec_families=FAMILIES):
-    """The full valid cell domain: family x tier x size x SHAPE-OF-THAT-FAMILY
-    x budget x presentation. Cross-family shapes never appear."""
+    """The valid cell domain: family x tier x size x SHAPE-OF-THAT-FAMILY x
+    budget x presentation, restricted to the combinations something can produce.
+
+    Cross-family shapes never appear, and neither do the contradictory ones.
+    """
     out = []
     for fam in spec_families:
         for tier in C.TIERS:
@@ -318,8 +432,10 @@ def valid_cells(spec_families=FAMILIES):
                 for shape in OBJECTIVE_SHAPES[fam]:
                     for budget, _b1, _b2 in C.WITNESS_BUDGET_BUCKETS:
                         for pres in C.PRESENTATION_FORMS:
-                            out.append(C.make_cell(fam, tier, size, shape,
-                                                   budget, pres))
+                            cell = C.make_cell(fam, tier, size, shape,
+                                               budget, pres)
+                            if cell_in_domain(cell):
+                                out.append(cell)
     return out
 
 

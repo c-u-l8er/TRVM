@@ -417,11 +417,46 @@ Train/validation/test are assigned on `base_shape_id`, not on `case-` and not on
 
 `coverage.py`, `families.py`, `generator.py`, plus `envelope.py` for the closure above and `tools/build_pool.py` — the **only** script that touches the engine, deliberately outside the package, run once to write `fixtures/pool.json` and `fixtures/pool_records.json` (21 worlds, **all `binding=proved`**).
 
-Batteries: `test_worldrecord.py` 11/11 + `test_generator.py` **14/14 (R4–R17)**, both first-run green. R5, R9 and R17 mechanize their rulings by **parsing** the module that states them — a law about a seam that is checked by string search is a law a comment can satisfy. R17 parses all 14 package modules for engine imports and additionally asserts `tools/build_pool.py` *does* import forge, so the separation cannot be satisfied vacuously by nobody importing forge anywhere.
+Batteries: `test_worldrecord.py` 11/11 + `test_generator.py` **17/17 (R4–R17, R20–R22)**, R4–R17 first-run green. R5, R9 and R17 mechanize their rulings by **parsing** the module that states them — a law about a seam that is checked by string search is a law a comment can satisfy. R17 parses all 14 package modules for engine imports and additionally asserts `tools/build_pool.py` *does* import forge, so the separation cannot be satisfied vacuously by nobody importing forge anywhere.
 
-Measured corpus (`corpus_seed = "seed-A"`, 21-world pool, quota 2): **199 accepted**, 104 of 768 cells inhabited, 95 filled to quota, 1598 factor pairs seen, 0 duplicate `case-` accepted, 0 unsatisfiable, 0 invalid. Byte-reproducible across runs and different under a different seed.
+Measured corpus (`corpus_seed = "seed-A"`, 21-world pool, quota 2): **201 accepted**, **104 of 320 cells inhabited**, 97 filled to quota, splits 136/37/28, 0 duplicate `case-` accepted, 0 unsatisfiable, 0 invalid, 0 host faults. Byte-reproducible across runs and different under a different seed. (The pre-correction numbers were 199 accepted over a 768-cell domain — see below for why the denominator moved and the corpus did not.)
 
-**The honest gap: 664 cells are empty, and the counters say why.** `attempt_bound_exhausted = 673` — this pool *cannot inhabit* most of its own declared domain. The emptiness is uniform across every coordinate (no value of any coordinate is more than ~92% empty and none is 100%), so every marginal value is reachable and the gaps are **interaction** gaps, not a structural hole in the cell design. The remedy is a larger pool, not a different cell — and the reason that is knowable at all is the seven retained failure counters.
+#### The gap, and the correction to what was first said about it
+
+The first version of this section reported 664 empty cells, observed that emptiness was uniform across every coordinate, and concluded: *"the remedy is a larger pool, not a different cell."* **That conclusion was wrong**, and wrong in an instructive way. Uniformity across coordinates was measured with **marginal** coverage, and a marginal is exactly the instrument that cannot see a dead **combination**. Every coordinate *value* was indeed reachable. Most of the *combinations* were not reachable by anything.
+
+`local` means one edit, nothing preserved, nothing ordered — and `derive_tier` calls precisely that combination tier 1. So `local × tier 3` is not a hard cell; it is a contradiction. Enumerating the two derivation functions over each family's own `(goal, preservation)` domain against realised witnesses gives the reachable set exactly, because those functions read nothing outside their arguments:
+
+| | published | with a preimage |
+|---|---|---|
+| `target_transform` | 48 triples | **11** |
+| `goal_satisfaction` | 48 triples | **29** |
+| cells (× 4 sizes × 2 forms) | **768** | **320** |
+
+**448 of the 768 published cells could never be inhabited by anything.** They were reported as under-coverage, which pointed at the pool for a fault that was in the domain. This is the ruling's own objection to cross-family shapes — *"not a sparse cell, a meaningless one"* — one level further down, and the module docstring had stated the principle while violating it.
+
+`valid_cells()` now publishes the 320, and computes that set **by calling the derivation functions** rather than by carrying a table of them; a table would be a second statement of the tier contract, free to drift from the first. `WRLM_CELL_UNKNOWN` — declared in the first draft and never raised — is now what refuses a contradictory cell. `COVERAGE_SPEC_VERSION` moves to `wrlm.coverage.v1.1`: the fields are unchanged, but a version is what promises a seed reproduces a corpus, and a corpus is drawn from a domain.
+
+**R22 is the check that makes the change safe to believe.** Generating under both domains to saturation inhabits the *identical* 104 cells, and not one of the 448 removed cells was ever inhabited under the wide domain. The narrowing moved the denominator and left the corpus alone.
+
+#### What is actually still missing, split by remedy
+
+Of the 320 real cells, 104 are built. Sweeping every proposal both family builders can make over the pool — with no cap, quota or attempt bound in the way — gives the cells the repertoire can reach at all:
+
+- **reachable but not built: 0.** Caps, quota and the attempt bound blocked nothing. The selection machinery is not a bottleneck.
+- **not reachable: 216**, and the scaling curve separates the two causes cleanly. Recomputing reachability over random subsamples of 5/9/13/17/21 worlds:
+
+| pool | `target_transform` (of 88) | `goal_satisfaction` (of 232) |
+|---|---|---|
+| 5 | 9.2 | 37.6 |
+| 9 | 15.2 | 47.6 |
+| 13 | 26.0 | 52.8 |
+| 17 | 38.4 | 53.6 |
+| 21 | 48.0 | 56.0 |
+
+`target_transform` climbs roughly linearly and has not begun to flatten — it is **pool-limited**, at about +2.4 cells per world, so filling 88 needs on the order of 40 worlds. `goal_satisfaction` has saturated: the last eight worlds bought 2.4 cells. It is **repertoire-limited**, and the reason is legible in `propose_goals` — the conjunction rule always emits exactly two `AddObject`s and the alternative rule always exactly one, so `conjunction` can only ever land in budget `2` and `alternative` only in budget `1`, at any pool size whatsoever. 176 of its 232 cells are unreachable until that rule set widens, and no quantity of captured worlds will change it.
+
+So the answer to *"grow the pool or trim the domain?"* is neither, in that order: **trim the domain (done, 448 cells), then widen the goal repertoire, then grow the pool** — and only the last of the three is about capture.
 
 Still open for step 2: nothing. Steps 3–10 remain paper only.
 
