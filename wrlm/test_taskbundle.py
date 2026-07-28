@@ -228,7 +228,7 @@ def main():
     # exactly the failure class the sem- spine exists to remove.
     empty = copy.deepcopy(task)
     empty["objective"] = {"goal": None, "goal_spec_id": None,
-                          "target_semantic_id": None}
+                          "target_semantic_id": None, "target_spec_id": None}
     ok, d = raises(T.WRLM_TASK_NO_OBJECTIVE, T.validate_task_v1, empty)
     check("T2)  an objective is MANDATORY: neither a goal nor a target world "
           "is a typed rejection", ok, d)
@@ -251,7 +251,8 @@ def main():
     # goal one does -- which is exactly why the check is split in two.
     degen = copy.deepcopy(task)
     degen["objective"] = {"goal": None, "goal_spec_id": None,
-                          "target_semantic_id": DEMO_SEM}
+                          "target_semantic_id": DEMO_SEM,
+                          "target_spec_id": None}
     ok_d, d_d = raises(T.WRLM_TASK_DEGENERATE, T.validate_task_v1, degen)
 
     solved = T.make_task(DEMO_SEM, source,
@@ -426,6 +427,91 @@ def main():
           and T.seal_task(seeds[0]).case_id == T.case_id(seeds[0]),
           "one_case=%s many=%s label_free=%s distinct=%s"
           % (one_case, many_tasks, label_free, distinct))
+
+    # ------------------------------------------------------------------ T15
+    # target_spec_id is RE-DERIVED, never trusted -- same discipline as
+    # goal_spec_id. A lied target_spec_id and a swapped target both refuse.
+    from wrlm import targetspec as TS
+    target_task = T.make_task(DEMO_SEM, source, goal=goal,
+                              target_semantic_id="sem-" + "a" * 64,
+                              family="transform", tier=2, difficulty="moderate")
+    tsid = target_task["objective"]["target_spec_id"]
+    lied_t = copy.deepcopy(target_task)
+    lied_t["objective"]["target_spec_id"] = "target-" + "0" * 64
+    ok_lt, d_lt = raises(T.WRLM_TASK_ID_MISMATCH, T.validate_task_v1, lied_t)
+    swapped_t = copy.deepcopy(target_task)
+    swapped_t["objective"]["target_semantic_id"] = "sem-" + "b" * 64
+    ok_st, d_st = raises(T.WRLM_TASK_ID_MISMATCH, T.validate_task_v1, swapped_t)
+    check("T15) the carried target_spec_id is RE-DERIVED, never trusted: a lied "
+          "id and a swapped target both refuse", ok_lt and ok_st,
+          "%s %s" % (d_lt, d_st))
+
+    # ------------------------------------------------------------------ T16
+    # The tier gate is load-bearing: a tier-3 target-only task is REFUSED, a
+    # tier-3 target+goal is accepted, and a tier-1 target-only is accepted.
+    # This is the leakage regression exercised through the REAL task path.
+    ok_t3, d_t3 = raises(TS.WRLM_TARGET_TIER_GATE, T.make_task,
+                          DEMO_SEM, source,
+                          target_semantic_id="sem-" + "a" * 64,
+                          family="transform", tier=3, difficulty="hard")
+    t3_goal = T.make_task(DEMO_SEM, source, goal=goal,
+                          target_semantic_id="sem-" + "a" * 64,
+                          family="transform", tier=3, difficulty="hard")
+    t1_target = T.make_task(DEMO_SEM, source,
+                            target_semantic_id="sem-" + "a" * 64,
+                            family="transform", tier=1, difficulty="easy")
+    check("T16) tier gate in make_task: tier-3 target-only is REFUSED "
+          "(WRLM_TARGET_TIER_GATE), tier-3 target+goal accepted, "
+          "tier-1 target-only accepted",
+          ok_t3 and t3_goal is not None and t1_target is not None,
+          "%s" % d_t3)
+
+    # ------------------------------------------------------------------ T17
+    # Changing the tier changes the target_spec_id (because the gate is
+    # derived from the tier and sealed into identity), and therefore changes
+    # both case- and task-.
+    t1 = T.make_task(DEMO_SEM, source, goal=goal,
+                     target_semantic_id="sem-" + "a" * 64,
+                     family="f", tier=1, difficulty="easy")
+    t2 = T.make_task(DEMO_SEM, source, goal=goal,
+                     target_semantic_id="sem-" + "a" * 64,
+                     family="f", tier=2, difficulty="moderate")
+    diff_tsid = t1["objective"]["target_spec_id"] \
+                != t2["objective"]["target_spec_id"]
+    diff_case = T.case_id(t1) != T.case_id(t2)
+    check("T17) changing the tier changes target_spec_id and therefore case-: "
+          "same target at different tiers is genuinely a different question",
+          diff_tsid and diff_case,
+          "tsid_same=%s case_same=%s" % (not diff_tsid, not diff_case))
+
+    # ------------------------------------------------------------------ T18
+    # sealed_target is derived from the task's OWN bytes, and a tier-0 or
+    # goal-only task has no sealed target.
+    sealed_t = T.seal_task(target_task)
+    st = sealed_t.sealed_target
+    goal_only = T.make_task(DEMO_SEM, source, goal=goal, tier=1)
+    tier0_tgt = T.make_task(DEMO_SEM, source,
+                            target_semantic_id="sem-" + "a" * 64)
+    check("T18) sealed_target: a tier-2 target task has a sealed target whose "
+          "id matches; a goal-only and a tier-0 target task have None",
+          st is not None
+          and st.target_spec_id == tsid
+          and T.seal_task(goal_only).sealed_target is None
+          and T.seal_task(tier0_tgt).sealed_target is None,
+          "st=%s" % repr(st))
+
+    # ------------------------------------------------------------------ T19
+    # target_spec_id without a target, and target without target_spec_id
+    # at tier >= 1, are both typed rejections.
+    orphan = copy.deepcopy(target_task)
+    orphan["objective"]["target_semantic_id"] = None
+    ok_o, d_o = raises(T.WRLM_BAD_TASK, T.validate_task_v1, orphan)
+    missing = copy.deepcopy(target_task)
+    missing["objective"]["target_spec_id"] = None
+    ok_ms, d_ms = raises(T.WRLM_BAD_TASK, T.validate_task_v1, missing)
+    check("T19) target_spec_id without a target is refused, and a target at "
+          "tier >= 1 without target_spec_id is refused",
+          ok_o and ok_ms, "%s %s" % (d_o, d_ms))
 
     print()
     if FAILED:
