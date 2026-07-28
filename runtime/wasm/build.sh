@@ -4,11 +4,11 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-CLANG="${CLANG:-clang-15}"
+CLANG="${CLANG:-clang}"
 
 "$CLANG" --target=wasm32 -O2 -nostdlib -ffreestanding -Wl,--no-entry \
   -Wl,--export-dynamic -Wl,-z,stack-size=16777216 \
-  -Wl,--initial-memory=67108864 -o ic32.wasm ic32_wasm.c
+  -Wl,--initial-memory=134217728 -o ic32.wasm ic32_wasm.c
 
 echo "built ic32.wasm ($(wc -c < ic32.wasm) bytes)"
 echo "smoke test:"
