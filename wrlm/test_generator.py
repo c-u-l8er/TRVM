@@ -906,6 +906,110 @@ def main():
           % (F.witness_is_minimal(pview, pgoal, lean),
              F.witness_is_minimal(pview, pgoal, padded)))
 
+    # ------------------------------------------------------------------ R30
+    # The tier gate (§4): a tier-3 task that carries ONLY a target and no goal
+    # leaks the answer. Every tier-3 target_transform task in the corpus must
+    # carry a goal alongside its target -- and every tier-1 target_transform
+    # task must carry a target (that is what the family means). The test uses
+    # the SATURATED corpus so the tier-3 cells are well-populated.
+    from wrlm import targetspec as TS
+    t3_tt_no_goal = []
+    t3_tt_with_goal = 0
+    t12_tt_target_only = 0
+    for item in tight:
+        task = item["task"]
+        fam = item["cell"]["family"]
+        tier = item["cell"]["tier"]
+        obj = task["objective"]
+        if fam != F.FAMILY_TARGET_TRANSFORM:
+            continue
+        if tier == 3:
+            if obj["goal"] is None:
+                t3_tt_no_goal.append(item["case_id"])
+            else:
+                t3_tt_with_goal += 1
+        elif tier <= 2 and obj["target_semantic_id"] is not None:
+            if obj["goal"] is None:
+                t12_tt_target_only += 1
+    check("R30) every tier-3 target_transform task in the saturated corpus (%d) "
+          "carries a goal alongside its target; tier-1/2 target-only is still "
+          "permitted (%d)" % (t3_tt_with_goal, t12_tt_target_only),
+          not t3_tt_no_goal and t3_tt_with_goal > 0 and t12_tt_target_only > 0,
+          "t3_no_goal=%s t3_with=%d t12_only=%d"
+          % (t3_tt_no_goal[:3], t3_tt_with_goal, t12_tt_target_only))
+
+    # ------------------------------------------------------------------ R31
+    # The synthesised structural goal is not decoration: it must be TRUE of the
+    # target view and FALSE at the base. A goal true at the base would make the
+    # tier gate decorative -- it adds a condition the model already satisfies.
+    goal_ok, goal_bad = 0, []
+    for item in tight:
+        task = item["task"]
+        if (item["cell"]["family"] != F.FAMILY_TARGET_TRANSFORM
+                or item["cell"]["tier"] != 3
+                or task["objective"]["goal"] is None
+                or item["cell"]["objective_shape"] == "preservation"):
+            continue
+        bview = VIEWS[task["base_world"]["semantic_id"]]
+        reached = F.apply_witness(bview, item["witness"])
+        goal = task["objective"]["goal"]
+        at_target = G.evaluate_goal(goal, reached)
+        at_base = G.evaluate_goal(goal, bview)
+        if at_target and not at_base:
+            goal_ok += 1
+        else:
+            goal_bad.append((item["case_id"], at_target, at_base))
+    check("R31) every tier-3 structural target_transform goal is TRUE at the "
+          "target (%d checked) and FALSE at the base -- the goal forces "
+          "reasoning, not just reconstruction" % goal_ok,
+          not goal_bad and goal_ok > 0,
+          "bad=%s ok=%d" % (goal_bad[:3], goal_ok))
+
+    # ------------------------------------------------------------------ R32
+    # The tier gate is a property of the TASK, not of the generator. Removing
+    # the goal from a tier-3 target_transform task must make `make_task` refuse
+    # it with WRLM_TARGET_TIER_GATE. This is a structural dependency: if the
+    # gate in taskbundle were deleted, this test would fail.
+    tier3_items = [i for i in tight
+                   if i["cell"]["family"] == F.FAMILY_TARGET_TRANSFORM
+                   and i["cell"]["tier"] == 3
+                   and i["task"]["objective"]["goal"] is not None]
+    gate_fires = 0
+    for item in tier3_items[:5]:
+        task = item["task"]
+        ok_g, d_g = raises(TS.WRLM_TARGET_TIER_GATE, T.make_task,
+                           task["base_world"]["semantic_id"],
+                           task["base_world"]["source"],
+                           goal=None,
+                           target_semantic_id=task["objective"][
+                               "target_semantic_id"],
+                           family=task["stratum"]["family"],
+                           tier=task["stratum"]["tier"],
+                           difficulty=task["stratum"]["difficulty"])
+        if ok_g:
+            gate_fires += 1
+    check("R32) removing the goal from a tier-3 target_transform task triggers "
+          "%s -- the gate is in the task validator, not the generator"
+          % TS.WRLM_TARGET_TIER_GATE,
+          gate_fires == len(tier3_items[:5]) and gate_fires > 0,
+          "fires=%d want=%d" % (gate_fires, len(tier3_items[:5])))
+
+    # ------------------------------------------------------------------ R33
+    # The generator no longer emits ANY invalid_generated_world rejections
+    # (those were tier-3 structural tasks failing the gate). The count is zero,
+    # not merely smaller, because every target_transform tier-3 structural
+    # proposal now carries a goal.
+    tot = ledger.report(cells)["totals"]
+    t_sat = _lt.report(cells)["totals"]
+    check("R33) invalid_generated_world is zero in both the small corpus (%d) "
+          "and the saturated corpus (%d) -- every tier-3 structural task now "
+          "passes the gate" % (tot["invalid_generated_world"],
+                                t_sat["invalid_generated_world"]),
+          tot["invalid_generated_world"] == 0
+          and t_sat["invalid_generated_world"] == 0,
+          "small=%d sat=%d" % (tot["invalid_generated_world"],
+                                t_sat["invalid_generated_world"]))
+
     rep = ledger.report(cells)
     print()
     print("  domain %d cells of %d in the full product; %d inhabited, "
