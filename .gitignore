@@ -1,5 +1,7 @@
 # native build artifacts
 runtime/c/ic32
+runtime/c/ic32_*
+runtime/c/*.gcda
 runtime/zig/ic32z
 runtime/mojo/ic32m
 ic32

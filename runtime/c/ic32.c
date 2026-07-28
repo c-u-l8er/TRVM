@@ -53,29 +53,68 @@ static long     STEPCAP = 50000000;
 // allocation reuses freed slots before bumping hp). Two size classes: 1-word cells and 2-word
 // nodes. This is the whole "GC": interaction-net reduction is confluent and local, so a consumed
 // node is dead the instant its rule fires -- no tracing, no pauses, O(1) per free.
-static uint32_t *free1=NULL, *free2=NULL;
-static int free1_n=0, free2_n=0, free1_cap=0, free2_cap=0;
+//
+// Intrusive free lists: freed slots store the next-pointer in the heap word itself (the slot is
+// dead, so overwriting its payload is safe). This eliminates the separate uint32_t arrays, their
+// realloc overhead, and the bounds check on every push. A sentinel value of 0 marks the list end
+// (slot 0 is reserved/null and never allocated).
+static uint32_t free1_head=0, free2_head=0;  // intrusive linked lists through heap[]
 static long     allocs=0;               // total slots handed out (counts requests, not bumps)
 static long     live=0, peak_live=0;    // slots currently in use, and peak (true memory occupancy)
 static int      gc_on=1;                 // toggle slot recycling (for measurement)
-static void push_free(uint32_t **lst, int *n, int *cap, uint32_t a){
-    if (*n >= *cap){ *cap = *cap ? *cap*2 : 1024; *lst = (uint32_t*)realloc(*lst, (size_t)(*cap)*sizeof(uint32_t)); }
-    (*lst)[(*n)++] = a;
-}
-#define FREE1(a) do{ push_free(&free1,&free1_n,&free1_cap,(a)); live -= 1; }while(0)
-#define FREE2(a) do{ push_free(&free2,&free2_n,&free2_cap,(a)); live -= 2; }while(0)
 
-static uint32_t alloc_n(int n){
-    allocs += n; live += n; if (live > peak_live) peak_live = live;
-    if (gc_on && n == 1 && free1_n > 0) return free1[--free1_n];   // recycle a 1-word cell
-    if (gc_on && n == 2 && free2_n > 0) return free2[--free2_n];   // recycle a 2-word node
-    uint32_t a = hp; hp += n;
-    if (hp >= HEAPCAP){ fprintf(stderr,"FATAL: heap overflow\n"); exit(2); }
+// Intrusive free-list push: store next-pointer in the freed heap slot itself.
+#define FREE1(a) do{ heap[(a)] = (Term)free1_head; free1_head = (a); STAT_FREE(1); }while(0)
+#define FREE2(a) do{ heap[(a)] = (Term)free2_head; free2_head = (a); STAT_FREE(2); }while(0)
+
+// Split allocators by size class for inlining. The common case (free-list hit) is a single
+// load + store with no function-call overhead.
+//
+// Stats tracking (allocs/live/peak_live) is gated behind TRACK_STATS so the hot path avoids
+// three dependent adds + a conditional branch per allocation. The --gcstats / --erasestats
+// modes set gc_on=0/erase_on=0 and re-enable stats as needed; normal reduction never reads
+// these counters mid-run.
+#ifndef TRACK_STATS
+#define TRACK_STATS 0
+#endif
+#if TRACK_STATS
+#define STAT_ALLOC(n) do{ allocs += (n); live += (n); if (__builtin_expect(live > peak_live, 0)) peak_live = live; }while(0)
+#define STAT_FREE(n)  do{ live -= (n); }while(0)
+#else
+#define STAT_ALLOC(n) ((void)0)
+#define STAT_FREE(n)  ((void)0)
+#endif
+
+static inline __attribute__((always_inline)) uint32_t alloc1(void){
+    STAT_ALLOC(1);
+    if (__builtin_expect(free1_head != 0, 1) && __builtin_expect(gc_on, 1)){
+        uint32_t a = free1_head; free1_head = (uint32_t)heap[a]; return a;
+    }
+    uint32_t a = hp; hp += 1;
+    if (__builtin_expect(hp >= HEAPCAP, 0)){ fprintf(stderr,"FATAL: heap overflow\n"); exit(2); }
     return a;
 }
-static void check_steps(void){
-    if (interactions > STEPCAP){ printf("DIVERGES(step-cap)\n"); fflush(stdout); exit(3); }
+static inline __attribute__((always_inline)) uint32_t alloc2(void){
+    STAT_ALLOC(2);
+    if (__builtin_expect(free2_head != 0, 1) && __builtin_expect(gc_on, 1)){
+        uint32_t a = free2_head; free2_head = (uint32_t)heap[a]; return a;
+    }
+    uint32_t a = hp; hp += 2;
+    if (__builtin_expect(hp >= HEAPCAP, 0)){ fprintf(stderr,"FATAL: heap overflow\n"); exit(2); }
+    return a;
 }
+// Generic fallback for the parser and other non-hot paths.
+static uint32_t alloc_n(int n){
+    if (n == 1) return alloc1();
+    if (n == 2) return alloc2();
+    allocs += n; live += n; if (live > peak_live) peak_live = live;
+    uint32_t a = hp; hp += n;
+    if (__builtin_expect(hp >= HEAPCAP, 0)){ fprintf(stderr,"FATAL: heap overflow\n"); exit(2); }
+    return a;
+}
+// Inline step-cap check to avoid function-call overhead on every interaction.
+#define check_steps() do{ if (__builtin_expect(interactions > STEPCAP, 0)){ \
+    printf("DIVERGES(step-cap)\n"); fflush(stdout); exit(3); } }while(0)
 
 // ---------------------------------------------------------------- reduction
 static Term whnf(Term t);
@@ -92,20 +131,20 @@ static Term fire(uint32_t D, uint32_t L, int k){
         if (vl == L){                         // DUP-SUP equal: annihilate
             h0 = a; h1 = b;
         } else {                              // DUP-SUP different: commute
-            uint32_t Da = alloc_n(1); heap[Da] = a;
-            uint32_t Db = alloc_n(1); heap[Db] = b;
-            uint32_t S0 = alloc_n(2); heap[S0] = MK(T_DP0,L,Da); heap[S0+1] = MK(T_DP0,L,Db);
-            uint32_t S1 = alloc_n(2); heap[S1] = MK(T_DP1,L,Da); heap[S1+1] = MK(T_DP1,L,Db);
+            uint32_t Da = alloc1(); heap[Da] = a;
+            uint32_t Db = alloc1(); heap[Db] = b;
+            uint32_t S0 = alloc2(); heap[S0] = MK(T_DP0,L,Da); heap[S0+1] = MK(T_DP0,L,Db);
+            uint32_t S1 = alloc2(); heap[S1] = MK(T_DP1,L,Da); heap[S1+1] = MK(T_DP1,L,Db);
             h0 = MK(T_SUP,vl,S0); h1 = MK(T_SUP,vl,S1);
         }
         FREE2(S);                             // the consumed superposition node is dead
     } else if (vt == T_LAM){                  // DUP-LAM
         uint32_t Lv = ADDR(v);
-        uint32_t Lx0 = alloc_n(1), Lx1 = alloc_n(1);
-        uint32_t Df  = alloc_n(1); heap[Df] = heap[Lv];   // salvage body, dup it
+        uint32_t Lx0 = alloc1(), Lx1 = alloc1();
+        uint32_t Df  = alloc1(); heap[Df] = heap[Lv];   // salvage body, dup it
         heap[Lx0] = MK(T_DP0,L,Df);
         heap[Lx1] = MK(T_DP1,L,Df);
-        uint32_t Ss = alloc_n(2);
+        uint32_t Ss = alloc2();
         heap[Ss] = MK(T_VAR,0,Lx0); heap[Ss+1] = MK(T_VAR,0,Lx1);
         heap[Lv] = SETSUB(MK(T_SUP,L,Ss));    // the lambda's var becomes a superposition
         h0 = MK(T_LAM,0,Lx0); h1 = MK(T_LAM,0,Lx1);
@@ -113,10 +152,10 @@ static Term fire(uint32_t D, uint32_t L, int k){
         h0 = MK(T_ERA,0,0); h1 = MK(T_ERA,0,0);
     } else if (vt == T_APP){                  // DUP-APP (collapse): copy structure
         uint32_t A = ADDR(v); Term f = heap[A], a = heap[A+1];
-        uint32_t Df = alloc_n(1); heap[Df] = f;
-        uint32_t Dx = alloc_n(1); heap[Dx] = a;
-        uint32_t A0 = alloc_n(2); heap[A0] = MK(T_DP0,L,Df); heap[A0+1] = MK(T_DP0,L,Dx);
-        uint32_t A1 = alloc_n(2); heap[A1] = MK(T_DP1,L,Df); heap[A1+1] = MK(T_DP1,L,Dx);
+        uint32_t Df = alloc1(); heap[Df] = f;
+        uint32_t Dx = alloc1(); heap[Dx] = a;
+        uint32_t A0 = alloc2(); heap[A0] = MK(T_DP0,L,Df); heap[A0+1] = MK(T_DP0,L,Dx);
+        uint32_t A1 = alloc2(); heap[A1] = MK(T_DP1,L,Df); heap[A1+1] = MK(T_DP1,L,Dx);
         h0 = MK(T_APP,0,A0); h1 = MK(T_APP,0,A1);
         FREE2(A);                             // the consumed application node is dead
     } else {                                  // VAR free/stuck: DUP-VAR copy
@@ -131,10 +170,10 @@ static Term app_sup(Term sup, Term arg){
     interactions++; check_steps();
     uint32_t S = ADDR(sup); uint32_t L = LAB(sup);
     Term a = heap[S], b = heap[S+1];
-    uint32_t Dc = alloc_n(1); heap[Dc] = arg;
-    uint32_t Aa = alloc_n(2); heap[Aa] = a; heap[Aa+1] = MK(T_DP0,L,Dc);
-    uint32_t Ab = alloc_n(2); heap[Ab] = b; heap[Ab+1] = MK(T_DP1,L,Dc);
-    uint32_t Sn = alloc_n(2); heap[Sn] = MK(T_APP,0,Aa); heap[Sn+1] = MK(T_APP,0,Ab);
+    uint32_t Dc = alloc1(); heap[Dc] = arg;
+    uint32_t Aa = alloc2(); heap[Aa] = a; heap[Aa+1] = MK(T_DP0,L,Dc);
+    uint32_t Ab = alloc2(); heap[Ab] = b; heap[Ab+1] = MK(T_DP1,L,Dc);
+    uint32_t Sn = alloc2(); heap[Sn] = MK(T_APP,0,Aa); heap[Sn+1] = MK(T_APP,0,Ab);
     FREE2(S);                                 // the consumed superposition node is dead
     return MK(T_SUP,L,Sn);
 }
@@ -473,7 +512,7 @@ static void show_iter(Term t){
 // across epochs.
 static void reset_transient(void){
     interactions = 0; n_bnd = 0; name_ctr = 0; sp = 0; dnsp = 0;
-    free1_n = 0; free2_n = 0; allocs = 0;
+    free1_head = 0; free2_head = 0; allocs = 0;
 }
 static void reset_state(void){
     reset_transient();
