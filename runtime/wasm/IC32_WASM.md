@@ -1,9 +1,9 @@
 # IC32_WASM — the runtime compiled to WebAssembly
 
-**Files:** `ic32_wasm.c` (freestanding source) · `ic32.wasm` (9.9 KB binary) ·
+**Files:** `ic32_wasm.c` (freestanding source) · `ic32.wasm` (10 KB binary) ·
 `wrun.js` (Node host)
-**Build:** `clang-15 --target=wasm32 -O2 -nostdlib -ffreestanding -Wl,--no-entry
--Wl,--export-dynamic -Wl,-z,stack-size=16777216 -Wl,--initial-memory=67108864
+**Build:** `clang --target=wasm32 -O2 -nostdlib -ffreestanding -Wl,--no-entry
+-Wl,--export-dynamic -Wl,-z,stack-size=16777216 -Wl,--initial-memory=268435456
 -o ic32.wasm ic32_wasm.c`
 **Validates against:** `ic_float.py` (and transitively `ic_ref.py` / native `ic32`).
 **Status:** ✅ 28/28 battery terms match the Python oracle (including the cases
@@ -63,28 +63,23 @@ use case.
 
 ## Honest limitations
 
-- **Recursive `normal`/`whnf` overflow V8's WASM call stack on deeply-nested
-  output.** V8 caps WASM call depth well below the native C stack: depth-8192
-  readbacks (2¹³, ~25K interactions) run fine, but a 59049-deep readback (3¹⁰)
-  throws `Maximum call stack size exceeded`. The native `ic32` binary handles it
-  (it did 59049-deep in ~5 ms). This is a property of the **recursive tree-walk**
-  under the JS engine, not of correctness or of the algorithm. The fix is to make
-  `normal` (and the `whnf` recursion in `fire`/`app`) **iterative with an explicit
-  work-stack in linear memory** — a known, mechanical change. Until then, WASM is
-  limited to terms whose normal form nests less than ~tens of thousands deep
-  (every battery term, and most realistic agent/search terms, are far shallower).
-- **`-Wl,-z,stack-size` sets the linear-memory shadow stack, not V8's call-stack**,
-  so raising it does not lift the depth limit above — only the iterative rewrite
-  does.
 - **Still single-node; GC not ported here.** The free-list recycling and eraser
-  propagation added to `ic32.c` (Phases 1-2) have NOT been ported to this wasm build,
-  so the 32 MB static heap still caps a single reduction's allocation in the wasm path.
+  propagation added to `ic32.c` (Phases 1-2) have NOT been ported to this wasm build.
+  The heap has been raised to 16M slots (128 MB, matching `ic32.c`) to compensate,
+  bringing initial-memory to 256 MB. This is fine for a long-lived in-process
+  runtime (instantiate once, reduce many times) but is larger than ideal for a
+  browser cold-start. Porting the free-list recycling would let the heap shrink
+  back down.
+- **The parser is still recursive.** Deeply nested *input* terms (as opposed to
+  deep *output* from shallow input) will overflow V8's WASM call stack in the
+  parser. The benchmark workloads are all shallow input (Church numerals with
+  explicit dups), so this does not limit the benchmark set. The ic32.c iterative
+  parser could be ported if deeply nested input becomes needed.
 
 ## Where this goes
 
-1. **Iterative `normal`** — remove the V8 call-depth ceiling so the WASM build
-   matches the native build's depth reach. This is the most direct next
-   improvement to the runtime itself.
+1. **Free-list recycling** — port the intrusive free lists from `ic32.c` so the
+   heap can shrink back to 4M slots and the module instantiates on less memory.
 2. **Browser harness** — load `ic32.wasm` from a page (the ABI is browser-ready as
    is) so agents run client-side; this is the concrete "browser security model is
    the new BEAM" step.

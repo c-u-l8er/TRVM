@@ -64,6 +64,12 @@ zero-interaction term (`λx.x`) is measured and subtracted, because otherwise a
 30 ms interpreter launch swamps a 0.05 ms reduction and the table ranks `execve`
 rather than the runtime.
 
+**Repetition ordering is rep-major:** all reps of one backend on one workload
+complete before moving to the next backend. This avoids the cache-contention
+artifact that cell-major interleaving (cycling through backends inside each rep)
+can produce — an earlier measurement inflated a ratio to 223.5x where rep-major
+gave 136x, because contention selected the comparand.
+
 **Only large reductions are ranked.** A rate is trustworthy only when the
 reduction is large compared to the startup subtracted from it. Rates that do not
 clear that error bar are shown parenthesised and excluded from the ranking.
@@ -128,16 +134,13 @@ found by doubling `exp 2^k`:
 
 | runtime | deepest normal form read back | bound by |
 |---|---|---|
-| C / Zig / Mojo | ≥ 2,097,152 | not reached at 2^21 |
+| C / Zig / Mojo / WASM | ≥ 2,097,152 | not reached at 2^21 |
 | ic_float (py) | 524,288 | time, not depth |
 | ic_ref (py) | 65,536 | `whnf` step budget |
-| ic32.wasm | 8,192 | V8 WASM call-depth cap |
 
-The WASM ceiling reproduces the limitation `IC32_WASM.md` documents: recursive
-`normal`/`whnf` overflow V8's call stack, and `-Wl,-z,stack-size` cannot lift it
-because that sets the linear-memory shadow stack, not V8's. **This is the single
-biggest gap between the WASM build and the native ones** — it is bit-identical
-where it completes, but completes only 33 of 48 workloads.
+All four compiled runtimes (C, Zig, Mojo, WASM) use iterative normalization and
+readback, so their depth reach is bounded by heap capacity rather than call-stack
+depth. ic32.wasm now completes 47 of 48 workloads, matching the native runtimes.
 
 **6. `ic_ref` fails silently, which is the worst failure mode.** On nested
 exponentiation (tetration) `ic_ref` does not hang and does not error — it returns

@@ -107,8 +107,10 @@ PYTHONPATH=runtime/python:research python3 research/semilattice.py   # ALL CONDI
 - **No parallel speedup is demonstrated.** Every distribution result is
   coordination-free *correct*, not faster. Speedup needs the autonomous regime
   (re-entrant workers + the Safra detector from `runtime/python/p2.py`).
-- **Recursive normaliser** overflows V8's WASM stack / Python's recursion limit on
-  deeply-nested output; `ic32.c`'s parse/normalize/readback are already iterative.
+- **Iterative normaliser/readback** in both `ic32.c` and `ic32_wasm.c`; the WASM
+  build reaches depth 2^21 (2,097,152) matching the native runtimes. The WASM
+  *parser* is still recursive (deep input, not deep output, is the remaining
+  limit). Python's `ic_float` is still recursive and depth-limited.
 - **GC (Phases 1–2):** `ic32.c` recycles consumed redex nodes via size-classed free
   lists and propagates erasers at `APP-ERA`; `--gcstats` / `--erasestats` quantify it.
   Var-indirect / affine-unused leaks remain and are precisely characterized in `FINDINGS.md`.
