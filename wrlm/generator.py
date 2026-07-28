@@ -62,7 +62,7 @@ GENERATOR_ID = "wrlm.generator.v1"
 # the ordering predicate changed underneath would mean two different corpora
 # answering to one seed, which is the one thing a reproducible benchmark cannot
 # allow.
-GENERATOR_VERSION = "2"
+GENERATOR_VERSION = "3"
 
 WRLM_GENERATOR_EXHAUSTED = "WRLM_GENERATOR_EXHAUSTED"
 
@@ -106,6 +106,33 @@ def _build_goal_satisfaction(record, view, cell, rng):
         yield goal, witness, None, False
 
 
+def _structural_goal(base_view, target_view):
+    """A goal the TARGET satisfies and the BASE does not.
+
+    At tier 3 (ordered witness, no preservation), the tier gate requires a goal
+    alongside the target -- a target alone at this tier leaks the answer. The
+    synthesised goal is a single role count that changed between the two views,
+    so it is genuinely non-trivial: it forces the model to reason about a
+    structural property rather than just reconstruct the target world.
+
+    Returns None if no distinguishing role count can be found (degenerate case
+    where only config or wiring changed but the role census is identical).
+    """
+    base_roles = {}
+    for o in base_view.get("objects") or []:
+        base_roles[o["role"]] = base_roles.get(o["role"], 0) + 1
+    target_roles = {}
+    for o in target_view.get("objects") or []:
+        target_roles[o["role"]] = target_roles.get(o["role"], 0) + 1
+    # Prefer roles that genuinely changed count, sorted for determinism.
+    for role in sorted(set(base_roles) | set(target_roles)):
+        bc = base_roles.get(role, 0)
+        tc = target_roles.get(role, 0)
+        if bc != tc:
+            return G.exactly("objects", G.role(role), tc)
+    return None
+
+
 def _build_target_transform(record, view, cell, pool, rng, views, outcomes):
     """Pair this base with another captured world it can actually reach.
 
@@ -140,7 +167,17 @@ def _build_target_transform(record, view, cell, pool, rng, views, outcomes):
             preserved = _preservable(view, tview)
             if preserved is None:
                 continue
-        yield target, witness, preserved, preserved is not None
+        # The tier gate (§4): a tier-3 target-only task leaks the answer through
+        # the target world. When the witness is ordered (structural, tier 3) and
+        # no preservation goal is present, synthesise a goal from the role-count
+        # difference so the exact oracle is RETAINED but accompanied by the
+        # structural question the design requires.
+        goal = preserved
+        if goal is None and C.ordering_required(witness):
+            goal = _structural_goal(view, tview)
+            if goal is None:
+                continue
+        yield target, witness, goal, preserved is not None
 
 
 def _preservable(base_view, target_view):
