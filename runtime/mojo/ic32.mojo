@@ -33,32 +33,32 @@
 from std.sys import argv, exit
 from std.io.file_descriptor import FileDescriptor
 
-alias T_VAR: UInt64 = 0
-alias T_LAM: UInt64 = 1
-alias T_APP: UInt64 = 2
-alias T_ERA: UInt64 = 3
-alias T_SUP: UInt64 = 4
-alias T_DP0: UInt64 = 5
-alias T_DP1: UInt64 = 6
+comptime T_VAR: UInt64 = 0
+comptime T_LAM: UInt64 = 1
+comptime T_APP: UInt64 = 2
+comptime T_ERA: UInt64 = 3
+comptime T_SUP: UInt64 = 4
+comptime T_DP0: UInt64 = 5
+comptime T_DP1: UInt64 = 6
 
-alias SUBF: UInt64 = 1 << 31
-alias HEAPCAP: Int = 1 << 24          # 16M slots
-alias STEPCAP: Int = 50_000_000
+comptime SUBF: UInt64 = 1 << 31
+comptime HEAPCAP: Int = 1 << 24          # 16M slots
+comptime STEPCAP: Int = 50_000_000
 
 # instruction opcodes for the iterative parser
-alias OP_PARSE: UInt32 = 0
-alias OP_APP: UInt32 = 1
-alias OP_SUP: UInt32 = 2
-alias OP_LAM: UInt32 = 3
-alias OP_DUPVAL: UInt32 = 4
-alias OP_DUPBODY: UInt32 = 5
-alias OP_EXPECT: UInt32 = 6
+comptime OP_PARSE: UInt32 = 0
+comptime OP_APP: UInt32 = 1
+comptime OP_SUP: UInt32 = 2
+comptime OP_LAM: UInt32 = 3
+comptime OP_DUPVAL: UInt32 = 4
+comptime OP_DUPBODY: UInt32 = 5
+comptime OP_EXPECT: UInt32 = 6
 
 # literal codes for the iterative readback (kind 1 work items)
-alias LIT_RPAREN: UInt64 = 1
-alias LIT_SPACE: UInt64 = 2
-alias LIT_COMMA: UInt64 = 3
-alias LIT_RBRACE: UInt64 = 4
+comptime LIT_RPAREN: UInt64 = 1
+comptime LIT_SPACE: UInt64 = 2
+comptime LIT_COMMA: UInt64 = 3
+comptime LIT_RBRACE: UInt64 = 4
 
 
 def TAG(t: UInt64) -> UInt64:
