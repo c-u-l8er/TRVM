@@ -16,9 +16,9 @@ Three things are measured, and they are not the same thing:
 
   * **normal form** -- the only thing that is *normative* across runtimes. Every
     backend must produce identical bytes. A disagreement is a conformance bug.
-  * **interactions** -- the machine-independent work count. NOT normative across
-    runtimes (a different strategy may take a different count), so it is
-    reported and cross-checked, never asserted.
+  * **interactions** -- the machine-independent work count. Within the IC32
+    family (same reduction strategy), interaction counts must agree exactly;
+    a disagreement is a conformance bug. Across families they may differ.
   * **wall time** -- machine-dependent. Reported as median-of-reps with the
     backend's own process-startup baseline subtracted, because otherwise a 30 ms
     Python interpreter launch swamps a 0.05 ms reduction and the table measures
@@ -323,6 +323,10 @@ def main():
     conformance_failures = 0
     correctness_failures = 0
 
+    # The IC32 family members that are live -- the acceptance gate requires every
+    # one of them to complete and agree on every normally-terminating workload.
+    ic32_live = {lb for lb, _ in live if FAMILY[lb] == IC32}
+
     group_now = None
     for w in suite:
         if w["group"] != group_now:
@@ -384,6 +388,22 @@ def main():
                       f"ic_ref gave {', '.join(bad_ref)}")
             row["verdict"] = "correct" if not bad else "wrong"
 
+        # -- IC32 family completeness gate (non-vacuous)
+        #
+        # On normally-terminating workloads, every live IC32 member must finish
+        # OK. A missing or erroring member is a conformance failure, not a
+        # silent skip -- otherwise agreement is vacuously true.
+        if w["check"] != "diverge":
+            fam_missing = ic32_live - set(nfs.keys())
+            if fam_missing:
+                conformance_failures += 1
+                why = {lb: row["backends"][lb]["status"] for lb in fam_missing}
+                print(f"  {R}IC32 INCOMPLETE{RS} {w['name']}: "
+                      f"missing/erroring family members: {why}")
+                row["ic32_complete"] = False
+            else:
+                row["ic32_complete"] = True
+
         # -- normal-form agreement WITHIN the IC32 family (the normative check)
         fam_nfs = {lb: nf for lb, nf in nfs.items() if FAMILY[lb] == IC32}
         if len(set(fam_nfs.values())) > 1:
@@ -392,17 +412,26 @@ def main():
                   f"{ {lb: nf[:30] for lb, nf in fam_nfs.items()} }")
             row["nf_agreement"] = False
         else:
-            row["nf_agreement"] = True
+            row["nf_agreement"] = len(fam_nfs) > 0  # False if none present
         row["ref_diverges_from_family"] = bool(
             fam_nfs and any(FAMILY[lb] == REF and nf not in set(fam_nfs.values())
                             for lb, nf in nfs.items()))
 
-        # -- interaction counts (reported, never asserted)
-        counts = {lb: b["interactions"] for lb, b in row["backends"].items()
-                  if b["status"] == "OK" and b["interactions"] is not None}
-        row["interactions_agree"] = len(set(counts.values())) <= 1
-        if counts:
-            row["interactions"] = counts
+        # -- interaction counts: IC32 family must agree (same reduction model)
+        ic32_counts = {lb: b["interactions"] for lb, b in row["backends"].items()
+                       if b["status"] == "OK" and b["interactions"] is not None
+                       and FAMILY.get(lb) == IC32}
+        all_counts = {lb: b["interactions"] for lb, b in row["backends"].items()
+                      if b["status"] == "OK" and b["interactions"] is not None}
+        row["ic32_interactions_agree"] = (
+            len(set(ic32_counts.values())) <= 1 if ic32_counts else None)
+        row["interactions_agree"] = len(set(all_counts.values())) <= 1
+        if all_counts:
+            row["interactions"] = all_counts
+
+        if w["check"] != "diverge" and ic32_counts and len(set(ic32_counts.values())) > 1:
+            conformance_failures += 1
+            print(f"  {R}IC32 INTERACTION DISAGREEMENT{RS} {w['name']}: {ic32_counts}")
 
         results.append(row)
 
@@ -413,7 +442,8 @@ def main():
     if args.json:
         with open(args.json, "w") as f:
             json.dump(dict(backends=[lb for lb, _ in live],
-                           families={lb: FAMILY[lb] for lb, _ in live},
+                           skipped={lb: why for lb, why in skipped},
+                           families=FAMILY,
                            startup_ms=base, depth_ceiling=ceilings,
                            results=results), f, indent=2)
         print(f"\nwrote {args.json}")
@@ -425,8 +455,8 @@ def summary(results, live, base, conf_fail, corr_fail):
     print(f"\n\n{'='*100}\nSUMMARY\n{'='*100}\n")
 
     # --- interaction counts, the machine-independent work metric
-    print("Interaction counts (machine-independent work; NOT normative across runtimes):\n")
-    hdr = f"{'workload':<20}" + "".join(f"{lb.split()[0][:13]:>14}" for lb, _ in live) + "   agree"
+    print("Interaction counts (machine-independent work; IC32 family must agree):\n")
+    hdr = f"{'workload':<20}" + "".join(f"{lb.split()[0][:13]:>14}" for lb, _ in live) + "  ic32-agree"
     print(D + hdr + RS)
     for r in results:
         if not r.get("interactions"):
@@ -436,7 +466,14 @@ def summary(results, live, base, conf_fail, corr_fail):
             b = r["backends"].get(lb, {})
             v = b.get("interactions")
             line += f"{(str(v) if v is not None else '-'):>14}"
-        line += f"   {G+'yes'+RS if r['interactions_agree'] else Y+'NO'+RS}"
+        ic32_ok = r.get("ic32_interactions_agree")
+        if ic32_ok is None:
+            tag = f"{D}-{RS}"
+        elif ic32_ok:
+            tag = f"{G}yes{RS}"
+        else:
+            tag = f"{R}NO{RS}"
+        line += f"  {tag}"
         print(line)
 
     # --- speed, measured only where reduction dominates process startup
@@ -529,11 +566,26 @@ def summary(results, live, base, conf_fail, corr_fail):
     # --- verdict
     print()
     fam = [lb for lb, _ in live if FAMILY[lb] == IC32]
+    # Count specific failure types for the verdict line
+    nf_disagree = sum(1 for r in results if r.get("nf_agreement") is False)
+    ic32_incomplete = sum(1 for r in results
+                         if r.get("ic32_complete") is False)
+    ic32_inter_disagree = sum(1 for r in results
+                              if r.get("ic32_interactions_agree") is False)
+
     if conf_fail == 0:
-        print(f"  {G}PASS{RS}  normal-form agreement across the {len(fam)} IC32-model runtimes "
-              f"on every workload")
+        print(f"  {G}PASS{RS}  IC32 conformance gate ({len(fam)} members): "
+              f"all completed, NFs agree, interaction counts agree")
     else:
-        print(f"  {R}FAIL{RS}  {conf_fail} workload(s) with NF disagreement inside the IC32 family")
+        if nf_disagree:
+            print(f"  {R}FAIL{RS}  {nf_disagree} workload(s) with NF disagreement "
+                  f"inside the IC32 family")
+        if ic32_incomplete:
+            print(f"  {R}FAIL{RS}  {ic32_incomplete} workload(s) where an IC32 "
+                  f"family member did not complete")
+        if ic32_inter_disagree:
+            print(f"  {R}FAIL{RS}  {ic32_inter_disagree} workload(s) with IC32 "
+                  f"interaction count disagreement")
     if corr_fail == 0:
         print(f"  {G}PASS{RS}  every IC32-model normal form matches independently computed truth")
     else:
