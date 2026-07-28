@@ -322,6 +322,13 @@ def main():
     results = []
     conformance_failures = 0
     correctness_failures = 0
+    acceptance_failures = 0
+
+    # The IC32 acceptance gate: all five IC32-family members must be present,
+    # agree on the normal form bit-for-bit, and agree on the interaction count.
+    # A missing, erroring, or disagreeing member is a conformance failure, not
+    # a silent skip.  ic_ref is outside the family and not subject to this gate.
+    ic32_members = [lb for lb, _, _, fam in BACKENDS if fam == IC32]
 
     group_now = None
     for w in suite:
@@ -384,20 +391,55 @@ def main():
                       f"ic_ref gave {', '.join(bad_ref)}")
             row["verdict"] = "correct" if not bad else "wrong"
 
-        # -- normal-form agreement WITHIN the IC32 family (the normative check)
+        # -- IC32 acceptance gate: non-vacuous family checks -----------
+        # On a normally-completing workload (not 'diverge'), every IC32 family
+        # member must (a) be present and OK, (b) agree on the normal form
+        # bit-for-bit, and (c) agree on the interaction count.  A missing or
+        # erroring member is an acceptance failure, not a silent skip.
         fam_nfs = {lb: nf for lb, nf in nfs.items() if FAMILY[lb] == IC32}
-        if len(set(fam_nfs.values())) > 1:
-            conformance_failures += 1
-            print(f"  {R}NF DISAGREEMENT{RS} {w['name']}: "
-                  f"{ {lb: nf[:30] for lb, nf in fam_nfs.items()} }")
-            row["nf_agreement"] = False
+
+        if w["check"] != "diverge":
+            # (a) presence: every IC32 member must have completed
+            missing = [lb for lb in ic32_members
+                       if row["backends"].get(lb, {}).get("status") != "OK"]
+            if missing:
+                acceptance_failures += 1
+                reasons = {lb: row["backends"].get(lb, {}).get("status", "NOT_RUN")
+                           for lb in missing}
+                print(f"  {R}IC32 MEMBER MISSING{RS} {w['name']}: {reasons}")
+            row["ic32_all_present"] = not missing
+
+            # (b) normal-form agreement
+            if len(set(fam_nfs.values())) > 1:
+                conformance_failures += 1
+                print(f"  {R}NF DISAGREEMENT{RS} {w['name']}: "
+                      f"{ {lb: nf[:30] for lb, nf in fam_nfs.items()} }")
+                row["nf_agreement"] = False
+            else:
+                row["nf_agreement"] = True
+
+            # (c) IC32 interaction-count agreement (normative, not advisory)
+            fam_counts = {lb: row["backends"][lb]["interactions"]
+                          for lb in ic32_members
+                          if row["backends"].get(lb, {}).get("status") == "OK"
+                          and row["backends"][lb].get("interactions") is not None}
+            if len(set(fam_counts.values())) > 1:
+                acceptance_failures += 1
+                print(f"  {R}IC32 INTERACTION DISAGREEMENT{RS} {w['name']}: {fam_counts}")
+                row["ic32_interactions_agree"] = False
+            else:
+                row["ic32_interactions_agree"] = True
         else:
+            # diverge workloads: NF agreement is vacuously true
             row["nf_agreement"] = True
+            row["ic32_all_present"] = True
+            row["ic32_interactions_agree"] = True
+
         row["ref_diverges_from_family"] = bool(
             fam_nfs and any(FAMILY[lb] == REF and nf not in set(fam_nfs.values())
                             for lb, nf in nfs.items()))
 
-        # -- interaction counts (reported, never asserted)
+        # -- interaction counts (all backends, for the summary table)
         counts = {lb: b["interactions"] for lb, b in row["backends"].items()
                   if b["status"] == "OK" and b["interactions"] is not None}
         row["interactions_agree"] = len(set(counts.values())) <= 1
@@ -408,7 +450,8 @@ def main():
 
     # -----------------------------------------------------------------
     ceilings = {} if args.no_depth else depth_ceiling(live, args.timeout)
-    summary(results, live, base, conformance_failures, correctness_failures)
+    summary(results, live, base, conformance_failures, correctness_failures,
+            acceptance_failures, ic32_members)
 
     if args.json:
         with open(args.json, "w") as f:
@@ -418,10 +461,10 @@ def main():
                            results=results), f, indent=2)
         print(f"\nwrote {args.json}")
 
-    return 1 if (conformance_failures or correctness_failures) else 0
+    return 1 if (conformance_failures or correctness_failures or acceptance_failures) else 0
 
 
-def summary(results, live, base, conf_fail, corr_fail):
+def summary(results, live, base, conf_fail, corr_fail, accept_fail, ic32_members):
     print(f"\n\n{'='*100}\nSUMMARY\n{'='*100}\n")
 
     # --- interaction counts, the machine-independent work metric
@@ -529,11 +572,30 @@ def summary(results, live, base, conf_fail, corr_fail):
     # --- verdict
     print()
     fam = [lb for lb, _ in live if FAMILY[lb] == IC32]
-    if conf_fail == 0:
+    non_div = [r for r in results if r["check"] != "diverge"]
+
+    # IC32 acceptance gate (non-vacuous)
+    present_ok = all(r.get("ic32_all_present") for r in non_div)
+    nf_ok = conf_fail == 0
+    ic_ok = all(r.get("ic32_interactions_agree") for r in non_div)
+
+    if present_ok:
+        print(f"  {G}PASS{RS}  all {len(ic32_members)} IC32-family members completed every "
+              f"normally-terminating workload ({len(non_div)})")
+    else:
+        miss = sum(1 for r in non_div if not r.get("ic32_all_present"))
+        print(f"  {R}FAIL{RS}  {miss} workload(s) with a missing/erroring IC32 family member")
+    if nf_ok:
         print(f"  {G}PASS{RS}  normal-form agreement across the {len(fam)} IC32-model runtimes "
               f"on every workload")
     else:
         print(f"  {R}FAIL{RS}  {conf_fail} workload(s) with NF disagreement inside the IC32 family")
+    if ic_ok:
+        print(f"  {G}PASS{RS}  IC32-family interaction counts agree on every normally-terminating "
+              f"workload")
+    else:
+        ic_bad = sum(1 for r in non_div if not r.get("ic32_interactions_agree"))
+        print(f"  {R}FAIL{RS}  {ic_bad} workload(s) with IC32 interaction-count disagreement")
     if corr_fail == 0:
         print(f"  {G}PASS{RS}  every IC32-model normal form matches independently computed truth")
     else:
