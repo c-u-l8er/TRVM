@@ -1,11 +1,57 @@
 # IC32 Benchmark Results
 
-**Date:** 2026-07-27
+**Date:** 2026-07-28 (updated)
 **Hardware:** AMD Ryzen AI 9 HX 370 (Zen 5, 12C/24T, boost to 5.16 GHz), 32 GB DDR5
 **OS:** Arch Linux, kernel 6.18.6-arch1-1
 **Compiler:** GCC 15.2.1
 
-## Summary
+## Latest: intrusive free lists + inline allocators (9da20c7)
+
+Commit `9da20c7` replaced array-based free lists with intrusive free lists
+(next-pointer stored in the dead heap slot itself) and split the allocator
+into always-inline `alloc1`/`alloc2` with `__builtin_expect` hints. Stats
+tracking (`allocs`/`live`/`peak_live`) is gated behind `-DTRACK_STATS=1`
+so the hot path avoids three dependent adds + a branch per allocation.
+
+### Speedup measurement
+
+Method: `gcc -O2`, min of 10 runs per workload, same machine, same terms.
+Baseline = parent commit `793fae1`, optimized = `9da20c7`.
+Normal forms verified identical (byte-for-byte match on all workloads).
+
+| Workload | Interactions | Baseline (ms) | Optimized (ms) | Speedup |
+|---|---|---|---|---|
+| exp 2^14 | 32,938 | 0.687 | 0.614 | 1.12x |
+| exp 2^16 | 131,268 | 3.045 | 2.020 | **1.51x** |
+| mult 300x300 | 180,600 | 2.934 | 2.676 | 1.10x |
+| fib(22) | 197,126 | 3.384 | 2.536 | **1.33x** |
+| tetration 2^^4 | 131,204 | 2.616 | 2.289 | 1.14x |
+
+Geometric mean speedup: **1.23x** across all five workloads.
+
+Best improvement is on exp 2^16 (1.51x) and fib(22) (1.33x), which have
+heavy duplication and therefore the most alloc/free traffic through the
+free lists. The intrusive lists eliminate the array realloc path entirely,
+and the inline allocators remove function-call overhead on every allocation.
+
+### Conformance verification
+
+- `conformance.py`: PASS — all 24 vectors agree across ic_float, ic_ref,
+  ic32(C), ic32.wasm, ic32(zig), ic32(mojo). §6.1 confluence, §6.2/§6.3
+  distributed == sequential + exactly-once boundary all pass.
+- `bench.py --quick`: PASS — normal-form agreement across all 5 IC32-model
+  runtimes on every workload; every normal form matches independently
+  computed truth (Python arithmetic).
+- Self-test battery: 13/13 (including church arithmetic, deep stress at
+  200k/500k depth).
+
+---
+
+## Compiler flag survey (pre-optimization baseline)
+
+**Date:** 2026-07-27
+
+### Summary
 
 Best observed throughput: **93.6 M interactions/s** (PGO+LTO on fib_25).
 Geometric mean across workloads: ~65 M interactions/s (varies by flag).
@@ -13,7 +59,7 @@ Geometric mean across workloads: ~65 M interactions/s (varies by flag).
 No single flag configuration dominates all workloads. The results are
 workload-sensitive due to different branch patterns and memory access profiles.
 
-## Optimization Flags Tested
+### Optimization Flags Tested
 
 | Flag | Command |
 |---|---|
@@ -26,7 +72,7 @@ workload-sensitive due to different branch patterns and memory access profiles.
 
 All builds pass the full self-test battery (13/13).
 
-## Throughput by Workload (M interactions/s, min of 7 runs)
+### Throughput by Workload (M interactions/s, min of 7 runs)
 
 Higher is better. Each cell shows `wall_ms  M/s`.
 
@@ -40,19 +86,7 @@ Higher is better. Each cell shows `wall_ms  M/s`.
 | exp 2^20 | 2,097,378 | **34.0 ms / 61.6** | 38.6 ms / 54.3 | 37.2 ms / 56.4 | 38.3 ms / 54.8 | 35.3 ms / 59.4 | 39.7 ms / 52.8 |
 | tetration 2^^4 | 131,204 | 2.1 ms / 62.2 | **1.9 ms / 70.1** | 2.2 ms / 61.0 | 2.0 ms / 65.1 | 2.0 ms / 66.5 | 2.1 ms / 62.9 |
 
-## Winner Per Workload
-
-| Workload | Best Flag | M/s |
-|---|---|---|
-| mult 300x300 | -Ofast -march=native | 63.3 |
-| mult 700x700 | -O2 | 68.6 |
-| fib(22) | -O2 | 89.8 |
-| fib(25) | PGO+LTO | 93.6 |
-| exp 2^16 | -Ofast -march=native | 88.5 |
-| exp 2^20 | -O2 | 61.6 |
-| tetration 2^^4 | -O3 -march=native | 70.1 |
-
-## Key Observations
+### Key Observations
 
 1. **No clear winner across all workloads.** The reduction engine's hot loop
    (`whnf`) is a tight switch over 7 tag values with pointer chasing through the
@@ -75,7 +109,7 @@ Higher is better. Each cell shows `wall_ms  M/s`.
 5. **Process startup is negligible** (0.34 ms via `calloc` lazy-zero). The
    reduction itself dominates even at the smallest workload sizes tested.
 
-## Cross-Runtime Comparison (from bench.py --quick)
+### Cross-Runtime Comparison (from bench.py --quick)
 
 On the throughput tier (startup-subtracted):
 
@@ -87,7 +121,7 @@ On the throughput tier (startup-subtracted):
 
 **ic32 is 90-220x faster than ic_float (Python) on these workloads.**
 
-## HVM4 Comparison
+### HVM4 Comparison
 
 `hvm4_throughput.py` exists but requires `hvm4` binary at `/tmp/hvm4` and
 pre-generated corpus files at `/tmp/cnot/`. Not run in this session (HVM4 binary
@@ -95,7 +129,7 @@ not available). The script is designed to compare interaction-per-second rates o
 identical programs (cnot_N family) where both engines perform the same number of
 interactions, isolating engine speed from encoding differences.
 
-## Recommended Build
+### Recommended Build
 
 For general use: `gcc -O2 -o ic32 ic32.c` — simplest, competitive everywhere.
 
