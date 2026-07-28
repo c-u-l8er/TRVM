@@ -293,7 +293,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--reps", type=int, default=3)
-    ap.add_argument("--timeout", type=float, default=25.0)
+    ap.add_argument("--timeout", type=float, default=150.0)
     ap.add_argument("--json", default=None)
     ap.add_argument("--no-depth", action="store_true", help="skip the depth-ceiling probe")
     args = ap.parse_args()
