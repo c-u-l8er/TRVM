@@ -33,6 +33,7 @@ import hashlib
 import json
 
 from . import goalspec
+from . import targetspec
 from .errors import fail
 from .worldview import is_semantic_id, is_world_view
 
@@ -42,13 +43,15 @@ WRLM_BAD_TASK = "WRLM_BAD_TASK"                      # malformed / wrong shape
 WRLM_TASK_NO_OBJECTIVE = "WRLM_TASK_NO_OBJECTIVE"    # nothing to satisfy
 WRLM_TASK_ID_MISMATCH = "WRLM_TASK_ID_MISMATCH"      # carried id != derived id
 WRLM_TASK_DEGENERATE = "WRLM_TASK_DEGENERATE"        # solved before it starts
+WRLM_TASK_TIER_GATE = "WRLM_TASK_TIER_GATE"          # tier-gating violation
 
 # Exact key sets. Extra or missing keys are rejections, not warnings -- the same
 # closure discipline GoalSpecV1 applies to its nodes.
 TASK_FIELDS = ("task_version", "base_world", "objective", "stratum",
                "generator")
 BASE_WORLD_FIELDS = ("semantic_id", "source")
-OBJECTIVE_FIELDS = ("goal", "goal_spec_id", "target_semantic_id")
+OBJECTIVE_FIELDS = ("goal", "goal_spec_id", "target_semantic_id",
+                    "target_spec_id")
 STRATUM_FIELDS = ("family", "tier", "difficulty")
 GENERATOR_FIELDS = ("generator_id", "generator_version", "seed")
 
@@ -107,6 +110,7 @@ def validate_task_v1(task):
     _check_keys(obj, OBJECTIVE_FIELDS, "objective")
     goal, goal_id, target = (obj["goal"], obj["goal_spec_id"],
                              obj["target_semantic_id"])
+    target_sid = obj["target_spec_id"]
     if goal is None and target is None:
         _fail(WRLM_TASK_NO_OBJECTIVE,
               "a task must carry a goal, a target world, or both", "objective")
@@ -134,6 +138,36 @@ def validate_task_v1(task):
             _fail(WRLM_TASK_DEGENERATE,
                   "target world equals the base world; the task is solved at "
                   "attempt 0", "objective.target_semantic_id")
+
+    # --- target_spec_id: the target oracle's identity, tier-gated ---
+    tier = task["stratum"]["tier"] if isinstance(task.get("stratum"), dict) else 0
+    if target is None:
+        if target_sid is not None:
+            _fail(WRLM_BAD_TASK,
+                  "target_spec_id present without a target_semantic_id",
+                  "objective.target_spec_id")
+    elif isinstance(tier, int) and not isinstance(tier, bool) and tier >= 1:
+        # Tier >= 1: the tier gate is enforced, and target_spec_id is mandatory.
+        # The gate is the load-bearing check: a tier-3 target-only task is
+        # REFUSED because the exact target leaks the answer through the world.
+        targetspec.validate_objective_for_tier(goal, target, tier)
+        derived_tsid = targetspec.target_spec_id(
+            targetspec.make_target_spec(target, tier))
+        if target_sid is None:
+            _fail(WRLM_BAD_TASK,
+                  "target present at tier %d without its target_spec_id"
+                  % tier, "objective.target_spec_id")
+        if target_sid != derived_tsid:
+            _fail(WRLM_TASK_ID_MISMATCH,
+                  "carried target_spec_id %s but (target, tier) derives %s"
+                  % (target_sid, derived_tsid), "objective.target_spec_id")
+    else:
+        # Tier 0 (handwritten / default): no tier gate, no target_spec_id.
+        if target_sid is not None:
+            _fail(WRLM_BAD_TASK,
+                  "target_spec_id is only valid at tier >= 1; tier %r tasks "
+                  "carry target_semantic_id alone" % (tier,),
+                  "objective.target_spec_id")
 
     st = task["stratum"]
     _check_keys(st, STRATUM_FIELDS, "stratum")
@@ -170,7 +204,9 @@ def canonicalize_task_v1(task):
         "objective": {"goal": goal,
                       "goal_spec_id": task["objective"]["goal_spec_id"],
                       "target_semantic_id":
-                          task["objective"]["target_semantic_id"]},
+                          task["objective"]["target_semantic_id"],
+                      "target_spec_id":
+                          task["objective"]["target_spec_id"]},
         "stratum": {"family": task["stratum"]["family"],
                     "tier": task["stratum"]["tier"],
                     "difficulty": task["stratum"]["difficulty"]},
@@ -287,6 +323,19 @@ class SealedTask(object):
         goal = self.task["objective"]["goal"]
         return None if goal is None else goalspec.seal_goal(goal)
 
+    @property
+    def sealed_target(self):
+        """The target spec as its own seal, or None for a goal-only task or a
+        tier-0 task. Built from these bytes, so its `target-` id cannot drift
+        from this `task-`."""
+        t = self.task
+        target = t["objective"]["target_semantic_id"]
+        tier = t["stratum"]["tier"]
+        if target is None or tier < 1:
+            return None
+        return targetspec.seal_target(
+            targetspec.make_target_spec(target, tier))
+
     def __eq__(self, other):
         return isinstance(other, SealedTask) and other._bytes == self._bytes
 
@@ -330,16 +379,21 @@ def make_task(base_semantic_id, base_source, goal=None,
               target_semantic_id=None, family="unspecified", tier=0,
               difficulty="moderate", generator_id="handwritten",
               generator_version="0", seed=0):
-    """Assemble and validate a bundle, deriving `goal_spec_id` rather than
-    asking the caller for it. The validator still re-derives it -- a builder
-    that could be bypassed is not a law."""
+    """Assemble and validate a bundle, deriving `goal_spec_id` and
+    `target_spec_id` rather than asking the caller for them. The validator
+    still re-derives both -- a builder that could be bypassed is not a law."""
+    tsid = None
+    if target_semantic_id is not None and isinstance(tier, int) and tier >= 1:
+        tsid = targetspec.target_spec_id(
+            targetspec.make_target_spec(target_semantic_id, tier))
     return canonicalize_task_v1({
         "task_version": TASK_BUNDLE_VERSION,
         "base_world": {"semantic_id": base_semantic_id, "source": base_source},
         "objective": {
             "goal": goal,
             "goal_spec_id": None if goal is None else goalspec.goal_spec_id(goal),
-            "target_semantic_id": target_semantic_id},
+            "target_semantic_id": target_semantic_id,
+            "target_spec_id": tsid},
         "stratum": {"family": family, "tier": tier, "difficulty": difficulty},
         "generator": {"generator_id": generator_id,
                       "generator_version": generator_version, "seed": seed},
