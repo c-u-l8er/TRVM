@@ -1,5 +1,5 @@
 
-TRVM cross-runtime benchmark  --  48 workloads x 6 runtimes  (min of 5, timeout 40s)
+TRVM cross-runtime benchmark  --  48 workloads x 6 runtimes  (min of 3, timeout 150s)
 
   live    ic32 (C)
   live    ic32 (Zig)
@@ -9,54 +9,54 @@ TRVM cross-runtime benchmark  --  48 workloads x 6 runtimes  (min of 5, timeout 
   live    ic_ref (py)
 
 calibrating process-startup baseline...
-  ic32 (C)         0.45ms
-  ic32 (Zig)       34ms
-  ic32 (Mojo)      48ms
-  ic32.wasm        20ms
-  ic_float (py)    13ms
-  ic_ref (py)      29ms
+  ic32 (C)         0.61ms
+  ic32 (Zig)       42ms
+  ic32 (Mojo)      74ms
+  ic32.wasm        34ms
+  ic_float (py)    23ms
+  ic_ref (py)      49ms
 
 
 ====================================================================================================
 ARITHMETIC
 ====================================================================================================
 [2mworkload                      ic32          ic32          ic32     ic32.wasm      ic_float        ic_ref[0m
-mult 12x12                  0.00ms        0.00ms        3.00ms        2.08ms        0.00ms        0.00ms
-mult 20x20                  0.00ms        0.00ms        0.00ms        2.18ms        0.71ms        1.68ms
-mult 50x50                  0.09ms        0.00ms        0.00ms        0.60ms          12ms        6.86ms
-mult 80x80                  0.25ms        0.00ms        0.00ms        3.94ms          31ms          28ms
-exp 2^3                     0.00ms        0.00ms        0.00ms        1.34ms        0.00ms        0.00ms
-exp 3^5                     0.00ms        0.00ms        0.00ms        0.50ms        0.00ms        0.00ms
-exp 2^8                     0.00ms        0.00ms        0.00ms        1.28ms        0.32ms        2.72ms
-exp 3^10                    3.03ms        0.00ms        0.00ms           ERR         505ms         196ms
-exp 2^12                    0.06ms        0.00ms        0.00ms        0.00ms          17ms        5.23ms
-exp 2^16                    3.71ms        0.00ms        0.00ms           ERR         572ms         286ms
-tetration 2^^3              0.00ms        0.00ms        0.00ms        0.06ms        0.83ms        0.00ms
+mult 12x12                  0.22ms        5.08ms        0.00ms        0.00ms        0.81ms          15ms
+mult 20x20                  0.23ms        2.09ms        2.79ms        8.31ms        1.74ms        2.71ms
+mult 50x50                  0.46ms        5.63ms        0.00ms        7.45ms          35ms          27ms
+mult 80x80                  1.06ms        6.33ms        0.88ms        7.43ms         107ms          67ms
+exp 2^3                     0.04ms        1.70ms        0.00ms        0.00ms        0.00ms        0.21ms
+exp 3^5                     0.16ms        4.73ms        5.58ms          10ms        5.10ms        8.21ms
+exp 2^8                     0.09ms        6.05ms        1.26ms        0.00ms        2.63ms        0.00ms
+exp 3^10                    5.55ms        9.50ms          22ms        2.44ms         870ms         372ms
+exp 2^12                    0.65ms          15ms        0.00ms        0.00ms          34ms          35ms
+exp 2^16                    4.63ms          17ms        9.89ms          19ms         1.03s         562ms
+tetration 2^^3              0.62ms          13ms        0.00ms          11ms        4.61ms          19ms
   [33moutside ic_ref's model[0m tetration 2^^3: want s^16, ic_ref gave ic_ref (py)=s^2
-tetration 3^^2              0.00ms        0.00ms        0.00ms        1.44ms        0.01ms        0.00ms
-tetration 2^^4              3.69ms        0.00ms        0.00ms           ERR         513ms        0.00ms
+tetration 3^^2              0.80ms        1.53ms          10ms        8.97ms        4.54ms          10ms
+tetration 2^^4              6.92ms          10ms        7.70ms          23ms         996ms        8.14ms
   [33moutside ic_ref's model[0m tetration 2^^4: want s^65536, ic_ref gave ic_ref (py)=s^0
-gauss T(10)                 0.00ms        0.00ms        0.00ms        0.00ms        0.00ms        0.00ms
-gauss T(30)                 0.08ms        0.00ms        0.00ms        2.78ms        1.38ms        4.23ms
-gauss T(60)                 0.40ms        0.00ms        0.00ms        4.19ms          14ms          19ms
+gauss T(10)                 0.01ms        0.00ms        0.00ms        0.00ms        1.97ms          23ms
+gauss T(30)                 0.30ms          12ms        0.00ms          14ms        7.82ms          14ms
+gauss T(60)                 0.91ms        9.70ms        1.90ms        5.60ms          27ms          22ms
 
 ====================================================================================================
 RECURSION
 ====================================================================================================
 [2mworkload                      ic32          ic32          ic32     ic32.wasm      ic_float        ic_ref[0m
-fib(10)                     0.00ms        0.00ms        0.00ms        0.00ms        1.54ms        0.00ms
-fib(15)                     0.03ms        0.00ms        0.00ms        1.92ms          14ms        3.27ms
-fib(20)                     1.12ms        0.00ms        0.00ms        3.33ms         362ms          42ms
-fib(22)                     3.39ms        0.00ms        0.00ms           ERR         897ms         120ms
-fact(5)                     0.00ms        0.00ms        0.00ms        0.00ms        0.17ms           ERR
-fact(6)                     0.13ms        0.00ms        0.00ms        1.85ms        4.07ms           ERR
-fact(7)                     0.18ms        0.00ms        0.00ms        0.00ms          20ms           ERR
-fact(8)                     1.99ms        0.00ms        0.00ms           ERR         229ms           ERR
-pred(10)                    0.00ms        0.00ms        0.00ms        0.00ms        0.00ms        0.00ms
-pred(50)                    0.00ms        0.00ms        0.00ms        0.00ms        9.18ms        0.00ms
-pred(150)                   0.49ms        0.00ms        0.00ms        4.73ms          68ms        2.27ms
-ackermann(0,3)              0.00ms        0.00ms        0.00ms        0.00ms        0.00ms        0.00ms
-ackermann(1,4)              0.00ms        0.00ms        0.00ms        0.00ms        1.12ms        0.00ms
+fib(10)                     0.14ms        0.00ms        0.00ms        0.00ms        3.35ms          14ms
+fib(15)                     0.58ms        7.80ms        0.00ms        0.21ms          36ms        9.56ms
+fib(20)                     1.93ms        0.90ms        4.81ms        0.25ms         547ms          75ms
+fib(22)                     5.51ms          15ms        8.12ms          18ms         1.36s         234ms
+fact(5)                     0.02ms        6.93ms        0.00ms        3.56ms        5.92ms           ERR
+fact(6)                     0.13ms        3.54ms        0.00ms        0.00ms        0.89ms           ERR
+fact(7)                     0.55ms        7.31ms        5.33ms        0.00ms          38ms           ERR
+fact(8)                     3.60ms        9.48ms        9.21ms        3.71ms         456ms           ERR
+pred(10)                    0.30ms        3.68ms        0.00ms        0.00ms        0.00ms        0.00ms
+pred(50)                    0.02ms        0.16ms        0.99ms        0.00ms          11ms        0.45ms
+pred(150)                   0.94ms        1.20ms        0.00ms          12ms         139ms          11ms
+ackermann(0,3)              0.10ms        0.00ms        0.00ms        3.10ms        0.00ms        0.00ms
+ackermann(1,4)              0.39ms        0.00ms        0.00ms        0.00ms        0.00ms        0.58ms
 ackermann(2,2)             TIMEOUT       TIMEOUT       TIMEOUT       TIMEOUT           ERR           ERR
   [32mok[0m diverges on all 6 runtimes (as encoded) [2m-- outside IC's safe labelling fragment - must diverge everywhere[0m
 
@@ -64,29 +64,29 @@ ackermann(2,2)             TIMEOUT       TIMEOUT       TIMEOUT       TIMEOUT    
 SHARING
 ====================================================================================================
 [2mworkload                      ic32          ic32          ic32     ic32.wasm      ic_float        ic_ref[0m
-parity 2^4                  0.00ms        0.00ms        0.00ms        3.23ms        0.00ms           ERR
-parity 2^8                  0.00ms        0.00ms        0.00ms        2.14ms        1.02ms           ERR
-parity 2^12                 0.09ms        0.00ms        0.00ms        2.24ms        0.00ms           ERR
-parity 2^16                 0.23ms        0.00ms        0.00ms        3.45ms        1.42ms           ERR
-parity 2^20                 0.18ms        0.00ms        0.00ms        0.00ms        0.00ms           ERR
-parity 2^24                 0.00ms        0.00ms        0.00ms        4.52ms        1.58ms           ERR
-dup depth 8                 0.00ms        0.00ms        0.00ms        0.77ms        0.00ms        0.00ms
-dup depth 16                0.01ms        0.00ms        0.00ms        0.83ms        0.07ms        0.00ms
-dup depth 24                0.00ms        0.00ms        0.00ms        0.00ms        0.41ms        0.00ms
+parity 2^4                  0.12ms        0.00ms        0.00ms        0.00ms        0.00ms           ERR
+parity 2^8                  0.12ms        0.00ms        0.00ms        0.00ms        0.00ms           ERR
+parity 2^12                 0.00ms        0.00ms        0.00ms        0.00ms        0.00ms           ERR
+parity 2^16                 0.15ms        0.00ms        0.00ms        0.00ms        0.00ms           ERR
+parity 2^20                 0.00ms        0.00ms        0.00ms        0.00ms        0.00ms           ERR
+parity 2^24                 0.05ms        0.00ms        0.00ms        0.00ms        0.00ms           ERR
+dup depth 8                 0.37ms        0.90ms        0.00ms        0.00ms        0.00ms        0.00ms
+dup depth 16                0.02ms        0.00ms        0.00ms        0.00ms        0.00ms        0.00ms
+dup depth 24                0.01ms        0.88ms        0.00ms        0.00ms        0.00ms        0.00ms
 
 ====================================================================================================
 THROUGHPUT
 ====================================================================================================
 [2mworkload                      ic32          ic32          ic32     ic32.wasm      ic_float        ic_ref[0m
-exp 2^14                    0.85ms        0.00ms        0.00ms           ERR          89ms          48ms
-exp 2^16                    3.23ms        1.60ms        8.25ms           ERR         562ms         284ms
-exp 3^12                      28ms          22ms          53ms           ERR        17.75s           ERR
-exp 2^20                      68ms          60ms         131ms           ERR       TIMEOUT           ERR
-mult 300x300                7.60ms          16ms          30ms           ERR         1.61s         862ms
-mult 700x700                  33ms          36ms          81ms           ERR        18.18s           ERR
-fib(22)                     4.35ms        8.19ms          13ms           ERR         1.06s         158ms
-fib(25)                       20ms          15ms          42ms           ERR         5.21s           ERR
-tetration 2^^4              3.63ms        0.00ms        0.00ms           ERR         515ms        0.00ms
+exp 2^14                    1.57ms        0.00ms        0.00ms        0.00ms         168ms          87ms
+exp 2^16                    6.00ms        0.39ms        0.00ms          11ms         821ms         487ms
+exp 3^12                      38ms          36ms          76ms          47ms        28.17s           ERR
+exp 2^20                      70ms         100ms         168ms          86ms       107.20s           ERR
+mult 300x300                6.34ms        8.04ms        4.62ms        0.00ms         1.55s         832ms
+mult 700x700                  36ms          38ms          52ms          32ms        24.72s           ERR
+fib(22)                     3.44ms        0.00ms        0.00ms        0.00ms         1.12s         144ms
+fib(25)                       19ms        6.17ms          46ms          40ms         6.32s           ERR
+tetration 2^^4              5.22ms        6.12ms        3.23ms        0.00ms         717ms        0.00ms
   [33moutside ic_ref's model[0m tetration 2^^4: want s^65536, ic_ref gave ic_ref (py)=s^0
 
 
@@ -100,8 +100,8 @@ DEPTH CEILING -- how deep a normal form each runtime can read back
   ic32 (C)                 2097152    none <= 2^21  
   ic32 (Zig)               2097152    none <= 2^21  
   ic32 (Mojo)              2097152    none <= 2^21  
-  ic32.wasm                   8192           16384  ERR WASM-ERR Maximum call stack size exceede
-  ic_float (py)             524288         1048576  TIMEOUT
+  ic32.wasm                2097152    none <= 2^21  
+  ic_float (py)            1048576         2097152  ERR error=RuntimeError: normal: budget exhau
   ic_ref (py)                65536          131072  ERR error=RuntimeError: whnf: step budget ex
 
 
@@ -109,84 +109,84 @@ DEPTH CEILING -- how deep a normal form each runtime can read back
 SUMMARY
 ====================================================================================================
 
-Interaction counts (machine-independent work; NOT normative across runtimes):
+Interaction counts (machine-independent work; IC32 family must agree):
 
-[2mworkload                      ic32          ic32          ic32     ic32.wasm      ic_float        ic_ref   agree[0m
-mult 12x12                     312           312           312           312           312           312   [32myes[0m
-mult 20x20                     840           840           840           840           840           840   [32myes[0m
-mult 50x50                    5100          5100          5100          5100          5100          5100   [32myes[0m
-mult 80x80                   12960         12960         12960         12960         12960         12960   [32myes[0m
-exp 2^3                         43            43            43            43            43            33   [33mNO[0m
-exp 3^5                        562           562           562           562           562           286   [33mNO[0m
-exp 2^8                        604           604           604           604           604           564   [33mNO[0m
-exp 3^10                    118269        118269        118269             -        118269         59137   [33mNO[0m
-exp 2^12                      8336          8336          8336          8336          8336          8272   [33mNO[0m
-exp 2^16                    131268        131268        131268             -        131268        131180   [33mNO[0m
-tetration 2^^3                  75            75            75            75            75            42   [33mNO[0m
-tetration 3^^2                  92            92            92            92            92            52   [33mNO[0m
-tetration 2^^4              131204        131204        131204             -        131204            95   [33mNO[0m
-gauss T(10)                     65            65            65            65            65            65   [32myes[0m
-gauss T(30)                    495           495           495           495           495           495   [32myes[0m
-gauss T(60)                   1890          1890          1890          1890          1890          1890   [32myes[0m
-fib(10)                        922           922           922           922           922           601   [33mNO[0m
-fib(15)                       7242          7242          7242          7242          7242          4318   [33mNO[0m
-fib(20)                      75667         75667         75667         75667         75667         44279   [33mNO[0m
-fib(22)                     197126        197126        197126             -        197126        115173   [33mNO[0m
-fact(5)                        485           485           485           485           485             -   [32myes[0m
-fact(6)                       1755          1755          1755          1755          1755             -   [32myes[0m
-fact(7)                      10471         10471         10471         10471         10471             -   [32myes[0m
-fact(8)                      81113         81113         81113             -         81113             -   [32myes[0m
-pred(10)                       426           426           426           426           426           248   [33mNO[0m
-pred(50)                      5166          5166          5166          5166          5166          1248   [33mNO[0m
-pred(150)                    38016         38016         38016         38016         38016          3748   [33mNO[0m
-ackermann(0,3)                  10            10            10            10            10            10   [32myes[0m
-ackermann(1,4)                  72            72            72            72            72            66   [33mNO[0m
-parity 2^4                      78            78            78            78            78             -   [32myes[0m
-parity 2^8                     158           158           158           158           158             -   [32myes[0m
-parity 2^12                    238           238           238           238           238             -   [32myes[0m
-parity 2^16                    318           318           318           318           318             -   [32myes[0m
-parity 2^20                    398           398           398           398           398             -   [32myes[0m
-parity 2^24                    478           478           478           478           478             -   [32myes[0m
-dup depth 8                     24            24            24            24            24            24   [32myes[0m
-dup depth 16                    48            48            48            48            48            48   [32myes[0m
-dup depth 24                    72            72            72            72            72            72   [32myes[0m
-exp 2^14                     32938         32938         32938             -         32938         32862   [33mNO[0m
-exp 2^16                    131268        131268        131268             -        131268        131180   [33mNO[0m
-exp 3^12                   1063091       1063091       1063091             -       1063091             -   [32myes[0m
-exp 2^20                   2097400       2097400       2097400             -             -             -   [32myes[0m
-mult 300x300                180600        180600        180600             -        180600        180600   [32myes[0m
-mult 700x700                981400        981400        981400             -        981400             -   [32myes[0m
-fib(22)                     197126        197126        197126             -        197126        115173   [33mNO[0m
-fib(25)                     832847        832847        832847             -        832847             -   [32myes[0m
-tetration 2^^4              131204        131204        131204             -        131204            95   [33mNO[0m
+[2mworkload                      ic32          ic32          ic32     ic32.wasm      ic_float        ic_ref  ic32-agree[0m
+mult 12x12                     312           312           312           312           312           312  [32myes[0m
+mult 20x20                     840           840           840           840           840           840  [32myes[0m
+mult 50x50                    5100          5100          5100          5100          5100          5100  [32myes[0m
+mult 80x80                   12960         12960         12960         12960         12960         12960  [32myes[0m
+exp 2^3                         43            43            43            43            43            33  [32myes[0m
+exp 3^5                        562           562           562           562           562           286  [32myes[0m
+exp 2^8                        604           604           604           604           604           564  [32myes[0m
+exp 3^10                    118269        118269        118269        118269        118269         59137  [32myes[0m
+exp 2^12                      8336          8336          8336          8336          8336          8272  [32myes[0m
+exp 2^16                    131268        131268        131268        131268        131268        131180  [32myes[0m
+tetration 2^^3                  75            75            75            75            75            42  [32myes[0m
+tetration 3^^2                  92            92            92            92            92            52  [32myes[0m
+tetration 2^^4              131204        131204        131204        131204        131204            95  [32myes[0m
+gauss T(10)                     65            65            65            65            65            65  [32myes[0m
+gauss T(30)                    495           495           495           495           495           495  [32myes[0m
+gauss T(60)                   1890          1890          1890          1890          1890          1890  [32myes[0m
+fib(10)                        922           922           922           922           922           601  [32myes[0m
+fib(15)                       7242          7242          7242          7242          7242          4318  [32myes[0m
+fib(20)                      75667         75667         75667         75667         75667         44279  [32myes[0m
+fib(22)                     197126        197126        197126        197126        197126        115173  [32myes[0m
+fact(5)                        485           485           485           485           485             -  [32myes[0m
+fact(6)                       1755          1755          1755          1755          1755             -  [32myes[0m
+fact(7)                      10471         10471         10471         10471         10471             -  [32myes[0m
+fact(8)                      81113         81113         81113         81113         81113             -  [32myes[0m
+pred(10)                       426           426           426           426           426           248  [32myes[0m
+pred(50)                      5166          5166          5166          5166          5166          1248  [32myes[0m
+pred(150)                    38016         38016         38016         38016         38016          3748  [32myes[0m
+ackermann(0,3)                  10            10            10            10            10            10  [32myes[0m
+ackermann(1,4)                  72            72            72            72            72            66  [32myes[0m
+parity 2^4                      78            78            78            78            78             -  [32myes[0m
+parity 2^8                     158           158           158           158           158             -  [32myes[0m
+parity 2^12                    238           238           238           238           238             -  [32myes[0m
+parity 2^16                    318           318           318           318           318             -  [32myes[0m
+parity 2^20                    398           398           398           398           398             -  [32myes[0m
+parity 2^24                    478           478           478           478           478             -  [32myes[0m
+dup depth 8                     24            24            24            24            24            24  [32myes[0m
+dup depth 16                    48            48            48            48            48            48  [32myes[0m
+dup depth 24                    72            72            72            72            72            72  [32myes[0m
+exp 2^14                     32938         32938         32938         32938         32938         32862  [32myes[0m
+exp 2^16                    131268        131268        131268        131268        131268        131180  [32myes[0m
+exp 3^12                   1063091       1063091       1063091       1063091       1063091             -  [32myes[0m
+exp 2^20                   2097400       2097400       2097400       2097400       2097400             -  [32myes[0m
+mult 300x300                180600        180600        180600        180600        180600        180600  [32myes[0m
+mult 700x700                981400        981400        981400        981400        981400             -  [32myes[0m
+fib(22)                     197126        197126        197126        197126        197126        115173  [32myes[0m
+fib(25)                     832847        832847        832847        832847        832847             -  [32myes[0m
+tetration 2^^4              131204        131204        131204        131204        131204            95  [32myes[0m
 
 
 Throughput tier -- reduce time (startup subtracted), per workload:
 
 [2mworkload                      ic32          ic32          ic32     ic32.wasm      ic_float        ic_ref[0m
-exp 2^14                    0.85ms        0.00ms        0.00ms           ERR          89ms          48ms
-exp 2^16                    3.23ms        1.60ms        8.25ms           ERR         562ms         284ms
-exp 3^12                      28ms          22ms          53ms           ERR        17.75s           ERR
-exp 2^20                      68ms          60ms         131ms           ERR       TIMEOUT           ERR
-mult 300x300                7.60ms          16ms          30ms           ERR         1.61s         862ms
-mult 700x700                  33ms          36ms          81ms           ERR        18.18s           ERR
-fib(22)                     4.35ms        8.19ms          13ms           ERR         1.06s         158ms
-fib(25)                       20ms          15ms          42ms           ERR         5.21s           ERR
-tetration 2^^4              3.63ms        0.00ms        0.00ms           ERR         515ms        0.00ms
+exp 2^14                    1.57ms        0.00ms        0.00ms        0.00ms         168ms          87ms
+exp 2^16                    6.00ms        0.39ms        0.00ms          11ms         821ms         487ms
+exp 3^12                      38ms          36ms          76ms          47ms        28.17s           ERR
+exp 2^20                      70ms         100ms         168ms          86ms       107.20s           ERR
+mult 300x300                6.34ms        8.04ms        4.62ms        0.00ms         1.55s         832ms
+mult 700x700                  36ms          38ms          52ms          32ms        24.72s           ERR
+fib(22)                     3.44ms        0.00ms        0.00ms        0.00ms         1.12s         144ms
+fib(25)                       19ms        6.17ms          46ms          40ms         6.32s           ERR
+tetration 2^^4              5.22ms        6.12ms        3.23ms        0.00ms         717ms        0.00ms
 
 
 Reduction throughput (interactions / second, higher is better):
 
 [2mworkload                      ic32          ic32          ic32     ic32.wasm      ic_float        ic_ref[0m
-exp 2^14                 (38.9M/s)             -             -           ERR       0.37M/s       0.68M/s
-exp 2^16                 (40.6M/s)     (81.9M/s)     (15.9M/s)           ERR       0.23M/s       0.46M/s
-exp 3^12                  38.20M/s     (48.5M/s)      20.12M/s           ERR       0.06M/s           ERR
-exp 2^20                  30.89M/s      35.17M/s      16.05M/s           ERR       TIMEOUT           ERR
-mult 300x300             (23.8M/s)     (11.3M/s)      (6.0M/s)           ERR       0.11M/s       0.21M/s
-mult 700x700              29.64M/s      27.18M/s      12.17M/s           ERR       0.05M/s           ERR
-fib(22)                  (45.4M/s)     (24.1M/s)     (14.7M/s)           ERR       0.19M/s       0.73M/s
-fib(25)                   42.45M/s     (55.9M/s)     (19.7M/s)           ERR       0.16M/s           ERR
-tetration 2^^4           (36.2M/s)             -             -           ERR       0.25M/s             -
+exp 2^14                 (21.0M/s)             -             -             -       0.20M/s       0.38M/s
+exp 2^16                 (21.9M/s)    (335.1M/s)             -     (12.5M/s)       0.16M/s       0.27M/s
+exp 3^12                  27.66M/s     (29.9M/s)      14.00M/s      22.75M/s       0.04M/s           ERR
+exp 2^20                  30.11M/s      21.08M/s      12.49M/s      24.38M/s       0.02M/s           ERR
+mult 300x300             (28.5M/s)     (22.5M/s)     (39.1M/s)             -       0.12M/s       0.22M/s
+mult 700x700              27.61M/s     (25.5M/s)     (19.0M/s)     (30.8M/s)       0.04M/s           ERR
+fib(22)                  (57.2M/s)             -             -             -       0.18M/s       0.80M/s
+fib(25)                   44.94M/s    (135.1M/s)     (18.2M/s)      20.75M/s       0.13M/s           ERR
+tetration 2^^4           (25.1M/s)     (21.4M/s)     (40.6M/s)             -       0.18M/s             -
 
   [2m(parenthesised) = reduce time below the startup-subtraction error bar; excluded from the ranking.[0m
 
@@ -194,12 +194,12 @@ tetration 2^^4           (36.2M/s)             -             -           ERR    
 Ranking (geometric mean of interactions/sec over the throughput tier):
 
   runtime             interactions/sec   vs best  completed   startup
-  ic32 (C)                    34.91M/s      1.0x       9/9    0.45ms
-  ic32 (Zig)                  30.92M/s      1.1x       9/9      34ms
-  ic32 (Mojo)                 15.78M/s      2.2x       9/9      48ms
-  ic_ref (py)                  0.47M/s     74.6x       5/9      29ms
-  ic_float (py)                0.15M/s    234.9x       8/9      13ms
-  ic32.wasm                   unranked                 0/9      20ms
+  ic32 (C)                    31.88M/s      1.0x       9/9    0.61ms
+  ic32.wasm                   22.58M/s      1.4x       9/9      34ms
+  ic32 (Zig)                  21.08M/s      1.5x       9/9      42ms
+  ic32 (Mojo)                 13.22M/s      2.4x       9/9      74ms
+  ic_ref (py)                  0.36M/s     87.5x       5/9      49ms
+  ic_float (py)                0.09M/s    347.8x       9/9      23ms
 
   [2mRanked only on throughput workloads whose reduce time clears the
   startup-subtraction error bar. The small workloads above are for correctness,
@@ -215,7 +215,7 @@ Startup cost -- and why it differs by 100x:
     ic32 (Zig)   gpa.alloc + @memset(heap, 0)  -> eagerly writes all 128 MB
     ic32 (Mojo)  List[UInt64](.., fill=0)      -> eagerly writes all 128 MB
 
-  measured: (C) 0.45ms, (Zig) 34ms, (Mojo) 48ms, ic32.wasm 20ms
+  measured: (C) 0.61ms, (Zig) 42ms, (Mojo) 74ms, ic32.wasm 34ms
   [2mA workload touching a few thousand slots pays for 128 MB of zeroing it never
   reads. This is a fixed per-process cost, invisible in interactions/sec but the
   dominant term for short reductions -- which is most of them.[0m
@@ -226,8 +226,8 @@ Completion (workloads finished / attempted):
   ic32 (C)           47 / 48
   ic32 (Zig)         47 / 48
   ic32 (Mojo)        47 / 48
-  ic32.wasm          33 / 48
-  ic_float (py)      46 / 48
+  ic32.wasm          47 / 48
+  ic_float (py)      47 / 48
   ic_ref (py)        33 / 48
 
 
@@ -240,8 +240,8 @@ Model differences (not conformance bugs):
   returns a residual superposition (e.g. `(s (s &81{a,b}))`) that reads back
   as a smaller Church numeral -- a silently wrong answer, not a crash.[0m
 
-  [32mPASS[0m  normal-form agreement across the 5 IC32-model runtimes on every workload
+  [32mPASS[0m  IC32 conformance gate (5 members): all completed, NFs agree, interaction counts agree
   [32mPASS[0m  every IC32-model normal form matches independently computed truth
 
 
-wrote results.json
+wrote bench/results.json
