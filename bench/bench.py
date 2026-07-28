@@ -69,6 +69,7 @@ BACKENDS = [
 ]
 
 FAMILY = {label: fam for label, _, _, fam in BACKENDS}
+IC32_DECLARED = frozenset(label for label, _, _, fam in BACKENDS if fam == IC32)
 
 
 def available():
@@ -323,10 +324,6 @@ def main():
     conformance_failures = 0
     correctness_failures = 0
 
-    # The IC32 family members that are live -- the acceptance gate requires every
-    # one of them to complete and agree on every normally-terminating workload.
-    ic32_live = {lb for lb, _ in live if FAMILY[lb] == IC32}
-
     group_now = None
     for w in suite:
         if w["group"] != group_now:
@@ -390,14 +387,20 @@ def main():
 
         # -- IC32 family completeness gate (non-vacuous)
         #
-        # On normally-terminating workloads, every live IC32 member must finish
-        # OK. A missing or erroring member is a conformance failure, not a
-        # silent skip -- otherwise agreement is vacuously true.
+        # On normally-terminating workloads, every DECLARED IC32 member must
+        # finish OK -- not merely the live subset.  A backend that is not
+        # built, skipped, erroring, or timed-out is a conformance failure,
+        # never a silent pass.
         if w["check"] != "diverge":
-            fam_missing = ic32_live - set(nfs.keys())
+            fam_missing = IC32_DECLARED - set(nfs.keys())
             if fam_missing:
                 conformance_failures += 1
-                why = {lb: row["backends"][lb]["status"] for lb in fam_missing}
+                why = {}
+                for lb in sorted(fam_missing):
+                    if lb in row["backends"]:
+                        why[lb] = row["backends"][lb]["status"]
+                    else:
+                        why[lb] = "SKIPPED (not built)"
                 print(f"  {R}IC32 INCOMPLETE{RS} {w['name']}: "
                       f"missing/erroring family members: {why}")
                 row["ic32_complete"] = False
