@@ -194,14 +194,14 @@ class TestScoring(unittest.TestCase):
 
 
 class TestLeakageRegression(unittest.TestCase):
-    """TS20: the leakage regression.
+    """TS20-TS24: the leakage regression, exercised at two levels.
 
-    This exercises the REAL task construction path through taskbundle.make_task
-    and validates that the tier gate is load-bearing: a tier-3 target-only task
-    MUST be refused, and the refusal must come from the tier-gating rule.
-
-    The test is structured to FAIL if the gate enforcement is removed or
-    bypassed, making the leakage argument a check rather than a paragraph.
+    TS20-TS24 test the gate function directly.
+    TS30-TS33 test the gate through the PUBLIC TASK API (taskbundle.make_task),
+    which is the path real generators take. The structural dependency is:
+    taskbundle.make_task -> taskbundle.validate_task_v1 ->
+    targetspec.validate_objective_for_tier. If any link in that chain is
+    removed, the TS30 tests fail.
     """
 
     def test_ts20_tier3_target_only_task_refused(self):
@@ -240,6 +240,90 @@ class TestLeakageRegression(unittest.TestCase):
         view_miss = {"semantic_id": _SEM_B, "objects": [], "edges": []}
         self.assertTrue(sealed.score(view_match))
         self.assertFalse(sealed.score(view_miss))
+
+    # --- TS30-TS33: leakage regression through the PUBLIC TASK API ----------
+    # These go through taskbundle.make_task, which is the path real generators
+    # take. The structural dependency is on the PRODUCTION gate: every
+    # assertion references targetspec.WRLM_TARGET_TIER_GATE (the error code)
+    # or targetspec.validate_objective_for_tier (the gate function). If the
+    # gate enforcement is removed from taskbundle.validate_task_v1, make_task
+    # stops raising and these tests fail. If the gate constant or function is
+    # deleted from targetspec.py, the test cannot even reference them.
+
+    def test_ts30_make_task_tier3_target_only_refused(self):
+        """taskbundle.make_task with tier=3, target only, no goal MUST raise
+        WRLM_TARGET_TIER_GATE. This goes through the real validation path:
+        make_task -> canonicalize_task_v1 -> validate_task_v1 ->
+        targetspec.validate_objective_for_tier. Removing that call makes
+        make_task succeed and this test fail."""
+        with self.assertRaises(WrlmError) as cm:
+            taskbundle.make_task(
+                _SEM_A, "source",
+                target_semantic_id=_SEM_B,
+                family="transform", tier=3, difficulty="hard")
+        # The error code MUST be the production gate's own code, not a
+        # generic WRLM_BAD_TASK. This couples the test to the production
+        # constant: deleting targetspec.WRLM_TARGET_TIER_GATE breaks the
+        # assertion even if something else raises.
+        self.assertEqual(cm.exception.code, targetspec.WRLM_TARGET_TIER_GATE)
+
+    def test_ts31_make_task_tier3_target_plus_goal_accepted(self):
+        """The corresponding goal-bearing task at tier 3 MUST be accepted.
+        This proves the gate is tier-and-objective-dependent, not a blanket
+        refusal of high-tier tasks."""
+        task = taskbundle.make_task(
+            _SEM_A, "source",
+            goal=_GOAL,
+            target_semantic_id=_SEM_B,
+            family="transform", tier=3, difficulty="hard")
+        self.assertIsNotNone(task)
+        self.assertEqual(task["stratum"]["tier"], 3)
+        self.assertIsNotNone(task["objective"]["goal"])
+        self.assertIsNotNone(task["objective"]["target_spec_id"])
+
+    def test_ts32_gate_is_reachable_from_taskbundle(self):
+        """The production gate function must be reachable from taskbundle's
+        own targetspec import. If taskbundle stops importing targetspec or
+        renames the binding, this test fails -- making the leakage regression
+        structurally dependent on the import chain, not just on observed
+        behavior."""
+        # taskbundle imports targetspec as a module attribute
+        tb_ts = getattr(taskbundle, 'targetspec', None)
+        self.assertIsNotNone(tb_ts,
+                             "taskbundle must import targetspec")
+        self.assertIs(tb_ts, targetspec,
+                      "taskbundle.targetspec must be the same module")
+        # The gate function must exist and be callable
+        gate_fn = getattr(tb_ts, 'validate_objective_for_tier', None)
+        self.assertTrue(callable(gate_fn),
+                        "validate_objective_for_tier must be callable")
+        # The gate error code must exist
+        self.assertEqual(tb_ts.WRLM_TARGET_TIER_GATE,
+                         "WRLM_TARGET_TIER_GATE")
+
+    def test_ts33_validate_task_v1_tier3_target_only_refused(self):
+        """validate_task_v1 (the validator, not just the builder) also refuses
+        a tier-3 target-only task. This closes the bypass path: even if
+        someone constructs a task dict by hand and calls validate_task_v1
+        directly, the gate still fires."""
+        # Build a valid tier-1 task, then mutate it to tier-3 with no goal.
+        # This bypasses make_task's own gate check and hits validate_task_v1.
+        import copy
+        base = taskbundle.make_task(
+            _SEM_A, "source",
+            target_semantic_id=_SEM_B,
+            family="transform", tier=1, difficulty="easy")
+        # Mutate to tier-3, strip the goal, re-derive target_spec_id for
+        # tier 3 so the id check doesn't fire first
+        bad = copy.deepcopy(base)
+        bad["stratum"]["tier"] = 3
+        bad["objective"]["goal"] = None
+        bad["objective"]["goal_spec_id"] = None
+        bad["objective"]["target_spec_id"] = targetspec.target_spec_id(
+            targetspec.make_target_spec(_SEM_B, 3))
+        with self.assertRaises(WrlmError) as cm:
+            taskbundle.validate_task_v1(bad)
+        self.assertEqual(cm.exception.code, targetspec.WRLM_TARGET_TIER_GATE)
 
 
 class TestDeserialize(unittest.TestCase):
