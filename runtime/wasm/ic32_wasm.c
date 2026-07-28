@@ -13,7 +13,7 @@
 // build (see build note at bottom):
 //   clang --target=wasm32 -O2 -nostdlib -ffreestanding -Wl,--no-entry \
 //     -Wl,--export-dynamic -Wl,-z,stack-size=16777216 \
-//     -Wl,--initial-memory=134217728 -o ic32.wasm ic32_wasm.c
+//     -Wl,--initial-memory=268435456 -o ic32.wasm ic32_wasm.c
 
 typedef unsigned long long u64;   // 64-bit on wasm32
 typedef unsigned int       u32;
@@ -33,7 +33,7 @@ typedef unsigned char      u8;
 enum { T_VAR=0, T_LAM=1, T_APP=2, T_ERA=3, T_SUP=4, T_DP0=5, T_DP1=6 };
 
 // ----------------------------------------------------------- static memory
-#define HEAPCAP (1u<<22)          // 4M slots * 8B = 32MB
+#define HEAPCAP (1u<<24)          // 16M slots * 8B = 128MB (matches ic32.c)
 static u64 heap[HEAPCAP];
 static u32 hp = 1;
 static long interactions = 0;
