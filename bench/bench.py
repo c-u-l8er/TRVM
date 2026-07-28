@@ -433,6 +433,18 @@ def main():
             conformance_failures += 1
             print(f"  {R}IC32 INTERACTION DISAGREEMENT{RS} {w['name']}: {ic32_counts}")
 
+        # An IC32 member that finished OK but did not report an interaction count
+        # is a conformance gap -- the gate cannot verify count agreement if a
+        # member's count is missing.
+        if w["check"] != "diverge":
+            ic32_ok_no_count = [lb for lb, b in row["backends"].items()
+                                if b["status"] == "OK" and b["interactions"] is None
+                                and FAMILY.get(lb) == IC32]
+            if ic32_ok_no_count:
+                conformance_failures += 1
+                print(f"  {R}IC32 MISSING COUNT{RS} {w['name']}: "
+                      f"{ic32_ok_no_count} finished OK but reported no interaction count")
+
         results.append(row)
 
     # -----------------------------------------------------------------
