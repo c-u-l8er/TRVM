@@ -214,9 +214,11 @@ footer a:hover{color:var(--phosphor)}
   .btn{min-height:44px}
 }
 </style>
+<script type="module" src="/amp-nav.js"></script>
 </head>
 <body id="top">
 <a class="skip" href="#machine">skip to content</a>
+<amp-nav property="trvm"></amp-nav>
 <header>
   <a class="mark" href="#top">TRVM<small>term-rewriting VM</small></a>
   <nav aria-label="sections">
@@ -230,6 +232,7 @@ footer a:hover{color:var(--phosphor)}
     <a href="#economics">economics</a>
     <a href="#laws">laws</a>
     <a href="#reproduce">reproduce</a>
+    <a href="benchmarks.html" style="color:var(--brass)">benchmarks &#8594;</a>
     <a href="https://wrl.traaviis.com" style="color:var(--wire)">WallRiderLang &#8599;</a>
     <a href="https://traaviis.com" style="color:var(--wire)">TRAAVIIS &#8599;</a>
   </nav>
@@ -691,7 +694,13 @@ python3 tools/laws_check.py --strict
 <span class="g">RESULT: OK</span>
 
 <span class="c"># the bench (from the release archive) — read-only install, self-proving id</span>
-./forge-bench</div>
+./forge-bench
+
+<span class="c"># the cross-runtime benchmark: 6 runtimes, 48 workloads</span>
+python3 bench/bench.py --json bench/results.json</div>
+    <p style="margin-top:22px">The recorded run — conformance matrix, throughput, depth ceilings, the head-to-head
+    against HVM4, and the corrections ledger — is published at
+    <a href="benchmarks.html" style="color:var(--brass)">benchmarks &#8594;</a></p>
   </div>
 </section>
 

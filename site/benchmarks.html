@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRVM benchmarks — what it costs, measured</title>
+<meta name="description" content="Six TRVM runtimes on 48 workloads: conformance first, then cost. Byte-identical normal forms across the IC32 family, throughput and startup, depth ceilings, a head-to-head against HVM4, and the full ledger of numbers that were published and later withdrawn.">
+<meta property="og:title" content="TRVM benchmarks — what it costs, measured">
+<meta property="og:description" content="48 workloads, 6 runtimes, 0 conformance disagreements. Plus the application benchmark that says a 3.2x faster engine buys 1.006x, and a boundary fix buys 129x.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EDEFEC; --paper-2:#E3E7E2; --ink:#141F1C; --ink-soft:#3A4A45;
+  --machine:#0D1512; --machine-2:#111B17; --machine-edge:#1E2C27;
+  --wire:#2F6B5B; --phosphor:#8FDCC3; --phosphor-dim:#5FA48E;
+  --brass:#B08A32; --brass-soft:#8A6D28; --rust:#B0503A;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --serif:'Newsreader',Georgia,serif;
+  --disp:'Archivo',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:19px;line-height:1.62;font-optical-sizing:auto;-webkit-font-smoothing:antialiased}
+::selection{background:var(--wire);color:var(--paper)}
+a{color:inherit;text-decoration-color:var(--wire);text-underline-offset:3px}
+a:hover{color:var(--wire)}
+:focus-visible{outline:2px solid var(--brass);outline-offset:3px;border-radius:2px}
+.skip{position:absolute;left:-9999px;top:0;background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:13px;padding:10px 16px;z-index:100}
+.skip:focus{left:12px;top:12px}
+header{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:28px;padding:14px 5vw;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--paper-2)}
+.mark{font-family:var(--disp);font-weight:800;font-stretch:118%;font-size:19px;letter-spacing:.04em;text-decoration:none}
+.mark small{font-family:var(--mono);font-weight:500;font-size:10px;color:var(--ink-soft);display:block;letter-spacing:.14em;margin-top:1px}
+nav{margin-left:auto;display:flex;gap:20px;flex-wrap:wrap}
+nav a{font-family:var(--mono);font-size:12px;letter-spacing:.05em;text-decoration:none;color:var(--ink-soft)}
+nav a:hover{color:var(--wire)}
+nav a[aria-current]{color:var(--wire);font-weight:600}
+section{padding:84px 5vw}
+.inner{max-width:1080px;margin:0 auto}
+.slot{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.12em;color:var(--wire);margin-bottom:18px;display:flex;align-items:center;gap:12px}
+.slot::before{content:"";width:34px;height:1px;background:var(--wire)}
+h1,h2{font-family:var(--disp);line-height:1.05;letter-spacing:-.012em}
+h1{font-weight:800;font-stretch:112%;font-size:clamp(36px,5.6vw,68px);max-width:17ch}
+h2{font-weight:700;font-stretch:108%;font-size:clamp(26px,3.4vw,40px);margin-bottom:20px;max-width:26ch}
+h3{font-family:var(--disp);font-weight:700;font-stretch:106%;font-size:20px;line-height:1.2;margin-top:38px;margin-bottom:10px}
+.lede{font-size:clamp(19px,2vw,22px);max-width:64ch;color:var(--ink-soft);margin-top:22px}
+.lede b,p b{color:var(--ink);font-weight:600}
+p{max-width:72ch}
+p+p{margin-top:1em}
+.k{font-family:var(--mono);font-size:.82em;background:var(--paper-2);padding:2px 6px;border-radius:3px;white-space:nowrap}
+.machine{background:var(--machine);color:#CFE3DA}
+.machine .slot{color:var(--phosphor-dim)}
+.machine .slot::before{background:var(--phosphor-dim)}
+.machine h2,.machine h3{color:#F1F7F4}
+.machine p{color:#9FB8AE}
+.machine p b{color:#E4F0EA}
+.machine .k{background:var(--machine-edge);color:var(--phosphor)}
+.machine a{text-decoration-color:var(--phosphor-dim)}
+.machine a:hover{color:var(--phosphor)}
+.btn{font-family:var(--mono);font-size:13.5px;font-weight:600;letter-spacing:.05em;cursor:pointer;background:var(--wire);color:#EAF6F1;border:0;border-radius:7px;padding:12px 22px;transition:background .15s}
+.btn:hover{background:#3B8571}
+
+/* stat strip */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;background:var(--paper-2);border:1px solid var(--paper-2);margin-top:44px}
+.stat{background:#fff;padding:22px 24px}
+.stat .v{font-family:var(--disp);font-weight:800;font-stretch:110%;font-size:clamp(28px,3.4vw,38px);line-height:1;color:var(--ink)}
+.stat .l{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;color:var(--wire);margin-top:10px;text-transform:uppercase}
+.stat .s{font-size:14.5px;color:var(--ink-soft);margin-top:8px;line-height:1.45}
+
+/* generic tables */
+table{width:100%;border-collapse:collapse;font-size:16px;margin-top:26px}
+th{font-family:var(--mono);font-size:11.5px;font-weight:500;letter-spacing:.1em;text-align:left;color:var(--wire);padding:0 16px 12px 0;border-bottom:1px solid var(--paper-2);vertical-align:bottom}
+td{padding:13px 16px 13px 0;border-bottom:1px solid var(--paper-2);vertical-align:top;color:var(--ink-soft)}
+td:first-child{font-family:var(--mono);font-size:14px;color:var(--ink);white-space:nowrap}
+td b{color:var(--ink);font-weight:600}
+td.n,th.n{text-align:right;font-family:var(--mono);font-size:14px;white-space:nowrap}
+.machine th{color:var(--phosphor-dim);border-bottom-color:var(--machine-edge)}
+.machine td{border-bottom-color:var(--machine-edge);color:#A9C0B6}
+.machine td:first-child{color:var(--phosphor)}
+.machine td b{color:#E4F0EA}
+.win{color:var(--wire);font-weight:600}
+.machine .win{color:var(--phosphor)}
+.warn{color:var(--rust);font-weight:600}
+.cap{font-family:var(--mono);font-size:12px;color:var(--ink-soft);margin-top:14px;line-height:1.6;max-width:80ch}
+.machine .cap{color:#5C756C}
+
+/* conformance matrix */
+.mx-ctl{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:30px}
+.chip{font-family:var(--mono);font-size:12.5px;padding:7px 14px;border-radius:99px;cursor:pointer;background:#fff;color:var(--ink-soft);border:1px solid var(--paper-2);transition:border-color .15s,color .15s}
+.chip:hover{border-color:var(--wire);color:var(--wire)}
+.chip[aria-pressed="true"]{border-color:var(--wire);color:var(--wire);font-weight:600}
+.mx-wrap{margin-top:22px;overflow-x:auto;border:1px solid var(--paper-2);background:#fff}
+table.mx{margin:0;font-size:14px;min-width:820px}
+table.mx th{padding:14px 12px;border-bottom:1px solid var(--paper-2);background:#fff;position:sticky;top:0}
+table.mx th.rt{text-align:center;font-size:10.5px;letter-spacing:.06em}
+table.mx td{padding:9px 12px;border-bottom:1px solid var(--paper-2);font-size:13.5px}
+table.mx td.w{font-family:var(--mono);color:var(--ink);white-space:nowrap}
+table.mx td.g{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--wire);text-transform:uppercase}
+table.mx td.c{text-align:center;font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+table.mx tr:hover td{background:var(--paper)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.dot.ok{background:var(--wire)}
+.dot.no{background:var(--rust)}
+.c.no{color:var(--rust)}
+.c.ok{color:var(--ink-soft)}
+.legend{display:flex;gap:20px;flex-wrap:wrap;font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);margin-top:14px}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:26px}
+.sm{border:1px solid var(--paper-2);background:#fff;padding:18px 20px}
+.sm .t{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--wire)}
+.sm .v{font-family:var(--disp);font-weight:700;font-size:26px;margin:6px 0 4px}
+.sm .d{font-size:14.5px;color:var(--ink-soft);line-height:1.45}
+
+/* callout */
+.callout{border-left:3px solid var(--brass);background:var(--paper-2);padding:20px 24px;margin-top:30px}
+.machine .callout{background:var(--machine-2);border-left-color:var(--brass)}
+.callout .h{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;color:var(--brass-soft);margin-bottom:8px}
+.machine .callout .h{color:var(--brass)}
+.callout p{font-size:16.5px;max-width:76ch}
+
+/* budget bars */
+.bars{margin-top:30px;display:grid;gap:16px}
+.bar-row .lab{font-family:var(--mono);font-size:12.5px;color:#7C948B;display:flex;justify-content:space-between;gap:16px;margin-bottom:7px}
+.bar-row .lab b{color:#E4F0EA;font-weight:600}
+.bar{height:26px;background:var(--machine-2);border:1px solid var(--machine-edge);border-radius:4px;overflow:hidden;display:flex}
+.bar span{display:block;height:100%}
+.bar .parse{background:var(--rust)}
+.bar .restore{background:var(--brass-soft)}
+.bar .reduce{background:var(--wire)}
+.bar-key{display:flex;gap:20px;flex-wrap:wrap;font-family:var(--mono);font-size:11.5px;color:#5C756C;margin-top:6px}
+.bar-key i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;font-style:normal}
+
+/* use cases */
+.uses{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:36px}
+.use{background:#fff;border:1px solid var(--paper-2);padding:24px 26px;display:flex;flex-direction:column;gap:11px}
+.use .t{font-family:var(--disp);font-weight:700;font-stretch:106%;font-size:20px}
+.use p{font-size:15.5px;color:var(--ink-soft);line-height:1.5}
+.use .r{margin-top:auto;font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--wire);border-top:1px solid var(--paper-2);padding-top:11px}
+.use.no .r{color:var(--rust)}
+
+/* ledger */
+.ledger{border-top:3px solid var(--brass)}
+.ledger .slot{color:var(--brass-soft)}
+.ledger .slot::before{background:var(--brass-soft)}
+.led{padding:22px 0;border-bottom:1px solid var(--paper-2);display:grid;grid-template-columns:150px 1fr;gap:22px}
+.led .st{font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;color:var(--brass)}
+.led .st.wd{color:var(--rust)}
+.led .h{font-family:var(--disp);font-weight:700;font-size:19px;margin-bottom:7px}
+.led .was{font-family:var(--mono);font-size:13px;color:var(--ink-soft);margin-bottom:8px}
+.led p{font-size:16px}
+
+/* code */
+.code{background:var(--machine);border:1px solid var(--machine-edge);border-radius:10px;font-family:var(--mono);font-size:13.5px;line-height:1.85;color:#B9D2C8;padding:22px 24px;overflow-x:auto;margin-top:26px;white-space:pre}
+.code .c{color:#54695F}
+.code .g{color:var(--phosphor)}
+.receipts{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+.receipt{font-family:var(--mono);font-size:12px;padding:8px 14px;border-radius:6px;background:var(--machine-2);border:1px solid var(--machine-edge);color:#B9D2C8}
+.receipt b{color:var(--phosphor);font-weight:600}
+footer{padding:44px 5vw 56px;background:var(--machine);color:#5C756C;font-family:var(--mono);font-size:12px;letter-spacing:.04em;line-height:2;border-top:1px solid var(--machine-edge)}
+footer .inner{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}
+footer a{color:#7C948B;text-decoration:none}
+footer a:hover{color:var(--phosphor)}
+@media (max-width:860px){
+  section{padding:60px 6vw}
+  header{flex-wrap:wrap;gap:10px 20px}
+  nav{width:100%;min-width:0;display:flex;flex-wrap:nowrap;overflow-x:auto;gap:16px;padding-bottom:2px;margin-left:0;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  nav a{flex:0 0 auto;white-space:nowrap}
+  nav::-webkit-scrollbar{display:none}
+  .inner > table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .led{grid-template-columns:1fr;gap:8px}
+  .chip{min-height:44px}
+  .btn{min-height:44px}
+}
+</style>
+<script type="module" src="/amp-nav.js"></script>
+</head>
+<body id="top">
+<a class="skip" href="#headline">skip to content</a>
+<amp-nav property="trvm"></amp-nav>
+<header>
+  <a class="mark" href="index.html">TRVM<small>term-rewriting VM</small></a>
+  <nav aria-label="sections">
+    <a href="index.html">← machine</a>
+    <a href="#headline" aria-current="page">results</a>
+    <a href="#matrix">conformance</a>
+    <a href="#speed">speed</a>
+    <a href="#reach">reach</a>
+    <a href="#hvm4">vs HVM4</a>
+    <a href="#application">application</a>
+    <a href="#uses">what it means</a>
+    <a href="#ledger">corrections</a>
+    <a href="#reproduce">reproduce</a>
+  </nav>
+</header>
+
+<!-- ============ 0x00 · headline ============ -->
+<section class="hero" id="headline" style="padding-top:64px">
+  <div class="inner">
+    <div class="slot">slot 0x00 · results</div>
+    <h1>Correctness first. Then cost.</h1>
+    <p class="lede">The same bytes — one interaction-calculus term — pushed through
+    <b>six independent TRVM runtimes</b> written in five languages, on 48 workloads.
+    The first question is never how fast. It is <b>whether they agree</b>, because a runtime
+    that is fast and wrong is worth nothing, and a system whose whole premise is
+    <b>replayable evidence</b> has to be identical across implementations before its
+    numbers mean anything.</p>
+    <p class="lede">They agree. Every number below is downstream of that.</p>
+    <div class="stats">
+      <div class="stat">
+        <div class="v" id="s-workloads">48 × 6</div>
+        <div class="l">workloads × runtimes</div>
+        <div class="s">Multiplication to Ackermann, in explicitly linear Church encoding.</div>
+      </div>
+      <div class="stat">
+        <div class="v"><span class="win" id="s-nf">48 / 48</span></div>
+        <div class="l">byte-identical normal forms</div>
+        <div class="s">Zero conformance disagreements across the IC32 family — and zero disagreements on interaction counts either, which is stronger than the contract requires.</div>
+      </div>
+      <div class="stat">
+        <div class="v">478</div>
+        <div class="l">interactions for 2<sup>24</sup> negations</div>
+        <div class="s">Optimal sharing, unforced: 16,777,216 units of semantics in 478 rewrites.</div>
+      </div>
+      <div class="stat">
+        <div class="v">1.006× <span style="color:var(--wire)">vs</span> 129×</div>
+        <div class="l">engine swap vs boundary fix</div>
+        <div class="s">On the real application workload, a 3.2× faster reducer is worth almost nothing. Where the time actually goes is <a href="#application">further down</a>.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 0x01 · how to read ============ -->
+<section id="method" style="background:var(--paper-2)">
+  <div class="inner">
+    <div class="slot">slot 0x01 · how to read this page</div>
+    <h2>Three quantities that are not interchangeable.</h2>
+    <p>Most benchmark pages collapse these into one bar chart. They behave completely
+    differently, and mixing them is how benchmarks lie without anyone intending to.</p>
+    <table>
+      <tr><th>quantity</th><th>status</th><th>what it is good for</th></tr>
+      <tr>
+        <td><b>normal form</b></td>
+        <td><b>normative.</b> Every IC32-model runtime must produce identical bytes; a
+        difference is a conformance bug, full stop.</td>
+        <td>Portability. If the WASM build and the C build disagree, nothing else on this page matters.</td>
+      </tr>
+      <tr>
+        <td><b>interactions</b></td>
+        <td>Machine-independent work. <b>Not</b> normative — a different strategy may
+        legitimately take a different count — so it is reported and cross-checked, never asserted.</td>
+        <td>Comparing algorithms and encodings. Survives being run on someone else's hardware.</td>
+      </tr>
+      <tr>
+        <td><b>wall time</b></td>
+        <td>Machine-dependent, and the easiest of the three to measure wrongly.</td>
+        <td>Budgeting. Ratios port between machines; absolute numbers do not.</td>
+      </tr>
+    </table>
+
+    <h3>Correctness is checked against arithmetic, not against another runtime</h3>
+    <p>Ground truth for every workload is computed in ordinary Python integers. All six
+    runtimes can be wrong together and it still shows. Backends are <b>discovered, never
+    assumed</b>: an unbuilt one is reported as skipped with the missing path named, never
+    silently counted as a pass.</p>
+
+    <h3>Four methodology rules, each of which changed a result when it was added</h3>
+    <table>
+      <tr><th>rule</th><th>what it prevents</th></tr>
+      <tr><td>minimum, not mean</td><td>Launch noise is one-sided — preemption and page faults only ever make a run slower — so the fastest observed run is both the best estimate and the most stable.</td></tr>
+      <tr><td>startup is subtracted</td><td>A 34 ms interpreter launch swamps a 0.05 ms reduction, and the table ends up ranking <span class="k">execve</span> instead of the runtime.</td></tr>
+      <tr><td>only large reductions are ranked</td><td>A rate is trustworthy only when the reduction is large compared to the startup subtracted from it. <b>Skipping this inverts the result</b>: on small workloads Zig appears to beat C purely as an artifact of subtracting Zig's 34 ms baseline.</td></tr>
+      <tr><td>measure rep-major, not cell-major</td><td>Running all reps of one cell, then all reps of the next, gives each cell a <em>different</em> 30-second window of a machine whose load is not stationary. A contention episode then lands inside one cell and becomes a difference <em>between</em> cells. This produced a fully convincing, entirely false "2.2× engine gap at one width only" — see the <a href="#ledger">corrections ledger</a>.</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ============ 0x02 · conformance matrix ============ -->
+<section id="matrix">
+  <div class="inner">
+    <div class="slot">slot 0x02 · conformance</div>
+    <h2>Do they agree?</h2>
+    <p>Every row is one workload. Every cell is one runtime's result on it. This table is
+    generated from the recorded run — <span class="k">bench/results.json</span> — not typed by hand.</p>
+
+    <div class="summary" id="mx-summary"></div>
+
+    <div class="mx-ctl" id="mx-filters" role="group" aria-label="filter by group"></div>
+    <div class="mx-ctl" style="margin-top:10px">
+      <button class="chip" id="mx-mode" aria-pressed="false">show wall time instead of interactions</button>
+    </div>
+    <div class="mx-wrap"><table class="mx" id="mx"><thead id="mx-head"></thead><tbody id="mx-body"></tbody></table></div>
+    <div class="legend">
+      <span><i class="dot ok"></i> completed · normal form matches ground truth</span>
+      <span><i class="dot no"></i> did not complete — reason shown</span>
+      <span>blank = out of that runtime's documented range</span>
+    </div>
+
+    <h3>What the two disagreement columns mean</h3>
+    <p><b>Five of the six runtimes implement the same model</b> — the IC32 typed-node
+    floating-duplicator machine — in C, Zig, Mojo, WebAssembly and Python. Across all 48
+    workloads they produce byte-identical normal forms <em>and</em> identical interaction
+    counts wherever they both ran. Agreement on counts is stronger than conformance
+    requires and indicates they are running the same reduction strategy, not merely landing
+    on the same answer.</p>
+    <p><span class="k">ic_ref</span> is deliberately a <b>different model</b> — a simple
+    non-floating core kept as an independent check — so it reaches the same normal forms by
+    a different path and its interaction counts differ on 21 workloads. That is expected and
+    is the point of having it. The one thing it must never do is disagree on an answer.</p>
+
+    <div class="callout">
+      <div class="h">the failure mode worth naming</div>
+      <p><b><span class="k">ic_ref</span> fails silently on tetration, and silence is the worst
+      failure mode there is.</b> On nested exponentiation it does not hang and does not error —
+      it returns a residual superposition such as <span class="k">(s (s &amp;81{a,b}))</span> for
+      2<sup>^^</sup>3, which reads back as s<sup>2</sup> instead of s<sup>16</sup>. A caller counting
+      <span class="k">s</span> gets a plausible, wrong number. This is outside the fragment
+      <span class="k">IC_REF.md</span> scopes it to, so it is a model limit rather than a
+      conformance bug — but it is an argument for returning a stuck-term error rather than a
+      readable normal form, and it is the reason this page leads with agreement instead of speed.</p>
+    </div>
+
+    <h3>Ackermann marks the edge of the safe fragment</h3>
+    <p><span class="k">ack(m,n)</span> for m ≤ 1 reduces correctly on all six runtimes. At
+    m ≥ 2 the iteration duplicates a term that itself contains a duplicator, two independent
+    duplicators end up sharing a label, and reduction diverges — <b>on all six runtimes
+    identically</b>. It is kept as a workload precisely to check that they agree on diverging.
+    That is an encoding limit, not a runtime defect.</p>
+  </div>
+</section>
+
+<!-- ============ 0x03 · speed ============ -->
+<section class="machine" id="speed">
+  <div class="inner">
+    <div class="slot">slot 0x03 · throughput</div>
+    <h2>How fast, and why the honest answer needs two tables.</h2>
+    <p>Throughput on this workload is <b>memory-latency bound, not compute bound</b> —
+    pointer-chasing over a large heap. Compiler flags barely move it: C at
+    <span class="k">-O3 -march=native -flto</span> measures 55.9 M interactions/s against
+    54.3 M/s at <span class="k">-O2</span>, inside noise.</p>
+
+    <h3>Geometric mean over the throughput tier</h3>
+    <table>
+      <tr><th>runtime</th><th class="n">interactions / sec</th><th class="n">vs best</th><th class="n">startup</th><th>language</th></tr>
+      <tr><td>ic32</td><td class="n"><b>34.9 M</b></td><td class="n">1.0×</td><td class="n">0.45 ms</td><td>C</td></tr>
+      <tr><td>ic32z</td><td class="n">30.9 M</td><td class="n">1.1×</td><td class="n">34 ms</td><td>Zig</td></tr>
+      <tr><td>ic32m</td><td class="n">15.8 M</td><td class="n">2.2×</td><td class="n">48 ms</td><td>Mojo</td></tr>
+      <tr><td>ic_ref</td><td class="n">0.47 M</td><td class="n">75×</td><td class="n">29 ms</td><td>Python — reference core</td></tr>
+      <tr><td>ic_float</td><td class="n">0.15 M</td><td class="n">235×</td><td class="n">13 ms</td><td>Python — model oracle</td></tr>
+      <tr><td>ic32.wasm</td><td class="n">unranked</td><td class="n">—</td><td class="n">20 ms</td><td>WebAssembly — cannot reach the scale</td></tr>
+    </table>
+    <p class="cap">C's 34.9 M/s sits inside the 22–34 M/s that <span class="k">IC32_RUNTIME.md</span>
+    claims, measured independently. The two Python runtimes are not competitors — one is the
+    executable specification, the other the model oracle. Their job is to be readable and to
+    disagree loudly.</p>
+
+    <div class="callout">
+      <div class="h">correction · do not read C-beats-Zig off that table</div>
+      <p>The confidence filter that keeps a rate honest also leaves <b>each backend with a
+      different subset of workloads</b> in its geometric mean — Zig's 34 ms baseline means only
+      the largest workloads qualify for it. Fit wall time against interactions across sizes
+      instead: the <b>slope</b> is marginal throughput and the <b>intercept</b> is startup, which
+      cancels the noisy baseline exactly. Slope-fitted over 5 trials, interleaved, min of 7:
+      <b>C 56.1 M/s, Zig 57.8 M/s median, ranges fully overlapping.</b> They are statistically
+      indistinguishable. An early single fit said "Zig 25% faster"; that was noise. Never trust
+      one fit.</p>
+    </div>
+
+    <h3>ic32 swings 5× against itself depending on the workload</h3>
+    <p>Which is why a single headline throughput number for any interaction-net runtime should
+    be treated as a category error. These are all the same binary:</p>
+    <table>
+      <tr><th>workload family</th><th class="n">M interactions / sec</th><th>character</th></tr>
+      <tr><td>cnot chain</td><td class="n">30.3</td><td>duplicator-heavy, one reused label — <b>worst case</b></td></tr>
+      <tr><td>dup chain</td><td class="n">21.3</td><td>value-nested duplicators</td></tr>
+      <tr><td>WRL fold, w=20</td><td class="n">85.5</td><td>13.4 MB heap image, outgrows cache</td></tr>
+      <tr><td>WRL fold, w=16</td><td class="n">113.2</td><td>real application workload</td></tr>
+      <tr><td>WRL fold, w=8</td><td class="n">153.2</td><td>2.2 MB image, cache-resident</td></tr>
+      <tr><td>body-nested dup</td><td class="n">157.3</td><td><b>best case</b></td></tr>
+    </table>
+    <p class="cap">Benchmarking TRVM only on the cnot family understates it by roughly 4×.
+    Quoting only the WRL fold overstates it by the same margin. This page quotes the family
+    alongside every rate for that reason.</p>
+  </div>
+</section>
+
+<!-- ============ 0x04 · startup & reach ============ -->
+<section id="reach">
+  <div class="inner">
+    <div class="slot">slot 0x04 · startup and reach</div>
+    <h2>Runtimes differ far more in reach than in speed.</h2>
+
+    <h3>The 100× startup gap is a fixable defect, not a language difference</h3>
+    <p>All three native runtimes reserve the same 16M-slot, 128 MB heap. What they do with it
+    differs, and that difference <em>is</em> the entire gap:</p>
+    <table>
+      <tr><th>runtime</th><th>allocation</th><th class="n">startup</th></tr>
+      <tr><td>ic32 (C)</td><td><span class="k">calloc()</span> — kernel lazy zero pages, untouched</td><td class="n"><b>0.45 ms</b></td></tr>
+      <tr><td>ic32 (Zig)</td><td><span class="k">gpa.alloc</span> + <span class="k">@memset(heap,0)</span> — eagerly writes all 128 MB</td><td class="n">34 ms</td></tr>
+      <tr><td>ic32 (Mojo)</td><td><span class="k">List[UInt64](.., fill=0)</span> — eagerly writes all 128 MB</td><td class="n">48 ms</td></tr>
+    </table>
+    <p>A workload touching a few thousand slots pays to zero 128 MB it never reads. This is
+    invisible in interactions/sec and dominant for short reductions — which is most of them.
+    Neither <span class="k">@memset</span> nor <span class="k">fill=0</span> is required for
+    correctness; the runtimes bump-allocate and initialise slots on use.</p>
+    <p><b>Proven, not asserted:</b> a Zig variant replacing <span class="k">@memset</span> with an
+    anonymous <span class="k">mmap</span> (kernel zero pages, lazy) drops startup from 29.2 ms to
+    <b>0.4 ms</b> and then matches or beats C at every size, <b>bit-identically</b> — same normal
+    forms and same interaction counts on exp, fib, fact, parity, tetration and dup.</p>
+
+    <h3>Maximum readback depth</h3>
+    <p>Found by doubling <span class="k">exp 2^k</span> until the runtime stops being able to
+    read the answer back:</p>
+    <table id="depth-table"></table>
+    <p class="cap">The WASM ceiling reproduces the limitation <span class="k">IC32_WASM.md</span>
+    documents: recursive <span class="k">normal</span>/<span class="k">whnf</span> overflow V8's
+    call stack, and <span class="k">-Wl,-z,stack-size</span> cannot lift it because that sets the
+    linear-memory shadow stack, not V8's. <b>This is the single biggest gap between the WASM build
+    and the native ones</b> — bit-identical where it completes, but it completes 33 of 48 workloads.</p>
+
+    <div class="callout">
+      <div class="h">open defect · two ceilings, one diagnosed</div>
+      <p>At roughly 10<sup>6</sup> interactions on a default 8 MB stack, <b>ic32 segfaults</b> —
+      an unguarded C stack overflow in the reduction recursion, not the heap and not the printer
+      (it crashes identically with readback disabled, and completes correctly under
+      <span class="k">ulimit -s 65536</span>). That is distinct from ic32's <em>clean</em>
+      <span class="k">FATAL: heap overflow</span> at 1.5×10<sup>7</sup> interactions against the
+      16M-slot heap. The stack limit is the more serious of the two because it is silent, and it
+      is reachable by ordinary programs. It is the same recursive structure V8 truncates at 8,192
+      in the WASM build — one shape, three symptoms.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 0x05 · sharing ============ -->
+<section class="machine" id="sharing">
+  <div class="inner">
+    <div class="slot">slot 0x05 · optimal sharing</div>
+    <h2>16.7 million negations in 478 rewrites.</h2>
+    <p>Parity of 2<sup>N</sup>, computed as <span class="k">NOT</span> applied 2<sup>N</sup>
+    times. Interactions grow <b>linearly in N</b> while the semantics grows exponentially:</p>
+    <table>
+      <tr><th>2<sup>N</sup></th><th class="n">negations</th><th class="n">interactions</th><th class="n">20N − 2</th></tr>
+      <tr><td>2<sup>4</sup></td><td class="n">16</td><td class="n"><b>78</b></td><td class="n">78</td></tr>
+      <tr><td>2<sup>8</sup></td><td class="n">256</td><td class="n"><b>158</b></td><td class="n">158</td></tr>
+      <tr><td>2<sup>12</sup></td><td class="n">4,096</td><td class="n"><b>238</b></td><td class="n">238</td></tr>
+      <tr><td>2<sup>16</sup></td><td class="n">65,536</td><td class="n"><b>318</b></td><td class="n">318</td></tr>
+      <tr><td>2<sup>20</sup></td><td class="n">1,048,576</td><td class="n"><b>398</b></td><td class="n">398</td></tr>
+      <tr><td>2<sup>24</sup></td><td class="n">16,777,216</td><td class="n"><b>478</b></td><td class="n">478</td></tr>
+    </table>
+    <p>This is the optimal-λ-evaluation speedup and it falls out of the runtime unforced — no
+    memo table, no cache, no rewrite rules added. The sharing is genuine rather than degenerate:
+    odd exponents return FALSE (3<sup>15</sup>, 3<sup>9</sup>, 5<sup>11</sup>) and even return TRUE.
+    Parity of 5<sup>11</sup> = 48,828,125 negations takes 681 interactions.</p>
+
+    <div class="callout">
+      <div class="h">where the win actually lives — and where it evaporates</div>
+      <p><b>Optimal sharing pays only when the answer is small but the naive path is long.</b>
+      Parity of 2<sup>256</sup> is 5,118 interactions in 1.1 ms. But
+      <span class="k">exp 2^N</span>, whose <em>answer</em> has size 2<sup>N</sup>, costs
+      ∝2<sup>N</sup>: N=20 is 2,097,400 interactions, N=21 is 4,194,565, and N=22 dies with
+      <span class="k">FATAL: heap overflow</span>. No encoding trick beats an answer that big.</p>
+      <p>It is also <b>not a TRVM differentiator</b>. It is a property of the <em>encoding</em>, and
+      any optimal-sharing engine given the same encoding reproduces the same number — HVM4 does,
+      exactly. See the next section, and the <a href="#ledger" style="color:var(--brass)">correction</a>
+      where this page previously claimed otherwise.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 0x06 · vs HVM4 ============ -->
+<section id="hvm4">
+  <div class="inner">
+    <div class="slot">slot 0x06 · head-to-head</div>
+    <h2>Against another interaction-calculus engine.</h2>
+    <p>Comparing runtimes across surface syntaxes is where benchmark fraud usually lives, by
+    accident. So a <b>translator</b> for the pure-IC subset of HVM4's syntax carries <em>the same
+    bytes</em> to both engines, and doubles as a portability classifier: a program is in the
+    shared fragment if and only if it translates. Anything using native u32, constructors,
+    pattern-matching lambdas or string sugar fails translation and is reported as
+    out-of-fragment, <b>never silently skipped</b> — an early version truncated
+    <span class="k">1 + 2 + 3 + 4</span> to <span class="k">1</span> and scored it a pass.</p>
+
+    <h3>Given the same term, the two engines agree exactly</h3>
+    <p>Of HVM4's own 217-program test corpus, 36 are in the shared fragment and 29 run on both:
+    <b>23 produce alpha-equivalent normal forms, 6 differ only in how a residual superposition is
+    read back, and 0 genuinely disagree</b> — with the interaction count identical on every
+    single one. That extends across four orders of magnitude:</p>
+    <table>
+      <tr><th>cnot_N</th><th class="n">negations</th><th class="n">HVM4</th><th class="n">TRVM ic32</th><th></th></tr>
+      <tr><td>N = 12</td><td class="n">4,096</td><td class="n">57,396</td><td class="n">57,396</td><td class="win">exact</td></tr>
+      <tr><td>N = 16</td><td class="n">65,536</td><td class="n">917,572</td><td class="n">917,572</td><td class="win">exact</td></tr>
+      <tr><td>N = 18</td><td class="n">262,144</td><td class="n">3,670,092</td><td class="n">3,670,092</td><td class="win">exact</td></tr>
+    </table>
+
+    <h3>On identical work, HVM4 is ~3× faster per interaction</h3>
+    <p>Because the counts match exactly, wall time on this family is a pure engine comparison —
+    nothing about encoding or strategy is folded in:</p>
+    <table>
+      <tr><th>engine</th><th class="n">M interactions / s</th><th class="n">startup</th><th class="n">fit R²</th><th class="n">fitted over</th></tr>
+      <tr><td>HVM4</td><td class="n"><b>67.0</b></td><td class="n">134 ms</td><td class="n">0.9997</td><td class="n">N = 18..22</td></tr>
+      <tr><td>TRVM ic32</td><td class="n">23.4</td><td class="n"><b>~0 ms</b></td><td class="n">0.9996</td><td class="n">N = 14..19</td></tr>
+    </table>
+    <p>Each engine is fitted only over sizes where its own reduction dominates its own startup.
+    <b>Fitting both over the same sizes reports HVM4 at 754 M/s</b>, because its 115 ms launch
+    exceeds the entire reduction at every size TRVM can reach — pure launch noise presented as a
+    throughput number. The harness prints R² and a reduce/startup ratio and flags any fit that
+    fails them. TRVM's startup remains ~200× better, so it wins outright on short reductions,
+    which is most of them.</p>
+
+    <h3>And then total wall time inverts, by 1,600×</h3>
+    <p>On a value-nested duplicator chain at N=100,000 — <b>identical 300,000 interactions on both
+    engines</b>:</p>
+    <table>
+      <tr><th>N</th><th class="n">interactions</th><th class="n">HVM4 wall</th><th class="n">ic32 wall</th></tr>
+      <tr><td>25,000</td><td class="n">75,000</td><td class="n">2,003 ms</td><td class="n win">8.9 ms</td></tr>
+      <tr><td>50,000</td><td class="n">150,000</td><td class="n">9,821 ms</td><td class="n win">17.6 ms</td></tr>
+      <tr><td>100,000</td><td class="n">300,000</td><td class="n">36,075 ms</td><td class="n win">32.8 ms</td></tr>
+      <tr><td>200,000</td><td class="n">600,000</td><td class="n">132,559 ms</td><td class="n win">64.1 ms</td></tr>
+    </table>
+    <p><b>HVM4's parser is quadratic; its reducer is not.</b> Parked in an unused definition so it
+    is never reduced, parse alone at N=100,000 costs 55 s while HVM4's own reported reduce time
+    stays flat at ~0.15 s. Root-caused to <span class="k">count_uses</span> in
+    <span class="k">src/hvm.c</span>, which is called ~2N times and pops O(N) each — exactly
+    quadratic, 4.00× per doubling.</p>
+
+    <div class="callout">
+      <div class="h">the same function is also a memory-safety defect</div>
+      <p>That worklist is a fixed <span class="k">malloc(sizeof(Term) * 1024)</span> with no bounds
+      check on the push. An ASan build turns HVM4's vague <span class="k">double free or
+      corruption</span> into a precise <b>heap-buffer-overflow, WRITE of size 8, 0 bytes after an
+      8192-byte region</b>, at parse time. It is why HVM4 <b>cannot ingest the real WRL step term
+      at all</b> (which needs a worklist of 1,958) — so re-hosting TRVM's application workload on
+      HVM is not a slower option, it is not an option. One bug, two symptoms: the overflow and the
+      quadratic parse. Reported upstream as the buffer, not as the "342 duplicators" that happen to
+      cross it.</p>
+    </div>
+
+    <p class="cap">Caveats specific to this comparison: HVM4's default run stops at a residual term
+    with unresolved duplicators while TRVM's <span class="k">normal</span> always performs the full
+    readback, so the harness runs both modes and reports each — comparing plain HVM4 output to TRVM
+    compares two different questions. The 6 "superposition" rows are a readback-contract
+    difference, not a disagreement. One engine, one machine, one build. Ratios port, absolute
+    numbers do not.</p>
+  </div>
+</section>
+
+<!-- ============ 0x07 · application benchmark ============ -->
+<section class="machine" id="application">
+  <div class="inner">
+    <div class="slot">slot 0x07 · the benchmark that decided something</div>
+    <h2>Everything above measures the engine. This one measures the product.</h2>
+    <p>The application is a <b>WallRiderLang world fold</b> — the workload the Forge bench actually
+    runs: a compiled step term applied to a config and a state, once per epoch, for as many epochs
+    as the scenario has. It is the only benchmark here that answers a question anyone was going to
+    spend money on: <b>where does the time go, and what is worth optimising?</b></p>
+
+    <h3>Where one epoch goes today</h3>
+    <p>21 real epochs at 16-bit rotor width, C, median of 7 reps:</p>
+    <div class="bars">
+      <div class="bar-row">
+        <div class="lab"><span>today — the step term is re-parsed every epoch</span><b>206.96 ms / epoch</b></div>
+        <div class="bar"><span class="parse" style="width:99.36%"></span><span class="reduce" style="width:0.64%"></span></div>
+        <div class="bar-key"><span><i style="background:var(--rust)"></i>parse 205.3 ms · 99.2%</span><span><i style="background:var(--wire)"></i>reduce 1.33 ms · 0.6%</span></div>
+      </div>
+      <div class="bar-row">
+        <div class="lab"><span>parse the step term once, restore a heap snapshot per epoch</span><b>1.61 ms / epoch</b></div>
+        <div class="bar"><span class="restore" style="width:16.8%"></span><span class="parse" style="width:0.6%"></span><span class="reduce" style="width:82.6%"></span></div>
+        <div class="bar-key"><span><i style="background:var(--brass-soft)"></i>restore 0.27 ms</span><span><i style="background:var(--rust)"></i>parse 0.009 ms</span><span><i style="background:var(--wire)"></i>reduce 1.32 ms · 83%</span></div>
+      </div>
+    </div>
+    <p class="cap">Bars are to scale within each row, not across them. The reduce component is
+    <b>identical in both modes</b> — 27.83 ms vs 27.80 ms over 21 epochs — which is the check that
+    the change did no semantic work.</p>
+
+    <h3>So what is a faster engine worth here?</h3>
+    <table>
+      <tr><th>change</th><th class="n">ms / epoch</th><th class="n">speedup</th><th>what it optimises</th></tr>
+      <tr><td>today</td><td class="n">206.96</td><td class="n">1×</td><td>—</td></tr>
+      <tr><td>a 3.2× faster reducer</td><td class="n">205.7</td><td class="n warn">1.006×</td><td>the 0.6%</td></tr>
+      <tr><td>parse once + snapshot restore</td><td class="n"><b>1.61</b></td><td class="n win">129×</td><td>the 99.2%</td></tr>
+    </table>
+    <p>This is the finding. <b>The entire HVM4 speed advantage, applied perfectly and for free,
+    would move this product by 0.6%.</b> The boundary — re-serialising and re-parsing an 8.67 MB
+    term that is byte-identical on every epoch — is 99.2% of the bill, and fixing it is a change
+    to the process boundary, not to the calculus. No new identity construct, no new runtime
+    construct, no <span class="k">sem-</span> address moves.</p>
+
+    <h3>Report all three speedups, or none of them</h3>
+    <p>A snapshot has to be built before it can be restored, so the honest number depends on the
+    question. All three come from the same shipped run:</p>
+    <table>
+      <tr><th>width</th><th class="n">steady state</th><th class="n">amortized over 21 epochs</th><th class="n">epoch 1 alone</th><th class="n">breakeven</th></tr>
+      <tr><td>w = 8</td><td class="n">63.0×</td><td class="n">13.2×</td><td class="n warn">0.78×</td><td class="n">2 epochs</td></tr>
+      <tr><td>w = 16</td><td class="n">128.9×</td><td class="n">16.4×</td><td class="n warn">0.89×</td><td class="n">2 epochs</td></tr>
+      <tr><td>w = 20</td><td class="n">147.8×</td><td class="n">18.9×</td><td class="n">1.01×</td><td class="n">1 epoch</td></tr>
+    </table>
+    <p class="cap">Quoting only the steady-state number is the overclaim; quoting only the
+    amortized number understates it by 7.5×; and <b>on the very first epoch the change is a small
+    loss</b>. A harness that adds the one-time parse to one mode and omits it from the other
+    silently compares two different quantities — that mistake is in the
+    <a href="#ledger" style="color:var(--brass)">ledger</a>.</p>
+
+    <h3>Why it costs that much in the first place</h3>
+    <p>With no native numbers in the calculus, a w-bit arithmetic operation lowers to λ-terms
+    costing O(w²) interactions. Fitted from w=8 and w=20 and checked at w=12 and w=16:</p>
+    <div class="code">itrs/epoch = 593.0 * w<span class="g">²</span> + 1738          <span class="c">max error 0.18%</span>
+
+<span class="c">w= 8    39,689 itrs    step term  2.20 MB</span>
+<span class="c">w=12    87,285 itrs    step term  5.08 MB</span>
+<span class="c">w=16   153,723 itrs    step term  9.17 MB</span>
+<span class="c">w=20   238,929 itrs    step term 14.46 MB</span></div>
+    <p>The constant 1,738 is everything that is <em>not</em> bit-blasted arithmetic — 1.1% of the
+    work at w=8, 0.7% at w=20. So <b>roughly 99% of all interactions are simulated integer
+    arithmetic</b>, and a 32-bit rotor would cost 4× a 16-bit one.</p>
+    <p>That is the price of a <b>seven-tag calculus</b> —
+    <span class="k">VAR LAM APP ERA SUP DP0 DP1</span>, no numbers, no constructors, no
+    primitives — and it is a deliberate trade, not an oversight. Nothing being primitive is
+    exactly what makes a sealed semantic address <em>complete</em>: the artifact fully determines
+    behaviour, and a pure-Python reference implementation can provably agree with a C one. Make
+    <span class="k">+</span> an opcode and you are trusting C's <span class="k">+</span>; the
+    artifact no longer covers the semantics. <b>The finding is not that the trade was wrong. It is
+    that the bill had never been read.</b></p>
+
+    <h3>The fix ports — proven in a second language, not asserted</h3>
+    <p>"This ports to any flat-heap backend in ~40 lines" was an assertion holding up a 129×
+    decision, so it was measured. A Zig port of the same change, written against a runtime
+    developed separately:</p>
+    <table>
+      <tr><th></th><th class="n">C</th><th class="n">Zig</th><th class="n">gap</th></tr>
+      <tr><td>heap image bytes, w=16</td><td class="n">8,666,864</td><td class="n">8,666,864</td><td class="n win">identical</td></tr>
+      <tr><td>normal form, all widths</td><td class="n" colspan="2" style="text-align:center">byte-identical across all four engine × mode cells</td><td class="n win">identical</td></tr>
+      <tr><td>parse, ms/epoch (before)</td><td class="n">205.3</td><td class="n">108.1</td><td class="n warn">90%</td></tr>
+      <tr><td>steady state, ms/epoch (after)</td><td class="n">1.61</td><td class="n">1.44</td><td class="n win">12%</td></tr>
+    </table>
+    <p>Two parsers written independently in different languages build the <b>same size heap
+    image</b> — the snapshot is not a C trick. And the convergence <em>is</em> the portability
+    evidence: before the change the two languages differ by 90% because the work is parsing;
+    after it they differ by 12% because the work is reduction, and both kernels do the same
+    interactions. <b>The change moves the workload out of the part that varies by language into
+    the part that does not</b> — which is precisely what makes Zig, Mojo and WebAssembly viable
+    backends rather than curiosities.</p>
+    <p class="cap">Corollary worth stating plainly: <b>a speedup ratio is a property of the
+    baseline you escape.</b> Zig's speedup is roughly half of C's at every width — not because the
+    change works less well in Zig, but because Zig's parser was already twice as fast. Report the
+    absolute steady-state cost, where the two languages agree to within 12%, and treat the ratio
+    as commentary.</p>
+  </div>
+</section>
+
+<!-- ============ 0x08 · what it means ============ -->
+<section id="uses">
+  <div class="inner">
+    <div class="slot">slot 0x08 · practical reading</div>
+    <h2>What these numbers mean if you are actually going to use this.</h2>
+    <p>Benchmarks are only useful attached to a decision. Here are the decisions these support,
+    and the ones they refuse to support.</p>
+    <div class="uses">
+      <div class="use">
+        <div class="t">Ship the runtime to a browser</div>
+        <p>The WASM build is <b>bit-identical to the C build wherever it completes</b>, which is
+        what makes a client-side demo evidence rather than decoration. Budget around the one hard
+        limit: normal forms nested deeper than <b>8,192</b> hit V8's call-depth cap and cannot be
+        read back, so 33 of 48 workloads complete. Keep the answers shallow, or keep them on a server.</p>
+        <div class="r">safe · with a stated depth budget</div>
+      </div>
+      <div class="use">
+        <div class="t">Embed it in a CLI or an editor loop</div>
+        <p>Startup is <b>0.45 ms</b> for the C build against 115 ms for HVM4 — a ~200× gap that
+        decides every short reduction, and short reductions are most of them. If you invoke the
+        runtime per keystroke, per file save, or per test case, startup is your benchmark and
+        throughput is a footnote. Prefer C or a lazily-allocated build; Zig and Mojo currently pay
+        34–48 ms to zero a heap they never read.</p>
+        <div class="r">the strongest result on this page</div>
+      </div>
+      <div class="use">
+        <div class="t">Fold a long-running world, epoch after epoch</div>
+        <p>Do not shell out per epoch. <b>99.2% of a naive epoch is re-parsing a term that did not
+        change</b>, and a persistent process with a pre-parsed heap image is worth 129× where a
+        3.2× faster engine is worth 1.006×. Breakeven is 1–2 epochs, so the only case where it
+        loses is a single-shot run.</p>
+        <div class="r">129× · steady state, w=16</div>
+      </div>
+      <div class="use">
+        <div class="t">Run many independent replicas</div>
+        <p>Trajectories, scenarios and replicas are embarrassingly parallel and need no sharing.
+        But measure before you scale: the fold is <b>memory-bandwidth bound</b>, and replica-parallel
+        throughput saturates at <b>3.7–3.9×</b> on a 12-core machine regardless of heap size. The
+        parallelism axis is real; it is just narrower than core count suggests.</p>
+        <div class="r">3.8× ceiling · measured 1 → 24 replicas</div>
+      </div>
+      <div class="use">
+        <div class="t">Port the runtime to another language</div>
+        <p>Five implementations already agree byte-for-byte, so the contract is real and testable:
+        <b>term on stdin, normal form on stdout</b>, with the conformance vectors as the gate. Two
+        independently written parsers produce the same heap image size, and after the boundary fix
+        two languages agree on cost to within 12%. This is the least risky thing on the list.</p>
+        <div class="r">5 languages · 0 disagreements</div>
+      </div>
+      <div class="use no">
+        <div class="t">Expect optimal sharing to be your speedup</div>
+        <p><b>It usually will not be.</b> Sharing collapses exponential work only when the answer
+        stays small — parity of 2<sup>256</sup> in 5,118 interactions. When the answer itself is
+        large the cost tracks the answer, and heap overflow arrives on schedule. It is also not a
+        differentiator: another optimal engine given the same encoding produces the identical count.</p>
+        <div class="r">honest limit · not a selling point</div>
+      </div>
+      <div class="use no">
+        <div class="t">Reach for a GPU</div>
+        <p>Interaction-net reduction is uncoalesced pointer chasing over a large heap — the GPU's
+        worst access pattern — and the available intra-epoch parallelism <em>is</em> the simulated
+        arithmetic, which native numerics would delete rather than accelerate. <b>They are
+        substitutes, not complements.</b> Note also that this page's earlier parallelism estimate
+        was withdrawn outright, so treat any headroom figure here as unmeasured.</p>
+        <div class="r">not supported by current evidence</div>
+      </div>
+      <div class="use no">
+        <div class="t">Re-host on HVM4</div>
+        <p>Attractive on paper — native u32 and ~3× per interaction. In practice HVM4 <b>cannot
+        parse the real step term at all</b> (fixed 1024-entry worklist, heap-buffer-overflow at
+        parse time), its parser is quadratic, its startup is 115 ms against 0.5 ms, it has no
+        second implementation to check against, and the identity spine needs a frozen calculus
+        under our control. Measured, then ruled out.</p>
+        <div class="r">ruled out on evidence, not preference</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 0x09 · corrections ============ -->
+<section class="ledger" id="ledger">
+  <div class="inner">
+    <div class="slot">slot 0x09 · corrections and retractions</div>
+    <h2>Every number here that was published and then withdrawn.</h2>
+    <p>A benchmark page with no corrections section is either very young or not being checked.
+    These were all found by re-measuring claims that had already been written down — several of
+    them were flattering, which is exactly why they survived first review.</p>
+
+    <div class="led">
+      <div class="st wd">withdrawn</div>
+      <div>
+        <div class="h">"478 vs 234 million — TRVM achieves a sharing collapse HVM4 misses"</div>
+        <div class="was">was: a 490,000× advantage. is: no advantage; both engines produce both numbers.</div>
+        <p>It compared <b>two different programs</b>: TRVM's Church-exponentiation parity workload
+        against HVM4's N-level doubling chain. Given the same encoding each engine reproduces the
+        other's number exactly — HVM4 also does 2<sup>24</sup> parity in <b>478</b> interactions,
+        and both take ~2<sup>N</sup> on the doubling chain. The collapse is a property of the
+        encoding. This is why the whole HVM4 comparison was rebuilt around a translator that carries
+        the same bytes to both engines.</p>
+      </div>
+    </div>
+
+    <div class="led">
+      <div class="st wd">withdrawn</div>
+      <div>
+        <div class="h">Span and available-parallelism table</div>
+        <div class="was">was: ~15 rounds per epoch, flat in w; parallelism ~40w². is: withdrawn entirely.</div>
+        <p>The third instrumentation bug in that measurement: the sampling threshold was file-scope
+        while the interaction counter reset every epoch, so after a heavy epoch left the threshold
+        high, the <em>next</em> heavy epoch never crossed it — its work counted, its samples did
+        not. The workload is bimodal, so this deleted samples from exactly the epochs carrying the
+        parallelism. The repaired estimator converges only at w=8, where it reads ~124 rounds and
+        ~320 parallelism against the published 17.2 and 2,306. The argument that native numerics and
+        GPU are <em>substitutes</em> survives, because it rests on interaction counts rather than
+        span — but its headroom figure does not, and the honest reading is now more sceptical of GPU,
+        not less.</p>
+      </div>
+    </div>
+
+    <div class="led">
+      <div class="st">corrected</div>
+      <div>
+        <div class="h">Boundary-fix speedup: "~145×"</div>
+        <div class="was">was: 145×. is: 129× steady state at w=16, 16.4× amortized over 21 epochs, 0.89× on epoch 1.</div>
+        <p>Both harnesses added the one-time step parse to the fold mode and omitted it from the
+        re-parse mode, so the reported per-epoch figure meant "amortized" in one mode and
+        "steady-state" in the other. Comparing them directly gives 17×, understating by 7.5×; 145×
+        was the right quantity measured once. It is also width-dependent. All three numbers are now
+        published together, computed inside each repetition before summarizing — because
+        median(a+b+c) is not median(a)+median(b)+median(c) and these components have very different
+        spreads.</p>
+      </div>
+    </div>
+
+    <div class="led">
+      <div class="st">corrected</div>
+      <div>
+        <div class="h">"C is faster than Zig" — and then "Zig is 25% faster than C"</div>
+        <div class="was">was: 34.9 vs 30.9 M/s. is: 56.1 vs 57.8 M/s slope-fitted; statistically indistinguishable.</div>
+        <p>The geometric-mean table's confidence filter leaves each backend with a different subset
+        of workloads, so the two means are not like-for-like. The slope method — fit wall time
+        against interactions across sizes, take the slope as throughput and the intercept as startup
+        — cancels the baseline exactly. The opposite claim came from trusting a single fit. The
+        entire remaining difference is Zig's 24.6 ms fixed startup cost, and removing it makes the
+        two bit-identical <em>and</em> equal in speed.</p>
+      </div>
+    </div>
+
+    <div class="led">
+      <div class="st wd">measurement defect</div>
+      <div>
+        <div class="h">A 2.2× engine gap that did not exist</div>
+        <div class="was">was: zig_fold at w=16 reading 2.98 ms/epoch against C's 1.33. is: an artifact of measurement order.</div>
+        <p>The runner measured <b>cell-major</b> — all repetitions of one cell, then the next — so
+        each cell sampled a different 30-second window of a machine whose load is not stationary,
+        and a contention episode became a difference <em>between</em> cells rather than noise
+        <em>within</em> them. The symptom was specific enough to be convincing: the gap appeared at
+        one width only, while w=8 and w=20 tracked C exactly. There is no mechanism that makes a
+        port slow at one width. Fixed by interleaving rep-major.</p>
+      </div>
+    </div>
+
+    <div class="led">
+      <div class="st wd">measurement defect</div>
+      <div>
+        <div class="h">A busy machine moved the headline in the flattering direction</div>
+        <div class="was">was: 223.5× at w=16 on a contended run. is: 129× quiet — while the fold side moved only 2.6%.</div>
+        <p>Because the workload is memory-bandwidth bound, contention lands almost entirely on the
+        re-parse baseline. A busy machine therefore does not merely add noise, it <b>inflates the
+        ratio</b>. The runner now refuses to start above a 1-minute load average of 1.5, and records
+        load average and the busiest processes at both ends of every run. Second independent
+        argument for reporting the <em>absolute</em> steady-state cost and treating the ratio as
+        commentary.</p>
+      </div>
+    </div>
+
+    <div class="led">
+      <div class="st wd">evidence defect</div>
+      <div>
+        <div class="h">Standard output and standard error came from different process invocations</div>
+        <div class="was">was: a published error file next to a correct result file and a manifest saying it passed.</div>
+        <p>All three statements were true — about three <em>different</em> executions. Re-running
+        that command gives a clean exit and a matching hash, so it was never a real failure, which is
+        worse: the raw evidence was capable of contradicting the headline claim without anyone
+        noticing. Now one subprocess call produces stdout, stderr, exit code and timings together;
+        they are asserted against each other and published by atomic rename <b>or not at all</b>.
+        The published unit is the invocation, not the cell. Verified against that exact failure —
+        truncating an input aborts the run and publishes nothing, because a fail-closed script that
+        has never been seen to fail is untested.</p>
+      </div>
+    </div>
+
+    <div class="led">
+      <div class="st">corrected</div>
+      <div>
+        <div class="h">Quoting one engine rate for all workloads</div>
+        <div class="was">was: "ic32 does 23.4 M interactions/s". is: 21–157 M/s depending entirely on the workload.</div>
+        <p>23.4 M/s came from a slope fit on the cnot family, which is ic32's worst case. Measured
+        in-process on the actual application workload it does 104–130 M/s, falling to 53.5 M/s at
+        w=20 when the 14 MB image outgrows cache. Per-interaction rate is strongly workload- and
+        locality-dependent, so the "3× faster" ratio is <b>unmeasured on the application workload</b>
+        and must not be quoted for it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 0x0A · reproduce ============ -->
+<section class="machine" id="reproduce">
+  <div class="inner">
+    <div class="slot">slot 0x0A · reproduce</div>
+    <h2>Run it yourself.</h2>
+    <p>The conformance suite discovers whichever backends are built and names the ones that are
+    not. Nothing on this page requires trusting the table.</p>
+    <div class="code"><span class="c"># the six-runtime suite — correctness gate, throughput tier, depth ceiling</span>
+python3 bench/bench.py                        <span class="c"># full suite, ~6 min</span>
+python3 bench/bench.py --quick                <span class="c"># small sizes</span>
+python3 bench/bench.py --json bench/results.json
+
+<span class="c"># regenerate the conformance matrix on this page from that run</span>
+python3 site/build_benchmarks.py
+
+<span class="c"># head-to-head against HVM4 — same bytes, both engines</span>
+clang -O2 -o /tmp/hvm4 $HVM4_SRC/src/hvm.c    <span class="c"># build outside its repo</span>
+python3 bench/hvm4_families.py /tmp/cnot      <span class="c"># the two scaling families</span>
+python3 bench/hvm4_corpus.py                  <span class="c"># HVM4's own 217 tests, both engines</span>
+python3 bench/hvm4_throughput.py              <span class="c"># identical counts, so wall time is the engine</span></div>
+
+    <h3>Provenance</h3>
+    <div class="receipts">
+      <span class="receipt">machine <b>AMD Ryzen AI 9 HX 370</b> · 12 physical / 24 threads · 24 MB L3</span>
+      <span class="receipt">os <b>Linux 6.18.6 x86_64</b></span>
+      <span class="receipt">toolchain <b>gcc 15.2.1</b> · <b>zig 0.15.2</b> · <b>clang -O2</b></span>
+      <span class="receipt">conformance run <b id="p-sha">—</b></span>
+      <span class="receipt">application run <b>20260727T175133Z-1528358</b> · 12 cells × 7 reps · rep-major · all assertions passed</span>
+    </div>
+    <p class="cap" style="margin-top:22px">Standing caveats. Single machine, single run; absolute
+    times are not portable, ratios are. <span class="k">runtime/js/swarm.js</span> is excluded — it
+    is a distributed multi-worker harness, not a term-on-stdin reducer, so it does not share the
+    contract. The throughput tier includes readback in wall time, since not every backend has a
+    quiet mode; it is paid by all of them equally. The application figures come from an
+    out-of-tree prototype: they measure the process boundary, and no identity or runtime construct
+    was changed to obtain them.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="inner">
+    <div>TRVM · term-rewriting virtual machine<br>benchmarks · correctness first, then cost</div>
+    <div>
+      <a href="index.html">← the machine</a><br>
+      <a href="#ledger">corrections ledger</a><br>
+      <a href="#reproduce">reproduce locally</a>
+    </div>
+  </div>
+</footer>
+
+<script id="bench-data" type="application/json">{"source":"bench/results.json","sha256":"0824f8181ab4c7eadfa0c9f3b3679e1986d4f1a8a5c01a999cf893df008fd5fa","backends":["ic32 (C)","ic32 (Zig)","ic32 (Mojo)","ic32.wasm","ic_float (py)","ic_ref (py)"],"families":{"ic32 (C)":"ic32-floating-dup","ic32 (Zig)":"ic32-floating-dup","ic32 (Mojo)":"ic32-floating-dup","ic32.wasm":"ic32-floating-dup","ic_float (py)":"ic32-floating-dup","ic_ref (py)":"reference-simple-core"},"startup_ms":{"ic32 (C)":0.45,"ic32 (Zig)":34.33,"ic32 (Mojo)":48.18,"ic32.wasm":20.14,"ic_float (py)":12.98,"ic_ref (py)":28.81},"depth":{"ic32 (C)":{"deepest_ok":2097152,"first_failure":null,"reason":""},"ic32 (Zig)":{"deepest_ok":2097152,"first_failure":null,"reason":""},"ic32 (Mojo)":{"deepest_ok":2097152,"first_failure":null,"reason":""},"ic32.wasm":{"deepest_ok":8192,"first_failure":16384,"reason":"ERR WASM-ERR Maximum call stack size exceeded"},"ic_float (py)":{"deepest_ok":524288,"first_failure":1048576,"reason":"TIMEOUT"},"ic_ref (py)":{"deepest_ok":65536,"first_failure":131072,"reason":"ERR error=RuntimeError: whnf: step budget exhausted (probable no"}},"rows":[{"name":"mult 12x12","group":"arithmetic","want":144,"bytes":473,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":312,"ms":0.348},"ic32 (Zig)":{"ok":true,"status":"OK","itr":312,"ms":30.078},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":312,"ms":51.175},"ic32.wasm":{"ok":true,"status":"OK","itr":312,"ms":22.219},"ic_float (py)":{"ok":true,"status":"OK","itr":312,"ms":12.59},"ic_ref (py)":{"ok":true,"status":"OK","itr":312,"ms":28.793}}},{"name":"mult 20x20","group":"arithmetic","want":400,"bytes":865,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":840,"ms":0.366},"ic32 (Zig)":{"ok":true,"status":"OK","itr":840,"ms":29.463},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":840,"ms":45.761},"ic32.wasm":{"ok":true,"status":"OK","itr":840,"ms":22.321},"ic_float (py)":{"ok":true,"status":"OK","itr":840,"ms":13.698},"ic_ref (py)":{"ok":true,"status":"OK","itr":840,"ms":30.487}}},{"name":"mult 50x50","group":"arithmetic","want":2500,"bytes":2365,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":5100,"ms":0.54},"ic32 (Zig)":{"ok":true,"status":"OK","itr":5100,"ms":28.055},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":5100,"ms":43.48},"ic32.wasm":{"ok":true,"status":"OK","itr":5100,"ms":20.738},"ic_float (py)":{"ok":true,"status":"OK","itr":5100,"ms":25.173},"ic_ref (py)":{"ok":true,"status":"OK","itr":5100,"ms":35.664}}},{"name":"mult 80x80","group":"arithmetic","want":6400,"bytes":3903,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":12960,"ms":0.701},"ic32 (Zig)":{"ok":true,"status":"OK","itr":12960,"ms":31.68},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":12960,"ms":44.843},"ic32.wasm":{"ok":true,"status":"OK","itr":12960,"ms":24.08},"ic_float (py)":{"ok":true,"status":"OK","itr":12960,"ms":44.42},"ic_ref (py)":{"ok":true,"status":"OK","itr":12960,"ms":56.375}}},{"name":"exp 2^3","group":"arithmetic","want":8,"bytes":96,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":43,"ms":0.372},"ic32 (Zig)":{"ok":true,"status":"OK","itr":43,"ms":26.197},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":43,"ms":45.324},"ic32.wasm":{"ok":true,"status":"OK","itr":43,"ms":21.48},"ic_float (py)":{"ok":true,"status":"OK","itr":43,"ms":12.804},"ic_ref (py)":{"ok":true,"status":"OK","itr":33,"ms":24.149}}},{"name":"exp 3^5","group":"arithmetic","want":243,"bytes":159,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":562,"ms":0.419},"ic32 (Zig)":{"ok":true,"status":"OK","itr":562,"ms":23.231},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":562,"ms":45.035},"ic32.wasm":{"ok":true,"status":"OK","itr":562,"ms":20.643},"ic_float (py)":{"ok":true,"status":"OK","itr":562,"ms":12.264},"ic_ref (py)":{"ok":true,"status":"OK","itr":286,"ms":23.972}}},{"name":"exp 2^8","group":"arithmetic","want":256,"bytes":201,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":604,"ms":0.358},"ic32 (Zig)":{"ok":true,"status":"OK","itr":604,"ms":27.057},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":604,"ms":42.955},"ic32.wasm":{"ok":true,"status":"OK","itr":604,"ms":21.425},"ic_float (py)":{"ok":true,"status":"OK","itr":604,"ms":13.305},"ic_ref (py)":{"ok":true,"status":"OK","itr":564,"ms":31.525}}},{"name":"exp 3^10","group":"arithmetic","want":59049,"bytes":264,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":118269,"ms":3.478},"ic32 (Zig)":{"ok":true,"status":"OK","itr":118269,"ms":31.112},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":118269,"ms":46.108},"ic32.wasm":{"ok":false,"status":"ERR WASM-ERR Maximum call stack size exceeded","itr":null,"ms":20.119},"ic_float (py)":{"ok":true,"status":"OK","itr":118269,"ms":517.551},"ic_ref (py)":{"ok":true,"status":"OK","itr":59137,"ms":224.806}}},{"name":"exp 2^12","group":"arithmetic","want":4096,"bytes":289,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":8336,"ms":0.509},"ic32 (Zig)":{"ok":true,"status":"OK","itr":8336,"ms":26.606},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":8336,"ms":39.985},"ic32.wasm":{"ok":true,"status":"OK","itr":8336,"ms":20.141},"ic_float (py)":{"ok":true,"status":"OK","itr":8336,"ms":30.226},"ic_ref (py)":{"ok":true,"status":"OK","itr":8272,"ms":34.031}}},{"name":"exp 2^16","group":"arithmetic","want":65536,"bytes":389,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":131268,"ms":4.154},"ic32 (Zig)":{"ok":true,"status":"OK","itr":131268,"ms":27.995},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":131268,"ms":45.665},"ic32.wasm":{"ok":false,"status":"ERR WASM-ERR Maximum call stack size exceeded","itr":null,"ms":24.325},"ic_float (py)":{"ok":true,"status":"OK","itr":131268,"ms":584.676},"ic_ref (py)":{"ok":true,"status":"OK","itr":131180,"ms":314.654}}},{"name":"tetration 2^^3","group":"arithmetic","want":16,"bytes":110,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":75,"ms":0.379},"ic32 (Zig)":{"ok":true,"status":"OK","itr":75,"ms":25.45},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":75,"ms":40.295},"ic32.wasm":{"ok":true,"status":"OK","itr":75,"ms":20.202},"ic_float (py)":{"ok":true,"status":"OK","itr":75,"ms":13.818},"ic_ref (py)":{"ok":true,"status":"OK","itr":42,"ms":28.792}}},{"name":"tetration 3^^2","group":"arithmetic","want":27,"bytes":117,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":92,"ms":0.42},"ic32 (Zig)":{"ok":true,"status":"OK","itr":92,"ms":27.116},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":92,"ms":40.371},"ic32.wasm":{"ok":true,"status":"OK","itr":92,"ms":21.58},"ic_float (py)":{"ok":true,"status":"OK","itr":92,"ms":12.989},"ic_ref (py)":{"ok":true,"status":"OK","itr":52,"ms":26.638}}},{"name":"tetration 2^^4","group":"arithmetic","want":65536,"bytes":145,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":131204,"ms":4.143},"ic32 (Zig)":{"ok":true,"status":"OK","itr":131204,"ms":27.522},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":131204,"ms":46.915},"ic32.wasm":{"ok":false,"status":"ERR WASM-ERR Maximum call stack size exceeded","itr":null,"ms":22.785},"ic_float (py)":{"ok":true,"status":"OK","itr":131204,"ms":525.82},"ic_ref (py)":{"ok":true,"status":"OK","itr":95,"ms":23.024}}},{"name":"gauss T(10)","group":"arithmetic","want":55,"bytes":1126,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":65,"ms":0.34},"ic32 (Zig)":{"ok":true,"status":"OK","itr":65,"ms":23.033},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":65,"ms":38.432},"ic32.wasm":{"ok":true,"status":"OK","itr":65,"ms":17.531},"ic_float (py)":{"ok":true,"status":"OK","itr":65,"ms":11.453},"ic_ref (py)":{"ok":true,"status":"OK","itr":65,"ms":25.036}}},{"name":"gauss T(30)","group":"arithmetic","want":465,"bytes":10438,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":495,"ms":0.528},"ic32 (Zig)":{"ok":true,"status":"OK","itr":495,"ms":24.123},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":495,"ms":40.062},"ic32.wasm":{"ok":true,"status":"OK","itr":495,"ms":22.921},"ic_float (py)":{"ok":true,"status":"OK","itr":495,"ms":14.365},"ic_ref (py)":{"ok":true,"status":"OK","itr":495,"ms":33.034}}},{"name":"gauss T(60)","group":"arithmetic","want":1830,"bytes":44788,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":1890,"ms":0.847},"ic32 (Zig)":{"ok":true,"status":"OK","itr":1890,"ms":25.205},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":1890,"ms":41.103},"ic32.wasm":{"ok":true,"status":"OK","itr":1890,"ms":24.336},"ic_float (py)":{"ok":true,"status":"OK","itr":1890,"ms":26.883},"ic_ref (py)":{"ok":true,"status":"OK","itr":1890,"ms":48.176}}},{"name":"fib(10)","group":"recursion","want":55,"bytes":393,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"step function contains a duplicator","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":922,"ms":0.375},"ic32 (Zig)":{"ok":true,"status":"OK","itr":922,"ms":24.649},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":922,"ms":39.52},"ic32.wasm":{"ok":true,"status":"OK","itr":922,"ms":18.051},"ic_float (py)":{"ok":true,"status":"OK","itr":922,"ms":14.521},"ic_ref (py)":{"ok":true,"status":"OK","itr":601,"ms":28.757}}},{"name":"fib(15)","group":"recursion","want":610,"bytes":519,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"step function contains a duplicator","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":7242,"ms":0.48},"ic32 (Zig)":{"ok":true,"status":"OK","itr":7242,"ms":23.05},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":7242,"ms":41.002},"ic32.wasm":{"ok":true,"status":"OK","itr":7242,"ms":22.06},"ic_float (py)":{"ok":true,"status":"OK","itr":7242,"ms":27.134},"ic_ref (py)":{"ok":true,"status":"OK","itr":4318,"ms":32.072}}},{"name":"fib(20)","group":"recursion","want":6765,"bytes":649,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"step function contains a duplicator","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":75667,"ms":1.571},"ic32 (Zig)":{"ok":true,"status":"OK","itr":75667,"ms":24.946},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":75667,"ms":40.347},"ic32.wasm":{"ok":true,"status":"OK","itr":75667,"ms":23.474},"ic_float (py)":{"ok":true,"status":"OK","itr":75667,"ms":374.507},"ic_ref (py)":{"ok":true,"status":"OK","itr":44279,"ms":71.23}}},{"name":"fib(22)","group":"recursion","want":17711,"bytes":701,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"step function contains a duplicator","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":197126,"ms":3.841},"ic32 (Zig)":{"ok":true,"status":"OK","itr":197126,"ms":27.289},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":197126,"ms":44.474},"ic32.wasm":{"ok":false,"status":"ERR WASM-ERR Maximum call stack size exceeded","itr":null,"ms":22.419},"ic_float (py)":{"ok":true,"status":"OK","itr":197126,"ms":909.746},"ic_ref (py)":{"ok":true,"status":"OK","itr":115173,"ms":149.205}}},{"name":"fact(5)","group":"recursion","want":120,"bytes":301,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"step function contains a duplicator","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":485,"ms":0.361},"ic32 (Zig)":{"ok":true,"status":"OK","itr":485,"ms":25.779},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":485,"ms":42.234},"ic32.wasm":{"ok":true,"status":"OK","itr":485,"ms":18.973},"ic_float (py)":{"ok":true,"status":"OK","itr":485,"ms":13.15},"ic_ref (py)":{"ok":false,"status":"ERR error=RuntimeError: whnf: step budget exhausted (probable no","itr":null,"ms":178.921}}},{"name":"fact(6)","group":"recursion","want":720,"bytes":323,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"step function contains a duplicator","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":1755,"ms":0.577},"ic32 (Zig)":{"ok":true,"status":"OK","itr":1755,"ms":32.015},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":1755,"ms":44.284},"ic32.wasm":{"ok":true,"status":"OK","itr":1755,"ms":21.99},"ic_float (py)":{"ok":true,"status":"OK","itr":1755,"ms":17.054},"ic_ref (py)":{"ok":false,"status":"ERR error=RuntimeError: whnf: step budget exhausted (probable no","itr":null,"ms":144.685}}},{"name":"fact(7)","group":"recursion","want":5040,"bytes":345,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"step function contains a duplicator","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":10471,"ms":0.625},"ic32 (Zig)":{"ok":true,"status":"OK","itr":10471,"ms":28.152},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":10471,"ms":42.231},"ic32.wasm":{"ok":true,"status":"OK","itr":10471,"ms":19.092},"ic_float (py)":{"ok":true,"status":"OK","itr":10471,"ms":32.635},"ic_ref (py)":{"ok":false,"status":"ERR error=RuntimeError: whnf: step budget exhausted (probable no","itr":null,"ms":146.086}}},{"name":"fact(8)","group":"recursion","want":40320,"bytes":367,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"step function contains a duplicator","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":81113,"ms":2.434},"ic32 (Zig)":{"ok":true,"status":"OK","itr":81113,"ms":28.864},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":81113,"ms":47.364},"ic32.wasm":{"ok":false,"status":"ERR WASM-ERR Maximum call stack size exceeded","itr":null,"ms":21.742},"ic_float (py)":{"ok":true,"status":"OK","itr":81113,"ms":242.343},"ic_ref (py)":{"ok":false,"status":"ERR error=RuntimeError: whnf: step budget exhausted (probable no","itr":null,"ms":154.714}}},{"name":"pred(10)","group":"recursion","want":9,"bytes":378,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":426,"ms":0.36},"ic32 (Zig)":{"ok":true,"status":"OK","itr":426,"ms":27.168},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":426,"ms":42.812},"ic32.wasm":{"ok":true,"status":"OK","itr":426,"ms":19.578},"ic_float (py)":{"ok":true,"status":"OK","itr":426,"ms":11.168},"ic_ref (py)":{"ok":true,"status":"OK","itr":248,"ms":28.382}}},{"name":"pred(50)","group":"recursion","want":49,"bytes":1414,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":5166,"ms":0.423},"ic32 (Zig)":{"ok":true,"status":"OK","itr":5166,"ms":25.937},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":5166,"ms":40.386},"ic32.wasm":{"ok":true,"status":"OK","itr":5166,"ms":18.279},"ic_float (py)":{"ok":true,"status":"OK","itr":5166,"ms":22.165},"ic_ref (py)":{"ok":true,"status":"OK","itr":1248,"ms":25.716}}},{"name":"pred(150)","group":"recursion","want":149,"bytes":4210,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":38016,"ms":0.938},"ic32 (Zig)":{"ok":true,"status":"OK","itr":38016,"ms":26.292},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":38016,"ms":42.126},"ic32.wasm":{"ok":true,"status":"OK","itr":38016,"ms":24.869},"ic_float (py)":{"ok":true,"status":"OK","itr":38016,"ms":81.479},"ic_ref (py)":{"ok":true,"status":"OK","itr":3748,"ms":31.075}}},{"name":"ackermann(0,3)","group":"recursion","want":4,"bytes":166,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":10,"ms":0.423},"ic32 (Zig)":{"ok":true,"status":"OK","itr":10,"ms":26.001},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":10,"ms":39.708},"ic32.wasm":{"ok":true,"status":"OK","itr":10,"ms":19.471},"ic_float (py)":{"ok":true,"status":"OK","itr":10,"ms":12.847},"ic_ref (py)":{"ok":true,"status":"OK","itr":10,"ms":24.51}}},{"name":"ackermann(1,4)","group":"recursion","want":6,"bytes":192,"timed":false,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":72,"ms":0.321},"ic32 (Zig)":{"ok":true,"status":"OK","itr":72,"ms":24.026},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":72,"ms":39.762},"ic32.wasm":{"ok":true,"status":"OK","itr":72,"ms":19.933},"ic_float (py)":{"ok":true,"status":"OK","itr":72,"ms":14.106},"ic_ref (py)":{"ok":true,"status":"OK","itr":66,"ms":26.771}}},{"name":"ackermann(2,2)","group":"recursion","want":null,"bytes":170,"timed":false,"verdict":"diverge-agreed","nf":true,"itr_agree":true,"note":"outside IC's safe labelling fragment - must diverge everywhere","cells":{"ic32 (C)":{"ok":false,"status":"TIMEOUT","itr":null,"ms":40000.0},"ic32 (Zig)":{"ok":false,"status":"TIMEOUT","itr":null,"ms":40000.0},"ic32 (Mojo)":{"ok":false,"status":"TIMEOUT","itr":null,"ms":40000.0},"ic32.wasm":{"ok":false,"status":"TIMEOUT","itr":null,"ms":40000.0},"ic_float (py)":{"ok":false,"status":"ERR error=RECURSION","itr":null,"ms":1560.647},"ic_ref (py)":{"ok":false,"status":"ERR error=RuntimeError: whnf: step budget exhausted (probable no","itr":null,"ms":144.986}}},{"name":"parity 2^4","group":"sharing","want":"\u03bba.\u03bbb.a","bytes":144,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"16 negations","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":78,"ms":0.279},"ic32 (Zig)":{"ok":true,"status":"OK","itr":78,"ms":29.214},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":78,"ms":47.856},"ic32.wasm":{"ok":true,"status":"OK","itr":78,"ms":23.373},"ic_float (py)":{"ok":true,"status":"OK","itr":78,"ms":10.369},"ic_ref (py)":{"ok":false,"status":"ERR error=RuntimeError: whnf: step budget exhausted (probable no","itr":null,"ms":147.445}}},{"name":"parity 2^8","group":"sharing","want":"\u03bba.\u03bbb.a","bytes":232,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"256 negations","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":158,"ms":0.316},"ic32 (Zig)":{"ok":true,"status":"OK","itr":158,"ms":29.393},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":158,"ms":42.932},"ic32.wasm":{"ok":true,"status":"OK","itr":158,"ms":22.284},"ic_float (py)":{"ok":true,"status":"OK","itr":158,"ms":14.005},"ic_ref (py)":{"ok":false,"status":"ERR error=RuntimeError: whnf: step budget exhausted (probable no","itr":null,"ms":167.548}}},{"name":"parity 2^12","group":"sharing","want":"\u03bba.\u03bbb.a","bytes":324,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"4,096 negations","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":238,"ms":0.536},"ic32 (Zig)":{"ok":true,"status":"OK","itr":238,"ms":28.892},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":238,"ms":44.45},"ic32.wasm":{"ok":true,"status":"OK","itr":238,"ms":22.378},"ic_float (py)":{"ok":true,"status":"OK","itr":238,"ms":12.093},"ic_ref (py)":{"ok":false,"status":"ERR error=RuntimeError: whnf: step budget exhausted (probable no","itr":null,"ms":146.826}}},{"name":"parity 2^16","group":"sharing","want":"\u03bba.\u03bbb.a","bytes":428,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"65,536 negations","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":318,"ms":0.676},"ic32 (Zig)":{"ok":true,"status":"OK","itr":318,"ms":26.672},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":318,"ms":42.5},"ic32.wasm":{"ok":true,"status":"OK","itr":318,"ms":23.589},"ic_float (py)":{"ok":true,"status":"OK","itr":318,"ms":14.407},"ic_ref (py)":{"ok":false,"status":"ERR error=RuntimeError: whnf: step budget exhausted (probable no","itr":null,"ms":188.09}}},{"name":"parity 2^20","group":"sharing","want":"\u03bba.\u03bbb.a","bytes":532,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"1,048,576 negations","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":398,"ms":0.626},"ic32 (Zig)":{"ok":true,"status":"OK","itr":398,"ms":27.404},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":398,"ms":41.907},"ic32.wasm":{"ok":true,"status":"OK","itr":398,"ms":18.985},"ic_float (py)":{"ok":true,"status":"OK","itr":398,"ms":12.687},"ic_ref (py)":{"ok":false,"status":"ERR error=RuntimeError: whnf: step budget exhausted (probable no","itr":null,"ms":220.341}}},{"name":"parity 2^24","group":"sharing","want":"\u03bba.\u03bbb.a","bytes":636,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"16,777,216 negations","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":478,"ms":0.449},"ic32 (Zig)":{"ok":true,"status":"OK","itr":478,"ms":26.602},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":478,"ms":44.682},"ic32.wasm":{"ok":true,"status":"OK","itr":478,"ms":24.662},"ic_float (py)":{"ok":true,"status":"OK","itr":478,"ms":14.56},"ic_ref (py)":{"ok":false,"status":"ERR error=RuntimeError: whnf: step budget exhausted (probable no","itr":null,"ms":238.937}}},{"name":"dup depth 8","group":"sharing","want":"\u03bba.a","bytes":180,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":24,"ms":0.338},"ic32 (Zig)":{"ok":true,"status":"OK","itr":24,"ms":31.626},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":24,"ms":43.218},"ic32.wasm":{"ok":true,"status":"OK","itr":24,"ms":20.914},"ic_float (py)":{"ok":true,"status":"OK","itr":24,"ms":10.77},"ic_ref (py)":{"ok":true,"status":"OK","itr":24,"ms":25.163}}},{"name":"dup depth 16","group":"sharing","want":"\u03bba.a","bytes":380,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":48,"ms":0.453},"ic32 (Zig)":{"ok":true,"status":"OK","itr":48,"ms":27.684},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":48,"ms":43.074},"ic32.wasm":{"ok":true,"status":"OK","itr":48,"ms":20.976},"ic_float (py)":{"ok":true,"status":"OK","itr":48,"ms":13.056},"ic_ref (py)":{"ok":true,"status":"OK","itr":48,"ms":25.878}}},{"name":"dup depth 24","group":"sharing","want":"\u03bba.a","bytes":588,"timed":false,"verdict":"correct","nf":true,"itr_agree":true,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":72,"ms":0.451},"ic32 (Zig)":{"ok":true,"status":"OK","itr":72,"ms":29.373},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":72,"ms":46.189},"ic32.wasm":{"ok":true,"status":"OK","itr":72,"ms":18.488},"ic_float (py)":{"ok":true,"status":"OK","itr":72,"ms":13.397},"ic_ref (py)":{"ok":true,"status":"OK","itr":72,"ms":28.222}}},{"name":"exp 2^14","group":"throughput","want":16384,"bytes":353,"timed":true,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":32938,"ms":1.295},"ic32 (Zig)":{"ok":true,"status":"OK","itr":32938,"ms":28.227},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":32938,"ms":47.982},"ic32.wasm":{"ok":false,"status":"ERR WASM-ERR Maximum call stack size exceeded","itr":null,"ms":24.821},"ic_float (py)":{"ok":true,"status":"OK","itr":32938,"ms":101.621},"ic_ref (py)":{"ok":true,"status":"OK","itr":32862,"ms":77.123}}},{"name":"exp 2^16","group":"throughput","want":65536,"bytes":405,"timed":true,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":131268,"ms":3.681},"ic32 (Zig)":{"ok":true,"status":"OK","itr":131268,"ms":35.934},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":131268,"ms":56.427},"ic32.wasm":{"ok":false,"status":"ERR WASM-ERR Maximum call stack size exceeded","itr":null,"ms":25.064},"ic_float (py)":{"ok":true,"status":"OK","itr":131268,"ms":574.637},"ic_ref (py)":{"ok":true,"status":"OK","itr":131180,"ms":312.929}}},{"name":"exp 3^12","group":"throughput","want":531441,"bytes":323,"timed":true,"verdict":"correct","nf":true,"itr_agree":true,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":1063091,"ms":28.276},"ic32 (Zig)":{"ok":true,"status":"OK","itr":1063091,"ms":56.26},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":1063091,"ms":101.019},"ic32.wasm":{"ok":false,"status":"ERR WASM-ERR Maximum call stack size exceeded","itr":null,"ms":28.488},"ic_float (py)":{"ok":true,"status":"OK","itr":1063091,"ms":17758.215},"ic_ref (py)":{"ok":false,"status":"ERR error=RuntimeError: whnf: step budget exhausted (probable no","itr":null,"ms":347.969}}},{"name":"exp 2^20","group":"throughput","want":1048576,"bytes":509,"timed":true,"verdict":"correct","nf":true,"itr_agree":true,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":2097400,"ms":68.346},"ic32 (Zig)":{"ok":true,"status":"OK","itr":2097400,"ms":93.969},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":2097400,"ms":178.856},"ic32.wasm":{"ok":false,"status":"ERR WASM-ERR Maximum call stack size exceeded","itr":null,"ms":27.735},"ic_float (py)":{"ok":false,"status":"TIMEOUT","itr":null,"ms":40000.0},"ic_ref (py)":{"ok":false,"status":"ERR error=RuntimeError: whnf: step budget exhausted (probable no","itr":null,"ms":483.365}}},{"name":"mult 300x300","group":"throughput","want":90000,"bytes":17093,"timed":true,"verdict":"correct","nf":true,"itr_agree":true,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":180600,"ms":8.049},"ic32 (Zig)":{"ok":true,"status":"OK","itr":180600,"ms":50.378},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":180600,"ms":78.311},"ic32.wasm":{"ok":false,"status":"ERR WASM-ERR Maximum call stack size exceeded","itr":null,"ms":37.228},"ic_float (py)":{"ok":true,"status":"OK","itr":180600,"ms":1621.316},"ic_ref (py)":{"ok":true,"status":"OK","itr":180600,"ms":890.374}}},{"name":"mult 700x700","group":"throughput","want":490000,"bytes":41093,"timed":true,"verdict":"correct","nf":true,"itr_agree":true,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":981400,"ms":33.556},"ic32 (Zig)":{"ok":true,"status":"OK","itr":981400,"ms":70.435},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":981400,"ms":128.829},"ic32.wasm":{"ok":false,"status":"ERR WASM-ERR Maximum call stack size exceeded","itr":null,"ms":34.922},"ic_float (py)":{"ok":true,"status":"OK","itr":981400,"ms":18189.898},"ic_ref (py)":{"ok":false,"status":"ERR error=RuntimeError: whnf: step budget exhausted (probable no","itr":null,"ms":1190.326}}},{"name":"fib(22)","group":"throughput","want":17711,"bytes":701,"timed":true,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":197126,"ms":4.794},"ic32 (Zig)":{"ok":true,"status":"OK","itr":197126,"ms":42.525},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":197126,"ms":61.562},"ic32.wasm":{"ok":false,"status":"ERR WASM-ERR Maximum call stack size exceeded","itr":null,"ms":33.384},"ic_float (py)":{"ok":true,"status":"OK","itr":197126,"ms":1077.494},"ic_ref (py)":{"ok":true,"status":"OK","itr":115173,"ms":186.954}}},{"name":"fib(25)","group":"throughput","want":75025,"bytes":779,"timed":true,"verdict":"correct","nf":true,"itr_agree":true,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":832847,"ms":20.069},"ic32 (Zig)":{"ok":true,"status":"OK","itr":832847,"ms":49.236},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":832847,"ms":90.406},"ic32.wasm":{"ok":false,"status":"ERR WASM-ERR Maximum call stack size exceeded","itr":null,"ms":33.614},"ic_float (py)":{"ok":true,"status":"OK","itr":832847,"ms":5218.594},"ic_ref (py)":{"ok":false,"status":"ERR error=RuntimeError: whnf: step budget exhausted (probable no","itr":null,"ms":209.258}}},{"name":"tetration 2^^4","group":"throughput","want":65536,"bytes":149,"timed":true,"verdict":"correct","nf":true,"itr_agree":false,"note":"","cells":{"ic32 (C)":{"ok":true,"status":"OK","itr":131204,"ms":4.074},"ic32 (Zig)":{"ok":true,"status":"OK","itr":131204,"ms":32.228},"ic32 (Mojo)":{"ok":true,"status":"OK","itr":131204,"ms":48.116},"ic32.wasm":{"ok":false,"status":"ERR WASM-ERR Maximum call stack size exceeded","itr":null,"ms":25.594},"ic_float (py)":{"ok":true,"status":"OK","itr":131204,"ms":527.772},"ic_ref (py)":{"ok":true,"status":"OK","itr":95,"ms":24.352}}}]}</script>
+<script>
+(function(){
+"use strict";
+var D;
+try{ D = JSON.parse(document.getElementById('bench-data').textContent); }catch(e){ D = null; }
+if(!D || !D.rows){ return; }
+
+var BE = D.backends, ROWS = D.rows;
+var SHORT = {'ic32 (C)':'ic32<br>C','ic32 (Zig)':'ic32z<br>Zig','ic32 (Mojo)':'ic32m<br>Mojo',
+             'ic32.wasm':'ic32<br>wasm','ic_float (py)':'ic_float<br>py','ic_ref (py)':'ic_ref<br>py'};
+var FAM = BE.filter(function(b){ return D.families[b] === 'ic32-floating-dup'; });
+
+function fmt(n){ return n === null || n === undefined ? '' : n.toLocaleString('en-US'); }
+function ms(n){ return n === null || n === undefined ? '' : (n < 10 ? n.toFixed(2) : Math.round(n).toLocaleString('en-US')) + ' ms'; }
+function why(s){
+  if(/call stack/i.test(s)) return 'depth cap';
+  if(/step budget/i.test(s)) return 'step budget';
+  if(/TIMEOUT/i.test(s)) return 'timeout';
+  if(/heap overflow/i.test(s)) return 'heap';
+  return 'error';
+}
+
+/* ---- summary cards, all counted from the data ---- */
+var nNf = ROWS.filter(function(r){ return r.nf; }).length;
+var famDis = ROWS.filter(function(r){
+  var v = FAM.map(function(b){ return r.cells[b].itr; }).filter(function(x){ return x !== null && x !== undefined; });
+  return v.length > 1 && v.some(function(x){ return x !== v[0]; });
+}).length;
+var refDiff = ROWS.filter(function(r){
+  var ref = r.cells['ic_ref (py)'] && r.cells['ic_ref (py)'].itr;
+  var c = r.cells['ic32 (C)'] && r.cells['ic32 (C)'].itr;
+  return ref !== null && ref !== undefined && c !== null && c !== undefined && ref !== c;
+}).length;
+var diverge = ROWS.filter(function(r){ return r.verdict !== 'correct'; }).length;
+
+document.getElementById('mx-summary').innerHTML = [
+  ['normal-form agreement', nNf + ' / ' + ROWS.length, 'Every workload, every runtime that completed it, byte-identical.'],
+  ['interaction disagreements<br>inside the IC32 family', String(famDis), famDis === 0 ? 'Stronger than the conformance contract asks for.' : 'Investigate before reading any timing below.'],
+  ['ic_ref counts differing<br>from the family', String(refDiff), 'Expected — a different model reaching the same answers by a different path.'],
+  ['workloads that diverge', String(diverge), 'Ackermann at m ≥ 2 — and all six runtimes agree on diverging.']
+].map(function(c){
+  return '<div class="sm"><div class="t">' + c[0] + '</div><div class="v">' + c[1] + '</div><div class="d">' + c[2] + '</div></div>';
+}).join('');
+
+document.getElementById('s-nf').textContent = nNf + ' / ' + ROWS.length;
+document.getElementById('s-workloads').textContent = ROWS.length + ' \u00d7 ' + BE.length;
+document.getElementById('p-sha').textContent = D.sha256.slice(0, 16) + '\u2026';
+
+/* ---- depth ceiling table ---- */
+var LABEL = {'ic32 (C)':'ic32 (C)','ic32 (Zig)':'ic32 (Zig)','ic32 (Mojo)':'ic32 (Mojo)',
+             'ic32.wasm':'ic32.wasm','ic_float (py)':'ic_float (py)','ic_ref (py)':'ic_ref (py)'};
+var order = BE.slice().sort(function(a,b){ return D.depth[b].deepest_ok - D.depth[a].deepest_ok; });
+document.getElementById('depth-table').innerHTML =
+  '<tr><th>runtime</th><th class="n">deepest normal form read back</th><th>bound by</th></tr>' +
+  order.map(function(b){
+    var d = D.depth[b], bound;
+    if(d.first_failure === null) bound = 'not reached at 2<sup>21</sup>';
+    else if(/call stack/i.test(d.reason)) bound = 'V8 WASM call-depth cap';
+    else if(/step budget/i.test(d.reason)) bound = '<span class="k">whnf</span> step budget';
+    else if(/TIMEOUT/i.test(d.reason)) bound = 'time, not depth';
+    else bound = d.reason;
+    return '<tr><td>' + LABEL[b] + '</td><td class="n">' +
+      (d.first_failure === null ? '&ge; ' : '') + fmt(d.deepest_ok) + '</td><td>' + bound + '</td></tr>';
+  }).join('');
+
+/* ---- matrix ---- */
+var groups = [];
+ROWS.forEach(function(r){ if(groups.indexOf(r.group) < 0) groups.push(r.group); });
+var active = 'all', showMs = false;
+
+document.getElementById('mx-filters').innerHTML =
+  ['all'].concat(groups).map(function(g){
+    var n = g === 'all' ? ROWS.length : ROWS.filter(function(r){ return r.group === g; }).length;
+    return '<button class="chip" data-g="' + g + '" aria-pressed="' + (g === 'all') + '">' + g + ' (' + n + ')</button>';
+  }).join('');
+
+document.getElementById('mx-head').innerHTML =
+  '<tr><th>workload</th><th>group</th><th class="n">bytes</th>' +
+  BE.map(function(b){ return '<th class="rt n">' + SHORT[b] + '</th>'; }).join('') + '</tr>';
+
+function render(){
+  var rows = ROWS.filter(function(r){ return active === 'all' || r.group === active; });
+  document.getElementById('mx-body').innerHTML = rows.map(function(r){
+    return '<tr><td class="w">' + r.name + (r.verdict !== 'correct' ? ' <span class="warn">\u00b7 diverges</span>' : '') +
+      '</td><td class="g">' + r.group + '</td><td class="n">' + fmt(r.bytes) + '</td>' +
+      BE.map(function(b){
+        var c = r.cells[b];
+        if(!c.ok) return '<td class="c no"><span class="dot no"></span>' + why(c.status) + '</td>';
+        return '<td class="c ok"><span class="dot ok"></span>' + (showMs ? ms(c.ms) : fmt(c.itr)) + '</td>';
+      }).join('') + '</tr>';
+  }).join('');
+}
+
+document.getElementById('mx-filters').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-g]');
+  if(!b) return;
+  active = b.dataset.g;
+  Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){
+    x.setAttribute('aria-pressed', String(x.dataset.g === active));
+  });
+  render();
+});
+
+var mode = document.getElementById('mx-mode');
+mode.addEventListener('click', function(){
+  showMs = !showMs;
+  mode.setAttribute('aria-pressed', String(showMs));
+  mode.textContent = showMs ? 'show interactions instead of wall time' : 'show wall time instead of interactions';
+  render();
+});
+
+render();
+})();
+</script>
+</body>
+</html>
