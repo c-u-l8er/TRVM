@@ -316,17 +316,81 @@ def enc_config_bundle(fx, cfgs, resets=None):
     fparts = [T if resets.get(o) else F for o in orbs]
     return TUPN([TUPN(rparts), TUPN(fparts)])
 
-def _v6_fields(fx):
-    ppl, wires, doors, relays = fx.layout()
-    orbs = list(getattr(fx, "orbs", []))
-    base = ["c_" + r for r in ppl] + list(wires) + list(doors) \
-        + list(relays)
-    posef = []
+# THE v0.6 encoded-state field order. It used to be written down FIVE times:
+# `_v6_fields` below, the parts loop in `enc_state_v6`, the parts loop in
+# `dec_state_v6` (plus a sixth, its hand-added arity `n`), and -- one module up
+# -- `wrl_plan._state_layout_signature` and `wrl_plan.backend_layout_signature`.
+# Five spellings of one order agree until they don't, and the one that disagrees
+# is a field encoded at another field's offset. That is not a hypothetical: two
+# of the five were already DEAD when this was written. `enc_state_v6` and
+# `dec_state_v6` both called `_v6_fields` and then used NONE of what it returned,
+# walking the layout again by hand instead. The call looked authoritative and
+# decided nothing, which is worse than not calling it at all -- a reader
+# correcting `_v6_fields` would have believed the codecs followed.
+#
+# So it is written down once, here, and every consumer PROJECTS it. The
+# projections legitimately differ (a name, a neutral record, a
+# representation-full record); the ORDER may not.
+#
+# The first de-fork left a SIXTH spelling standing: `_v6_fields` re-grouped the
+# walk through a `_STATE_FIELD_GROUP` table and concatenated the bins, so it
+# agreed with the walk only because the walk happens to emit kinds in group
+# order. Both the table and the regrouping are gone (Slice B commit 5c
+# secondary ruling); `state_field_names` below is a direct projection and the
+# agreement is now by construction.
+_STATE_FIELD_NAME = {"counter": "c_%s", "wire": "%s", "door": "%s",
+                     "relay": "%s", "pose": "pose_%s", "fault": "fault_%s",
+                     "rotor": "rotor_%s"}
+
+def state_layout(v):
+    """THE encoded-state field order, yielded as (kind, name) pairs.
+
+    `v` is anything that duck-types the Fixture's `layout()`, `orbs` and
+    `controller_of` -- a Fixture, or a `wrl_plan._PlanView`. Both must get the
+    same order from the same walk; that is the whole point.
+
+    A `rotor` field exists per CONTROLLED orb, not per orb, and it is named for
+    the controlling SPINNER rather than for the orb -- which is why the rotor
+    pass is separate from the pose/fault pass instead of folded into it.
+    """
+    ppl, wires, doors, relays = v.layout()
+    orbs = list(getattr(v, "orbs", []))
+    for r in ppl:
+        yield "counter", r
+    for f in wires:
+        yield "wire", f
+    for f in doors:
+        yield "door", f
+    for f in relays:
+        yield "relay", f
     for o in orbs:
-        posef += ["pose_" + o, "fault_" + o]
-    rotorf = ["rotor_" + fx.controller_of(o) for o in orbs
-              if fx.controller_of(o)]
-    return base, posef, rotorf, (base + posef + rotorf)
+        yield "pose", o
+        yield "fault", o
+    for o in orbs:
+        s = v.controller_of(o)
+        if s:
+            yield "rotor", s
+
+
+def state_field_names(v):
+    """THE encoded-state field NAMES, in `state_layout` order.
+
+    A DIRECT projection of the one walk through `_STATE_FIELD_NAME` -- name
+    the kind, keep the position. This replaces `_v6_fields`, which returned
+    `(base, posef, rotorf, base + posef + rotorf)`: it binned each field by a
+    second table (`_STATE_FIELD_GROUP`) and concatenated the bins, so the
+    result equalled the walk order only BECAUSE the walk already emits kinds
+    in group order. That is a second ordering rule living inside the de-fork
+    that was supposed to leave exactly one, and an interleaved walk would have
+    desynced the codecs from the compiler silently.
+
+    The three-group split had no consumer but its own fourth element, so
+    nothing is lost by dropping it; what is gained is that the equality
+    `state_field_names(v) == [name for _kind, name in ...]` now holds BY
+    CONSTRUCTION rather than by coincidence (binding_run52 L0/L0b).
+    """
+    return [_STATE_FIELD_NAME[kind] % name for kind, name in state_layout(v)]
+
 
 def compile_step_v6(fx):
     """The v0.6 transition: λcfg.λst -> st'. cfg is enc_config_bundle(...);
@@ -337,7 +401,7 @@ def compile_step_v6(fx):
     import binlib as _BL
     ppl, wires, doors, relays = fx.layout()
     orbs = list(getattr(fx, "orbs", []))
-    _, _, _, fields = _v6_fields(fx)
+    fields = state_field_names(fx)
     s = _v("st")
     tops = {f: _v("b") for f in fields}
     cbinders = {}
@@ -542,77 +606,115 @@ def dec_state(fx, t):
     return st
 
 # ---------------------------------------------------- v0.6 state codec
+def pose_width(v, orb):
+    """An orb's pose width: its CONTROLLING spinner's, or the default if it has
+    none. Shared by both codecs and by `wrl_plan`'s layout records, because a
+    width read three ways is a field decoded at the wrong size two of them."""
+    s = v.controller_of(orb)
+    return v.spinners[s][0] if s else 8
+
+
 def enc_state_v6(fx, st):
-    """v0.6 layout: base (counters/wires/doors/relays) then per orb
-    (pose, fault) then per controlling spinner (rotor)."""
+    """v0.6 state dict -> encoded tuple, in `state_layout` order.
+
+    The order is the WALK's, not this function's. That matters more than it
+    looks: `enc_state_v6` and `dec_state_v6` are the two functions that actually
+    decide the bytes, and until this change each re-walked the layout by hand.
+    Reordering `state_layout` would have moved `_v6_fields`, `slay-` and `blay-`
+    and left the ENCODING untouched -- three fingerprints disagreeing with the
+    thing they fingerprint, which is the exact failure a fingerprint exists to
+    prevent."""
     import binlib as _BL
-    base, posef, rotorf, fields = _v6_fields(fx)
-    ppl, wires, doors, relays = fx.layout()
     parts = []
-    for r in ppl:
-        spec = fx.counter_spec(r)
-        if spec[0] == "onehot":
-            parts.append(ENUM(spec[1], st["c_" + r]))
-        elif spec[0] == "binp":
-            parts.append(TUPN(enc_bits(st["c_" + r], spec[3])))
+    for kind, name in state_layout(fx):
+        if kind == "counter":
+            spec = fx.counter_spec(name)
+            if spec[0] == "onehot":
+                parts.append(ENUM(spec[1], st["c_" + name]))
+            elif spec[0] == "binp":
+                parts.append(TUPN(enc_bits(st["c_" + name], spec[3])))
+            else:
+                done, k = st["c_" + name]
+                parts.append(TUPN([T if done else F] + enc_bits(k, spec[2])))
+        elif kind in ("wire", "door", "relay"):
+            a, b = st[name]
+            parts.append(PAIR(T if a else F, T if b else F))
+        elif kind == "pose":
+            parts.append(_BL.enc_pose(st["pose_" + name],
+                                      pose_width(fx, name)))
+        elif kind == "fault":
+            parts.append(T if st.get("fault_" + name) else F)
+        elif kind == "rotor":
+            parts.append(_BL.enc_pose(st["rotor_" + name],
+                                      fx.spinners[name][0]))
         else:
-            done, k = st["c_" + r]
-            parts.append(TUPN([T if done else F] + enc_bits(k, spec[2])))
-    for f in list(wires) + list(doors) + list(relays):
-        a, b = st[f]
-        parts.append(PAIR(T if a else F, T if b else F))
-    for o in fx.orbs:
-        s = fx.controller_of(o)
-        w_, n_, _ = fx.spinners[s] if s else (8, 4, None)
-        parts.append(_BL.enc_pose(st["pose_" + o], w_))
-        parts.append(T if st.get("fault_" + o) else F)
-    for o in fx.orbs:
-        s = fx.controller_of(o)
-        if not s:
-            continue
-        w_, n_, _ = fx.spinners[s]
-        parts.append(_BL.enc_pose(st["rotor_" + s], w_))
+            # A kind the walk yields and this codec does not handle must be
+            # LOUD. Falling through silently would encode a state that is
+            # shorter than its own layout, and the decoder -- reading its arity
+            # from that same layout -- would then fail somewhere unrelated.
+            raise AssertionError("enc_state_v6: unhandled field kind %r" % kind)
     return TUPN(parts)
 
+
 def dec_state_v6(fx, t):
+    """The exact inverse of `enc_state_v6`, over the exact same walk.
+
+    The spine's arity is the field COUNT, read off the layout rather than
+    re-derived. It used to be the hand-added sum
+      len(ppl) + len(wires) + len(doors) + len(relays) + 2*len(orbs) + len(ctrl)
+    which was the most dangerous of the layout's spellings: a layout that grew a
+    field while that sum did not would not raise, it would decode a SHORT spine
+    and read every field past the new one at its neighbour's offset."""
     import binlib as _BL
-    base, posef, rotorf, fields = _v6_fields(fx)
-    ppl, wires, doors, relays = fx.layout()
-    orbs = list(fx.orbs)
-    ctrl = [fx.controller_of(o) for o in orbs if fx.controller_of(o)]
-    n = (len(ppl) + len(wires) + len(doors) + len(relays)
-         + 2 * len(orbs) + len(ctrl))
-    xs = _spine(t, n)
-    st, i = {}, 0
-    for r in ppl:
-        spec = fx.counter_spec(r)
-        if spec[0] == "onehot":
-            st["c_" + r] = _dec_enum(xs[i], spec[1])
-        elif spec[0] == "binp":
-            st["c_" + r] = dec_bits(_spine(xs[i], spec[3]))
-        else:
-            pp = _spine(xs[i], 1 + spec[2])
-            st["c_" + r] = (int(_dec_bool(pp[0])), dec_bits(pp[1:]))
-        i += 1
-    for f in list(wires) + list(doors) + list(relays):
-        a, b = _dec_pair(xs[i])
-        st[f] = (_dec_bool(a), _dec_bool(b))
-        i += 1
-    for o in orbs:
-        s = fx.controller_of(o)
-        w_, n_, _ = fx.spinners[s] if s else (8, 4, None)
-        st["pose_" + o] = _BL.dec_pose(xs[i], w_)
-        i += 1
-        st["fault_" + o] = int(_dec_bool(xs[i]))
-        i += 1
-    for o in orbs:
-        s = fx.controller_of(o)
-        if not s:
-            continue
-        w_, n_, _ = fx.spinners[s]
-        st["rotor_" + s] = _BL.dec_pose(xs[i], w_)
-        i += 1
+    fields = list(state_layout(fx))
+    xs = _spine(t, len(fields))
+    st = {}
+    for i, (kind, name) in enumerate(fields):
+        try:
+            _dec_field_v6(fx, st, xs[i], kind, name, _BL)
+        except Exception as ex:
+            # Without this, a layout that disagrees with the term it is decoding
+            # surfaces as a bare `assert isinstance(cur, App)` six frames down in
+            # `_spine` -- true, useless, and (because the harness scores a
+            # traceback as a CRASH, not a catch) able to turn a mutation that
+            # should be caught into a mutation nothing proved anything about.
+            # The field being read is the one fact that makes it diagnosable.
+            raise AssertionError(
+                "dec_state_v6: field %d of %d (%s %s) failed to decode -- the "
+                "encoded term does not match this layout: %s: %s"
+                % (i, len(fields), kind, name, type(ex).__name__, ex))
     return st
+
+
+def _dec_field_v6(fx, st, x, kind, name, _BL):
+    """Decode ONE field of the v0.6 state into `st`. Split out of
+    `dec_state_v6` purely so the caller can name the field in a failure."""
+    if kind == "counter":
+        spec = fx.counter_spec(name)
+        if spec[0] == "onehot":
+            st["c_" + name] = _dec_enum(x, spec[1])
+        elif spec[0] == "binp":
+            st["c_" + name] = dec_bits(_spine(x, spec[3]))
+        else:
+            pp = _spine(x, 1 + spec[2])
+            st["c_" + name] = (int(_dec_bool(pp[0])), dec_bits(pp[1:]))
+    elif kind in ("wire", "door", "relay"):
+        a, b = _dec_pair(x)
+        st[name] = (_dec_bool(a), _dec_bool(b))
+    elif kind == "pose":
+        st["pose_" + name] = _BL.dec_pose(x, pose_width(fx, name))
+    elif kind == "fault":
+        st["fault_" + name] = int(_dec_bool(x))
+    elif kind == "rotor":
+        st["rotor_" + name] = _BL.dec_pose(x, fx.spinners[name][0])
+    else:
+        # A kind the walk yields and this codec does not handle must be LOUD.
+        # This was written expecting commit 5b to add mailbox fields to the
+        # layout, and it did not: 5b put the mailbox in CLAIM state, so the
+        # world state never learned a mailbox exists (binding_run51 T1b/T8b,
+        # binding_run52 L10). The guard stands anyway and has never fired in
+        # production -- it is for whatever DOES eventually widen the walk.
+        raise AssertionError("unhandled field kind %r" % kind)
 
 class RotorConfigError(ValueError):
     """Typed rejection at the config-acceptance layer (v0.6)."""

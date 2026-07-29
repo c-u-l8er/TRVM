@@ -1,0 +1,1840 @@
+{
+ "rows": [
+  {
+   "file": "app_lam.hvm",
+   "labels": "fresh",
+   "expected": "2",
+   "hvm4": {
+    "status": "OK",
+    "nf": "2",
+    "results": [
+     "2"
+    ],
+    "ms": 1.1414050022722222,
+    "inter": 3
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "2",
+    "results": [
+     "2"
+    ],
+    "ms": 144.12757500031148,
+    "inter": 3
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "2",
+    "ms": 1.2422949985193554,
+    "inter": 3
+   },
+   "agree": true,
+   "term_len": 26
+  },
+  {
+   "file": "c2_not_t.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.a",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "results": [
+     "\u03bba.\u03bbb.a"
+    ],
+    "ms": 1.091580998036079,
+    "inter": 16
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "results": [
+     "\u03bba.\u03bbb.a"
+    ],
+    "ms": 164.8581049994391,
+    "inter": 16
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "ms": 1.079116998880636,
+    "inter": 16
+   },
+   "agree": true,
+   "term_len": 81
+  },
+  {
+   "file": "c8_k8_not_t.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.a",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "results": [
+     "\u03bba.\u03bbb.a"
+    ],
+    "ms": 0.8057420018303674,
+    "inter": 300
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "results": [
+     "\u03bba.\u03bbb.a"
+    ],
+    "ms": 155.01715500067803,
+    "inter": 300
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "ms": 1.1968500002694782,
+    "inter": 300
+   },
+   "agree": true,
+   "term_len": 276
+  },
+  {
+   "file": "cadd_c1_c1_not.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.\u03bbc.a(b,c)",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.\u03bbc.a(b,c)",
+    "results": [
+     "\u03bba.\u03bbb.\u03bbc.a(b,c)"
+    ],
+    "ms": 0.9924540026986506,
+    "inter": 19
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.\u03bbc.a(b,c)",
+    "results": [
+     "\u03bba.\u03bbb.\u03bbc.a(b,c)"
+    ],
+    "ms": 156.47492700009025,
+    "inter": 19
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.\u03bbc.((a b) c)",
+    "ms": 1.030987001286121,
+    "inter": 19
+   },
+   "agree": true,
+   "term_len": 129
+  },
+  {
+   "file": "cadd_c1_c4.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.a(a(a(a(a(b)))))",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a(a(a(a(a(b)))))",
+    "results": [
+     "\u03bba.\u03bbb.a(a(a(a(a(b)))))"
+    ],
+    "ms": 0.7403179988614284,
+    "inter": 16
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.A\u2080(B\u2080);!A&B=a;!B&C=C\u2080(C\u2081(&C{B\u2081,b}));!C&C=A\u2081;",
+    "results": [
+     "\u03bba.\u03bbb.A\u2080(B\u2080);!A&B=a;!B&C=C\u2080(C\u2081(&C{B\u2081,b}));!C&C=A\u2081;"
+    ],
+    "ms": 140.64922699981253,
+    "inter": 9
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.(a (a (a (a (a b)))))",
+    "ms": 1.8991750002896879,
+    "inter": 16
+   },
+   "agree": true,
+   "term_len": 161
+  },
+  {
+   "file": "cadd_c1_c4_not_t.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.b",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.b",
+    "results": [
+     "\u03bba.\u03bbb.b"
+    ],
+    "ms": 0.773881001805421,
+    "inter": 44
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.b",
+    "results": [
+     "\u03bba.\u03bbb.b"
+    ],
+    "ms": 147.04592500129365,
+    "inter": 44
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.b",
+    "ms": 1.1825719993794337,
+    "inter": 44
+   },
+   "agree": true,
+   "term_len": 210
+  },
+  {
+   "file": "cadd_c2_c1.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.a(a(a(b)))",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a(a(a(b)))",
+    "results": [
+     "\u03bba.\u03bbb.a(a(a(b)))"
+    ],
+    "ms": 1.0208170024270657,
+    "inter": 8
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.A\u2080(A\u2081(B\u2081(b)));!A&C=B\u2080;!B&B=a;",
+    "results": [
+     "\u03bba.\u03bbb.A\u2080(A\u2081(B\u2081(b)));!A&C=B\u2080;!B&B=a;"
+    ],
+    "ms": 144.94498899875907,
+    "inter": 6
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.(a (a (a b)))",
+    "ms": 1.1874119991261978,
+    "inter": 8
+   },
+   "agree": true,
+   "term_len": 121
+  },
+  {
+   "file": "cadd_c2_c2.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.a(a(a(a(b))))",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a(a(a(a(b))))",
+    "results": [
+     "\u03bba.\u03bbb.a(a(a(a(b))))"
+    ],
+    "ms": 1.0301050024281722,
+    "inter": 9
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.A\u2080(A\u2081(B\u2080(B\u2081(b))));!A&C=C\u2080;!B&C=C\u2081;!C&B=a;",
+    "results": [
+     "\u03bba.\u03bbb.A\u2080(A\u2081(B\u2080(B\u2081(b))));!A&C=C\u2080;!B&C=C\u2081;!C&B=a;"
+    ],
+    "ms": 153.94872699835105,
+    "inter": 6
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.(a (a (a (a b))))",
+    "ms": 1.2020289977954235,
+    "inter": 9
+   },
+   "agree": true,
+   "term_len": 148
+  },
+  {
+   "file": "cadd_c2_c4_not_t.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.a",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "results": [
+     "\u03bba.\u03bbb.a"
+    ],
+    "ms": 1.165780999144772,
+    "inter": 55
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "results": [
+     "\u03bba.\u03bbb.a"
+    ],
+    "ms": 171.4369750006881,
+    "inter": 55
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "ms": 1.0091559997817967,
+    "inter": 55
+   },
+   "agree": true,
+   "term_len": 235
+  },
+  {
+   "file": "cadd_c4_c1.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.a(a(a(a(a(b)))))",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a(a(a(a(a(b)))))",
+    "results": [
+     "\u03bba.\u03bbb.a(a(a(a(a(b)))))"
+    ],
+    "ms": 0.6860350003989879,
+    "inter": 16
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.A\u2080;!A&C=B\u2080(B\u2081(&C{A\u2081,C\u2081(b)}));!B&C=C\u2080;!C&B=a;",
+    "results": [
+     "\u03bba.\u03bbb.A\u2080;!A&C=B\u2080(B\u2081(&C{A\u2081,C\u2081(b)}));!B&C=C\u2080;!C&B=a;"
+    ],
+    "ms": 160.90716400140082,
+    "inter": 9
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.(a (a (a (a (a b)))))",
+    "ms": 1.167725000414066,
+    "inter": 16
+   },
+   "agree": true,
+   "term_len": 159
+  },
+  {
+   "file": "cadd_c4_c1_not_t.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.b",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.b",
+    "results": [
+     "\u03bba.\u03bbb.b"
+    ],
+    "ms": 1.0294829990016297,
+    "inter": 44
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.b",
+    "results": [
+     "\u03bba.\u03bbb.b"
+    ],
+    "ms": 145.47859500089544,
+    "inter": 44
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.b",
+    "ms": 2.1047040027042385,
+    "inter": 44
+   },
+   "agree": true,
+   "term_len": 208
+  },
+  {
+   "file": "cadd_c4_c2_not_t.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.a",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "results": [
+     "\u03bba.\u03bbb.a"
+    ],
+    "ms": 1.2796560004062485,
+    "inter": 55
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "results": [
+     "\u03bba.\u03bbb.a"
+    ],
+    "ms": 144.43323200248415,
+    "inter": 55
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "ms": 1.2446999971871264,
+    "inter": 55
+   },
+   "agree": true,
+   "term_len": 235
+  },
+  {
+   "file": "cadd_c4_c4.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.a(a(a(a(a(a(a(a(b))))))))",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a(a(a(a(a(a(a(a(b))))))))",
+    "results": [
+     "\u03bba.\u03bbb.a(a(a(a(a(a(a(a(b))))))))"
+    ],
+    "ms": 1.208109999424778,
+    "inter": 25
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.A\u2080;!A&C=B\u2080(B\u2081(&C{A\u2081,C\u2080}));!B&C=D\u2080;!C&C=E\u2080(E\u2081(&C{C\u2081,b}));!D&B=a;!E&C=D\u2081;",
+    "results": [
+     "\u03bba.\u03bbb.A\u2080;!A&C=B\u2080(B\u2081(&C{A\u2081,C\u2080}));!B&C=D\u2080;!C&C=E\u2080(E\u2081(&C{C\u2081,b}));!D&B=a;!E&C=D\u2081;"
+    ],
+    "ms": 139.66532999984338,
+    "inter": 12
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.(a (a (a (a (a (a (a (a b))))))))",
+    "ms": 1.098823999200249,
+    "inter": 25
+   },
+   "agree": true,
+   "term_len": 224
+  },
+  {
+   "file": "cmul_c4_c2.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.a(a(a(a(a(a(a(a(b))))))))",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a(a(a(a(a(a(a(a(b))))))))",
+    "results": [
+     "\u03bba.\u03bbb.a(a(a(a(a(a(a(a(b))))))))"
+    ],
+    "ms": 0.8656040008645505,
+    "inter": 26
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.A\u2080;!A&C=B\u2080;!B&C=C\u2080(C\u2081(&C{B\u2081,&C{A\u2081,b}}));!C&C=a;",
+    "results": [
+     "\u03bba.\u03bbb.A\u2080;!A&C=B\u2080;!B&C=C\u2080(C\u2081(&C{B\u2081,&C{A\u2081,b}}));!C&C=a;"
+    ],
+    "ms": 140.71340899681672,
+    "inter": 11
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.(a (a (a (a (a (a (a (a b))))))))",
+    "ms": 1.5106520004337654,
+    "inter": 26
+   },
+   "agree": true,
+   "term_len": 159
+  },
+  {
+   "file": "cmul_c4_c2_not_t.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.a",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "results": [
+     "\u03bba.\u03bbb.a"
+    ],
+    "ms": 1.1710709986800794,
+    "inter": 43
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "results": [
+     "\u03bba.\u03bbb.a"
+    ],
+    "ms": 136.61095299903536,
+    "inter": 43
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "ms": 1.0148760011361446,
+    "inter": 43
+   },
+   "agree": true,
+   "term_len": 208
+  },
+  {
+   "file": "cmul_c4_c4.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.a(a(a(a(a(a(a(a(a(a(a(a(a(a(a(a(b))))))))))))))))",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a(a(a(a(a(a(a(a(a(a(a(a(a(a(a(a(b))))))))))))))))",
+    "results": [
+     "\u03bba.\u03bbb.a(a(a(a(a(a(a(a(a(a(a(a(a(a(a(a(b))))))))))))))))"
+    ],
+    "ms": 0.9044479993463028,
+    "inter": 46
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.A\u2080;!A&C=B\u2080;!B&C=C\u2080;!C&C=D\u2080(D\u2081(&C{C\u2081,&C{B\u2081,&C{A\u2081,b}}}));!D&C=a;",
+    "results": [
+     "\u03bba.\u03bbb.A\u2080;!A&C=B\u2080;!B&C=C\u2080;!C&C=D\u2080(D\u2081(&C{C\u2081,&C{B\u2081,&C{A\u2081,b}}}));!D&C=a;"
+    ],
+    "ms": 140.88473199808504,
+    "inter": 14
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.(a (a (a (a (a (a (a (a (a (a (a (a (a (a (a (a b))))))))))))))))",
+    "ms": 1.3787530006084125,
+    "inter": 46
+   },
+   "agree": true,
+   "term_len": 197
+  },
+  {
+   "file": "cmul_c4_c4_not_t.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.a",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "results": [
+     "\u03bba.\u03bbb.a"
+    ],
+    "ms": 0.8531810017302632,
+    "inter": 54
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "results": [
+     "\u03bba.\u03bbb.a"
+    ],
+    "ms": 144.0033510007197,
+    "inter": 54
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "ms": 1.1397620000934694,
+    "inter": 54
+   },
+   "agree": true,
+   "term_len": 246
+  },
+  {
+   "file": "cnot_not.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.a",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "results": [
+     "\u03bba.\u03bbb.a"
+    ],
+    "ms": 1.0511840009712614,
+    "inter": 6
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "results": [
+     "\u03bba.\u03bbb.a"
+    ],
+    "ms": 147.41612400030135,
+    "inter": 6
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a",
+    "ms": 1.146263999544317,
+    "inter": 6
+   },
+   "agree": true,
+   "term_len": 67
+  },
+  {
+   "file": "cnot_true.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.b",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.b",
+    "results": [
+     "\u03bba.\u03bbb.b"
+    ],
+    "ms": 0.7533119969593827,
+    "inter": 3
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.b",
+    "results": [
+     "\u03bba.\u03bbb.b"
+    ],
+    "ms": 137.7310479983862,
+    "inter": 3
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.b",
+    "ms": 1.3521929977287073,
+    "inter": 3
+   },
+   "agree": true,
+   "term_len": 37
+  },
+  {
+   "file": "collapse_4.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.a",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.a",
+    "results": [
+     "\u03bba.a",
+     "\u03bba.a"
+    ],
+    "ms": 0.9952589971362613,
+    "inter": 1
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.&L{A\u2080,A\u2081};!A&L=a;",
+    "results": [
+     "\u03bba.&L{A\u2080,A\u2081};!A&L=a;"
+    ],
+    "ms": 134.09377100106212,
+    "inter": 0
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.&1{a,a}",
+    "ms": 0.8972840005299076,
+    "inter": 1
+   },
+   "agree": false,
+   "term_len": 31
+  },
+  {
+   "file": "collapse_5.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.\u03bbc.c(a,b)",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.\u03bbc.c(a,b)",
+    "results": [
+     "\u03bba.\u03bbb.\u03bbc.c(a,b)",
+     "\u03bba.\u03bbb.\u03bbc.c(a,b)"
+    ],
+    "ms": 0.7468200019502547,
+    "inter": 2
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.&L{\u03bbc.c(A\u2080,B\u2080),\u03bbd.d(A\u2081,B\u2081)};!A&L=a;!B&L=b;",
+    "results": [
+     "\u03bba.\u03bbb.&L{\u03bbc.c(A\u2080,B\u2080),\u03bbd.d(A\u2081,B\u2081)};!A&L=a;!B&L=b;"
+    ],
+    "ms": 143.25860399912926,
+    "inter": 0
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.&1{\u03bbc.((c a) b),\u03bbd.((d a) b)}",
+    "ms": 1.2907470008940436,
+    "inter": 2
+   },
+   "agree": false,
+   "term_len": 81
+  },
+  {
+   "file": "collapse_inc_lam.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.1",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.0",
+    "results": [
+     "\u03bba.0",
+     "\u03bba.1"
+    ],
+    "ms": 1.0745179970399477,
+    "inter": 0
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u2191&A{0,1}",
+    "results": [
+     "\u03bba.\u2191&A{0,1}"
+    ],
+    "ms": 149.9447770002007,
+    "inter": 0
+   },
+   "trvm": {
+    "status": "ERR",
+    "detail": "parse error: expected name at ...\u2191 &1{0,1})\n"
+   },
+   "agree": null,
+   "term_len": 15
+  },
+  {
+   "file": "parser.hvm",
+   "labels": "fresh",
+   "expected": "1",
+   "hvm4": {
+    "status": "OK",
+    "nf": "1",
+    "results": [
+     "1"
+    ],
+    "ms": 0.9690200022305362,
+    "inter": 0
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "1",
+    "results": [
+     "1"
+    ],
+    "ms": 143.51436699871556,
+    "inter": 0
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "1",
+    "ms": 1.2780530014424585,
+    "inter": 0
+   },
+   "agree": true,
+   "term_len": 1
+  },
+  {
+   "file": "scoped_var.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.a",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.1",
+    "results": [
+     "\u03bba.1",
+     "\u03bba.a"
+    ],
+    "ms": 0.9783470013644546,
+    "inter": 1
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.&L{1,A\u2081};!A&L=a;",
+    "results": [
+     "\u03bba.&L{1,A\u2081};!A&L=a;"
+    ],
+    "ms": 138.63959299851558,
+    "inter": 0
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.&1{1,a}",
+    "ms": 0.9365189980599098,
+    "inter": 1
+   },
+   "agree": false,
+   "term_len": 29
+  },
+  {
+   "file": "scoped_var_both.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.a",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.a",
+    "results": [
+     "\u03bba.a",
+     "\u03bba.a"
+    ],
+    "ms": 0.8907719966373406,
+    "inter": 1
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.&L{A\u2080,A\u2081};!A&L=a;",
+    "results": [
+     "\u03bba.&L{A\u2080,A\u2081};!A&L=a;"
+    ],
+    "ms": 152.68204599851742,
+    "inter": 0
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.&1{a,a}",
+    "ms": 0.9826149980654009,
+    "inter": 1
+   },
+   "agree": false,
+   "term_len": 31
+  },
+  {
+   "file": "snf_c2_k2.hvm",
+   "labels": "fresh",
+   "expected": "!\u03bba.\u03bbb.A\u2080;!A&K=B\u2080(B\u2081(&K{A\u2081,b}));!B&K=a;",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.a(a(a(a(b))))",
+    "results": [
+     "\u03bba.\u03bbb.a(a(a(a(b))))"
+    ],
+    "ms": 0.7961730007082224,
+    "inter": 20
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.A\u2080;!A&K=B\u2080(B\u2081(&K{A\u2081,b}));!B&K=a;",
+    "results": [
+     "\u03bba.\u03bbb.A\u2080;!A&K=B\u2080(B\u2081(&K{A\u2081,b}));!B&K=a;"
+    ],
+    "ms": 139.56249599868897,
+    "inter": 14
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.\u03bbb.(a (a (a (a b))))",
+    "ms": 1.0180019999097567,
+    "inter": 20
+   },
+   "agree": true,
+   "term_len": 79
+  },
+  {
+   "file": "sugar_chr.hvm",
+   "labels": "fresh",
+   "expected": "'x'",
+   "hvm4": {
+    "status": "OK",
+    "nf": "'x'",
+    "results": [
+     "'x'"
+    ],
+    "ms": 0.6422719998226967,
+    "inter": 0
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "'x'",
+    "results": [
+     "'x'"
+    ],
+    "ms": 135.87139700030093,
+    "inter": 0
+   },
+   "trvm": {
+    "status": "ERR",
+    "detail": "parse error: expected name at ...'x'\n"
+   },
+   "agree": null,
+   "term_len": 3
+  },
+  {
+   "file": "sugar_nat.hvm",
+   "labels": "fresh",
+   "expected": "3n",
+   "hvm4": {
+    "status": "OK",
+    "nf": "3n",
+    "results": [
+     "3n"
+    ],
+    "ms": 0.888426999154035,
+    "inter": 0
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "3n",
+    "results": [
+     "3n"
+    ],
+    "ms": 147.20630699957837,
+    "inter": 0
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "3n",
+    "ms": 1.0957279991998803,
+    "inter": 0
+   },
+   "agree": true,
+   "term_len": 2
+  },
+  {
+   "file": "sugar_nat_plus.hvm",
+   "labels": "fresh",
+   "expected": "2n+3",
+   "hvm4": {
+    "status": "OK",
+    "nf": "2n+3",
+    "results": [
+     "2n+3"
+    ],
+    "ms": 1.0026429990830366,
+    "inter": 0
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "2n+3",
+    "results": [
+     "2n+3"
+    ],
+    "ms": 153.79579799991916,
+    "inter": 0
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "2n",
+    "ms": 1.1159069981658831,
+    "inter": 0
+   },
+   "agree": true,
+   "term_len": 4
+  },
+  {
+   "file": "sugar_nil.hvm",
+   "labels": "fresh",
+   "expected": "[]",
+   "hvm4": {
+    "status": "OK",
+    "nf": "[]",
+    "results": [
+     "[]"
+    ],
+    "ms": 1.0005789990827907,
+    "inter": 0
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "[]",
+    "results": [
+     "[]"
+    ],
+    "ms": 143.81114700154285,
+    "inter": 0
+   },
+   "trvm": {
+    "status": "ERR",
+    "detail": "parse error: expected name at ...[]\n"
+   },
+   "agree": null,
+   "term_len": 2
+  },
+  {
+   "file": "sugar_str.hvm",
+   "labels": "fresh",
+   "expected": "\"hi\"",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\"hi\"",
+    "results": [
+     "\"hi\""
+    ],
+    "ms": 0.6482339995272923,
+    "inter": 0
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\"hi\"",
+    "results": [
+     "\"hi\""
+    ],
+    "ms": 149.7433770018688,
+    "inter": 0
+   },
+   "trvm": {
+    "status": "ERR",
+    "detail": "parse error: expected name at ...\"hi\"\n"
+   },
+   "agree": null,
+   "term_len": 4
+  },
+  {
+   "file": "sugar_str_bt.hvm",
+   "labels": "fresh",
+   "expected": "\"hi\"",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\"hi\"",
+    "results": [
+     "\"hi\""
+    ],
+    "ms": 0.9462169982725754,
+    "inter": 0
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\"hi\"",
+    "results": [
+     "\"hi\""
+    ],
+    "ms": 146.1168700006965,
+    "inter": 0
+   },
+   "trvm": {
+    "status": "ERR",
+    "detail": "parse error: expected name at ...`hi`\n"
+   },
+   "agree": null,
+   "term_len": 4
+  },
+  {
+   "file": "unicode_cjk.hvm",
+   "labels": "fresh",
+   "expected": "\"\u4f60\u597d\u4e16\u754c\"",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\"\u4f60\u597d\u4e16\u754c\"",
+    "results": [
+     "\"\u4f60\u597d\u4e16\u754c\""
+    ],
+    "ms": 0.912102001166204,
+    "inter": 0
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\"\u4f60\u597d\u4e16\u754c\"",
+    "results": [
+     "\"\u4f60\u597d\u4e16\u754c\""
+    ],
+    "ms": 140.7714679990022,
+    "inter": 0
+   },
+   "trvm": {
+    "status": "ERR",
+    "detail": "parse error: expected name at ...\"\u4f60\u597d\u4e16\u754c\"\n"
+   },
+   "agree": null,
+   "term_len": 6
+  },
+  {
+   "file": "unicode_emoji.hvm",
+   "labels": "fresh",
+   "expected": "\"\ud83c\udf89\ud83d\ude80\ud83d\udcbb\ud83d\udd25\"",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\"\ud83c\udf89\ud83d\ude80\ud83d\udcbb\ud83d\udd25\"",
+    "results": [
+     "\"\ud83c\udf89\ud83d\ude80\ud83d\udcbb\ud83d\udd25\""
+    ],
+    "ms": 1.091882000764599,
+    "inter": 0
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\"\ud83c\udf89\ud83d\ude80\ud83d\udcbb\ud83d\udd25\"",
+    "results": [
+     "\"\ud83c\udf89\ud83d\ude80\ud83d\udcbb\ud83d\udd25\""
+    ],
+    "ms": 147.75000399822602,
+    "inter": 0
+   },
+   "trvm": {
+    "status": "ERR",
+    "detail": "parse error: expected name at ...\"\ud83c\udf89\ud83d\ude80\ud83d\udcbb\ud83d\udd25\"\n"
+   },
+   "agree": null,
+   "term_len": 6
+  },
+  {
+   "file": "unscoped_nested.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.\u03bbb.b",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.a",
+    "results": [
+     "\u03bba.a",
+     "\u03bba.\u03bbb.1",
+     "\u03bba.\u03bbb.b"
+    ],
+    "ms": 1.0055880011350382,
+    "inter": 2
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.&L{\u03bbb.&L{1,A\u2080},B\u2081};!A&L=b;!B&L=a;",
+    "results": [
+     "\u03bba.&L{\u03bbb.&L{1,A\u2080},B\u2081};!A&L=b;!B&L=a;"
+    ],
+    "ms": 152.49144599874853,
+    "inter": 0
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.&1{\u03bbb.&1{1,b},a}",
+    "ms": 1.1673339977278374,
+    "inter": 2
+   },
+   "agree": false,
+   "term_len": 57
+  },
+  {
+   "file": "unscoped_var.hvm",
+   "labels": "fresh",
+   "expected": "\u03bba.a",
+   "hvm4": {
+    "status": "OK",
+    "nf": "\u03bba.1",
+    "results": [
+     "\u03bba.1",
+     "\u03bba.a"
+    ],
+    "ms": 0.8924850008042995,
+    "inter": 1
+   },
+   "hvm4_plain": {
+    "status": "OK",
+    "nf": "\u03bba.&L{1,A\u2080};!A&L=a;",
+    "results": [
+     "\u03bba.&L{1,A\u2080};!A&L=a;"
+    ],
+    "ms": 151.1678370006848,
+    "inter": 0
+   },
+   "trvm": {
+    "status": "OK",
+    "nf": "\u03bba.&1{1,a}",
+    "ms": 1.1460229980002623,
+    "inter": 1
+   },
+   "agree": false,
+   "term_len": 29
+  }
+ ],
+ "blocked": [
+  [
+   "autodup_1.hvm",
+   "SyntaxError: expected '.' got 'x'"
+  ],
+  [
+   "autodup_2.hvm",
+   "SyntaxError: expected '.' got 'x'"
+  ],
+  [
+   "autodup_3.hvm",
+   "SyntaxError: expected '.' got 'x'"
+  ],
+  [
+   "autodup_4.hvm",
+   "SyntaxError: expected '.' got 'x'"
+  ],
+  [
+   "autodup_bound_vars.hvm",
+   "SyntaxError: trailing tokens from '@'"
+  ],
+  [
+   "autodup_deep.hvm",
+   "SyntaxError: expected '.' got 'a'"
+  ],
+  [
+   "autodup_dup_dyn.hvm",
+   "SyntaxError: expected '&' got 'X'"
+  ],
+  [
+   "autodup_dup_dyn_3each.hvm",
+   "SyntaxError: expected '&' got 'X'"
+  ],
+  [
+   "autodup_dup_dyn_both.hvm",
+   "SyntaxError: expected '&' got 'X'"
+  ],
+  [
+   "autodup_dup_static.hvm",
+   "SyntaxError: expected '&' got 'X'"
+  ],
+  [
+   "autodup_dup_static_3each.hvm",
+   "SyntaxError: expected '&' got 'X'"
+  ],
+  [
+   "autodup_dup_static_both.hvm",
+   "SyntaxError: expected '&' got 'X'"
+  ],
+  [
+   "autodup_let.hvm",
+   "SyntaxError: expected '&' got 'x'"
+  ],
+  [
+   "autodup_many.hvm",
+   "SyntaxError: expected '.' got 'x'"
+  ],
+  [
+   "autodup_mat_lam.hvm",
+   "SyntaxError: expected '.' got 'v'"
+  ],
+  [
+   "autodup_mixed.hvm",
+   "SyntaxError: expected '.' got 'x'"
+  ],
+  [
+   "autodup_nested_lam.hvm",
+   "SyntaxError: expected '.' got 'x'"
+  ],
+  [
+   "autodup_nightmare.hvm",
+   "SyntaxError: expected '.' got 'f'"
+  ],
+  [
+   "autodup_outer_ref.hvm",
+   "SyntaxError: expected '.' got 'x'"
+  ],
+  [
+   "autodup_strict.hvm",
+   "SyntaxError: expected ';' got '+'"
+  ],
+  [
+   "autodup_sup_mix.hvm",
+   "SyntaxError: expected '&' got 'X'"
+  ],
+  [
+   "autodup_value_path.hvm",
+   "SyntaxError: expected '&' got 'X'"
+  ],
+  [
+   "bind_lam_fork.hvm",
+   "SyntaxError: expected '.' got 'x'"
+  ],
+  [
+   "bind_shadow_dup_lam.hvm",
+   "SyntaxError: expected '.' got 'x'"
+  ],
+  [
+   "bind_shadow_lam_dup.hvm",
+   "SyntaxError: expected '.' got 'x'"
+  ],
+  [
+   "collapse_0.hvm",
+   "SyntaxError: expected ',' got '{'"
+  ],
+  [
+   "collapse_1.hvm",
+   "SyntaxError: expected ',' got '{'"
+  ],
+  [
+   "collapse_2.hvm",
+   "SyntaxError: expected ',' got '{'"
+  ],
+  [
+   "collapse_3.hvm",
+   "SyntaxError: expected ')' got '{'"
+  ],
+  [
+   "collapse_6.hvm",
+   "SyntaxError: trailing tokens from '{'"
+  ],
+  [
+   "collapse_7.hvm",
+   "SyntaxError: trailing tokens from '{'"
+  ],
+  [
+   "collapse_8.hvm",
+   "SyntaxError: trailing tokens from '{'"
+  ],
+  [
+   "collapse_9.hvm",
+   "SyntaxError: expected '}' got '{'"
+  ],
+  [
+   "collapse_era.hvm",
+   "SyntaxError: expected '{' got '}'"
+  ],
+  [
+   "collapse_era_ctr.hvm",
+   "SyntaxError: trailing tokens from '{'"
+  ],
+  [
+   "collapse_era_deep.hvm",
+   "SyntaxError: trailing tokens from ','"
+  ],
+  [
+   "collapse_era_multi_ctr.hvm",
+   "SyntaxError: trailing tokens from '{'"
+  ],
+  [
+   "collapse_era_nested.hvm",
+   "SyntaxError: expected '{' got '}'"
+  ],
+  [
+   "collapse_era_pair.hvm",
+   "SyntaxError: trailing tokens from ','"
+  ],
+  [
+   "collapse_supgen_mul.hvm",
+   "SyntaxError: expected '&' got 'a'"
+  ],
+  [
+   "dup_affine_bare.hvm",
+   "SyntaxError: expected ')' got '+'"
+  ],
+  [
+   "dup_affine_cloned.hvm",
+   "SyntaxError: expected '&' got 'd'"
+  ],
+  [
+   "dup_affine_co0.hvm",
+   "SyntaxError: expected ')' got '+'"
+  ],
+  [
+   "dup_affine_co1.hvm",
+   "SyntaxError: expected ')' got '+'"
+  ],
+  [
+   "dup_affine_shadow_ok.hvm",
+   "SyntaxError: expected '.' got 'x'"
+  ],
+  [
+   "dup_affine_valid.hvm",
+   "SyntaxError: expected ')' got '+'"
+  ],
+  [
+   "dup_fresh.hvm",
+   "SyntaxError: expected '=' got '5'"
+  ],
+  [
+   "dup_pattern_affine.hvm",
+   "SyntaxError: expected '&' got 'L'"
+  ],
+  [
+   "dup_pattern_basic.hvm",
+   "SyntaxError: expected '&' got 'L'"
+  ],
+  [
+   "dup_pattern_cloned.hvm",
+   "SyntaxError: expected '&' got 'L'"
+  ],
+  [
+   "dup_pattern_dynamic.hvm",
+   "SyntaxError: expected '&' got '('"
+  ],
+  [
+   "dup_pattern_fork.hvm",
+   "SyntaxError: expected '&' got 'L'"
+  ],
+  [
+   "dup_pattern_fresh.hvm",
+   "SyntaxError: expected '&' got '{'"
+  ],
+  [
+   "dup_ref.hvm",
+   "SyntaxError: expected ')' got '{'"
+  ],
+  [
+   "dyn_dup_nested.hvm",
+   "SyntaxError: expected '=' got '1'"
+  ],
+  [
+   "dyn_dup_sup.hvm",
+   "SyntaxError: expected '=' got '1'"
+  ],
+  [
+   "enum_bits.hvm",
+   "SyntaxError: expected '.' got '#Z:'"
+  ],
+  [
+   "enum_nat.hvm",
+   "SyntaxError: expected '{' got '}'"
+  ],
+  [
+   "enum_primes.hvm",
+   "SyntaxError: expected ')' got '@'"
+  ],
+  [
+   "eql_app_fun.hvm",
+   "SyntaxError: trailing tokens from '='"
+  ],
+  [
+   "eql_ctr_empty.hvm",
+   "SyntaxError: trailing tokens from '{'"
+  ],
+  [
+   "eql_ctr_f1.hvm",
+   "SyntaxError: trailing tokens from '{'"
+  ],
+  [
+   "eql_ctr_f2.hvm",
+   "SyntaxError: trailing tokens from '{'"
+  ],
+  [
+   "eql_ctr_t.hvm",
+   "SyntaxError: trailing tokens from '{'"
+  ],
+  [
+   "eql_dup.hvm",
+   "SyntaxError: expected ')' got '='"
+  ],
+  [
+   "eql_dup_lam_ctr_left.hvm",
+   "SyntaxError: expected '=' got '\u03bb'"
+  ],
+  [
+   "eql_lam_f.hvm",
+   "SyntaxError: trailing tokens from '='"
+  ],
+  [
+   "eql_lam_nested.hvm",
+   "SyntaxError: trailing tokens from '='"
+  ],
+  [
+   "eql_lam_nested_f.hvm",
+   "SyntaxError: trailing tokens from '='"
+  ],
+  [
+   "eql_lam_t.hvm",
+   "SyntaxError: trailing tokens from '='"
+  ],
+  [
+   "eql_list_f.hvm",
+   "SyntaxError: trailing tokens from ','"
+  ],
+  [
+   "eql_list_t.hvm",
+   "SyntaxError: trailing tokens from ','"
+  ],
+  [
+   "eql_mixed_f.hvm",
+   "SyntaxError: trailing tokens from '='"
+  ],
+  [
+   "eql_nat_f.hvm",
+   "SyntaxError: trailing tokens from '='"
+  ],
+  [
+   "eql_nat_t.hvm",
+   "SyntaxError: trailing tokens from '='"
+  ],
+  [
+   "eql_nested.hvm",
+   "SyntaxError: trailing tokens from '{'"
+  ],
+  [
+   "eql_num_f.hvm",
+   "SyntaxError: trailing tokens from '='"
+  ],
+  [
+   "eql_num_t.hvm",
+   "SyntaxError: trailing tokens from '='"
+  ],
+  [
+   "eql_ref.hvm",
+   "SyntaxError: trailing tokens from '='"
+  ],
+  [
+   "eql_str_f.hvm",
+   "SyntaxError: trailing tokens from '='"
+  ],
+  [
+   "eql_str_t.hvm",
+   "SyntaxError: trailing tokens from '='"
+  ],
+  [
+   "eql_sup.hvm",
+   "SyntaxError: trailing tokens from '='"
+  ],
+  [
+   "factorial.hvm",
+   "SyntaxError: expected '.' got '#Z:'"
+  ],
+  [
+   "fib.hvm",
+   "SyntaxError: expected ')' got '{'"
+  ],
+  [
+   "fib_small.hvm",
+   "SyntaxError: expected '.' got '0:'"
+  ],
+  [
+   "fibo.hvm",
+   "SyntaxError: expected '.' got '#Z:'"
+  ],
+  [
+   "fork_dynamic.hvm",
+   "SyntaxError: expected '.' got 'L'"
+  ],
+  [
+   "fork_static.hvm",
+   "SyntaxError: expected '{' got '\u03bb'"
+  ],
+  [
+   "fuse_inc.hvm",
+   "SyntaxError: expected ')' got '{'"
+  ],
+  [
+   "gen_mul4.hvm",
+   "SyntaxError: expected '&' got 'F'"
+  ],
+  [
+   "lam_dup_auto.hvm",
+   "SyntaxError: expected '.' got '&'"
+  ],
+  [
+   "lam_dup_dyn.hvm",
+   "SyntaxError: expected '.' got '&'"
+  ],
+  [
+   "lam_dup_static.hvm",
+   "SyntaxError: expected '.' got '&'"
+  ],
+  [
+   "lam_dup_sup.hvm",
+   "SyntaxError: expected '.' got '&'"
+  ],
+  [
+   "lambda_env0.hvm",
+   "SyntaxError: expected ')' got '{'"
+  ],
+  [
+   "lambda_env1.hvm",
+   "SyntaxError: expected ')' got '{'"
+  ],
+  [
+   "lambda_eval.hvm",
+   "SyntaxError: expected '.' got 'f'"
+  ],
+  [
+   "lambda_hoas.hvm",
+   "SyntaxError: expected ')' got '{'"
+  ],
+  [
+   "lambda_subs.hvm",
+   "SyntaxError: expected ')' got '{'"
+  ],
+  [
+   "let.hvm",
+   "SyntaxError: trailing tokens from '@'"
+  ],
+  [
+   "long_name_ctor_no_collision.hvm",
+   "SyntaxError: trailing tokens from '{'"
+  ],
+  [
+   "long_name_def.hvm",
+   "SyntaxError: trailing tokens from '@'"
+  ],
+  [
+   "long_name_label_no_collision.hvm",
+   "SyntaxError: trailing tokens from ','"
+  ],
+  [
+   "long_name_match_no_collision.hvm",
+   "SyntaxError: expected '.' got '#mse:'"
+  ],
+  [
+   "long_name_no_collision.hvm",
+   "KeyError: 'undefined @other_undefined_ref'"
+  ],
+  [
+   "long_name_undef.hvm",
+   "KeyError: 'undefined @this_function_is_not_defined'"
+  ],
+  [
+   "map.hvm",
+   "SyntaxError: expected ')' got '{'"
+  ],
+  [
+   "match_0.hvm",
+   "SyntaxError: trailing tokens from '@'"
+  ],
+  [
+   "match_1.hvm",
+   "SyntaxError: trailing tokens from '@'"
+  ],
+  [
+   "match_2.hvm",
+   "SyntaxError: trailing tokens from '@'"
+  ],
+  [
+   "match_3.hvm",
+   "SyntaxError: trailing tokens from '@'"
+  ],
+  [
+   "match_4.hvm",
+   "SyntaxError: trailing tokens from '@'"
+  ],
+  [
+   "match_5.hvm",
+   "SyntaxError: trailing tokens from '@'"
+  ],
+  [
+   "match_chr_escape.hvm",
+   "SyntaxError: expected '.' got '#CHR:'"
+  ],
+  [
+   "match_chr_switch.hvm",
+   "SyntaxError: expected '.' got '#CHR:'"
+  ],
+  [
+   "match_ctr_miss.hvm",
+   "SyntaxError: expected ')' got '{'"
+  ],
+  [
+   "match_ctr_pair.hvm",
+   "SyntaxError: expected ')' got '{'"
+  ],
+  [
+   "match_recursive_arg.hvm",
+   "SyntaxError: expected '.' got '0n:'"
+  ],
+  [
+   "match_u32.hvm",
+   "SyntaxError: expected '.' got '0:100'"
+  ],
+  [
+   "mul2_4.hvm",
+   "SyntaxError: expected ')' got '{'"
+  ],
+  [
+   "multiarg_cloned.hvm",
+   "SyntaxError: expected '.' got 'x'"
+  ],
+  [
+   "multiarg_inline_dup.hvm",
+   "SyntaxError: expected '.' got '&'"
+  ],
+  [
+   "multiarg_mixed.hvm",
+   "SyntaxError: expected '.' got 'x'"
+  ],
+  [
+   "multiarg_simple.hvm",
+   "SyntaxError: expected '.' got ','"
+  ],
+  [
+   "nat_eql.hvm",
+   "SyntaxError: expected '.' got '#ZER:'"
+  ],
+  [
+   "op2_add.hvm",
+   "SyntaxError: trailing tokens from '+'"
+  ],
+  [
+   "op2_and.hvm",
+   "SyntaxError: trailing tokens from '&'"
+  ],
+  [
+   "op2_div.hvm",
+   "SyntaxError: trailing tokens from '/'"
+  ],
+  [
+   "op2_dup.hvm",
+   "SyntaxError: expected '=' got '5'"
+  ],
+  [
+   "op2_eq_f.hvm",
+   "SyntaxError: trailing tokens from '='"
+  ],
+  [
+   "op2_eq_t.hvm",
+   "SyntaxError: expected ')' got '+'"
+  ],
+  [
+   "op2_ge_f.hvm",
+   "SyntaxError: trailing tokens from '>'"
+  ],
+  [
+   "op2_ge_t.hvm",
+   "SyntaxError: trailing tokens from '>'"
+  ],
+  [
+   "op2_gt_f.hvm",
+   "SyntaxError: trailing tokens from '>'"
+  ],
+  [
+   "op2_gt_t.hvm",
+   "SyntaxError: trailing tokens from '>'"
+  ],
+  [
+   "op2_le_f.hvm",
+   "SyntaxError: trailing tokens from '<'"
+  ],
+  [
+   "op2_le_t.hvm",
+   "SyntaxError: trailing tokens from '<'"
+  ],
+  [
+   "op2_lsh.hvm",
+   "SyntaxError: trailing tokens from '<<'"
+  ],
+  [
+   "op2_lt_f.hvm",
+   "SyntaxError: trailing tokens from '<'"
+  ],
+  [
+   "op2_lt_t.hvm",
+   "SyntaxError: expected ')' got '*'"
+  ],
+  [
+   "op2_mod.hvm",
+   "SyntaxError: trailing tokens from '%'"
+  ],
+  [
+   "op2_mul.hvm",
+   "SyntaxError: trailing tokens from '*'"
+  ],
+  [
+   "op2_ne_f.hvm",
+   "SyntaxError: trailing tokens from '!'"
+  ],
+  [
+   "op2_ne_t.hvm",
+   "SyntaxError: trailing tokens from '!'"
+  ],
+  [
+   "op2_not.hvm",
+   "SyntaxError: expected ')' got '~'"
+  ],
+  [
+   "op2_or.hvm",
+   "SyntaxError: trailing tokens from '||'"
+  ],
+  [
+   "op2_rsh.hvm",
+   "SyntaxError: trailing tokens from '>>'"
+  ],
+  [
+   "op2_sp0.hvm",
+   "SyntaxError: expected ')' got '*'"
+  ],
+  [
+   "op2_sp1.hvm",
+   "SyntaxError: expected ')' got '*'"
+  ],
+  [
+   "op2_sub.hvm",
+   "SyntaxError: trailing tokens from '-'"
+  ],
+  [
+   "op2_sup.hvm",
+   "SyntaxError: expected '{' got '1'"
+  ],
+  [
+   "op2_xor.hvm",
+   "SyntaxError: trailing tokens from '^'"
+  ],
+  [
+   "pair_swap.hvm",
+   "SyntaxError: expected ')' got '{'"
+  ],
+  [
+   "partial_fallback.hvm",
+   "SyntaxError: expected '=' got '@'"
+  ],
+  [
+   "print_chr_escape.hvm",
+   "SyntaxError: trailing tokens from '{'"
+  ],
+  [
+   "print_mat.hvm",
+   "SyntaxError: expected '.' got '#A:1'"
+  ],
+  [
+   "print_mat_default.hvm",
+   "SyntaxError: expected '.' got '#A:1'"
+  ],
+  [
+   "print_mat_lst.hvm",
+   "SyntaxError: expected '.' got '[]:1'"
+  ],
+  [
+   "print_mat_nat.hvm",
+   "SyntaxError: expected '.' got '0n:1'"
+  ],
+  [
+   "print_str_escape.hvm",
+   "SyntaxError: trailing tokens from '{'"
+  ],
+  [
+   "print_swi.hvm",
+   "SyntaxError: expected '.' got '0:10'"
+  ],
+  [
+   "regression_autodup_3uses_recursive.hvm",
+   "SyntaxError: expected ')' got '{'"
+  ],
+  [
+   "separators.hvm",
+   "SyntaxError: trailing tokens from '@'"
+  ],
+  [
+   "snf_unscoped.hvm",
+   "SyntaxError: expected '&' got '='"
+  ],
+  [
+   "spin.hvm",
+   "SyntaxError: expected '.' got '0:'"
+  ],
+  [
+   "sugar_cons.hvm",
+   "SyntaxError: trailing tokens from '<>'"
+  ],
+  [
+   "sugar_lst.hvm",
+   "SyntaxError: trailing tokens from ','"
+  ],
+  [
+   "sugar_mat_lst.hvm",
+   "SyntaxError: expected '.' got '[]:'"
+  ],
+  [
+   "sugar_mat_nat.hvm",
+   "SyntaxError: expected '.' got '0n:'"
+  ],
+  [
+   "sum_4.hvm",
+   "SyntaxError: expected ')' got '{'"
+  ],
+  [
+   "unicode_char.hvm",
+   "SyntaxError: trailing tokens from '@'"
+  ],
+  [
+   "unicode_greek.hvm",
+   "SyntaxError: trailing tokens from '\u03bb'"
+  ],
+  [
+   "unicode_mixed.hvm",
+   "SyntaxError: trailing tokens from '@'"
+  ],
+  [
+   "unicode_string.hvm",
+   "SyntaxError: trailing tokens from '\u03bb'"
+  ],
+  [
+   "unscoped.hvm",
+   "SyntaxError: expected '&' got '='"
+  ],
+  [
+   "unscoped_callcc.hvm",
+   "SyntaxError: expected ')' got '+'"
+  ],
+  [
+   "unscoped_lambda_direct.hvm",
+   "SyntaxError: expected '.' got ','"
+  ],
+  [
+   "unscoped_mut_ref.hvm",
+   "SyntaxError: expected '&' got '='"
+  ],
+  [
+   "unscoped_queue.hvm",
+   "SyntaxError: expected '&' got '='"
+  ],
+  [
+   "use_match_depth.hvm",
+   "SyntaxError: expected '.' got 'd'"
+  ],
+  [
+   "use_sup_id.hvm",
+   "SyntaxError: expected '.' got '\u03bb'"
+  ]
+ ]
+}

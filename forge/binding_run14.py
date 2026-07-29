@@ -126,8 +126,8 @@ def main():
     for w, n in [(8, 4), (16, 8), (32, 16)]:
         numeric = ".".join(str(v) for v in SG.named_rotor(QTZ, n))
         a = W.lower_program(SG.desugar_core(_spinner_world(QTZ, w, n)),
-                            W.parse_wrl_core)
-        b = W.lower_program(_spinner_world(numeric, w, n), W.parse_wrl_core)
+                            W.parse_wrl_legacy_document)
+        b = W.lower_program(_spinner_world(numeric, w, n), W.parse_wrl_legacy_document)
         if (a.semantic_artifact_id != b.semantic_artifact_id
                 or a.sealed_artifact.artifact != b.sealed_artifact.artifact):
             p3 = False
@@ -140,9 +140,9 @@ def main():
 
     # ---- P4 identity is GEOMETRY-DEPENDENT (different n -> different sem id)
     a4 = W.lower_program(SG.desugar_core(_spinner_world(QTZ, 8, 4)),
-                         W.parse_wrl_core)
+                         W.parse_wrl_legacy_document)
     a8 = W.lower_program(SG.desugar_core(_spinner_world(QTZ, 16, 8)),
-                         W.parse_wrl_core)
+                         W.parse_wrl_legacy_document)
     p4 = a4.semantic_artifact_id != a8.semantic_artifact_id
     rep(p4, None, "P4) geometry-dependent: quarter_turn_z at n=4 vs n=8 -> "
                   "different SemanticArtifactID")
@@ -150,7 +150,7 @@ def main():
     # ---- P5 acceptance: qtz accepted; unknown + missing-n still reject
     p5 = True
     try:
-        SG.parse_core_sugared(_spinner_world(QTZ, 8, 4))     # now accepted
+        SG.parse_legacy_sugared(_spinner_world(QTZ, 8, 4))     # now accepted
     except Exception:
         p5 = False
     for bad, expect in [(_spinner_world("barrel_roll", 8, 4), True),
@@ -185,7 +185,7 @@ def main():
     # every offered name desugars + parses at n=4
     for nm in CP.named_rotor_completions():
         try:
-            SG.parse_core_sugared(_spinner_world(nm, 8, 4))
+            SG.parse_legacy_sugared(_spinner_world(nm, 8, 4))
         except Exception:
             p7 = False
     rep(p7, None, "P7) ALL_ROTOR_NAMES single-sourced (exact+policy); completion "
@@ -195,7 +195,7 @@ def main():
     src = _spinner_world(QTZ, 16, 8)
     d1 = SG.desugar_core(src)
     d2 = SG.desugar_core(d1)
-    fmt = F.format_wrl_core(W.parse_wrl_core(d1))
+    fmt = F.format_wrl_core(W.parse_wrl_legacy_document(d1))
     p8 = (d1 == d2 and QTZ not in d1 and QTZ not in fmt
           and "181.0.0.181" in d1)
     rep(p8, None, "P8) desugar idempotent; formatter emits numeric surface "
@@ -207,15 +207,15 @@ def main():
            "[spinner:sp](w=16, n=8, rotor=quarter_turn_z)\n"
            "[spinner:sp](w=16, n=8, rotor=quarter_turn_z)\n"
            "[orb:ob]\n[p0] --sig--> [sp]\n[sp] --socket--> [ob]\n")
-    dg = DG.diagnose_core(SG.desugar_core(dup))
+    dg = DG.diagnose_legacy_document(SG.desugar_core(dup))
     p9 = (len(dg) == 1 and dg[0].code == WC.WRL_DUPLICATE_ID
           and dg[0].canonical_object_id == "sp")
     rep(p9, None, "P9) 3B-3 diagnostics fire through a quarter_turn_z desugar")
 
     # ---- P10 SemanticDiff bridge across a quarter_turn_z <-> exact rotor edit
-    qtz_g = W.parse_wrl_core(SG.desugar_core(_spinner_world(QTZ, 16, 8)))
-    idn_g = W.parse_wrl_core(SG.desugar_core(_spinner_world("identity", 16, 8)))
-    same_g = W.parse_wrl_core(SG.desugar_core(_spinner_world(QTZ, 16, 8)))
+    qtz_g = W.parse_wrl_legacy_document(SG.desugar_core(_spinner_world(QTZ, 16, 8)))
+    idn_g = W.parse_wrl_legacy_document(SG.desugar_core(_spinner_world("identity", 16, 8)))
+    same_g = W.parse_wrl_legacy_document(SG.desugar_core(_spinner_world(QTZ, 16, 8)))
     d_move = DF.diff_graphs(qtz_g, idn_g)
     d_same = DF.diff_graphs(qtz_g, same_g)
     p10 = (d_same.is_empty()
@@ -227,7 +227,7 @@ def main():
 
     # ---- P11 a quarter_turn_z world runs ic_ref == ic32 == golden (native)
     named_full = B7.W_CORE.replace("rotor=16.0.0.0", "rotor=quarter_turn_z")
-    prog = W.lower_program(SG.desugar_core(named_full), W.parse_wrl_core)
+    prog = W.lower_program(SG.desugar_core(named_full), W.parse_wrl_legacy_document)
     plan = P.artifact_to_compile_plan_v1(prog.sealed_artifact)
     view = P.plan_view(plan)
     fx = prog.as_fixture_for_test()

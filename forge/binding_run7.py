@@ -136,7 +136,7 @@ WORLDS = [("core", W_CORE), ("twodoor", W_TWODOOR), ("multi", W_MULTI),
 
 
 def _plans(text):
-    prog = W.lower_program(text, W.parse_wrl_core)
+    prog = W.lower_program(text, W.parse_wrl_legacy_document)
     sealed = prog.sealed_artifact
     plan_ir = P.artifact_to_compile_plan_v1(sealed)
     fx = prog.as_fixture_for_test()
@@ -213,7 +213,7 @@ def main():
 
     # ---- D4 bootstrap / WRL text / canvas -> identical plan
     boot = W.lower_program(B5.BOOTSTRAP_SRC)
-    core = W.lower_program(B5.CORE_SRC, W.parse_wrl_core)
+    core = W.lower_program(B5.CORE_SRC, W.parse_wrl_legacy_document)
     canvas = CV.graph_to_canvas(core.graph)
     canv = CV.lower_canvas(canvas)
     p_boot = P.artifact_to_compile_plan_v1(boot.sealed_artifact)

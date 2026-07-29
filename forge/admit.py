@@ -99,6 +99,16 @@ def pdigest(p):
     return int.from_bytes(h, "big") & ((1 << WD) - 1)
 
 
+# Payload kind tags. These were bare literals inside `payload_key`, which was
+# survivable while only this function knew them. It is not survivable now: the
+# IC proof profiles size their kind FIELD from the largest tag, so the tag set
+# and the field width have to be derived from one place or they will disagree
+# exactly once, quietly, and in the direction of a silently misdecoded op.
+KIND_SETROTOR = 0
+KIND_RESETFAULT = 1
+KIND_SEND = 2                                    # IR v1.1 D9
+
+
 def payload_key(fx, payload):
     """Injective FIXTURE-SCOPED payload key -- the collision-free tie-break
     (Correction 1). Not another truncated hash: a typed encoding of kind
@@ -116,16 +126,16 @@ def payload_key(fx, payload):
     if payload[0] == "SetRotor":
         _, sp, rot = payload
         si = spins.index(sp) if sp in spins else len(spins)
-        return (0, si) + tuple(int(v) for v in rot)
+        return (KIND_SETROTOR, si) + tuple(int(v) for v in rot)
     if payload[0] == "ResetFault":
         _, ob = payload
         oi = orbs.index(ob) if ob in orbs else len(orbs)
-        return (1, oi, 0, 0, 0, 0)
+        return (KIND_RESETFAULT, oi, 0, 0, 0, 0)
     if payload[0] == "Send":
         _, mb, body = payload
         mbs = sorted(mailboxes_of(fx))
         mi = mbs.index(mb) if mb in mbs else len(mbs)
-        return (2, mi) + tuple(int(v) for v in body)
+        return (KIND_SEND, mi) + tuple(int(v) for v in body)
     raise ValueError("unknown payload kind %r" % (payload[0],))
 
 
@@ -488,17 +498,71 @@ def get_policy(policy_id=None):
     return policy
 
 
-def admit_step(state, batch, epoch, fx, policy_id=None):
-    """One ADMIT reduction. Returns (new_state, cfg_map, resets).
+def admit_step(state, batch, epoch, fx):
+    """One ADMIT reduction under the FROZEN acceptance policy.
+
+    Returns (new_state, cfg_map, resets).
+
+    THERE IS NO `policy_id` PARAMETER, and its absence is the point (Core
+    0.2.1 §8c). Through 0.2.0 this function took one, which meant the ordinary
+    reducer entry point let any caller execute a world under semantics that
+    world had not sealed -- while §8 froze the opposite ("read from the seal,
+    never from a caller-supplied option"). A freeze a public API contradicts
+    is a convention, not a freeze.
+
+    The policy is now reachable in exactly two ways, and they are named
+    differently on purpose:
+
+      production   `wrl_fold.fold_world` / `wrl_fold.admit_step_sealed`
+                   -- take a `RuntimeSeamsV1`, which can only be built from a
+                   sealed artifact, so the policy arrives WITH the world that
+                   declared it and cannot be substituted.
+
+      conformance  `admit_policy_probe` (below) -- takes a bare policy id and
+                   is explicitly NOT a world execution. It exists because the
+                   load-bearing negative evidence lives at combinations no
+                   seal can express (a mailbox-free world under the mailbox
+                   policy is how the EventLedger is shown to be independent of
+                   the mailbox block -- §8b consequence 2, battery row T7i).
+
+    Deleting the parameter outright would have satisfied §8's letter by
+    destroying that evidence. Splitting it keeps both properties.
 
     cfg_map {spinner_role: rotor4} and resets {orb_role: bool} together are
     exactly the EpochControl the v0.6 world consumes (via
     compiler.enc_config_bundle). state is the persistent claim log threaded
     across epochs; batch is the ordered observation for THIS epoch. The
-    result is order-independent, INCLUDING at the capacity boundary.
+    result is order-independent, INCLUDING at the capacity boundary."""
+    return _admit_step_with_policy(state, batch, epoch, fx, None)
 
-    `policy_id` selects the D10 seam table. It defaults to
-    ACCEPTANCE_POLICY_ID, so every pre-existing caller is unchanged."""
+
+def admit_policy_probe(state, batch, epoch, fx, policy_id):
+    """One ADMIT reduction under an EXPLICITLY NAMED policy. NOT a world run.
+
+    `policy_id` is REQUIRED and positional. A probe that could be called
+    without naming a policy would be a second spelling of `admit_step`, and
+    the whole value of this seam is that its call sites are greppable: every
+    use is a place where someone chose a policy by hand rather than reading a
+    seal.
+
+    Use this for policy-table conformance -- serializers, seam tables, and
+    cross-products of (world shape x policy) that a sealed artifact cannot
+    express. Do NOT use it to run a world. Core 0.2.1 §8c consequence 3: a
+    probe result is a statement about a policy table, never about a world."""
+    if policy_id is None:
+        raise ValueError(
+            "admit_policy_probe requires an explicit policy id; use "
+            "admit_step for the frozen policy or wrl_fold.fold_world for a "
+            "world's sealed policy")
+    return _admit_step_with_policy(state, batch, epoch, fx, policy_id)
+
+
+def _admit_step_with_policy(state, batch, epoch, fx, policy_id):
+    """The reduction itself. Private: reached through `admit_step` (frozen),
+    `admit_policy_probe` (explicit), or `wrl_fold.admit_step_sealed` (from a
+    seal). `policy_id=None` selects the frozen default, so the byte-for-byte
+    behaviour of every pre-0.2.1 caller is unchanged -- this split moved a
+    parameter between functions and moved no trajectory."""
     assert len(batch) <= MAX_BATCH, "batch exceeds MAX_BATCH=%d" % MAX_BATCH
     policy = get_policy(policy_id)
     state = copy.deepcopy(state)
@@ -671,7 +735,7 @@ def _outcome_str(o):
 
 
 def film_bytes_v7(t, pulsers, doors, relays, wires, spinners=None, orbs=None,
-                  state=None, mailboxes=None):
+                  state=None, mailboxes=None, policy_id=None):
     """FILM v0.7 (slice 3b.5f-1): the v0.6 physical film PLUS the claim /
     acceptance projection -- acceptance_policy_id, both capacity faults, the
     canonical claim fact set (ClaimFactKey order), the immutable acceptance
@@ -679,7 +743,19 @@ def film_bytes_v7(t, pulsers, doors, relays, wires, spinners=None, orbs=None,
     (convenience; the fact set is authoritative). The mandatory Law-6 witness
     rides here: two worlds with identical physical state but a different
     receipt log for an event E already produce different v0.7 films BEFORE E
-    is retransmitted, licensing the divergent future effect."""
+    is retransmitted, licensing the divergent future effect.
+
+    `policy_id` names the acceptance policy this trajectory ACTUALLY RAN under
+    and defaults to `ACCEPTANCE_POLICY_ID`, so every pre-existing caller is
+    byte-identical. Before Core 0.2.0 there was no parameter at all and the
+    `admit:policy=` line rendered the module constant unconditionally -- so a
+    world running `admit_mailbox_deliver_all_v1` produced a film LABELLED
+    `admit_candidate_min_firstreceipt_v1`. Both runtimes rendered the same
+    wrong label, which is why it survived as a measured row (5c T7g) rather
+    than a divergence: a film that agrees with another film about a falsehood
+    is still wrong, it is just not caught by comparing them. The label is the
+    one place the film states which SEAM produced the receipts it shows, so
+    getting it wrong misattributes every line below it."""
     base = film_bytes_v6(t, pulsers, doors, relays, wires, spinners,
                          orbs).decode()
     lines = base.rstrip("\n").split("\n")
@@ -694,7 +770,7 @@ def film_bytes_v7(t, pulsers, doors, relays, wires, spinners=None, orbs=None,
     mb_names = {r[0] for r in (mailboxes or [])}
     lines.append("admit:policy=%s,fact_capacity_fault=%d,"
                  "receipt_capacity_fault=%d,capacity_fault=%d"
-                 % (ACCEPTANCE_POLICY_ID,
+                 % (ACCEPTANCE_POLICY_ID if policy_id is None else policy_id,
                     int(st.get("fact_capacity_fault", 0)),
                     int(st.get("receipt_capacity_fault", 0)),
                     capacity_fault(st)))
@@ -732,8 +808,31 @@ def film_bytes_v7(t, pulsers, doors, relays, wires, spinners=None, orbs=None,
                          % (mb, w_, cap,
                             _msgs_str(ms.get("inbox", [])),
                             _msgs_str(ms.get("next_inbox", []))))
-        for e in st.get("ledger_entries", []):
-            lines.append(_ledger_str(e))
+    # ---- The EventLedger is NOT part of the mailbox block, and this loop sat
+    # inside it until Core 0.2.0. A `MailboxReject` is seam 1 refusing an event
+    # key BEFORE MAP looks at the operation, so it is not a mailbox event and
+    # gating it on the mailbox bundle makes rejection silently Send-specific --
+    # the exact defect the 5c ruling forbade, present here in golden while I
+    # was fixing my own copy of it in the projection.
+    #
+    # MEASURED, not argued. Driving `admit_step` on a MAILBOX-FREE fixture with
+    # `policy_id=MAILBOX_POLICY_ID` and an equivocal key, golden computes
+    #   ('MailboxReject', (1, 1), 1, 'equivocal_send', (...))
+    # into `ledger_entries` and then rendered NO ledger line at all, while
+    # still printing `recognition:w=1,s=1,state=disputed`. The film asserted a
+    # dispute and withheld the refusal that caused it.
+    #
+    # Reachability, stated honestly: through the SEALED path this is currently
+    # unreachable, because `semantic_surface_for_roles` only selects the
+    # mailbox policy for mailbox-BEARING worlds. That is a correlation between
+    # two axes the ruling explicitly separated, not a construction -- and
+    # `admit_step` takes `policy_id` directly, so a caller reaches it today.
+    #
+    # The loop is placed AFTER the mailbox block rather than before it so that
+    # a mailbox-bearing world's line ORDER is unchanged; the only films that
+    # move are ones that were dropping entries.
+    for e in st.get("ledger_entries", []):
+        lines.append(_ledger_str(e))
     return ("\n".join(lines) + "\n").encode()
 
 

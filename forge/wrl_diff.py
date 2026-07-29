@@ -212,3 +212,62 @@ def diff_sources(sa, sb, parser=W.parse_wrl_core):
 def draft_diff_sources(sa, sb, parser=W.parse_wrl_core):
     """TOLERANT DraftDiff between two WRL source strings (no identity claim)."""
     return draft_diff(W.graph_to_ir(parser(sa)), W.graph_to_ir(parser(sb)))
+
+
+# ------------------------------------------------------------ change locators
+# A SemanticDiff answers "what changed"; an editor also needs "where". No new
+# key plumbing is required for this, and that is not an accident: `Change.key`
+# is ALREADY the canonical object_id / `kind:src->dst` edge key, which is
+# exactly what `wrl_spans.WrlSourceMap` indexes on. The two modules were built
+# against the same canonical vocabulary, so they compose directly.
+#
+# The location is a PURE SIDECAR (the 3B-1/3B-3 discipline): `Change` itself is
+# unchanged and still carries no span, so nothing here can perturb a diff, a
+# bridge law, or an identity. Hand these functions an AUTHORED-coordinate source
+# map (see `wrl_sugar.authored_source_map`) and every located change is reported
+# in authored coordinates -- the locator needs no sugar awareness of its own.
+LocatedChange = namedtuple("LocatedChange", "change span origin side")
+
+# which SIDE of the diff a change can be pointed at. A removal exists only in
+# the BEFORE text; an addition only in the AFTER text. Pointing a removal at the
+# after-text would be a category error -- the construct is not there any more.
+BEFORE = "before"
+AFTER = "after"
+
+_REMOVED_KINDS = (OBJECT_REMOVED, EDGE_REMOVED)
+# the diff names identity-bearing top-level KEYS; the span scan names the
+# surface DIRECTIVE that carries them. Only `profile` has a surface line.
+_DIRECTIVE_OF = {"profile_id": "profile"}
+
+
+def _origin_for(change, source_map):
+    if source_map is None:
+        return None
+    if change.kind in (OBJECT_ADDED, OBJECT_REMOVED, OBJECT_CHANGED):
+        return source_map.origin_for_object(change.key)
+    if change.kind in (EDGE_ADDED, EDGE_REMOVED):
+        # Change.key is ALREADY the canonical `kind:src->dst` edge key, which is
+        # precisely how WrlSourceMap indexes edges -- no reconstruction needed.
+        return source_map.edges().get(change.key)
+    head = _DIRECTIVE_OF.get(change.key)
+    return source_map.origin_for_directive(head) if head else None
+
+
+def locate_changes(diff, before_map=None, after_map=None):
+    """Every Change in `diff`, paired with the SourceSpan it should be reported
+    against, as a tuple of `LocatedChange`.
+
+    Removals are located in `before_map`, everything else in `after_map`. A
+    change whose construct has no origin (or whose side was not supplied) still
+    appears, with `span=None` -- a diff must never silently drop a change just
+    because it could not be located.
+
+    If the supplied maps are in AUTHORED coordinates, so is every span returned;
+    this function is deliberately unaware of sugar."""
+    out = []
+    for c in diff.changes:
+        side = BEFORE if c.kind in _REMOVED_KINDS else AFTER
+        sm = before_map if side == BEFORE else after_map
+        o = _origin_for(c, sm)
+        out.append(LocatedChange(c, o.span if o else None, o, side))
+    return tuple(out)

@@ -6,18 +6,42 @@ new `wrl_format.py`. The formatter canonicalizes first, so it is a pure function
 of the semantic graph -- declaration order, surface choice, and source
 whitespace all wash out.
 
-  L1  parse_wrl_core(format(graph)) == graph                (round-trip)
+  L1a WORLD round-trip: parse(format(g)) preserves the canonical world
+  L1b IDENTITY round-trip: artifact bytes + SemanticArtifactID are preserved
   L2  format(parse(format(src)))    == format(src)          (idempotent/stable)
   L3  a formatting-only edit keeps the SemanticArtifactID
   L4  a formatting-only edit keeps CompilePlanDigest + BackendArtifactID
   L5  bootstrap & core surfaces of one world format to the IDENTICAL text
   L6  the formatter emits real WRL Core (parses back; ports == frozen registry)
   L7  declaration-order shuffle formats to the IDENTICAL text
-  L8  run inputs (claims) survive format -> parse (epoch_inputs identical)
+  L8  the formatter EXCLUDES run inputs, semantically AND lexically
   L9  spans over the formatted text resolve every canonical object/edge (3B-1)
   L10 the formatted text runs ic_ref == ic32 == golden       (native)
 
 Native is gated exactly like the sibling batteries (TRVM_SKIP_NATIVE=1 -> ref).
+
+------------------------------------------------------------------------ L-0
+L1 and L8 were RESTATED (GPT-5.6 ruling, Q1) because the v0.4-0 document
+boundary REPEALED the laws they used to assert -- they were not broken, they
+were obsolete. This battery predates the boundary: it was written when one
+document carried BOTH the world and its run inputs, so it could say
+"parse(format(g)) == g" over the whole graph and "claims survive a format
+cycle". v0.4-0 made `periods` and `[epoch:N]` claims RUN INPUTS, deliberately
+outside the world and outside the SemanticArtifactID. A world formatter that
+still emitted them would now be the bug.
+
+  L1 SPLITS. The WORLD half preserves every canonical field EXCEPT the run
+     inputs, named by EXCLUSION (see `_world`) so that a field a later slice
+     adds -- Slice B's route semantics, next -- is covered by default instead
+     of being silently dropped by a frozen tuple. The IDENTITY half is the one
+     that guards the spine: canonical artifact bytes + SemanticArtifactID.
+
+  L8 INVERTS. It no longer asserts run inputs SURVIVE; it asserts they are
+     provably GONE. Two independent halves, because the semantic half alone is
+     insufficient: a formatter emitting a literal `periods 0` would satisfy
+     "reparsing yields zero periods" while still writing ScenarioV1 syntax into
+     a world document. The LEXICAL half catches that, and re-parsing the output
+     through the STRICT `parse_wrl_core` mouth catches it a third time.
 """
 import os
 import sys
@@ -70,11 +94,36 @@ CORE_SRC = (
     "[epoch:1] @1,1 SetRotor sp 16.0.10.0\n")
 
 
-def _snap(g):
-    """A canonical, comparable snapshot of a WrlGraph (== graph, for L1/L7)."""
+# The RUN-INPUT fields of a canonical graph -- exactly what v0.4-0 moved out to
+# ScenarioV1. Naming the EXCLUSIONS rather than the inclusions is deliberate
+# (GPT-5.6, Q1): a hard-coded `(profile, nodes, edges)` tuple silently stops
+# covering any field a later slice adds, and Slice B is about to add route
+# semantics. Defined this way a new world field is IN the projection by default,
+# and L1a keeps testing it with no edit here.
+RUN_INPUT_FIELDS = ("periods", "batches")
+
+def _has_scenario_syntax(text):
+    """True when any line of `text` carries ScenarioV1 run-input syntax -- the
+    lexical half of L8.
+
+    Delegates to the AUTHORITATIVE `wrl_ir.is_run_input_line` rather than
+    re-spelling the forms here. The previous version of this check was a
+    hand-rolled substring list that included a bare `@`, which is WRONG twice
+    over: `@` is frozen for world addressing/placement, so it appears in legal
+    world source, and a substring list is a FORK of the parser's definition that
+    drifts silently. A lexical assertion whose vocabulary disagrees with the
+    parser's does not test the document boundary -- it tests a private opinion
+    about it."""
+    return any(W.is_run_input_line(ln.partition(";")[0].strip())
+               for ln in text.splitlines())
+
+
+def _world(g):
+    """The canonical WORLD projection of a graph: every canonical field EXCEPT
+    the run inputs. Reflective on purpose -- see RUN_INPUT_FIELDS."""
     cg = WC.canonicalize_graph(g)
-    return (cg.profile, cg.periods, list(cg.nodes), list(cg.edges),
-            [list(b) for b in cg.batches])
+    return tuple((f, getattr(cg, f)) for f in sorted(vars(cg))
+                 if f not in RUN_INPUT_FIELDS)
 
 
 def _shuffle_core(txt):
@@ -101,20 +150,33 @@ def main():
             tag = "FAIL(native)"
         print(f"  [{tag}] {label}")
 
-    # ---- L1 parse(format(graph)) == graph
-    l1 = True
+    # ---- L1a WORLD round-trip / L1b IDENTITY round-trip
+    # The INPUT is a pre-v0.4-0 COMBINED document, so it needs the explicit
+    # compatibility mouth; the OUTPUT must parse under the STRICT world parser.
+    # That asymmetry is the document boundary, mechanised: if the formatter ever
+    # leaked a run input, `parse_wrl_core` below would refuse the text outright.
+    l1a = l1b = True
     for nm, txt in WORLDS:
-        g = W.parse_wrl_core(txt)
-        if _snap(W.parse_wrl_core(F.format_wrl_core(g))) != _snap(g):
-            l1 = False
-    rep(l1, None, "L1) parse_wrl_core(format(graph)) == graph, "
-                  f"{len(WORLDS)} worlds")
+        g = W.parse_wrl_legacy_document(txt)
+        ftxt = F.format_wrl_core(g)
+        if _world(W.parse_wrl_core(ftxt)) != _world(g):
+            l1a = False
+        p1 = W.lower_program(txt, W.parse_wrl_legacy_document)
+        p2 = W.lower_program(ftxt, W.parse_wrl_core)
+        if (p1.semantic_artifact_id != p2.semantic_artifact_id
+                or WC.serialize_artifact(p1.artifact)
+                != WC.serialize_artifact(p2.artifact)):
+            l1b = False
+    rep(l1a, None, "L1a) WORLD round-trip: every canonical field except the "
+                   f"run inputs, {len(WORLDS)} worlds")
+    rep(l1b, None, "L1b) IDENTITY round-trip: canonical artifact bytes + "
+                   "SemanticArtifactID")
 
     # ---- L2 format(parse(format(src))) == format(src)
     l2 = True
     for nm, txt in WORLDS:
-        f1 = F.format_wrl_core(W.parse_wrl_core(txt))
-        f2 = F.format_wrl_core(W.parse_wrl_core(f1))
+        f1 = F.format_wrl_core(W.parse_wrl_legacy_document(txt))
+        f2 = F.format_wrl_core(W.parse_wrl_legacy_document(f1))
         if f1 != f2:
             l2 = False
     rep(l2, None, "L2) format(parse(format(src))) == format(src) (idempotent)")
@@ -122,8 +184,8 @@ def main():
     # ---- L3 a formatting-only edit keeps the SemanticArtifactID
     l3 = True
     for nm, txt in WORLDS:
-        base = W.lower_program(txt, W.parse_wrl_core)
-        fmt = W.lower_program(F.format_source(txt), W.parse_wrl_core)
+        base = W.lower_program(txt, W.parse_wrl_legacy_document)
+        fmt = W.lower_program(F.format_source(txt, W.parse_wrl_legacy_document), W.parse_wrl_legacy_document)
         if base.semantic_artifact_id != fmt.semantic_artifact_id:
             l3 = False
     rep(l3, None, "L3) a formatting-only edit keeps the SemanticArtifactID")
@@ -132,9 +194,9 @@ def main():
     l4 = True
     prof = B7._prof("auto")
     for nm, txt in WORLDS:
-        cb = W.compile_program(W.lower_program(txt, W.parse_wrl_core), prof)
+        cb = W.compile_program(W.lower_program(txt, W.parse_wrl_legacy_document), prof)
         cf = W.compile_program(
-            W.lower_program(F.format_source(txt), W.parse_wrl_core), prof)
+            W.lower_program(F.format_source(txt, W.parse_wrl_legacy_document), W.parse_wrl_legacy_document), prof)
         if (cb.sealed_plan.compile_plan_digest
                 != cf.sealed_plan.compile_plan_digest
                 or cb.backend_artifact_id != cf.backend_artifact_id
@@ -145,16 +207,16 @@ def main():
 
     # ---- L5 bootstrap & core surfaces format to the IDENTICAL text
     fb = F.format_source(BOOT_SRC, W.parse_wrl_bootstrap)
-    fc = F.format_source(CORE_SRC, W.parse_wrl_core)
+    fc = F.format_source(CORE_SRC, W.parse_wrl_legacy_document)
     l5 = (fb == fc)
     rep(l5, None, "L5) bootstrap & core surfaces format to identical text")
 
     # ---- L6 the formatter emits real WRL Core (parses back; ports == registry)
     l6 = True
     for nm, txt in WORLDS:
-        out = F.format_wrl_core(W.parse_wrl_core(txt))
+        out = F.format_wrl_core(W.parse_wrl_legacy_document(txt))
         # every node line advertises exactly the frozen port projection
-        g = W.parse_wrl_core(out)          # parses as WRL Core (not bootstrap)
+        g = W.parse_wrl_legacy_document(out)          # parses as WRL Core (not bootstrap)
         for role, name, _cfg in g.nodes:
             want = "{%s}" % ", ".join(sorted(WC.port_projection(role)))
             if want not in out:
@@ -171,34 +233,52 @@ def main():
     # ---- L7 a declaration-order shuffle formats to the IDENTICAL text
     l7 = True
     for nm, txt in WORLDS:
-        base = F.format_wrl_core(W.parse_wrl_core(txt))
-        shuf = F.format_wrl_core(W.parse_wrl_core(_shuffle_core(txt)))
+        base = F.format_wrl_core(W.parse_wrl_legacy_document(txt))
+        shuf = F.format_wrl_core(W.parse_wrl_legacy_document(_shuffle_core(txt)))
         if base != shuf:
             l7 = False
     rep(l7, None, "L7) a declaration-order shuffle formats to identical text")
 
-    # ---- L8 run inputs (claims) survive format -> parse
+    # ---- L8 the formatter EXCLUDES run inputs (the INVERSE of the old law)
     l8 = True
     for nm, txt in WORLDS:
-        base = W.lower_program(txt, W.parse_wrl_core)
-        fmt = W.lower_program(F.format_source(txt), W.parse_wrl_core)
-        if base.epoch_inputs != fmt.epoch_inputs or base.run_plan != fmt.run_plan:
+        ftxt = F.format_source(txt, W.parse_wrl_legacy_document)
+        cg = WC.canonicalize_graph(W.parse_wrl_legacy_document(ftxt))
+        prog = W.lower_program(ftxt, W.parse_wrl_legacy_document)
+        # (a) SEMANTIC: reparsing the output yields no run inputs at all.
+        semantic_clean = (cg.periods == 0
+                          and all(len(b) == 0 for b in cg.batches)
+                          and not prog.epoch_inputs)
+        # (b) LEXICAL: the output does not even CONTAIN ScenarioV1 syntax.
+        # Necessary because (a) alone would accept a literal `periods 0` line.
+        # The vocabulary is the PARSER's, not this battery's -- see
+        # `_has_scenario_syntax`.
+        lexical_clean = not _has_scenario_syntax(ftxt)
+        # (c) the STRICT world mouth accepts the output -- a third, independent
+        # witness, owned by the parser rather than by this battery.
+        try:
+            W.parse_wrl_core(ftxt)
+            strict_clean = True
+        except WC.WrlValidationError:
+            strict_clean = False
+        if not (semantic_clean and lexical_clean and strict_clean):
             l8 = False
-    rep(l8, None, "L8) run inputs (claims) survive format -> parse")
+    rep(l8, None, "L8) the formatter EXCLUDES run inputs -- semantically, "
+                  "lexically, and per the strict world parser")
 
     # ---- L9 spans over the formatted text resolve every canonical object/edge
     l9 = True
     for nm, txt in WORLDS:
-        out = F.format_source(txt)
-        sp, sm = S.lower_core_with_spans(out, "fmt_%s.wrl" % nm)
+        out = F.format_source(txt, W.parse_wrl_legacy_document)
+        sp, sm = S.lower_legacy_document_with_spans(out, "fmt_%s.wrl" % nm)
         if S.unresolved_ir_elements(sp.artifact, sm) != ():
             l9 = False
     rep(l9, None, "L9) spans over the formatted text resolve every canonical "
                   "object/edge (3B-1 interop)")
 
     # ---- L10 the formatted text runs ic_ref == ic32 == golden (native)
-    fmt_core = F.format_source(B7.W_CORE, W.parse_wrl_core)
-    prog = W.lower_program(fmt_core, W.parse_wrl_core)
+    fmt_core = F.format_source(B7.W_CORE, W.parse_wrl_legacy_document)
+    prog = W.lower_program(fmt_core, W.parse_wrl_legacy_document)
     plan = P.artifact_to_compile_plan_v1(prog.sealed_artifact)
     view = P.plan_view(plan)
     fx = prog.as_fixture_for_test()
@@ -242,6 +322,9 @@ def main():
           f"({dt:.0f}s)")
     print("  [note] the formatter canonicalizes first, so formatting is a pure "
           "function of the semantic graph -- it can never move an identity.")
+    print("  [note] L1/L8 are the L-0 RESTATEMENTS. The formatter emits a WORLD "
+          "document: the world survives exactly, the identity survives exactly, "
+          "and the run inputs are provably absent.")
     return 0 if allok else 1
 
 

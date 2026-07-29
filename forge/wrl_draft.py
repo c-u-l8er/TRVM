@@ -111,6 +111,27 @@ WRL_COMMIT_MISMATCH = "WRL_COMMIT_MISMATCH"
 WRL_INVALID_CANDIDATE = "WRL_INVALID_CANDIDATE"
 WRL_WORLD_SOURCE_HAS_SCENARIO = "WRL_WORLD_SOURCE_HAS_SCENARIO"
 WRL_SUGAR_MALFORMED = "WRL_SUGAR_MALFORMED"
+# Slice B commit 3. A WorldDraft represents a world as two plain lists --
+# `objects` and `edges` -- and that pair is what the whole authoring workspace is
+# built on: the undo snapshots, the ForgeProjectV2 `draft` block, the v0.6-0
+# recovery journal, the canvas reconciliation in wrl_converge. World content that
+# is NEITHER an object NOR an edge is invisible to all of it.
+#
+# Commit 2 could leave this alone: no surface could put a route into a draft, so
+# the gap was unreachable. Commit 3 opens the `~~` surface and makes it
+# reachable, and the failure takes the worst available shape -- opening a
+# route-bearing world as a draft does not crash and does not error, it quietly
+# yields the route-FREE world, which is itself a perfectly legal world with a
+# perfectly good (different) SemanticArtifactID. Measured before the guard was
+# written: the one-route world dropped to `sem-d3e555be...`, which is exactly
+# binding_run47's route-free 1-mailbox pin. So commit 3 closes the gap in the
+# same commit that opens it.
+#
+# The guard REFUSES rather than widening the draft. Widening would mean a new
+# revision of every persisted authoring document (ForgeProjectV2, the recovery
+# journal, the draft-state ledger) and that is a document-format change, not a
+# language change -- flagged to GPT-5.6 rather than taken here.
+WRL_DRAFT_LOSSY_WORLD = "WRL_DRAFT_LOSSY_WORLD"
 
 # the four terminal states of a ReplaceWorldSourceV1 transaction
 REPLACE_STATUS = ("syntax_error", "semantic_noop", "semantic_invalid",
@@ -149,6 +170,40 @@ def _seal(objects, edges, profile):
     except WC.WrlUnsupported as ex:
         code = getattr(ex, "code", "WRL_UNSUPPORTED_FEATURE")
         return None, "%s: %s" % (code, ex)
+
+
+def _draft_loss(g, objects, edges, profile):
+    """Does the draft's `(objects, edges)` representation hold everything the
+    graph `g` says? Returns a diagnostic dict when it does NOT, else None.
+
+    A COMPUTED round-trip, deliberately naming no construct. The alternative --
+    `if g.routes: refuse` -- would be a hand-listed inventory of what the draft
+    cannot hold, i.e. a fork of the graph's own field set, and it would go stale
+    silently: the next world construct that is neither an object nor an edge
+    would be dropped exactly as routes were, and this guard would say nothing.
+    Asking "does what we kept still seal to what we were given?" cannot go
+    stale, because it is the loss itself that is being measured.
+
+    It is the same door `wrl_legacy.export_canvas_graph_v1` uses to refuse a
+    lossy canvas export, and for the same reason: that door learned about routes
+    in commit 2 without being edited at all.
+
+    A graph that is not a LEGAL world is not this function's business -- the
+    seal reports that, with a better diagnostic than "something was lost". So an
+    unlowerable `g` returns None and the ordinary rejection path runs."""
+    try:
+        want = W.lower_graph(g).semantic_artifact_id
+    except WC.WrlUnsupported:
+        return None
+    got, err = _seal(objects, edges, profile)
+    if err is None and got == want:
+        return None
+    return {"code": WRL_DRAFT_LOSSY_WORLD,
+            "message": "this world does not survive the draft representation: "
+                       "it seals to %s, but the draft holds only objects and "
+                       "edges and what it holds seals to %s. The draft is "
+                       "REFUSED rather than silently editing a different world."
+                       % (want, got if err is None else "(%s)" % err)}
 
 
 def _objects_from_artifact(art):
@@ -231,8 +286,24 @@ def new_draft(program_or_artifact, draft_id):
     else:
         art = program_or_artifact
         base = WC.SealedArtifact(art).semantic_id
-    return WorldDraft(draft_id, art["profile_id"], base,
-                      _objects_from_artifact(art), _edges_from_artifact(art))
+    draft = WorldDraft(draft_id, art["profile_id"], base,
+                       _objects_from_artifact(art), _edges_from_artifact(art))
+    # The loss check is FREE here: the constructor already sealed the
+    # reconstructed lists, so "did the draft keep this world?" is just "is the
+    # candidate of an UNEDITED draft its own base?". Stating it costs one
+    # comparison and turns a silent world substitution into a typed refusal.
+    if draft.candidate_error is not None \
+            or draft.candidate_semantic_id != base:
+        WC._fail(WRL_DRAFT_LOSSY_WORLD,
+                 "world %s does not survive the draft representation (the "
+                 "reconstructed draft seals to %s); the draft holds only "
+                 "objects and edges, so this world cannot be opened for "
+                 "editing without silently becoming a different one"
+                 % (base, draft.candidate_semantic_id
+                    if draft.candidate_error is None
+                    else "(%s)" % draft.candidate_error),
+                 field_path="base_semantic_id")
+    return draft
 
 
 # ------------------------------------------------------------- edit validation
@@ -734,6 +805,21 @@ def replace_world_source(draft, request):
     # numbers still index the raw source the user typed.
     smap = _spans_for(core)
     new_objects, new_edges = _lists_from_graph(g)
+    # (4c) LOSS GUARD. The source parsed into a legal world; the question here is
+    # whether the DRAFT can hold it. Refused with the draft UNTOUCHED -- no
+    # snapshot, no revision, no undo entry -- because nothing about the author's
+    # text is wrong and there is nothing for them to repair in it.
+    #
+    # `syntax_error` is the reported status and it is an imperfect name, chosen
+    # because it is the only one of the four frozen terminal states whose
+    # BEHAVIOUR is exactly this (refused, draft untouched) and because inventing
+    # a fifth status is a change to a published contract, not a language
+    # decision. The diagnostic carries the honest code. Flagged to GPT-5.6.
+    loss = _draft_loss(g, new_objects, new_edges, draft.profile_id)
+    if loss is not None:
+        return finish(_replace_result(
+            draft, "syntax_error", draft.candidate_semantic_id, [loss],
+            None, smap, None))
     new_cand, new_err = _seal(new_objects, new_edges, draft.profile_id)
     # (5) semantic no-op: identical canonical bytes to the current valid candidate
     if (new_err is None and draft.candidate_error is None

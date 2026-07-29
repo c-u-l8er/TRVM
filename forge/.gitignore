@@ -11,10 +11,15 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Logs and milestone packets (built on demand, never committed)
+# Logs and milestone packets (built on demand, never committed).
+#
+# These used to be two filename globs sitting in the forge/ root. That was fragile
+# in a way that actually bit: the globs are case-sensitive, so `WRL_PHASE3D_packet.zip`
+# (lowercase "packet") slipped past `WRL_*_PACKET.zip` and was committed -- 69 KB of
+# files that were themselves already tracked. Ignoring the DIRECTORY instead of
+# guessing at filename spellings removes the whole class of miss.
 *.log
-WRL_*_PACKET.zip
-WRL_SPINNER_BENCH_V*_PACKET.zip
+packets/
 
 # Built release artifacts
 dist/

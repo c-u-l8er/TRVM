@@ -87,6 +87,7 @@ import admit as AD
 import forge_runtime as O
 import wrl_diff as WD
 import wrl_scenario as SC
+import wrl_fold as FD
 import wrl_canvas as CV
 import wrl_draft as D
 import wrl_converge as CG
@@ -381,8 +382,34 @@ def _resolve_scenario(src, scenario):
     # v0.4-0 ruling #3: normal execution refuses a scenario bound to a DIFFERENT
     # world (typed WRL_SCENARIO_WORLD_MISMATCH). A world edit rebinds only through
     # the explicit compatibility procedure, never implicitly here.
-    SC.check_world_binding(scenario, prog.semantic_artifact_id)
+    # Slice B commit 3 widens this to the COMPOSED compatibility door: the
+    # binding check PLUS the Q4 route-writer reservation. A route-bearing world
+    # mints ADMIT facts under the reserved writer id, so a scenario that also
+    # writes under it is refused here instead of colliding invisibly in the
+    # film. The reservation is inert for every route-free world, which is every
+    # world this bench ships.
+    SC.check_world_compatibility(scenario, prog.artifact,
+                                 prog.semantic_artifact_id)
     return prog, scenario
+
+
+def _script_for(prog, scen):
+    """Slice B commit 4: the ONE door from (world, scenario) to the batches the
+    ADMIT driver folds.
+
+    `scenario_to_script` lowers what the AUTHOR wrote; `wrl_fold.fold_script`
+    adds what the WORLD sends. Both run paths below need both halves, and they
+    are composed here for the reason `check_world_compatibility` gives for the
+    same shape: two independent call sites drift, and the half that goes missing
+    is whichever was added second. Today that is the fold, so a run path that
+    forgot it would execute a route-bearing world as its route-free twin --
+    green, plausible, and wrong.
+
+    Route-free worlds take the early return in `route_claims`, so every world
+    this bench ships gets a script that is byte-identical to the pre-commit-4
+    one."""
+    initial_faults, script = SC.scenario_to_script(scen)
+    return initial_faults, FD.fold_script(prog.artifact, script)
 
 
 def _admit_projection(view, claim, cfg_map, resets):
@@ -448,7 +475,7 @@ def _run_traj(src, reducer, reducer_name, scenario=None, progress=None,
     spins = sorted(view.spinners)
     orbs = list(view.orbs)
     scen_dig = SC.scenario_digest(scen)
-    initial_faults, script = SC.scenario_to_script(scen)
+    initial_faults, script = _script_for(prog, scen)
     labels = [lbl for lbl, _ in script]
     ph = phase or reducer_name
     total = len(script)
@@ -472,6 +499,20 @@ def _run_traj(src, reducer, reducer_name, scenario=None, progress=None,
     # sealed artifact (via the plan view), never from a module default: a world
     # must execute the semantics its own SemanticArtifactID names.
     claim = AD.init_claimstate(view)
+    # ... and so does the film's mailbox table. `admit_policy_id` alone is only
+    # HALF of what a sealed world declares: without the declared mailboxes,
+    # Film v0.7's guard 3 canonicalizes a Send target to INVALID_TARGET, so the
+    # film would assert the route addressed a mailbox that does not exist while
+    # `_admit_projection` (which already passes them) said otherwise. Fetching
+    # both is what `wrl_fold.runtime_seams` is for. Empty for every mailbox-free
+    # world, and `film_bytes_v7` gates its whole mailbox block on that, so the
+    # demo's films are byte-identical.
+    #
+    # Core 0.2.1 §8c: fetched as ONE `RuntimeSeamsV1` and consumed through
+    # `admit_step_sealed`. This is a production world execution, so there is no
+    # spelling here that could name a policy the world did not seal.
+    _seams = FD.runtime_seams(view, view)
+    film_mbs = _seams.film_mailboxes
     step, _ = C.compile_step_v6(view)
     sp0 = spins[0] if spins else None
     ob0 = orbs[0] if orbs else None
@@ -483,14 +524,15 @@ def _run_traj(src, reducer, reducer_name, scenario=None, progress=None,
         if cancel is not None and cancel():
             raise WJ.JobCancelled()
         ep = 1 + e
-        claim, cfg_map, resets = AD.admit_step(
-            claim, batch, ep, view, policy_id=view.admit_policy_id)
+        claim, cfg_map, resets = FD.admit_step_sealed(
+            claim, batch, ep, view, _seams)
         ec = C.enc_config_bundle(view, cfg_map, resets)
         world = C.dec_state_v6(view, reducer(
             f"(({step} {ec}) {C.enc_state_v6(view, world)})"))
         if progress is not None:
             progress(ep, total, ph)
-        film = film_hash_v7(*state_to_film_args_v6(view, world, ep), state=claim)
+        film = film_hash_v7(*state_to_film_args_v6(view, world, ep),
+                            state=claim, mailboxes=film_mbs)
         # Stored row carries NO label -- the cache is keyed by the label-free
         # ScenarioDigest, so the persisted trajectory must be label-free too.
         rows.append({"t": ep,
@@ -528,7 +570,7 @@ def _run_traj_fixture(src, reducer, scenario=None, progress=None, cancel=None):
     prog, scen = _resolve_scenario(src, scenario)
     fx = prog.as_fixture_for_test()
     view = P.plan_view(P.artifact_to_compile_plan_v1(prog.sealed_artifact))
-    initial_faults, script = SC.scenario_to_script(scen)
+    initial_faults, script = _script_for(prog, scen)
     total = len(script)
     world = init_state_v6(fx)
     for o in initial_faults:
@@ -539,21 +581,42 @@ def _run_traj_fixture(src, reducer, scenario=None, progress=None, cancel=None):
     # artifact. If the two disagreed about which mailboxes exist, the oracle
     # cross-check would (correctly) fail rather than agree by construction.
     claim = AD.init_claimstate(fx)
+    # The oracle's mailbox table comes from the FIXTURE, not the view, for the
+    # same reason its claim state does: an oracle that borrowed the production
+    # path's declarations would agree by construction.
+    film_mbs = FD.film_mailboxes(fx)
+    _oracle_policy = FD.admit_policy_of(view)
     step, _ = C.compile_step_v6(view)
     films = []
     for e, (label, batch) in enumerate(script):
         if cancel is not None and cancel():
             raise WJ.JobCancelled()
         ep = 1 + e
-        claim, cfg_map, resets = AD.admit_step(
-            claim, batch, ep, fx, policy_id=view.admit_policy_id)
+        # The PROBE, not the sealed seam -- deliberately, and for the same
+        # reason the mailbox table above is re-derived from `fx`: this is the
+        # Fixture ORACLE. It must reach the reducer by a route that does not
+        # borrow the production path's declarations, or it agrees by
+        # construction and stops being a second opinion. Naming the policy by
+        # hand is exactly what `admit_policy_probe` is for (Core 0.2.1 §8c).
+        #
+        # ...but `admit_policy_of` returns None for a mailbox-free world, and
+        # the probe REFUSES None by contract, so routing unconditionally
+        # through it would break the demo world -- which is mailbox-free.
+        # `None` names the frozen policy; `admit_step` is the entry that means
+        # that. Hoisted out of the loop because the policy is a property of the
+        # world, not of the epoch.
+        if _oracle_policy is None:
+            claim, cfg_map, resets = AD.admit_step(claim, batch, ep, fx)
+        else:
+            claim, cfg_map, resets = AD.admit_policy_probe(
+                claim, batch, ep, fx, _oracle_policy)
         ec = C.enc_config_bundle(view, cfg_map, resets)
         world = C.dec_state_v6(view, reducer(
             f"(({step} {ec}) {C.enc_state_v6(view, world)})"))
         if progress is not None:
             progress(ep, total, "fixture")
         films.append(film_hash_v7(*state_to_film_args_v6(fx, world, ep),
-                                  state=claim))
+                                  state=claim, mailboxes=film_mbs))
     return films
 
 

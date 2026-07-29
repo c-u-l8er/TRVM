@@ -67,7 +67,7 @@ FORGE_MODULES = [
     "lower_e2a.py", "lowering_policy.py", "spinner_bench.py",
     "wrl_bundle.py", "wrl_canonical.py", "wrl_canvas.py", "wrl_complete.py",
     "wrl_converge.py", "wrl_diagnostics.py", "wrl_diff.py", "wrl_draft.py",
-    "wrl_format.py", "wrl_ir.py", "wrl_jobs.py", "wrl_plan.py",
+    "wrl_fold.py", "wrl_format.py", "wrl_ir.py", "wrl_jobs.py", "wrl_plan.py",
     "wrl_project.py", "wrl_scenario.py", "wrl_spans.py", "wrl_store.py",
     "wrl_sugar.py", "wrl_templates.py",
 ]

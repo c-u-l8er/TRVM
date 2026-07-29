@@ -1,0 +1,88 @@
+# Byte fingerprints of the v6 BACKEND surface.
+#
+# Columns: world  blay-(layout signature)  bcnt-(step term)  enc_state_v6
+# Regenerate with:
+#   PYTHONPATH=../runtime/python python3 tools_backend_snapshot.py
+#
+# THIS FILE MADE A PREDICTION BEFORE COMMIT 5b AND THE PREDICTION WAS WRONG.
+#
+# It was captured immediately before the mailbox-state work and it took two
+# obligations: `bare` MUST NOT MOVE, and the four mailbox worlds MUST MOVE and
+# move apart from each other. It argued at length that a commit satisfying only
+# the first "would be a commit that did nothing at all, and this file would have
+# applauded it."
+#
+# Commit 5b then shipped -- binding_run51, conditions 1-8, PASS_REF_AND_NATIVE,
+# including ic_ref == ic32 == golden on a route-bearing, mailbox-bearing,
+# overflow-bearing three-epoch fold. All five rows below are still identical.
+# The second obligation was not merely unmet; it was aimed at the wrong surface.
+#
+# WHY IT WAS THE WRONG SURFACE. These three columns measure WORLD state. A
+# mailbox is CLAIM state. The two are different spaces and 5b put the mailbox in
+# the second one, which is what binding_run49 R12 had already measured and what
+# binding_run51 now pins from both ends:
+#
+#   T1   with no mailbox, MAP emits the frozen 2-field EpochControl.
+#   T1b  WITH one it emits PAIR(EpochControl, bundle) -- the EpochControl STILL
+#        has exactly two fields. What grew is the REDUCER's output, not the
+#        WORLD's input, so `compile_step_v6` steps the same state it always did.
+#   T8b  the reduced world state carries no mailbox at all; every mailbox line
+#        in a film matched against golden was REBUILT from the emitted bundle.
+#
+# A world-state fingerprint cannot see a claim-state feature. The old note
+# reasoned correctly that a mailbox must have runtime state somewhere and then
+# assumed "somewhere" was `_v6_fields`, because that is the state these columns
+# happen to hash. The assumption was never measured. It should have been.
+#
+# TWO THINGS THIS FILE PREVIOUSLY ASSERTED, BOTH RETRACTED:
+#
+#   * "binding_run43 10.16 asserts the opposite and 5b MUST AMEND IT", with a
+#     three-way split proposed (object_order survives, epin-/obsv- survive,
+#     slay-/blay- INVERT). 10.16 says "D8: the mailbox moves NO backend
+#     fingerprint". It is green today, after 5b, and it is CORRECT. Nothing
+#     inverts and nothing needs splitting. Leave the row alone.
+#
+#   * "the ruling's obligation (3), 'route-free v1 terms byte-identical', cannot
+#     mean what it says, and the frozen class is the MAILBOX-free class."
+#     Obligation (3) means exactly what it says and is satisfied literally.
+#     `profile_for_artifact` selects on ROUTES: a mailbox-DECLARING but
+#     route-free world stays on admit.ic.v1.core52 and its terms are byte-
+#     identical (run51 T2, 13 emitters, no drift; T2c; run50 S9d). The
+#     observation underneath the retracted claim is still true and still
+#     relevant -- `init_claimstate` and the Film v0.7 projection both fork on
+#     DECLARATION, so a route-free mailbox world does carry claim state and does
+#     emit mailbox film lines. That is simply not a statement about v1 terms.
+#
+# WHAT THE FILE IS FOR NOW: ITS ROLE INVERTS FROM PREDICTION TO GUARD.
+#
+# All five rows must STAY identical. The mailbox is claim state by design, and a
+# future commit that moves any of these three columns for a mailbox world has
+# smuggled it into world state -- undoing T1b, growing the frozen EpochControl,
+# and costing every mailbox-free world the byte-identity commit 5a bought. If
+# these rows ever move, that is the finding.
+#
+# `mailbox_routed` remains the most valuable row in the file, for the OPPOSITE
+# reason it was added. It was added to keep a "these must move" reading
+# falsifiable. It now supplies the strongest form of the guarantee: this world
+# routes into its mailbox, SELECTS admit.ic.v2.mailbox53 from its sealed
+# content, and folds real sends through the native reducer -- and still moves
+# none of these three columns.
+#
+# WHAT DOES DISCRIMINATE THE FIVE WORLDS (guarded elsewhere, not here):
+#
+#   world           SemanticArtifactID  IC profile              declared policy
+#   bare            sem-9b679609278e..  admit.ic.v1.core52      firstreceipt_v1
+#   mailbox_w8c4    sem-b2d9656ebe80..  admit.ic.v1.core52      deliver_all_v1
+#   mailbox_w16c9   sem-284911142e88..  admit.ic.v1.core52      deliver_all_v1
+#   mailbox_two     sem-3f251eddbe29..  admit.ic.v1.core52      deliver_all_v1
+#   mailbox_routed  sem-079769eceb95..  admit.ic.v2.mailbox53   deliver_all_v1
+#
+# Five distinct semantic ids, distinct mailbox records ([], [(mb,8,4)],
+# [(mc,16,9)], both, [(mb,8,4)]), and profile selection that turns on routes.
+# Mailboxes are real in the semantic artifact -- binding_run46/47 gate the ids,
+# run51 T2c gates the selection -- and deliberately absent from the machine.
+bare             3e3ebba120c5b299 af550223f2c06ec1 1945a263f13d2836
+mailbox_w8c4     3e3ebba120c5b299 af550223f2c06ec1 1945a263f13d2836
+mailbox_w16c9    3e3ebba120c5b299 af550223f2c06ec1 1945a263f13d2836
+mailbox_two      3e3ebba120c5b299 af550223f2c06ec1 1945a263f13d2836
+mailbox_routed   3e3ebba120c5b299 af550223f2c06ec1 1945a263f13d2836

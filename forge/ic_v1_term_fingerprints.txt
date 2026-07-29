@@ -1,0 +1,23 @@
+# Byte fingerprints of the `admit.ic.v1.core52` term surface, captured from the
+# tree IMMEDIATELY BEFORE the commit-5a profile split (sha256[:16] of each
+# emitted term, fresh-name counters reset before each emitter).
+#
+# The GPT-5.6 commit-4 ruling permits a Send-capable profile only if it
+# "preserve[s] the existing 52-bit profile byte-for-byte for route-free
+# worlds". That is a claim about bytes, so it needs a baseline taken before
+# the change -- afterwards there is nothing left to compare against. Regenerate
+# with `PYTHONPATH=../runtime/python python3 tools_ic_snapshot.py` and the rows
+# must still match; a battery row gates it so the claim can go red.
+ic_min2/ckey           e49d93a7f4ec16a8
+ic_eq/fkey             3c434c0723343261
+ic_eq/ckey             f1fafeb9df013ba4
+ic_fits                b14d363081215305
+ic_insert_sorted       4396dad110b33e38
+_ekey_of               4d36103599cb83e2
+_kindidx_of            1203de932500a1c6
+_pose_of               0abdf513a442e2c1
+_canon_of              94b2011b6f4ec760
+ic_observe             498072a4ab2a0ffa
+ic_accept              cd167be660cfc75c
+ic_map                 b525c584ee8831b8
+ic_reduce              c5158471ad1d975f

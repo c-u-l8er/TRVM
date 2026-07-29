@@ -1,13 +1,24 @@
 # native build artifacts
 runtime/c/ic32
+runtime/zig/ic32z
+runtime/mojo/ic32m
 ic32
 *.o
 *.out
+
+# toolchain caches -- NOT build products of this repo.
+# runtime/mojo/pixi.toml and pixi.lock ARE tracked: they are the reproducible pin.
+# runtime/mojo/.pixi/ is the 2.5 GB materialised environment and is not.
+runtime/zig/.zig-cache/
+runtime/mojo/.pixi/
 
 # python
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# packets / archives
+*.zip
 
 # editors / os
 .DS_Store

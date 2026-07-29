@@ -102,8 +102,8 @@ def main():
     # ---- S1 spanned lowering is BYTE-identical to plain lowering
     s1 = True
     for nm, txt in WORLDS:
-        plain = W.lower_program(txt, W.parse_wrl_core)
-        sp, _sm = S.lower_core_with_spans(txt, "world_%s.wrl" % nm)
+        plain = W.lower_program(txt, W.parse_wrl_legacy_document)
+        sp, _sm = S.lower_legacy_document_with_spans(txt, "world_%s.wrl" % nm)
         if (WC.serialize_artifact(plain.artifact)
                 != WC.serialize_artifact(sp.artifact)
                 or plain.semantic_artifact_id != sp.semantic_artifact_id):
@@ -114,8 +114,8 @@ def main():
     # ---- S2 file_id change leaves the SemanticArtifactID unchanged
     s2 = True
     for nm, txt in WORLDS:
-        pa, sma = S.lower_core_with_spans(txt, "aaa.wrl")
-        pb, smb = S.lower_core_with_spans(txt, "bbb.wrl")
+        pa, sma = S.lower_legacy_document_with_spans(txt, "aaa.wrl")
+        pb, smb = S.lower_legacy_document_with_spans(txt, "bbb.wrl")
         same_id = pa.semantic_artifact_id == pb.semantic_artifact_id
         # spans DID capture the different file_id (sidecar is genuinely present)
         differ = all(o.span.file_id == "aaa.wrl" for o in sma.origins) and \
@@ -129,8 +129,8 @@ def main():
     s3 = True
     prof = B7._prof("auto")
     for nm, txt in WORLDS:
-        pa, _ = S.lower_core_with_spans(txt, "aaa.wrl")
-        pb, _ = S.lower_core_with_spans(txt, "zzz.wrl")
+        pa, _ = S.lower_legacy_document_with_spans(txt, "aaa.wrl")
+        pb, _ = S.lower_legacy_document_with_spans(txt, "zzz.wrl")
         ca = W.compile_program(pa, prof)
         cb = W.compile_program(pb, prof)
         if (ca.sealed_plan.compile_plan_digest
@@ -146,8 +146,8 @@ def main():
              + CORE_SRC.replace("[relay:r0]\n",
                                 "    [relay:r0]   ; indented + inline comment\n")
              + "\n; trailing comment\n")
-    base_p, base_sm = S.lower_core_with_spans(CORE_SRC, "base.wrl")
-    noisy_p, noisy_sm = S.lower_core_with_spans(noisy, "noisy.wrl")
+    base_p, base_sm = S.lower_legacy_document_with_spans(CORE_SRC, "base.wrl")
+    noisy_p, noisy_sm = S.lower_legacy_document_with_spans(noisy, "noisy.wrl")
     moved = (base_sm.origin_for_object("r0").span
              != noisy_sm.origin_for_object("r0").span)
     s4 = (base_p.semantic_artifact_id == noisy_p.semantic_artifact_id) and moved
@@ -157,7 +157,7 @@ def main():
     # ---- S5/S6 every canonical object / edge has a resolvable origin span
     s5 = s6 = True
     for nm, txt in WORLDS:
-        sp, sm = S.lower_core_with_spans(txt, "w.wrl")
+        sp, sm = S.lower_legacy_document_with_spans(txt, "w.wrl")
         missing = S.unresolved_ir_elements(sp.artifact, sm)
         if any(k == "object" for k, _ in missing):
             s5 = False
@@ -169,7 +169,7 @@ def main():
     # ---- S7 each origin span points at the text it names
     s7 = True
     for nm, txt in WORLDS:
-        sp, sm = S.lower_core_with_spans(txt, "w.wrl")
+        sp, sm = S.lower_legacy_document_with_spans(txt, "w.wrl")
         for o in sm.origins:
             frag = txt[o.span.start_offset:o.span.end_offset]
             if o.construct_kind == S.NODE:
@@ -183,7 +183,7 @@ def main():
 
     # ---- S8 bootstrap & core surfaces: same sem id + identical origin keys
     bp, bsm = S.lower_bootstrap_with_spans(BOOT_SRC, "b.wrl")
-    cp, csm = S.lower_core_with_spans(CORE_SRC, "c.wrl")
+    cp, csm = S.lower_legacy_document_with_spans(CORE_SRC, "c.wrl")
     same_id = bp.semantic_artifact_id == cp.semantic_artifact_id
     art_objs, art_edges = _canon_keys(cp.artifact)
     bkeys = (set(bsm.objects()), set(bsm.edges()))
@@ -196,9 +196,9 @@ def main():
     # ---- S9 canvas bridge: every canvas node object_id resolves to an origin
     s9 = True
     for nm, txt in WORLDS:
-        g = W.parse_wrl_core(txt)
-        _sp, sm = S.parse_core_with_spans(txt, "w.wrl"), None
-        _, sm = S.parse_core_with_spans(txt, "w.wrl")
+        g = W.parse_wrl_legacy_document(txt)
+        _sp, sm = S.parse_legacy_document_with_spans(txt, "w.wrl"), None
+        _, sm = S.parse_legacy_document_with_spans(txt, "w.wrl")
         canvas = CV.graph_to_canvas(g)
         for node in canvas["nodes"]:
             if sm.origin_for_object(node["object_id"]) is None:
@@ -211,7 +211,7 @@ def main():
                   "origin span (all resolve)")
 
     # ---- S10 reverse lookup origin_at(offset) inside a node span -> that node
-    _sp, sm = S.parse_core_with_spans(CORE_SRC, "c.wrl")
+    _sp, sm = S.parse_legacy_document_with_spans(CORE_SRC, "c.wrl")
     org = sm.origin_for_object("sp")
     mid = (org.span.start_offset + org.span.end_offset) // 2
     hit = sm.origin_at(mid)
@@ -242,7 +242,7 @@ def main():
 
     # ---- S12 file_id + span fields never appear in the sealed artifact bytes
     marker = "SENTINEL_FILE_MARKER_98765.wrl"
-    spm, smm = S.lower_core_with_spans(CORE_SRC, marker)
+    spm, smm = S.lower_legacy_document_with_spans(CORE_SRC, marker)
     blob = spm.sealed_artifact.canonical_bytes
     text_blob = blob.decode()
     no_marker = marker not in text_blob
@@ -262,7 +262,7 @@ def main():
                    "artifact bytes")
 
     # ---- S13 the spanned-lowered program runs ic_ref == ic32 == golden
-    progS, _smS = S.lower_core_with_spans(B7.W_CORE, "native.wrl")
+    progS, _smS = S.lower_legacy_document_with_spans(B7.W_CORE, "native.wrl")
     planS = P.artifact_to_compile_plan_v1(progS.sealed_artifact)
     viewS = P.plan_view(planS)
     fxS = progS.as_fixture_for_test()

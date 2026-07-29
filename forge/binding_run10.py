@@ -129,12 +129,12 @@ def main():
         print(f"  [{tag}] {label}")
 
     # ---- G1 clean sources yield NO diagnostics
-    g1 = all(DG.diagnose_core(txt) == () for _nm, txt in WORLDS)
-    g1 = g1 and DG.diagnose_core(GOOD) == ()
+    g1 = all(DG.diagnose_legacy_document(txt) == () for _nm, txt in WORLDS)
+    g1 = g1 and DG.diagnose_legacy_document(GOOD) == ()
     rep(g1, None, "G1) a clean source yields no diagnostics (6 worlds + GOOD)")
 
     # ---- G2 duplicate id
-    d = DG.diagnose_core(DUP)
+    d = DG.diagnose_legacy_document(DUP)
     g2 = (len(d) == 1 and d[0].code == WC.WRL_DUPLICATE_ID
           and d[0].canonical_object_id == "d0"
           and d[0].primary_span is not None and d[0].related_span is not None
@@ -144,7 +144,7 @@ def main():
                   "related(1st decl)")
 
     # ---- G3 unknown endpoint
-    d = DG.diagnose_core(UNKNOWN_EP)
+    d = DG.diagnose_legacy_document(UNKNOWN_EP)
     g3 = (len(d) == 1 and d[0].code == WC.WRL_UNKNOWN_ENDPOINT
           and d[0].canonical_object_id == "dX"
           and d[0].primary_span is not None)
@@ -152,7 +152,7 @@ def main():
                   "missing-name object_id")
 
     # ---- G4 illegal port pair (a signal wire into an orb)
-    d = DG.diagnose_core(WIRE_INTO_ORB)
+    d = DG.diagnose_legacy_document(WIRE_INTO_ORB)
     g4 = (len(d) == 1 and d[0].code == WC.WRL_ILLEGAL_PORT_PAIR
           and d[0].canonical_object_id == "ob"
           and d[0].primary_span is not None)
@@ -160,7 +160,7 @@ def main():
                   "primary span")
 
     # ---- G5 controller conflict
-    d = DG.diagnose_core(TWO_CONTROLLERS)
+    d = DG.diagnose_legacy_document(TWO_CONTROLLERS)
     g5 = (len(d) == 1 and d[0].code == WC.WRL_CONTROLLER_CONFLICT
           and d[0].canonical_object_id == "ob"
           and d[0].primary_span is not None and d[0].related_span is not None
@@ -169,7 +169,7 @@ def main():
                   "related(1st) controller edge")
 
     # ---- G6 clock range (authoritative per-node locator)
-    d = DG.diagnose_core(BAD_CLOCK)
+    d = DG.diagnose_legacy_document(BAD_CLOCK)
     g6 = (len(d) == 1 and d[0].code == WC.WRL_CLOCK_RANGE
           and d[0].canonical_object_id == "p0"
           and d[0].primary_span is not None)
@@ -181,7 +181,7 @@ def main():
     checks = [(DUP, "d0"), (UNKNOWN_EP, "dX"), (WIRE_INTO_ORB, "ob"),
               (TWO_CONTROLLERS, "ob"), (BAD_CLOCK, "p0")]
     for src, tok in checks:
-        dd = DG.diagnose_core(src)
+        dd = DG.diagnose_legacy_document(src)
         if not dd or dd[0].primary_span is None:
             g7 = False
             continue
@@ -193,8 +193,8 @@ def main():
     # ---- G8 reformatting keeps code+object_id; spans MOVE
     g8 = True
     for src in (DUP, WIRE_INTO_ORB, TWO_CONTROLLERS, BAD_CLOCK):
-        a = DG.diagnose_core(src)[0]
-        b = DG.diagnose_core(_reformat(src))[0]
+        a = DG.diagnose_legacy_document(src)[0]
+        b = DG.diagnose_legacy_document(_reformat(src))[0]
         if (a.code != b.code
                 or a.canonical_object_id != b.canonical_object_id):
             g8 = False
@@ -208,9 +208,9 @@ def main():
     # ---- G9 running the diagnostic pass never perturbs identity
     g9 = True
     for _nm, txt in WORLDS:
-        base = W.lower_program(txt, W.parse_wrl_core)
-        _ = DG.diagnose_core(txt)               # side-effect-free sidecar
-        after = W.lower_program(txt, W.parse_wrl_core)
+        base = W.lower_program(txt, W.parse_wrl_legacy_document)
+        _ = DG.diagnose_legacy_document(txt)               # side-effect-free sidecar
+        after = W.lower_program(txt, W.parse_wrl_legacy_document)
         if (base.sealed_artifact.artifact != after.sealed_artifact.artifact
                 or base.semantic_artifact_id != after.semantic_artifact_id):
             g9 = False
@@ -220,8 +220,8 @@ def main():
     # ---- G10 render() is deterministic
     g10 = True
     for src in (DUP, UNKNOWN_EP, WIRE_INTO_ORB, TWO_CONTROLLERS, BAD_CLOCK):
-        r1 = DG.diagnose_core(src)[0].render()
-        r2 = DG.diagnose_core(src)[0].render()
+        r1 = DG.diagnose_legacy_document(src)[0].render()
+        r2 = DG.diagnose_legacy_document(src)[0].render()
         if r1 != r2 or not r1:
             g10 = False
     rep(g10, None, "G10) render() is deterministic (same source -> identical "
@@ -234,8 +234,8 @@ def main():
     SENTINEL = "SENTINEL_FILE_marker_zzq"
     g11 = True
     for _nm, txt in WORLDS:
-        prog = W.lower_program(txt, W.parse_wrl_core)
-        _ = DG.diagnose_core(txt, SENTINEL)     # run the sidecar with a sentinel
+        prog = W.lower_program(txt, W.parse_wrl_legacy_document)
+        _ = DG.diagnose_legacy_document(txt, SENTINEL)     # run the sidecar with a sentinel
         blob = WC.serialize_artifact(prog.sealed_artifact.artifact)
         if isinstance(blob, bytes):
             blob = blob.decode("utf-8")
@@ -247,8 +247,8 @@ def main():
                    "sealed artifact bytes")
 
     # ---- G12 a clean world still runs ic_ref==ic32==golden (native)
-    prog = W.lower_program(B7.W_CORE, W.parse_wrl_core)
-    assert DG.diagnose_core(B7.W_CORE) == ()      # clean world, no diagnostics
+    prog = W.lower_program(B7.W_CORE, W.parse_wrl_legacy_document)
+    assert DG.diagnose_legacy_document(B7.W_CORE) == ()      # clean world, no diagnostics
     plan = P.artifact_to_compile_plan_v1(prog.sealed_artifact)
     view = P.plan_view(plan)
     fx = prog.as_fixture_for_test()

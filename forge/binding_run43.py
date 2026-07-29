@@ -45,8 +45,10 @@ import wrl_sugar as SG
 import spinner_bench as SB
 from fixture import Fixture, init_state_v6, state_to_film_args_v6
 import admit as AD
-from admit import (mk_claim, admit_step, init_claimstate, recognition,
-                   film_bytes_v7, ACCEPTANCE_POLICY_ID, MAILBOX_POLICY_ID)
+from admit import (mk_claim, admit_step, admit_policy_probe, init_claimstate,
+                   recognition, film_bytes_v7, ACCEPTANCE_POLICY_ID,
+                   MAILBOX_POLICY_ID)
+import wrl_fold as FD
 from forge_runtime import ref_reduce as norm, native_reduce as native
 
 SKIP_NATIVE = os.environ.get("TRVM_SKIP_NATIVE") == "1"
@@ -115,11 +117,17 @@ def mb_records(fx):
 
 
 def fold(fx, epochs, policy=MB, st0=None):
-    """Fold a list of per-epoch batches. Returns (final_state, per_epoch)."""
+    """Fold a list of per-epoch batches. Returns (final_state, per_epoch).
+
+    A PROBE (Core 0.2.1 §8c): this helper is handed a fixture and a policy
+    name, never a sealed artifact, so there is nothing here to read a seal
+    from. That is the correct classification for a battery asserting what a
+    policy table does -- and the one fold in this file that IS driven off a
+    seal (10.16) goes through `admit_step_sealed` instead."""
     state = st0 if st0 is not None else init_claimstate(fx)
     out = []
     for e, batch in enumerate(epochs):
-        state, cfg, rst = admit_step(state, batch, e, fx, policy_id=policy)
+        state, cfg, rst = admit_policy_probe(state, batch, e, fx, policy)
         out.append((copy.deepcopy(state), cfg, rst))
     return state, out
 
@@ -578,7 +586,7 @@ def r10_12():
     # must NOT see (no port, no edge, no encoded state).
     batch = [mk_claim(1, 1, SR("sp", 1, 0, 0, 0)),
              mk_claim(2, 1, SEND("mb0", 3, 0, 0, 0))]
-    state, cfg, rst = admit_step(state, batch, 0, fx, policy_id=MB)
+    state, cfg, rst = admit_policy_probe(state, batch, 0, fx, MB)
 
     ok = report(cfg == {"sp": (1, 0, 0, 0)},
                 "10.12 mailbox world yields the SAME EpochControl",
@@ -634,7 +642,7 @@ def r10_12():
         sx = init_state_v6(fx)
         films = []
         for e, batch in enumerate(K_EPOCHS):
-            cs, cfg_e, rst_e = admit_step(cs, batch, e, fx, policy_id=MB)
+            cs, cfg_e, rst_e = admit_policy_probe(cs, batch, e, fx, MB)
             wr = fx.in_wires("sp")[0]
             sx = copy.deepcopy(sx)
             sx[wr] = (sx[wr][0], True)
@@ -933,14 +941,18 @@ def r10_16():
                  caught or "NOT CAUGHT")
 
     # The runner's own fold, driven end-to-end off the sealed artifact.
+    # THE SEALED SEAM (Core 0.2.1 §8c). This fold is the one in this file that
+    # is driven end-to-end off the artifact, so it is a world execution and
+    # names no policy: `runtime_seams` reads the seal and the reduction cannot
+    # be handed a different one.
+    seams = FD.runtime_seams(view, view)
     st = init_claimstate(view)
-    st, _cfg, _rst = admit_step(st, [mk_claim(1, 1, SEND("mb0", 1, 0, 0, 0)),
-                                     mk_claim(2, 1, SEND("mb0", 2, 0, 0, 0)),
-                                     mk_claim(3, 1, SEND("mb0", 3, 0, 0, 0)),
-                                     mk_claim(3, 1, SEND("mb0", 4, 0, 0, 0))],
-                                0, view, policy_id=view.admit_policy_id)
-    st, _cfg, _rst = admit_step(st, [], 1, view,
-                                policy_id=view.admit_policy_id)
+    st, _cfg, _rst = FD.admit_step_sealed(
+        st, [mk_claim(1, 1, SEND("mb0", 1, 0, 0, 0)),
+             mk_claim(2, 1, SEND("mb0", 2, 0, 0, 0)),
+             mk_claim(3, 1, SEND("mb0", 3, 0, 0, 0)),
+             mk_claim(3, 1, SEND("mb0", 4, 0, 0, 0))], 0, view, seams)
+    st, _cfg, _rst = FD.admit_step_sealed(st, [], 1, view, seams)
     ok &= report(inbox(st, "mb0") == ((1, 0, 0, 0), (2, 0, 0, 0)),
                  "10.16 two sends to one mailbox deliver through the seam")
     ok &= report(recognition(st, (3, 1)) == "disputed"
@@ -1001,8 +1013,20 @@ def r10_18():
     """MAILBOX WIDTH BOUND (post-review). The canonical validator accepted any
     `w > 0` while the Fixture oracle enforced `0 < w <= 32`, so an artifact
     could seal, earn a SemanticArtifactID, and then fail to lower to the
-    oracle. The bound is now ONE number in ONE place, `WC.MAILBOX_WIDTH_MAX`,
-    and both surfaces read it."""
+    oracle.
+
+    The bound is named ONCE, as `WC.MAILBOX_WIDTH_MAX`, and the two surfaces
+    are CHECKED to agree -- they do not share it. `fixture.py` spells
+    `0 < w_ <= 32` itself, on purpose: it is an INDEPENDENT oracle, and an
+    oracle that imported the validator's constant would agree with a wrong
+    bound just as readily as with a right one, which is to say it would confirm
+    nothing. (An earlier version of this docstring claimed "both surfaces read
+    it". That was false, and a claimed shared definition is worse than an
+    honest fork, because it tells the next reader there is nothing to check.)
+
+    Checked agreement means BOTH directions. The row used to test only that the
+    Fixture ADMITS the bound; a Fixture that had no upper bound at all would
+    have passed it. The refusal side is tested below."""
     ok = report(WC.MAILBOX_WIDTH_MAX == 32,
                 "10.18 the width bound is a single named constant",
                 f"1..{WC.MAILBOX_WIDTH_MAX}")
@@ -1022,15 +1046,25 @@ def r10_18():
                      f"10.18 {why} is a typed WRL_NUMERIC_RANGE",
                      code or "NOT REJECTED")
 
-    # The two surfaces must agree, or a sealed artifact could fail to lower.
-    try:
-        Fixture({"p0": ("periodic", 2, 0)}, [], ["d0"], [("p0", "d0")],
-                mailboxes={"mb0": (WC.MAILBOX_WIDTH_MAX, 1)})
-        fx_ok = True
-    except Exception:
-        fx_ok = False
-    ok &= report(fx_ok,
-                 "10.18 the Fixture oracle admits exactly what the IR seals")
+    # The two surfaces must agree, or a sealed artifact could fail to lower --
+    # and "agree" is a two-sided claim, so both sides are exercised.
+    def fixture_takes(w_):
+        try:
+            Fixture({"p0": ("periodic", 2, 0)}, [], ["d0"], [("p0", "d0")],
+                    mailboxes={"mb0": (w_, 1)})
+            return True
+        except Exception:
+            return False
+
+    ok &= report(fixture_takes(WC.MAILBOX_WIDTH_MAX),
+                 "10.18 the Fixture oracle ADMITS the widest width the IR "
+                 "seals")
+    ok &= report(not fixture_takes(WC.MAILBOX_WIDTH_MAX + 1),
+                 "10.18 ...and REFUSES the first width the IR refuses -- the "
+                 "agreement is two-sided, so an oracle with no upper bound "
+                 "would fail here")
+    ok &= report(not fixture_takes(0),
+                 "10.18 ...and refuses w == 0 at the bottom of the range too")
     return ok
 
 

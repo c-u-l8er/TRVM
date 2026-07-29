@@ -291,13 +291,22 @@ def fold(name, epochs, fx=None, policy=None):
     """Fold admit_step across a scenario. Returns canonical transcript lines.
 
     `fx`/`policy` default to the frozen pre-Slice-A pair, so the baseline
-    transcript is produced by the identical code path it always was."""
+    transcript is produced by the identical code path it always was.
+
+    This is an ORACLE, so a named `policy` goes through the conformance probe
+    (Core 0.2.1 §8c). That is the correct classification and not a workaround:
+    the oracle's job is to state what a policy TABLE does, independently of
+    any world that might seal it -- it is handed a fixture and a policy, never
+    an artifact, and it is precisely the second opinion a sealed fold is
+    checked against."""
     fx = FX if fx is None else fx
     lines = ["== scenario %s" % name]
     st = A.init_claimstate(fx if fx is not FX else None)
     mbs = [(m, w, c) for m, (w, c) in sorted(A.mailboxes_of(fx).items())]
     for i, batch in enumerate(epochs):
-        st, cfg_map, resets = A.admit_step(st, batch, i, fx, policy_id=policy)
+        st, cfg_map, resets = (
+            A.admit_step(st, batch, i, fx) if policy is None
+            else A.admit_policy_probe(st, batch, i, fx, policy))
         lines.append("-- epoch %d  batch=%d" % (i, len(batch)))
         lines.extend(control_lines(cfg_map, resets))
         lines.extend(state_lines(st))

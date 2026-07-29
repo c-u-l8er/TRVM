@@ -32,7 +32,7 @@ from collections import namedtuple
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import wrl_ir as W
 from wrl_ir import (
-    parse_wrl_bootstrap, parse_wrl_core, lower_graph,
+    parse_wrl_bootstrap, parse_wrl_core, parse_wrl_legacy_document, lower_graph,
     _ROLE_TOKEN, _EDGE_TAG, _EPOCH_RE, _EDGE_RE, _NODE_RE,
 )
 
@@ -266,6 +266,22 @@ def lower_bootstrap_with_spans(text, file_id=DEFAULT_FILE_ID):
 def lower_core_with_spans(text, file_id=DEFAULT_FILE_ID):
     """WRL Core text -> (LoweredProgram, WrlSourceMap)."""
     g, sm = parse_core_with_spans(text, file_id)
+    return lower_graph(g), sm
+
+
+# ----------------------------------------------------- legacy document mouths
+# Mirrors of the two above for pre-v0.4-0 COMBINED documents. Every layer that
+# exposes a "core" mouth gets an explicitly-named legacy twin (L-0 Q2), so a
+# caller that needs run-input syntax has to ask for it by name. The span scan is
+# unchanged -- only the parser mouth differs.
+def parse_legacy_document_with_spans(text, file_id=DEFAULT_FILE_ID):
+    """Pre-v0.4-0 COMBINED document -> (canonical WrlGraph, WrlSourceMap)."""
+    return (parse_wrl_legacy_document(text), _scan_core_spans(text, file_id))
+
+
+def lower_legacy_document_with_spans(text, file_id=DEFAULT_FILE_ID):
+    """Pre-v0.4-0 COMBINED document -> (LoweredProgram, WrlSourceMap)."""
+    g, sm = parse_legacy_document_with_spans(text, file_id)
     return lower_graph(g), sm
 
 

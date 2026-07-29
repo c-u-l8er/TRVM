@@ -35,6 +35,19 @@ IC32    = os.path.join(REPO, "runtime", "c", "ic32")
 WRUN    = os.path.join(REPO, "runtime", "wasm", "wrun.js")
 WASM    = os.path.join(REPO, "runtime", "wasm", "ic32.wasm")
 
+# Additional native backends, discovered the same way the C one is: present or not.
+# Each entry is (label, argv-prefix, path-that-must-exist). A backend that is not built
+# is SKIPPED with a note, never silently treated as passing -- the note is the whole
+# point, because "0 failures" from a runner that checked nothing is the failure mode a
+# conformance suite exists to prevent.
+IC32Z   = os.path.join(REPO, "runtime", "zig", "ic32z")
+IC32M   = os.path.join(REPO, "runtime", "mojo", "ic32m")
+
+EXTRA_BACKENDS = [
+    ("ic32(zig)",  [IC32Z], IC32Z),
+    ("ic32(mojo)", [IC32M], IC32M),
+]
+
 GREEN, RED, DIM, RST = "\033[32m", "\033[31m", "\033[2m", "\033[0m"
 def ok(m):   print(f"  {GREEN}PASS{RST} {m}")
 def bad(m):  print(f"  {RED}FAIL{RST} {m}")
@@ -47,11 +60,19 @@ def fail(m):
     bad(m)
 
 
-def c_nf(term):
-    r = subprocess.run([IC32], input=term, capture_output=True, text=True)
+def exec_nf(argv, label, term):
+    """Run one backend over the conformance contract: term on stdin, NF on stdout."""
+    try:
+        r = subprocess.run(argv, input=term, capture_output=True, text=True)
+    except OSError as e:
+        return f"<{label} not runnable: {e}>"
     if r.returncode != 0:
-        return f"<ic32 exit {r.returncode}: {r.stderr.strip()}>"
+        return f"<{label} exit {r.returncode}: {r.stderr.strip()}>"
     return r.stdout.strip()
+
+
+def c_nf(term):
+    return exec_nf([IC32], "ic32", term)
 
 def wasm_nf(term):
     r = subprocess.run(["node", WRUN], input=term, capture_output=True, text=True)
@@ -72,6 +93,11 @@ def run_vectors():
         note(f"native ic32 not built ({IC32}) — skipping C check (run: make -C runtime/c)")
     if not have_node:
         note("node or ic32.wasm unavailable — skipping wasm check")
+
+    extra = [(lab, argv) for lab, argv, path in EXTRA_BACKENDS if os.path.exists(path)]
+    for lab, _argv, path in EXTRA_BACKENDS:
+        if not os.path.exists(path):
+            note(f"{lab} not built ({path}) — skipping")
 
     for v in vecs:
         term, nf = v["term"], v["nf"]
@@ -96,9 +122,21 @@ def run_vectors():
             wn = wasm_nf(term)
             if wn != nf:
                 fail(f"{tag}: ic32.wasm NF {wn!r} != expected {nf!r}"); continue
+        # Additional native backends (Zig, Mojo, ...). Only the NORMAL FORM is normative
+        # across runtimes — conformance README §1 — so the interaction count recorded in
+        # the vector is deliberately NOT asserted here for anything but ic_float.
+        bad_extra = None
+        for lab, argv in extra:
+            xn = exec_nf(argv, lab, term)
+            if xn != nf:
+                bad_extra = f"{tag}: {lab} NF {xn!r} != expected {nf!r}"
+                break
+        if bad_extra:
+            fail(bad_extra); continue
         ok(f"{tag}: {nf}")
     runtimes = "ic_float" + (", ic_ref" if any(v.get("ic_ref_agrees") for v in vecs) else "") \
-               + (", ic32(C)" if have_c else "") + (", ic32.wasm" if have_node else "")
+               + (", ic32(C)" if have_c else "") + (", ic32.wasm" if have_node else "") \
+               + "".join(", " + lab for lab, _ in extra)
     note(f"{len(vecs)} vectors checked across: {runtimes}")
 
 

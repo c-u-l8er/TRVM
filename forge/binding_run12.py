@@ -76,23 +76,23 @@ def main():
         print(f"  [{tag}] {label}")
 
     WORLDS = B7.WORLDS
-    base = W.parse_wrl_core(B7.W_CORE)
+    base = W.parse_wrl_legacy_document(B7.W_CORE)
 
     # ---- Q1 identical artifacts -> empty diff (every structural world)
     q1 = True
     for _name, src in WORLDS:
-        g = W.parse_wrl_core(src)
+        g = W.parse_wrl_legacy_document(src)
         if not DF.diff_graphs(g, g).is_empty():
             q1 = False
     rep(q1, None, "Q1) identical artifacts -> empty diff (all structural worlds)")
 
     # ---- edits for the bridge matrix
-    rotor_edit = W.parse_wrl_core(B7.W_CORE.replace("rotor=16.0.0.0",
+    rotor_edit = W.parse_wrl_legacy_document(B7.W_CORE.replace("rotor=16.0.0.0",
                                                     "rotor=0.16.0.0"))
     # drop the socket edge (remove a line containing --socket-->)
-    no_socket = W.parse_wrl_core("\n".join(
+    no_socket = W.parse_wrl_legacy_document("\n".join(
         ln for ln in B7.W_CORE.splitlines() if "--socket--" not in ln))
-    prof_edit = W.parse_wrl_core(
+    prof_edit = W.parse_wrl_legacy_document(
         B7.W_CORE.replace("profile forge.world.core.v1",
                           "profile forge.world.core.v1"))  # same (control)
 
@@ -157,7 +157,7 @@ def main():
     formatted = F.format_wrl_core(base)
     q6 = True
     for txt in (shuffled, formatted):
-        g = W.parse_wrl_core(txt)
+        g = W.parse_wrl_legacy_document(txt)
         if not (DF.diff_graphs(base, g).is_empty()
                 and _sem(base) == _sem(g)):
             q6 = False
@@ -166,7 +166,7 @@ def main():
 
     # ---- Q7 run-input-only edit (different claim batch) -> empty semantic diff
     # W_CORE carries claims; drop the epoch/claim lines -> same STATIC artifact
-    no_claims = W.parse_wrl_core("\n".join(
+    no_claims = W.parse_wrl_legacy_document("\n".join(
         ln for ln in B7.W_CORE.splitlines() if not ln.startswith("[epoch:")))
     q7 = (DF.diff_graphs(base, no_claims).is_empty()
           and _sem(base) == _sem(no_claims))
@@ -235,14 +235,14 @@ def main():
         elif rid == "Spinner":
             cfg = "(w=8, n=4, rotor=16.0.0.0)"
         try:
-            W.parse_wrl_core("profile forge.world.core.v1\nperiods 1\n"
+            W.parse_wrl_legacy_document("profile forge.world.core.v1\nperiods 1\n"
                              "[%s:x0]%s%s\n" % (tok, cfg, ports))
         except Exception:
             q13 = False
     # edge tags
     for tag in CP.edge_tag_completions():
         try:
-            W.parse_wrl_core("[a] --%s--> [b]\n" % tag)
+            W.parse_wrl_legacy_document("[a] --%s--> [b]\n" % tag)
         except WC.WrlValidationError:
             pass  # endpoint nodes undefined, but the TAG lexes -> not a tag error
         except Exception:
@@ -273,8 +273,58 @@ def main():
     rep(q14, None, "Q14) named-rotor completions == frozen 3B-4 table; clock "
                    "forms desugar")
 
+    # ---- Q16 the completion API is TOTAL over the frozen registry
+    # This row exists because the registry and the text surface are NOT equal
+    # and nothing previously said so. `Mailbox` entered `WC.ROLE_IDS` with ports
+    # and a config schema but no WRL Core lexeme, and three separate things
+    # broke at once: `role_completions()` raised a bare KeyError, so the whole
+    # completion API was dead for every caller; `surface_metadata()` did the
+    # same while documenting itself as unable to drift; and the parser told
+    # authors the role "is not in the frozen v1 registry" when it demonstrably
+    # is. A crash is the worst of the three -- it is the failure mode that
+    # reports nothing about its own cause.
+    #
+    # So the law is TOTALITY, not equality. Equality would be a language claim
+    # (every registry role must be writable) that is not mine to make here; the
+    # Mailbox surface form belongs to Slice B. Totality is a TOOLING claim: no
+    # registry role may make a read of the vocabulary crash, whether or not it
+    # can be spelled.
+    q16 = True
+    try:
+        toks = set(CP.role_completions())
+        meta2 = CP.surface_metadata()
+        for rid in WC.ROLE_IDS:                 # includes the unwritable ones
+            CP.port_completions(rid)
+            CP.config_key_completions(rid)
+    except Exception:
+        q16 = False
+        toks, meta2 = set(), {}
+    if q16:
+        unwritable = set(W.unwritable_role_ids())
+        # (a) the surface is a faithful, SOUND subset: every offered token
+        #     parses, and no unwritable role is ever offered as a candidate.
+        q16 = (toks == set(W._ROLE_TOKEN)
+               and set(meta2["roles"]) == toks
+               and unwritable == set(WC.ROLE_IDS) - set(W._ROLE_TOKEN.values())
+               and not (unwritable & {W._ROLE_TOKEN[t] for t in toks}))
+        # (b) the gap is REPORTED, not hidden behind an absence.
+        q16 = q16 and list(meta2["unwritable_roles"]) == sorted(unwritable)
+        # (c) NEGATIVE CONTROL: an unwritable role is genuinely unwritable, and
+        #     its rejection tells the truth about WHY. An assertion never seen
+        #     to fail is not evidence, and the old message failed exactly here.
+        for rid in unwritable:
+            try:
+                W.parse_wrl_core("profile forge.world.core.v1\n[%s:x0]\n"
+                                 % (rid.lower(),))
+                q16 = False                      # writable after all -> (a) lied
+            except WC.WrlValidationError as e:
+                if "not in the frozen v1 registry" in e.message:
+                    q16 = False                  # the message denies the registry
+    rep(q16, None, "Q16) the completion API is TOTAL over the frozen registry; "
+                   "the surface/registry gap is reported, not hidden")
+
     # ---- Q15 an edited world runs ic_ref == ic32 == golden (native)
-    prog = W.lower_program(B7.W_CORE, W.parse_wrl_core)
+    prog = W.lower_program(B7.W_CORE, W.parse_wrl_legacy_document)
     plan = P.artifact_to_compile_plan_v1(prog.sealed_artifact)
     view = P.plan_view(plan)
     fx = prog.as_fixture_for_test()
