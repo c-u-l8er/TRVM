@@ -14,7 +14,7 @@ and proof **search** as their destination. We observe that the axis they are *no
 building is **distribution across machines**, and that it is both open and a
 natural fit: interaction-net reduction is confluent by construction, which makes
 single-net reduction *schedule-independent*. Coordination-freedom **across
-machines** additionally requires the boundary-port discipline of §4.5 (owner-only
+machines** additionally requires the boundary-port discipline of §4.6 (owner-only
 rewrite over monotone, never-retracting export grafts); we keep these two
 guarantees distinct rather than collapsing distribution onto confluence alone. We
 make this concrete. We (1) build a correct reducer for the
@@ -27,8 +27,11 @@ reference bit-for-bit; and (4) demonstrate coordination-free distributed reducti
 in three regimes — a simulated boundary-port reducer (480 schedule/partition-
 independent runs), the same protocol on real OS processes over real IPC, and the
 WASM runtime running coordination-free across real isolated workers. The result is
-a working, validated, browser-native, coordination-free, multi-node interaction-
-calculus runtime. Every claim is backed by runnable, self-validating code; every
+a working, validated, browser-native interaction-calculus runtime with
+coordination-free distributed reduction demonstrated in the demand-driven
+(centralized-control) and independent-search regimes; the autonomous
+shared-graph regime that would deliver parallel speedup is specified (§6.4.1)
+but unbuilt. Every claim is backed by runnable, self-validating code; every
 limitation is stated plainly.
 
 ---
@@ -73,6 +76,30 @@ self-validating:
 4. **Coordination-free distribution**, in three regimes (`dist_ic.py`,
    `dist_real.py`, `swarm.js`) — §6.
 
+### 1.1 Normative scope
+
+The **deliverable runtime** is the IC32 packed-word reducer (§4) and its
+freestanding WebAssembly build (§5), operating under a **demand-driven,
+centralized-control** distribution protocol (§6.1–6.2) in which a single
+coordinator drives root normalization over passive shard-serving workers.
+
+The following are demonstrated but **not normative deliverables** of this
+specification:
+
+- **Independent search** (§6.3, `swarm.js`): partitioned search merged by
+  monotone union. Coordination-free by CALM, but exercises no shared sharing
+  graph and no cross-partition active pairs — it is an *application* of the
+  runtime, not a runtime regime.
+- **Autonomous shared-graph reduction** (§6.4, `p2.py`): the regime where
+  every worker drains its own redex bag and work migrates across boundaries
+  with no central coordinator. Its termination detector is validated on
+  interaction-combinators; porting it to the IC32 word format is the
+  principal remaining engineering step and is specified in §6.4.1, but the
+  IC32 autonomous runtime is **unbuilt**.
+
+Claims elsewhere in this document about "coordination-free distributed
+reduction" refer to the demand-driven regime unless explicitly qualified.
+
 ---
 
 ## 2. Background
@@ -102,10 +129,10 @@ boundary-port (BND) wire arrival is not a reduction step but a *structural
 extension* of the net — exactly the event Church–Rosser assumes away — so
 confluence alone does not discharge the open-system obligation. What confluence
 supplies is schedule-independence; coordination-freedom across machines is supplied
-by the BND ownership + monotone-export discipline (§4.5). Concretely: the set of
+by the BND ownership + monotone-export discipline (§4.6). Concretely: the set of
 *fired* boundary pairs is grow-only and CALM-safe, but *reading out a partial
 normal form* gated on cross-boundary fan resolution is not monotone — which is why
-global termination (§4.6) is the one residual coordination point.
+global termination (§4.7) is the one residual coordination point.
 
 ---
 
@@ -202,9 +229,101 @@ Naively-written church numerals — non-linear binders, or a single shared dupli
 across independent numerals — reduce incorrectly, because same-label duplicators wrongly
 annihilate; this is the standard interaction-net labeling requirement, not a defect in the
 reduction engine, which matches `ic_ref` exactly on the 24-term oracle and reduces the dup-free
-`NOT` correctly through the 2²⁴-parity computation. Garbage collection is now incremental
+`NOT` correctly through the 2²⁴-parity computation.
+
+### 4.5 Input validity and rejection
+
+A term presented to `ic32` (via parser or the WASM ABI) is **valid** iff:
+
+1. **Label freshness.** Every DUP node carries a label distinct from every
+   other DUP node in the same net. (This is the compiler's obligation — `lc2`
+   assigns a fresh fan label per numeral for exactly this purpose.)
+2. **Affinity.** Each variable name occurs at most once as a use; the
+   binder slot and its use slot form a unique pair. No variable is used
+   twice without an explicit DUP.
+3. **Heap/address validity.** Every address field in a packed word points to
+   an allocated slot within heap bounds. (Trivially satisfied by the bump
+   allocator when input is constructed through the parser or WASM ABI; may
+   be violated by direct memory writes from an untrusted host.)
+4. **Tag well-formedness.** The 4-bit tag of every word is one of the
+   defined node types (`VAR`, `ERA`, `LAM`, `APP`, `SUP`, `DUP`, `DP0`,
+   `DP1`). The substitution flag is clear on input.
+
+**Rejection behavior.** The runtime does **not** validate these
+preconditions (same as HVM). Inputs violating (1) produce wrong normal forms
+(spurious DUP-SUP annihilation). Inputs violating (2) produce stuck terms or
+double-substitution corruption. Inputs violating (3) or (4) are undefined
+behavior. A conforming front-end (compiler or parser) MUST enforce (1)–(4).
+
+**ERA-DUP.** The interaction rule for `ERA` meeting a `DUP` node is
+currently **unimplemented** in `ic32`. Encountering this pair at reduction
+time is a runtime gap (the reduction halts with the pair unreduced), not an
+input-validity violation — the input is well-formed, but the engine's rule
+coverage is incomplete. This is the single missing interaction rule; the
+Python oracles (`ic_float.py`) implement it and serve as the reference.
+
+Garbage collection is now incremental
 (free-list recycling of consumed nodes plus eraser propagation — see the maturity notes below);
 the remaining runtime piece is the ERA-DUP rule, plus porting GC to the wasm build.
+
+### 4.6 Boundary-port semantics and invariants
+
+When a net is sharded across workers, a **boundary port** (BND) is a wire
+whose two endpoints reside on different workers. The following rules govern
+boundary-port behavior; they are the discipline that, together with
+confluence, yields coordination-free distributed reduction.
+
+**Ownership.** Every node is owned by exactly one worker, assigned at
+allocation time. Ownership never migrates. Only the owning worker may
+*rewrite* (fire a redex involving) a node it owns. Any worker may *read* a
+remote node's slots.
+
+**Export (graft).** When a reduction on worker A writes a reference to a
+node on worker B into a slot, that slot becomes a boundary port. This is a
+**monotone, never-retracting graft**: once a slot holds a remote reference,
+it is never overwritten with a *less-defined* value — it may be consumed
+(by the owning worker's next reduction) but never retracted. The set of
+exported references is grow-only.
+
+**Message duplication and reordering.** In the demand-driven protocol
+(§6.1–6.2), every cross-boundary access is a request-response pair driven
+by the coordinator; responses are idempotent reads, so duplication is
+harmless and reordering does not affect correctness. In the autonomous
+protocol (§6.4.1), messages are work-transfer envelopes (an active pair
+plus its context); the accounting invariant (Safra token) tolerates
+reordering but **not** duplication — each active pair must be delivered
+exactly once. The transport must be reliable-delivery (TCP, not UDP).
+
+**Reconnection and active-pair creation.** A boundary-port reconnection
+(e.g., a substitution that links two remote nodes) **can** create a new
+active pair whose two principals reside on different workers. In the
+demand-driven regime this is handled by the coordinator (it discovers the
+pair on its next normalization step). In the autonomous regime, the
+**ownership rule** resolves it: the worker owning the *principal port*
+(the node whose tag determines the interaction rule — LAM in APP-LAM, the
+lower-label SUP in DUP-SUP) claims and fires the pair. This is
+deterministic given the net state, so no negotiation is needed.
+
+**No-double-firing invariant.** An active pair is fired **exactly once**,
+by the worker that owns its principal. This is enforced structurally: firing
+consumes the principal (it is overwritten with the reduction's result), so a
+second firing would find no active pair. In the autonomous regime,
+exactly-once delivery (above) plus principal-ownership together guarantee
+this — no additional distributed lock is required.
+
+### 4.7 Global termination
+
+Global termination is a control-plane question that arises **only** in the
+autonomous regime (§6.4.1). In the demand-driven regime (§6.1–6.2),
+termination is structural: the coordinator's root normalization returns.
+
+In the autonomous regime, global completion is detected by a **Safra-style
+termination token** (validated on interaction-combinators in `p2.py`, 20/20
+terminations detected). The condition: the token completes a full round of
+all workers with (a) every worker idle (no local redexes and no pending
+reductions), and (b) the message counter balanced (messages sent = messages
+received globally). When both hold, no in-flight work or messages remain
+and the net is in normal form.
 
 ---
 
@@ -321,7 +440,49 @@ quiescence becomes nontrivial and needs a Safra-style termination token. `p2.py`
 implements that for the interaction-combinator model (40/40 reductions matched the
 oracle; 20/20 terminations detected). The IC32 autonomous regime, which would unlock
 parallel speedup, reuses that detector and is the principal remaining engineering
-step.
+step. Its contract is specified below.
+
+#### 6.4.1 Autonomous execution and termination contract
+
+This subsection specifies the autonomous IC32 regime normatively. The
+regime is **unbuilt**; this contract is what an implementation must satisfy.
+
+**Worker states.** Each worker is in exactly one of:
+
+- **reducing** — firing a local active pair (the pair's principal is owned
+  by this worker).
+- **sending** — transferring an active pair whose principal is owned by a
+  remote worker to that worker's inbox.
+- **idle** — no local active pairs remain and no inbound transfers are
+  being processed.
+
+A worker cycles reducing → sending → reducing until idle. Transitions are
+local; no global barrier separates them.
+
+**Work transfer.** When a reduction on worker A produces an active pair
+whose principal is owned by worker B (determined by the allocation-time
+ownership of the principal node), A enqueues the pair on B. The pair is
+a message containing the two principal addresses plus any auxiliary data
+needed to fire the rule. The transport must deliver each message
+**exactly once** (§4.6). Worker A increments its sent-message counter;
+worker B increments its received-message counter on delivery.
+
+**Message accounting (Safra token).** A single token circulates among
+workers in a fixed ring. Each worker, on receiving the token, adds its
+local (sent − received) delta and marks itself white if idle or black if
+it has sent a message since last seeing the token. The token carries the
+cumulative delta and a tainted/clean flag.
+
+**Completion condition.** Global completion may be announced when the
+token completes a full untainted round with cumulative delta = 0 and
+every worker idle at the moment it forwarded the token. This is Safra's
+condition; `p2.py` validates it on interaction-combinators (20/20).
+
+**Failure assumption.** Workers are **crash-stop** (a crashed worker does
+not resume or send spurious messages). No Byzantine behavior is tolerated.
+A crashed worker holding unreduced pairs means the net does not reach
+normal form; recovery (re-sharding the dead worker's heap) is outside
+this specification.
 
 ### 6.5 What the evidence certifies — precisely
 
@@ -342,11 +503,15 @@ Three scope notes, so the demonstrations are not read for more than they support
   cross-partition active pair is genuinely ambiguous.
 
 The regime that exercises all of these at once — autonomous IC32 sharded reduction
-over a shared sharing graph with no central coordinator — is unbuilt (§6.4; the
-`p2.py` autonomous detector covers interaction-combinators only). There the
-standing open question is whether boundary-port reconnection can introduce a *new
-active pair*; the equality of interaction counts across configurations holds only
-under the currently-unstated precondition that it cannot.
+over a shared sharing graph with no central coordinator — is unbuilt (§6.4.1
+specifies it normatively; `p2.py` validates the termination detector on
+interaction-combinators only). Boundary-port reconnection **can** create new
+active pairs (§4.6); the ownership rule (principal-owner fires) resolves them
+deterministically, and the no-double-firing invariant (§4.6) prevents
+duplication. The equality of interaction counts across demand-driven
+configurations does not depend on this — it holds because the coordinator
+serializes all reductions — but the autonomous regime's count-equivalence
+depends on the §4.6 invariants holding under concurrent execution.
 
 ---
 
@@ -369,6 +534,32 @@ under the currently-unstated precondition that it cannot.
   merge-order configurations, equal to the oracle.
 
 All artifacts are self-validating (each prints its own pass/fail).
+
+### 7.1 Acceptance certificates
+
+Each claim maps to a substrate, an evidence rung (initial → final), an
+observable pass condition, and what the certificate must contain. A
+certificate is **not** accepted if the substrate is a stub, an injected
+transport, or a single-process round trip.
+
+| # | Claim | Substrate | Rung | Pass condition | Certificate contents |
+|---|---|---|---|---|---|
+| C1 | Reducer correctness | `ic_ref.py` / `ic_float.py` (Python, direct execution) | assertion → oracle-match | Normal form = reference on all battery terms; interaction count = reference count | Term, normal form, interaction count, oracle comparison (24 terms) |
+| C2 | Packed-word fidelity | `ic32.c` (native binary, real CPU) | oracle-match → bit-exact | Normal form and interaction count identical to Python oracle on 24 terms | Per-term: input, output, count; `--test` exit code 0 |
+| C3 | WASM fidelity | `ic32.wasm` (V8/browser WASM engine, real sandbox) | oracle-match → bit-exact | 28/28 oracle match; counts identical to native | Per-term: input, output, count; host-script exit code 0 |
+| C4 | Demand-driven distribution (sim) | `dist_ic.py` (Python, simulated shards, real computation) | single-schedule → multi-partition | 480 config × term runs, all = single-node oracle | Per-run: partition, schedule, normal form, interaction count, cross-node count |
+| C5 | Demand-driven distribution (real) | `dist_real.py` (OS processes, real IPC over `multiprocessing` pipes) | simulated-shard → real-IPC | All runs = single-node oracle; IPC message counts reported | Per-run: worker count, partition, normal form, IPC message count; **not** single-process — each worker is a separate OS process with separate memory |
+| C6 | Search distribution (WASM) | `swarm.js` (Node `worker_threads`, each with separate WASM instance and linear memory) | single-worker → multi-worker | One distinct merged result across W ∈ {1..8} × merge orders = brute-force oracle | Merged solution set, per-worker interaction count, total (1264); **not** single-process — each worker is a separate JS realm |
+| C7 | Autonomous termination (combinators) | `p2.py` (real OS threads, shared-nothing) | untested → detector-validated | 40/40 reductions match oracle; 20/20 terminations detected by Safra token | Per-reduction: normal form, oracle comparison; per-termination: token round count, idle-at-announcement proof |
+
+**Not certificated (normative gap).** Autonomous IC32 reduction (§6.4.1)
+has no acceptance certificate because the runtime is unbuilt. When built,
+its certificate must show: (a) normal-form agreement with the single-node
+oracle on the full battery under multiple partitions, (b) Safra termination
+detection with zero false positives, (c) execution on genuinely concurrent
+workers (not serialized), on a multi-core substrate. This is the
+**remaining acceptance requirement** before the autonomous regime may be
+claimed as delivered.
 
 ---
 
@@ -446,19 +637,23 @@ We set out to occupy the axis the HVM lineage is not building — distribution a
 machines — on the structural ground that interaction-net reduction is confluent and
 therefore coordination-free, and on a sovereign WebAssembly substrate. The result is
 a correct reducer, a fast packed-word runtime, a tiny WASM build that matches it
-bit-for-bit, and coordination-free distributed reduction demonstrated in simulation,
-on real OS processes, and on the WASM runtime across real isolated workers. Reduction
-is the data plane and needs no coordination; only termination, and only in the
-autonomous regime, is a control-plane question — for which a known detector applies.
+bit-for-bit, and coordination-free distributed reduction demonstrated in the
+demand-driven regime (simulation and real OS processes) and independent-search regime
+(WASM workers). Reduction is the data plane and needs no coordination; only
+termination, and only in the autonomous regime, is a control-plane question — for
+which a known detector applies and is validated on interaction-combinators (§6.4).
 
 The destination is integration with an open, decentralized cognitive-architecture
 stack: cheap symbolic agents as interaction-calculus sub-nets running on the WASM
 engine by the thousands, a verified governance floor evaluated *on* that same
 engine, and coordination-free state and search across browsers and edge via the
-CRDT and boundary-port models shown here. The substrate now exists. The principal
-remaining runtime step is the autonomous regime (re-entrant workers + Safra) that
-turns coordination-free *correctness* into parallel *speedup*; the principal
-remaining product step is wiring the engine into that stack.
+CRDT and boundary-port models shown here. The substrate for demand-driven distributed
+reduction and coordination-free search now exists; the autonomous regime that
+would turn correctness into parallel speedup is specified (§6.4.1) and its
+termination detector validated on interaction-combinators (`p2.py`, 40/40), but
+the IC32 autonomous runtime is unbuilt. The principal remaining runtime step is
+that regime (re-entrant workers + Safra over the IC32 word format); the
+principal remaining product step is wiring the engine into that stack.
 
 ---
 
