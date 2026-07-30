@@ -11,9 +11,9 @@
 //   last_interactions() -> interaction count of the last run
 //
 // build (see build note at bottom):
-//   clang-15 --target=wasm32 -O2 -nostdlib -ffreestanding -Wl,--no-entry \
+//   clang --target=wasm32 -O2 -nostdlib -ffreestanding -Wl,--no-entry \
 //     -Wl,--export-dynamic -Wl,-z,stack-size=16777216 \
-//     -Wl,--initial-memory=67108864 -o ic32.wasm ic32_wasm.c
+//     -Wl,--initial-memory=268435456 -o ic32.wasm ic32_wasm.c
 
 typedef unsigned long long u64;   // 64-bit on wasm32
 typedef unsigned int       u32;
@@ -33,7 +33,7 @@ typedef unsigned char      u8;
 enum { T_VAR=0, T_LAM=1, T_APP=2, T_ERA=3, T_SUP=4, T_DP0=5, T_DP1=6 };
 
 // ----------------------------------------------------------- static memory
-#define HEAPCAP (1u<<22)          // 4M slots * 8B = 32MB
+#define HEAPCAP (1u<<24)          // 16M slots * 8B = 128MB (matches ic32.c)
 static u64 heap[HEAPCAP];
 static u32 hp = 1;
 static long interactions = 0;
@@ -41,8 +41,13 @@ static long STEPCAP = 50000000;
 static int  aborted = 0;
 
 static u8 in_buf[1u<<20];         // 1MB input
-static u8 out_buf[1u<<20];        // 1MB output
+static u8 out_buf[1u<<24];        // 16MB output (deep readback at 2^21 depth ~ 8MB)
 static u32 opos = 0;
+
+// Explicit work stack shared by normal() and show() (never concurrent).
+// normal() reinterprets as u32[WSTKCAP*2]; show() uses as u64[WSTKCAP].
+#define WSTKCAP (1u<<22)           // 4M u64 entries = 32MB
+static u64 wstk[WSTKCAP];
 
 static u32 alloc_n(int n){
     u32 a = hp; hp += n;
@@ -144,13 +149,26 @@ static u64 whnf(u64 t){
     }
 }
 
+// iterative full normaliser: explicit work stack of heap-slot indices.
+// Handles arbitrarily deep results without growing the WASM call stack.
 static u64 normal(u64 t){
     if (aborted) return t;
     t = whnf(t);
+    u32 *stk = (u32*)wstk;            // reinterpret as u32[], capacity WSTKCAP*2
+    u32 ssp = 0;
     int tag = TAG(t);
-    if (tag == T_LAM){ u32 L = ADDR(t); heap[L] = normal(heap[L]); return t; }
-    if (tag == T_APP){ u32 A = ADDR(t); heap[A] = normal(heap[A]); heap[A+1] = normal(heap[A+1]); return t; }
-    if (tag == T_SUP){ u32 S = ADDR(t); heap[S] = normal(heap[S]); heap[S+1] = normal(heap[S+1]); return t; }
+    if (tag == T_LAM){ stk[ssp++] = ADDR(t); }
+    else if (tag == T_APP){ u32 A = ADDR(t); stk[ssp++] = A+1; stk[ssp++] = A; }
+    else if (tag == T_SUP){ u32 S = ADDR(t); stk[ssp++] = S+1; stk[ssp++] = S; }
+    while (ssp > 0){
+        if (aborted) break;
+        u32 idx = stk[--ssp];
+        u64 v = whnf(heap[idx]); heap[idx] = v;
+        int vt = TAG(v);
+        if (vt == T_LAM){ stk[ssp++] = ADDR(v); }
+        else if (vt == T_APP){ u32 A = ADDR(v); stk[ssp++] = A+1; stk[ssp++] = A; }
+        else if (vt == T_SUP){ u32 S = ADDR(v); stk[ssp++] = S+1; stk[ssp++] = S; }
+    }
     return t;
 }
 
@@ -257,18 +275,46 @@ static void emits(const char* s){ while (*s) emit((u8)*s++); }
 static void emit_lambda(void){ emit(0xCE); emit(0xBB); }
 static void emit_uint(u32 v){ char t[12]; int n=0; if(!v){emit('0');return;} while(v){t[n++]='0'+v%10; v/=10;} while(n) emit(t[--n]); }
 
-static void show(u64 t){
-    int tag = TAG(t);
-    if (tag == T_VAR){
-        u32 L = ADDR(t); const char* f = free_lookup(L);
-        if (f) emits(f); else emits(bnd_name(L));
-        return;
+// iterative readback: explicit work stack so arbitrarily deep normal forms
+// read back without growing the WASM call stack. Uses wstk[] as u64[].
+// Encoding: bit 63 clear = term to render; bit 63 set = emit byte in low 8 bits.
+#define SHOWLIT(c) (0x8000000000000000ULL | (u64)(u8)(c))
+#define ISLIT(x)   ((x) & 0x8000000000000000ULL)
+
+static void show(u64 root){
+    u32 ssp = 0;
+    wstk[ssp++] = root;
+    while (ssp > 0){
+        u64 item = wstk[--ssp];
+        if (ISLIT(item)){ emit((u8)(item & 0xFF)); continue; }
+        int tag = TAG(item);
+        if (tag == T_VAR){
+            u32 L = ADDR(item); const char* f = free_lookup(L);
+            if (f) emits(f); else emits(bnd_name(L));
+        } else if (tag == T_ERA){
+            emit('*');
+        } else if (tag == T_LAM){
+            u32 L = ADDR(item);
+            emit_lambda(); emits(bnd_name(L)); emit('.');
+            wstk[ssp++] = heap[L];
+        } else if (tag == T_APP){
+            u32 A = ADDR(item);
+            emit('(');
+            wstk[ssp++] = SHOWLIT(')');
+            wstk[ssp++] = heap[A+1];
+            wstk[ssp++] = SHOWLIT(' ');
+            wstk[ssp++] = heap[A];
+        } else if (tag == T_SUP){
+            u32 S = ADDR(item);
+            emit('&'); emit_uint(LAB(item)); emit('{');
+            wstk[ssp++] = SHOWLIT('}');
+            wstk[ssp++] = heap[S+1];
+            wstk[ssp++] = SHOWLIT(',');
+            wstk[ssp++] = heap[S];
+        } else {
+            emit('?');
+        }
     }
-    if (tag == T_ERA){ emit('*'); return; }
-    if (tag == T_LAM){ u32 L = ADDR(t); emit_lambda(); emits(bnd_name(L)); emit('.'); show(heap[L]); return; }
-    if (tag == T_APP){ u32 A = ADDR(t); emit('('); show(heap[A]); emit(' '); show(heap[A+1]); emit(')'); return; }
-    if (tag == T_SUP){ u32 S = ADDR(t); emit('&'); emit_uint(LAB(t)); emit('{'); show(heap[S]); emit(','); show(heap[S+1]); emit('}'); return; }
-    emit('?');
 }
 
 // ----------------------------------------------------------- exported ABI
