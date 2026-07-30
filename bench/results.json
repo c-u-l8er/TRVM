@@ -17,12 +17,12 @@
     "ic_ref (py)": "reference-simple-core"
   },
   "startup_ms": {
-    "ic32 (C)": 0.3049249935429543,
-    "ic32 (Zig)": 27.71386000677012,
-    "ic32 (Mojo)": 35.73209801106714,
-    "ic32.wasm": 17.8236490173731,
-    "ic_float (py)": 13.161576993297786,
-    "ic_ref (py)": 23.980022000614554
+    "ic32 (C)": 0.3296819922979921,
+    "ic32 (Zig)": 26.21916198404506,
+    "ic32 (Mojo)": 42.84159099915996,
+    "ic32.wasm": 19.603058986831456,
+    "ic_float (py)": 12.62258700444363,
+    "ic_ref (py)": 24.357907997909933
   },
   "depth_ceiling": {
     "ic32 (C)": {
@@ -69,43 +69,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 312,
-          "wall_ms": 1.0251550120301545,
-          "reduce_ms": 0.7202300184872001,
+          "wall_ms": 0.9698820067569613,
+          "reduce_ms": 0.6402000144589692,
           "readback": 144
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 312,
-          "wall_ms": 31.98860998963937,
-          "reduce_ms": 4.274749982869253,
+          "wall_ms": 30.709382001077756,
+          "reduce_ms": 4.490220017032698,
           "readback": 144
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 312,
-          "wall_ms": 39.2415730166249,
-          "reduce_ms": 3.5094750055577606,
+          "wall_ms": 50.00305600697175,
+          "reduce_ms": 7.161465007811785,
           "readback": 144
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 312,
-          "wall_ms": 18.088438984705135,
-          "reduce_ms": 0.2647899673320353,
+          "wall_ms": 22.11595297558233,
+          "reduce_ms": 2.512893988750875,
           "readback": 144
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 312,
-          "wall_ms": 15.22231800481677,
-          "reduce_ms": 2.060741011518985,
+          "wall_ms": 14.478630997473374,
+          "reduce_ms": 1.8560439930297434,
           "readback": 144
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 312,
-          "wall_ms": 35.609456012025476,
-          "reduce_ms": 11.629434011410922,
+          "wall_ms": 35.33587802667171,
+          "reduce_ms": 10.977970028761774,
           "readback": 144
         }
       },
@@ -136,43 +136,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 840,
-          "wall_ms": 1.0303150047548115,
-          "reduce_ms": 0.7253900112118572,
+          "wall_ms": 0.6784609868191183,
+          "reduce_ms": 0.34877899452112615,
           "readback": 400
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 840,
-          "wall_ms": 22.18723698752001,
-          "reduce_ms": 0.0,
+          "wall_ms": 27.938148996327072,
+          "reduce_ms": 1.718987012282014,
           "readback": 400
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 840,
-          "wall_ms": 38.998395000817254,
-          "reduce_ms": 3.266296989750117,
+          "wall_ms": 42.7358619926963,
+          "reduce_ms": 0.0,
           "readback": 400
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 840,
-          "wall_ms": 24.615781992906705,
-          "reduce_ms": 6.792132975533605,
+          "wall_ms": 19.487480982206762,
+          "reduce_ms": 0.0,
           "readback": 400
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 840,
-          "wall_ms": 16.351569996913895,
-          "reduce_ms": 3.1899930036161095,
+          "wall_ms": 16.06541802175343,
+          "reduce_ms": 3.4428310173098,
           "readback": 400
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 840,
-          "wall_ms": 30.498919019009918,
-          "reduce_ms": 6.518897018395364,
+          "wall_ms": 32.73290299694054,
+          "reduce_ms": 8.374994999030605,
           "readback": 400
         }
       },
@@ -203,43 +203,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 5100,
-          "wall_ms": 1.0275499953422695,
-          "reduce_ms": 0.7226250017993152,
+          "wall_ms": 1.1423369869589806,
+          "reduce_ms": 0.8126549946609885,
           "readback": 2500
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 5100,
-          "wall_ms": 33.499071985716,
-          "reduce_ms": 5.785211978945881,
+          "wall_ms": 30.016151984455064,
+          "reduce_ms": 3.7969900004100055,
           "readback": 2500
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 5100,
-          "wall_ms": 46.545402001356706,
-          "reduce_ms": 10.813303990289569,
+          "wall_ms": 46.45988400443457,
+          "reduce_ms": 3.6182930052746087,
           "readback": 2500
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 5100,
-          "wall_ms": 24.822842999128625,
-          "reduce_ms": 6.999193981755525,
+          "wall_ms": 25.215747009497136,
+          "reduce_ms": 5.6126880226656795,
           "readback": 2500
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 5100,
-          "wall_ms": 30.226433998905122,
-          "reduce_ms": 17.064857005607337,
+          "wall_ms": 29.84421802102588,
+          "reduce_ms": 17.22163101658225,
           "readback": 2500
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 5100,
-          "wall_ms": 54.23088200041093,
-          "reduce_ms": 30.250859999796376,
+          "wall_ms": 49.95842100470327,
+          "reduce_ms": 25.600513006793335,
           "readback": 2500
         }
       },
@@ -270,43 +270,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 12960,
-          "wall_ms": 1.1295230069663376,
-          "reduce_ms": 0.8245980134233832,
+          "wall_ms": 1.4367729891091585,
+          "reduce_ms": 1.1070909968111664,
           "readback": 6400
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 12960,
-          "wall_ms": 28.978357004234567,
-          "reduce_ms": 1.2644969974644482,
+          "wall_ms": 32.04734798055142,
+          "reduce_ms": 5.828185996506363,
           "readback": 6400
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 12960,
-          "wall_ms": 38.54811500059441,
-          "reduce_ms": 2.81601698952727,
+          "wall_ms": 50.01429599360563,
+          "reduce_ms": 7.172704994445667,
           "readback": 6400
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 12960,
-          "wall_ms": 21.285605005687103,
-          "reduce_ms": 3.4619559883140028,
+          "wall_ms": 23.02629200858064,
+          "reduce_ms": 3.4232330217491835,
           "readback": 6400
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 12960,
-          "wall_ms": 55.73478099540807,
-          "reduce_ms": 42.57320400211029,
+          "wall_ms": 55.85696001071483,
+          "reduce_ms": 43.2343730062712,
           "readback": 6400
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 12960,
-          "wall_ms": 68.52995601366274,
-          "reduce_ms": 44.54993401304819,
+          "wall_ms": 74.76198999211192,
+          "reduce_ms": 50.40408199420199,
           "readback": 6400
         }
       },
@@ -337,43 +337,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 43,
-          "wall_ms": 0.9732269973028451,
-          "reduce_ms": 0.6683020037598908,
+          "wall_ms": 1.0028140095528215,
+          "reduce_ms": 0.6731320172548294,
           "readback": 8
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 43,
-          "wall_ms": 29.587288008769974,
-          "reduce_ms": 1.873428001999855,
+          "wall_ms": 28.934418980497867,
+          "reduce_ms": 2.7152569964528084,
           "readback": 8
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 43,
-          "wall_ms": 44.292057980783284,
-          "reduce_ms": 8.559959969716147,
+          "wall_ms": 40.597523999167606,
+          "reduce_ms": 0.0,
           "readback": 8
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 43,
-          "wall_ms": 23.268257995368913,
-          "reduce_ms": 5.444608977995813,
+          "wall_ms": 18.246074992930517,
+          "reduce_ms": 0.0,
           "readback": 8
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 43,
-          "wall_ms": 14.601284987293184,
-          "reduce_ms": 1.4397079939953983,
+          "wall_ms": 11.479879001853988,
+          "reduce_ms": 0.0,
           "readback": 8
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 33,
-          "wall_ms": 34.33790500275791,
-          "reduce_ms": 10.357883002143353,
+          "wall_ms": 33.69923698483035,
+          "reduce_ms": 9.341328986920416,
           "readback": 8
         }
       },
@@ -404,43 +404,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 562,
-          "wall_ms": 0.700371980201453,
-          "reduce_ms": 0.39544698665849864,
+          "wall_ms": 0.9649620042182505,
+          "reduce_ms": 0.6352800119202584,
           "readback": 243
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 562,
-          "wall_ms": 26.724352996097878,
-          "reduce_ms": 0.0,
+          "wall_ms": 30.683742981636897,
+          "reduce_ms": 4.464580997591838,
           "readback": 243
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 562,
-          "wall_ms": 43.0590299947653,
-          "reduce_ms": 7.3269319836981595,
+          "wall_ms": 41.868282976793125,
+          "reduce_ms": 0.0,
           "readback": 243
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 562,
-          "wall_ms": 19.885532004991546,
-          "reduce_ms": 2.0618829876184464,
+          "wall_ms": 23.875426006270573,
+          "reduce_ms": 4.272367019439116,
           "readback": 243
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 562,
-          "wall_ms": 15.046655986225232,
-          "reduce_ms": 1.885078992927447,
+          "wall_ms": 15.483188006328419,
+          "reduce_ms": 2.8606010018847883,
           "readback": 243
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 286,
-          "wall_ms": 35.57189597631805,
-          "reduce_ms": 11.591873975703493,
+          "wall_ms": 34.755621978547424,
+          "reduce_ms": 10.39771398063749,
           "readback": 243
         }
       },
@@ -471,43 +471,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 604,
-          "wall_ms": 0.7417209853883833,
-          "reduce_ms": 0.43679599184542894,
+          "wall_ms": 0.6256909982766956,
+          "reduce_ms": 0.2960090059787035,
           "readback": 256
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 604,
-          "wall_ms": 25.685079977847636,
+          "wall_ms": 24.7656480059959,
           "reduce_ms": 0.0,
           "readback": 256
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 604,
-          "wall_ms": 42.70980099681765,
-          "reduce_ms": 6.977702985750511,
+          "wall_ms": 40.68229498807341,
+          "reduce_ms": 0.0,
           "readback": 256
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 604,
-          "wall_ms": 23.553717008326203,
-          "reduce_ms": 5.730067990953103,
+          "wall_ms": 22.727669012965634,
+          "reduce_ms": 3.124610026134178,
           "readback": 256
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 604,
-          "wall_ms": 16.59694401314482,
-          "reduce_ms": 3.4353670198470354,
+          "wall_ms": 14.431723015150055,
+          "reduce_ms": 1.8091360107064247,
           "readback": 256
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 564,
-          "wall_ms": 36.67471700464375,
-          "reduce_ms": 12.6946950040292,
+          "wall_ms": 28.50342501187697,
+          "reduce_ms": 4.145517013967037,
           "readback": 256
         }
       },
@@ -538,43 +538,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 118269,
-          "wall_ms": 3.5800689947791398,
-          "reduce_ms": 3.2751440012361854,
+          "wall_ms": 3.7313759967219085,
+          "reduce_ms": 3.4016940044239163,
           "readback": 59049
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 118269,
-          "wall_ms": 37.854113994399086,
-          "reduce_ms": 10.140253987628967,
+          "wall_ms": 29.051571007585153,
+          "reduce_ms": 2.8324090235400945,
           "readback": 59049
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 118269,
-          "wall_ms": 58.40786700719036,
-          "reduce_ms": 22.675768996123224,
+          "wall_ms": 47.494277998339385,
+          "reduce_ms": 4.652686999179423,
           "readback": 59049
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 118269,
-          "wall_ms": 21.990284993080422,
-          "reduce_ms": 4.166635975707322,
+          "wall_ms": 27.84781702212058,
+          "reduce_ms": 8.244758035289124,
           "readback": 59049
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 118269,
-          "wall_ms": 711.0287380055524,
-          "reduce_ms": 697.8671610122547,
+          "wall_ms": 755.5069520021789,
+          "reduce_ms": 742.8843649977352,
           "readback": 59049
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 59137,
-          "wall_ms": 234.88534599891864,
-          "reduce_ms": 210.90532399830408,
+          "wall_ms": 228.78588698222302,
+          "reduce_ms": 204.42797898431309,
           "readback": 59049
         }
       },
@@ -605,43 +605,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 8336,
-          "wall_ms": 1.2562920164782554,
-          "reduce_ms": 0.9513670229353011,
+          "wall_ms": 1.610862003872171,
+          "reduce_ms": 1.281180011574179,
           "readback": 4096
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 8336,
-          "wall_ms": 32.53343899268657,
-          "reduce_ms": 4.819578985916451,
+          "wall_ms": 27.982202009297907,
+          "reduce_ms": 1.7630400252528489,
           "readback": 4096
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 8336,
-          "wall_ms": 52.4408420023974,
-          "reduce_ms": 16.708743991330266,
+          "wall_ms": 43.93515700940043,
+          "reduce_ms": 1.0935660102404654,
           "readback": 4096
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 8336,
-          "wall_ms": 23.64135198877193,
-          "reduce_ms": 5.81770297139883,
+          "wall_ms": 19.9861410073936,
+          "reduce_ms": 0.38308202056214213,
           "readback": 4096
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 8336,
-          "wall_ms": 39.730035001412034,
-          "reduce_ms": 26.56845800811425,
+          "wall_ms": 40.046684007393196,
+          "reduce_ms": 27.424097002949566,
           "readback": 4096
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 8272,
-          "wall_ms": 49.158184992847964,
-          "reduce_ms": 25.17816299223341,
+          "wall_ms": 48.14008699031547,
+          "reduce_ms": 23.782178992405534,
           "readback": 4096
         }
       },
@@ -672,43 +672,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 131268,
-          "wall_ms": 4.617145983502269,
-          "reduce_ms": 4.3122209899593145,
+          "wall_ms": 4.359943006420508,
+          "reduce_ms": 4.030261014122516,
           "readback": 65536
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 131268,
-          "wall_ms": 38.23348999139853,
-          "reduce_ms": 10.51962998462841,
+          "wall_ms": 32.419851020677015,
+          "reduce_ms": 6.200689036631957,
           "readback": 65536
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 131268,
-          "wall_ms": 56.2988749879878,
-          "reduce_ms": 20.566776976920664,
+          "wall_ms": 53.88406399288215,
+          "reduce_ms": 11.042472993722185,
           "readback": 65536
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 131268,
-          "wall_ms": 31.597200984833762,
-          "reduce_ms": 13.773551967460662,
+          "wall_ms": 28.1239390023984,
+          "reduce_ms": 8.520880015566945,
           "readback": 65536
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 131268,
-          "wall_ms": 971.920129028149,
-          "reduce_ms": 958.7585520348512,
+          "wall_ms": 921.0794980172068,
+          "reduce_ms": 908.4569110127632,
           "readback": 65536
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 131180,
-          "wall_ms": 334.70959099940956,
-          "reduce_ms": 310.729568998795,
+          "wall_ms": 325.44594901264645,
+          "reduce_ms": 301.0880410147365,
           "readback": 65536
         }
       },
@@ -739,43 +739,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 75,
-          "wall_ms": 1.2034319806843996,
-          "reduce_ms": 0.8985069871414453,
+          "wall_ms": 1.2931219825986773,
+          "reduce_ms": 0.9634399903006852,
           "readback": 16
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 75,
-          "wall_ms": 31.510899018030614,
-          "reduce_ms": 3.7970390112604946,
+          "wall_ms": 31.007383979158476,
+          "reduce_ms": 4.7882219951134175,
           "readback": 16
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 75,
-          "wall_ms": 45.27625598711893,
-          "reduce_ms": 9.544157976051793,
+          "wall_ms": 46.63439400610514,
+          "reduce_ms": 3.792803006945178,
           "readback": 16
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 75,
-          "wall_ms": 17.99046399537474,
-          "reduce_ms": 0.16681497800163925,
+          "wall_ms": 23.618209990672767,
+          "reduce_ms": 4.015151003841311,
           "readback": 16
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 75,
-          "wall_ms": 13.960545998997986,
-          "reduce_ms": 0.7989690057002008,
+          "wall_ms": 13.854773016646504,
+          "reduce_ms": 1.2321860122028738,
           "readback": 16
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 42,
-          "wall_ms": 33.352284983266145,
-          "reduce_ms": 9.372262982651591,
+          "wall_ms": 26.266171014867723,
+          "reduce_ms": 1.9082630169577897,
           "readback": 2
         }
       },
@@ -809,43 +809,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 92,
-          "wall_ms": 0.6914059922564775,
-          "reduce_ms": 0.38648099871352315,
+          "wall_ms": 0.7094600005075336,
+          "reduce_ms": 0.37977800820954144,
           "readback": 27
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 92,
-          "wall_ms": 27.64333799132146,
-          "reduce_ms": 0.0,
+          "wall_ms": 31.33873999468051,
+          "reduce_ms": 5.1195780106354505,
           "readback": 27
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 92,
-          "wall_ms": 38.95707702031359,
-          "reduce_ms": 3.2249790092464536,
+          "wall_ms": 49.994167988188565,
+          "reduce_ms": 7.152576989028603,
           "readback": 27
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 92,
-          "wall_ms": 21.31507999729365,
-          "reduce_ms": 3.491430979920551,
+          "wall_ms": 24.456032988382503,
+          "reduce_ms": 4.852974001551047,
           "readback": 27
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 92,
-          "wall_ms": 14.47517701308243,
-          "reduce_ms": 1.3136000197846442,
+          "wall_ms": 12.630971992621198,
+          "reduce_ms": 0.00838498817756772,
           "readback": 27
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 52,
-          "wall_ms": 25.95098299207166,
-          "reduce_ms": 1.9709609914571047,
+          "wall_ms": 33.367309981258586,
+          "reduce_ms": 9.009401983348653,
           "readback": 27
         }
       },
@@ -876,43 +876,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 131204,
-          "wall_ms": 3.5523269907571375,
-          "reduce_ms": 3.247401997214183,
+          "wall_ms": 4.495199013035744,
+          "reduce_ms": 4.165517020737752,
           "readback": 65536
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 131204,
-          "wall_ms": 30.86493900627829,
-          "reduce_ms": 3.1510789995081723,
+          "wall_ms": 34.71404401352629,
+          "reduce_ms": 8.494882029481232,
           "readback": 65536
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 131204,
-          "wall_ms": 50.43860198929906,
-          "reduce_ms": 14.706503978231922,
+          "wall_ms": 49.27700400003232,
+          "reduce_ms": 6.435413000872359,
           "readback": 65536
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 131204,
-          "wall_ms": 30.334156996104866,
-          "reduce_ms": 12.510507978731766,
+          "wall_ms": 27.832789986860007,
+          "reduce_ms": 8.22973100002855,
           "readback": 65536
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 131204,
-          "wall_ms": 885.6770329875872,
-          "reduce_ms": 872.5154559942894,
+          "wall_ms": 852.2198340215255,
+          "reduce_ms": 839.5972470170818,
           "readback": 65536
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 95,
-          "wall_ms": 28.914767026435584,
-          "reduce_ms": 4.93474502582103,
+          "wall_ms": 35.01684599905275,
+          "reduce_ms": 10.658938001142815,
           "readback": 0
         }
       },
@@ -946,43 +946,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 65,
-          "wall_ms": 0.8489530009683222,
-          "reduce_ms": 0.5440280074253678,
+          "wall_ms": 1.1969700281042606,
+          "reduce_ms": 0.8672880358062685,
           "readback": 55
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 65,
-          "wall_ms": 32.7859960088972,
-          "reduce_ms": 5.072136002127081,
+          "wall_ms": 27.98726101173088,
+          "reduce_ms": 1.768099027685821,
           "readback": 55
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 65,
-          "wall_ms": 39.56691801431589,
-          "reduce_ms": 3.834820003248751,
+          "wall_ms": 47.83921901253052,
+          "reduce_ms": 4.997628013370559,
           "readback": 55
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 65,
-          "wall_ms": 17.417332011973485,
-          "reduce_ms": 0.0,
+          "wall_ms": 20.90291297645308,
+          "reduce_ms": 1.2998539896216244,
           "readback": 55
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 65,
-          "wall_ms": 13.290190021507442,
-          "reduce_ms": 0.12861302820965648,
+          "wall_ms": 15.011708019301295,
+          "reduce_ms": 2.3891210148576647,
           "readback": 55
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 65,
-          "wall_ms": 34.53354601515457,
-          "reduce_ms": 10.553524014540017,
+          "wall_ms": 33.980317995883524,
+          "reduce_ms": 9.622409997973591,
           "readback": 55
         }
       },
@@ -1013,43 +1013,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 495,
-          "wall_ms": 1.0876330197788775,
-          "reduce_ms": 0.7827080262359232,
+          "wall_ms": 0.8508170139975846,
+          "reduce_ms": 0.5211350216995925,
           "readback": 465
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 495,
-          "wall_ms": 26.368820981588215,
-          "reduce_ms": 0.0,
+          "wall_ms": 34.73291898262687,
+          "reduce_ms": 8.513756998581812,
           "readback": 465
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 495,
-          "wall_ms": 51.94342299364507,
-          "reduce_ms": 16.211324982577935,
+          "wall_ms": 44.68774801352993,
+          "reduce_ms": 1.8461570143699646,
           "readback": 465
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 495,
-          "wall_ms": 21.692181995604187,
-          "reduce_ms": 3.8685329782310873,
+          "wall_ms": 25.581316993338987,
+          "reduce_ms": 5.978258006507531,
           "readback": 465
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 495,
-          "wall_ms": 17.127714992966503,
-          "reduce_ms": 3.9661379996687174,
+          "wall_ms": 17.99495198065415,
+          "reduce_ms": 5.37236497621052,
           "readback": 465
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 495,
-          "wall_ms": 38.5690740076825,
-          "reduce_ms": 14.589052007067949,
+          "wall_ms": 38.9805710001383,
+          "reduce_ms": 14.622663002228364,
           "readback": 465
         }
       },
@@ -1080,43 +1080,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 1890,
-          "wall_ms": 1.7400250071659684,
-          "reduce_ms": 1.435100013623014,
+          "wall_ms": 1.322958996752277,
+          "reduce_ms": 0.9932770044542849,
           "readback": 1830
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 1890,
-          "wall_ms": 30.834723002044484,
-          "reduce_ms": 3.120862995274365,
+          "wall_ms": 27.59197397972457,
+          "reduce_ms": 1.3728119956795126,
           "readback": 1830
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 1890,
-          "wall_ms": 43.0913410091307,
-          "reduce_ms": 7.359242998063564,
+          "wall_ms": 47.6213869987987,
+          "reduce_ms": 4.779795999638736,
           "readback": 1830
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 1890,
-          "wall_ms": 25.47500398941338,
-          "reduce_ms": 7.651354972040281,
+          "wall_ms": 26.727602002210915,
+          "reduce_ms": 7.124543015379459,
           "readback": 1830
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 1890,
-          "wall_ms": 35.47952100052498,
-          "reduce_ms": 22.317944007227197,
+          "wall_ms": 35.23044800385833,
+          "reduce_ms": 22.607860999414697,
           "readback": 1830
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 1890,
-          "wall_ms": 55.875316000310704,
-          "reduce_ms": 31.89529399969615,
+          "wall_ms": 54.42534602480009,
+          "reduce_ms": 30.06743802689016,
           "readback": 1830
         }
       },
@@ -1147,43 +1147,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 922,
-          "wall_ms": 0.814116996480152,
-          "reduce_ms": 0.5091920029371977,
+          "wall_ms": 0.7049309788271785,
+          "reduce_ms": 0.37524898652918637,
           "readback": 55
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 922,
-          "wall_ms": 31.266127014532685,
-          "reduce_ms": 3.552267007762566,
+          "wall_ms": 24.572733003878966,
+          "reduce_ms": 0.0,
           "readback": 55
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 922,
-          "wall_ms": 41.27187698031776,
-          "reduce_ms": 5.539778969250619,
+          "wall_ms": 45.69252498913556,
+          "reduce_ms": 2.8509339899756014,
           "readback": 55
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 922,
-          "wall_ms": 22.379750007530674,
-          "reduce_ms": 4.556100990157574,
+          "wall_ms": 23.63541300292127,
+          "reduce_ms": 4.032354016089812,
           "readback": 55
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 922,
-          "wall_ms": 15.904775995295495,
-          "reduce_ms": 2.7431990019977093,
+          "wall_ms": 18.15309000085108,
+          "reduce_ms": 5.530502996407449,
           "readback": 55
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 601,
-          "wall_ms": 36.24563798075542,
-          "reduce_ms": 12.265615980140865,
+          "wall_ms": 35.62440199311823,
+          "reduce_ms": 11.266493995208293,
           "readback": 55
         }
       },
@@ -1214,43 +1214,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 7242,
-          "wall_ms": 1.0465760133229196,
-          "reduce_ms": 0.7416510197799653,
+          "wall_ms": 0.7033279980532825,
+          "reduce_ms": 0.3736460057552904,
           "readback": 610
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 7242,
-          "wall_ms": 30.944961006753147,
-          "reduce_ms": 3.2311009999830276,
+          "wall_ms": 26.094586995895952,
+          "reduce_ms": 0.0,
           "readback": 610
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 7242,
-          "wall_ms": 40.253824001410976,
-          "reduce_ms": 4.521725990343839,
+          "wall_ms": 43.19033000501804,
+          "reduce_ms": 0.3487390058580786,
           "readback": 610
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 7242,
-          "wall_ms": 17.973612004425377,
-          "reduce_ms": 0.14996298705227673,
+          "wall_ms": 22.82739701331593,
+          "reduce_ms": 3.2243380264844745,
           "readback": 610
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 7242,
-          "wall_ms": 32.79336998821236,
-          "reduce_ms": 19.631792994914576,
+          "wall_ms": 30.164322000928223,
+          "reduce_ms": 17.541734996484593,
           "readback": 610
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 4318,
-          "wall_ms": 38.326756010064855,
-          "reduce_ms": 14.346734009450302,
+          "wall_ms": 36.01702500600368,
+          "reduce_ms": 11.659117008093745,
           "readback": 610
         }
       },
@@ -1281,43 +1281,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 75667,
-          "wall_ms": 2.0310149993747473,
-          "reduce_ms": 1.726090005831793,
+          "wall_ms": 1.6273829969577491,
+          "reduce_ms": 1.297701004659757,
           "readback": 6765
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 75667,
-          "wall_ms": 32.641792990034446,
-          "reduce_ms": 4.927932983264327,
+          "wall_ms": 29.728488996624947,
+          "reduce_ms": 3.509327012579888,
           "readback": 6765
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 75667,
-          "wall_ms": 43.44495898112655,
-          "reduce_ms": 7.71286097005941,
+          "wall_ms": 48.42117801308632,
+          "reduce_ms": 5.579587013926357,
           "readback": 6765
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 75667,
-          "wall_ms": 22.3845390137285,
-          "reduce_ms": 4.5608899963553995,
+          "wall_ms": 22.564640996279195,
+          "reduce_ms": 2.9615820094477385,
           "readback": 6765
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 75667,
-          "wall_ms": 367.217213002732,
-          "reduce_ms": 354.05563600943424,
+          "wall_ms": 365.5802879948169,
+          "reduce_ms": 352.95770099037327,
           "readback": 6765
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 44279,
-          "wall_ms": 75.77021501492709,
-          "reduce_ms": 51.790193014312536,
+          "wall_ms": 87.86123601021245,
+          "reduce_ms": 63.50332801230252,
           "readback": 6765
         }
       },
@@ -1348,43 +1348,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 197126,
-          "wall_ms": 3.6226490046828985,
-          "reduce_ms": 3.317724011139944,
+          "wall_ms": 4.426799016073346,
+          "reduce_ms": 4.097117023775354,
           "readback": 17711
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 197126,
-          "wall_ms": 31.75689300405793,
-          "reduce_ms": 4.04303299728781,
+          "wall_ms": 33.91977399587631,
+          "reduce_ms": 7.700612011831254,
           "readback": 17711
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 197126,
-          "wall_ms": 54.021996998926625,
-          "reduce_ms": 18.289898987859488,
+          "wall_ms": 50.56933400919661,
+          "reduce_ms": 7.727743010036647,
           "readback": 17711
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 197126,
-          "wall_ms": 22.76882401201874,
-          "reduce_ms": 4.94517499464564,
+          "wall_ms": 24.85102799255401,
+          "reduce_ms": 5.2479690057225525,
           "readback": 17711
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 197126,
-          "wall_ms": 1373.2752099749632,
-          "reduce_ms": 1360.1136329816654,
+          "wall_ms": 1378.6110570072196,
+          "reduce_ms": 1365.988470002776,
           "readback": 17711
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 115173,
-          "wall_ms": 155.50639800494537,
-          "reduce_ms": 131.5263760043308,
+          "wall_ms": 162.9096970136743,
+          "reduce_ms": 138.55178901576437,
           "readback": 17711
         }
       },
@@ -1415,42 +1415,42 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 485,
-          "wall_ms": 1.2693669996224344,
-          "reduce_ms": 0.96444200607948,
+          "wall_ms": 1.0272590152453631,
+          "reduce_ms": 0.697577022947371,
           "readback": 120
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 485,
-          "wall_ms": 29.107791982823983,
-          "reduce_ms": 1.3939319760538638,
+          "wall_ms": 34.43968598730862,
+          "reduce_ms": 8.220524003263563,
           "readback": 120
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 485,
-          "wall_ms": 48.552249994827434,
-          "reduce_ms": 12.820151983760297,
+          "wall_ms": 43.71093399822712,
+          "reduce_ms": 0.8693429990671575,
           "readback": 120
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 485,
-          "wall_ms": 24.586226005339995,
-          "reduce_ms": 6.762576987966895,
+          "wall_ms": 21.320371015463024,
+          "reduce_ms": 1.717312028631568,
           "readback": 120
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 485,
-          "wall_ms": 14.830258005531505,
-          "reduce_ms": 1.6686810122337192,
+          "wall_ms": 15.020184015156701,
+          "reduce_ms": 2.3975970107130706,
           "readback": 120
         },
         "ic_ref (py)": {
           "status": "ERR error=RuntimeError: whnf: step budget exhausted (probable no",
           "interactions": null,
-          "wall_ms": 176.592055009678,
+          "wall_ms": 146.8436080031097,
           "reduce_ms": null
         }
       },
@@ -1480,42 +1480,42 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 1755,
-          "wall_ms": 1.2724520056508482,
-          "reduce_ms": 0.9675270121078938,
+          "wall_ms": 0.9593709837645292,
+          "reduce_ms": 0.6296889914665371,
           "readback": 720
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 1755,
-          "wall_ms": 35.770471004070714,
-          "reduce_ms": 8.056610997300595,
+          "wall_ms": 28.624804981518537,
+          "reduce_ms": 2.4056429974734783,
           "readback": 720
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 1755,
-          "wall_ms": 51.60805000923574,
-          "reduce_ms": 15.875951998168603,
+          "wall_ms": 44.41990199848078,
+          "reduce_ms": 1.57831099932082,
           "readback": 720
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 1755,
-          "wall_ms": 25.136013980954885,
-          "reduce_ms": 7.312364963581786,
+          "wall_ms": 23.47127301618457,
+          "reduce_ms": 3.868214029353112,
           "readback": 720
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 1755,
-          "wall_ms": 20.301095995819196,
-          "reduce_ms": 7.139519002521411,
+          "wall_ms": 19.111080007860437,
+          "reduce_ms": 6.4884930034168065,
           "readback": 720
         },
         "ic_ref (py)": {
           "status": "ERR error=RuntimeError: whnf: step budget exhausted (probable no",
           "interactions": null,
-          "wall_ms": 155.53469100268558,
+          "wall_ms": 145.09308198466897,
           "reduce_ms": null
         }
       },
@@ -1545,42 +1545,42 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 10471,
-          "wall_ms": 1.1796070029959083,
-          "reduce_ms": 0.8746820094529539,
+          "wall_ms": 1.805389008950442,
+          "reduce_ms": 1.47570701665245,
           "readback": 5040
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 10471,
-          "wall_ms": 30.354585993336514,
-          "reduce_ms": 2.6407259865663946,
+          "wall_ms": 32.72507799556479,
+          "reduce_ms": 6.50591601151973,
           "readback": 5040
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 10471,
-          "wall_ms": 48.3579839929007,
-          "reduce_ms": 12.625885981833562,
+          "wall_ms": 47.748948010848835,
+          "reduce_ms": 4.907357011688873,
           "readback": 5040
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 10471,
-          "wall_ms": 20.897390990285203,
-          "reduce_ms": 3.073741972912103,
+          "wall_ms": 22.945089993299916,
+          "reduce_ms": 3.34203100646846,
           "readback": 5040
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 10471,
-          "wall_ms": 41.20246498496272,
-          "reduce_ms": 28.04088799166493,
+          "wall_ms": 47.28220700053498,
+          "reduce_ms": 34.65961999609135,
           "readback": 5040
         },
         "ic_ref (py)": {
           "status": "ERR error=RuntimeError: whnf: step budget exhausted (probable no",
           "interactions": null,
-          "wall_ms": 145.89220698690042,
+          "wall_ms": 149.271903996123,
           "reduce_ms": null
         }
       },
@@ -1610,42 +1610,42 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 81113,
-          "wall_ms": 3.259923978475854,
-          "reduce_ms": 2.9549989849328995,
+          "wall_ms": 3.4853020042646676,
+          "reduce_ms": 3.1556200119666755,
           "readback": 40320
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 81113,
-          "wall_ms": 32.920058991294354,
-          "reduce_ms": 5.206198984524235,
+          "wall_ms": 34.06220301985741,
+          "reduce_ms": 7.843041035812348,
           "readback": 40320
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 81113,
-          "wall_ms": 50.104510999517515,
-          "reduce_ms": 14.372412988450378,
+          "wall_ms": 51.47086700890213,
+          "reduce_ms": 8.62927600974217,
           "readback": 40320
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 81113,
-          "wall_ms": 28.23955297935754,
-          "reduce_ms": 10.41590396198444,
+          "wall_ms": 28.802109009120613,
+          "reduce_ms": 9.199050022289157,
           "readback": 40320
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 81113,
-          "wall_ms": 344.0969839866739,
-          "reduce_ms": 330.9354069933761,
+          "wall_ms": 420.3431729984004,
+          "reduce_ms": 407.7205859939568,
           "readback": 40320
         },
         "ic_ref (py)": {
           "status": "ERR error=RuntimeError: whnf: step budget exhausted (probable no",
           "interactions": null,
-          "wall_ms": 139.14461902459152,
+          "wall_ms": 186.02360499789938,
           "reduce_ms": null
         }
       },
@@ -1675,43 +1675,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 426,
-          "wall_ms": 1.2175579904578626,
-          "reduce_ms": 0.9126329969149083,
+          "wall_ms": 1.0762829915620387,
+          "reduce_ms": 0.7466009992640465,
           "readback": 9
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 426,
-          "wall_ms": 29.856805980671197,
-          "reduce_ms": 2.142945973901078,
+          "wall_ms": 35.908739984733984,
+          "reduce_ms": 9.689578000688925,
           "readback": 9
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 426,
-          "wall_ms": 46.86884299735539,
-          "reduce_ms": 11.13674498628825,
+          "wall_ms": 48.48334600683302,
+          "reduce_ms": 5.641755007673055,
           "readback": 9
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 426,
-          "wall_ms": 22.589837026316673,
-          "reduce_ms": 4.766188008943573,
+          "wall_ms": 23.598613013746217,
+          "reduce_ms": 3.9955540269147605,
           "readback": 9
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 426,
-          "wall_ms": 13.836831989465281,
-          "reduce_ms": 0.6752549961674958,
+          "wall_ms": 15.221153007587418,
+          "reduce_ms": 2.5985660031437874,
           "readback": 9
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 248,
-          "wall_ms": 30.605198990087956,
-          "reduce_ms": 6.6251769894734025,
+          "wall_ms": 35.957412008428946,
+          "reduce_ms": 11.599504010519013,
           "readback": 9
         }
       },
@@ -1742,43 +1742,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 5166,
-          "wall_ms": 1.028330996632576,
-          "reduce_ms": 0.7234060030896217,
+          "wall_ms": 0.7240570266731083,
+          "reduce_ms": 0.39437503437511623,
           "readback": 49
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 5166,
-          "wall_ms": 35.09057700284757,
-          "reduce_ms": 7.376716996077448,
+          "wall_ms": 32.27554800105281,
+          "reduce_ms": 6.056386017007753,
           "readback": 49
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 5166,
-          "wall_ms": 46.41448499751277,
-          "reduce_ms": 10.682386986445636,
+          "wall_ms": 45.56229000445455,
+          "reduce_ms": 2.720699005294591,
           "readback": 49
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 5166,
-          "wall_ms": 17.935949988896027,
-          "reduce_ms": 0.11230097152292728,
+          "wall_ms": 20.70980900316499,
+          "reduce_ms": 1.1067500163335353,
           "readback": 49
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 5166,
-          "wall_ms": 26.940551004372537,
-          "reduce_ms": 13.778974011074752,
+          "wall_ms": 28.01230800105259,
+          "reduce_ms": 15.389720996608958,
           "readback": 49
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 1248,
-          "wall_ms": 26.8863890087232,
-          "reduce_ms": 2.9063670081086457,
+          "wall_ms": 38.44814500189386,
+          "reduce_ms": 14.09023700398393,
           "readback": 49
         }
       },
@@ -1809,43 +1809,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 38016,
-          "wall_ms": 1.1160360008943826,
-          "reduce_ms": 0.8111110073514283,
+          "wall_ms": 1.0725350002758205,
+          "reduce_ms": 0.7428530079778284,
           "readback": 149
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 38016,
-          "wall_ms": 33.7383940059226,
-          "reduce_ms": 6.024533999152482,
+          "wall_ms": 35.65628299838863,
+          "reduce_ms": 9.437121014343575,
           "readback": 149
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 38016,
-          "wall_ms": 45.48878798959777,
-          "reduce_ms": 9.75668997853063,
+          "wall_ms": 49.75871401256882,
+          "reduce_ms": 6.917123013408855,
           "readback": 149
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 38016,
-          "wall_ms": 23.869412019848824,
-          "reduce_ms": 6.045763002475724,
+          "wall_ms": 26.35058999294415,
+          "reduce_ms": 6.747531006112695,
           "readback": 149
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 38016,
-          "wall_ms": 93.15301198512316,
-          "reduce_ms": 79.99143499182537,
+          "wall_ms": 129.55451000016183,
+          "reduce_ms": 116.9319229957182,
           "readback": 149
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 3748,
-          "wall_ms": 37.881917000049725,
-          "reduce_ms": 13.901894999435171,
+          "wall_ms": 45.74522498296574,
+          "reduce_ms": 21.387316985055804,
           "readback": 149
         }
       },
@@ -1876,43 +1876,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 10,
-          "wall_ms": 0.806191994342953,
-          "reduce_ms": 0.5012670007999986,
+          "wall_ms": 0.6899430009070784,
+          "reduce_ms": 0.3602610086090863,
           "readback": 4
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 10,
-          "wall_ms": 30.662796983961016,
-          "reduce_ms": 2.948936977190897,
+          "wall_ms": 30.63476100214757,
+          "reduce_ms": 4.415599018102512,
           "readback": 4
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 10,
-          "wall_ms": 51.30948600708507,
-          "reduce_ms": 15.577387996017933,
+          "wall_ms": 41.898501018295065,
+          "reduce_ms": 0.0,
           "readback": 4
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 10,
-          "wall_ms": 23.082667001290247,
-          "reduce_ms": 5.259017983917147,
+          "wall_ms": 26.332776993513107,
+          "reduce_ms": 6.729718006681651,
           "readback": 4
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 10,
-          "wall_ms": 13.986474979901686,
-          "reduce_ms": 0.8248979866039008,
+          "wall_ms": 14.17360600316897,
+          "reduce_ms": 1.5510189987253398,
           "readback": 4
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 10,
-          "wall_ms": 26.599346980219707,
-          "reduce_ms": 2.619324979605153,
+          "wall_ms": 34.060528996633366,
+          "reduce_ms": 9.702620998723432,
           "readback": 4
         }
       },
@@ -1943,43 +1943,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 72,
-          "wall_ms": 0.6960349855944514,
-          "reduce_ms": 0.3911099920514971,
+          "wall_ms": 0.7334050023928285,
+          "reduce_ms": 0.40372301009483635,
           "readback": 6
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 72,
-          "wall_ms": 33.71634197537787,
-          "reduce_ms": 6.0024819686077535,
+          "wall_ms": 33.13276800327003,
+          "reduce_ms": 6.9136060192249715,
           "readback": 6
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 72,
-          "wall_ms": 49.1782329918351,
-          "reduce_ms": 13.446134980767965,
+          "wall_ms": 54.15320198517293,
+          "reduce_ms": 11.311610986012965,
           "readback": 6
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 72,
-          "wall_ms": 17.706637998344377,
-          "reduce_ms": 0.0,
+          "wall_ms": 21.2286280002445,
+          "reduce_ms": 1.6255690134130418,
           "readback": 6
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 72,
-          "wall_ms": 14.086995011894032,
-          "reduce_ms": 0.9254180185962468,
+          "wall_ms": 13.990860024932772,
+          "reduce_ms": 1.3682730204891413,
           "readback": 6
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 66,
-          "wall_ms": 30.25366601650603,
-          "reduce_ms": 6.2736440158914775,
+          "wall_ms": 25.95466302591376,
+          "reduce_ms": 1.5967550280038267,
           "readback": 6
         }
       },
@@ -2034,13 +2034,13 @@
         "ic_float (py)": {
           "status": "ERR error=RECURSION",
           "interactions": null,
-          "wall_ms": 1358.331230992917,
+          "wall_ms": 1367.060294986004,
           "reduce_ms": null
         },
         "ic_ref (py)": {
           "status": "ERR error=RuntimeError: whnf: step budget exhausted (probable no",
           "interactions": null,
-          "wall_ms": 149.988632008899,
+          "wall_ms": 153.1162979954388,
           "reduce_ms": null
         }
       },
@@ -2062,42 +2062,42 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 78,
-          "wall_ms": 1.1581289872992784,
-          "reduce_ms": 0.853203993756324,
+          "wall_ms": 1.1529129988048226,
+          "reduce_ms": 0.8232310065068305,
           "readback": 0
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 78,
-          "wall_ms": 31.803297984879464,
-          "reduce_ms": 4.089437978109345,
+          "wall_ms": 33.13066900591366,
+          "reduce_ms": 6.911507021868601,
           "readback": 0
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 78,
-          "wall_ms": 52.50688098021783,
-          "reduce_ms": 16.774782969150692,
+          "wall_ms": 49.30980099015869,
+          "reduce_ms": 6.46820999099873,
           "readback": 0
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 78,
-          "wall_ms": 18.62942401203327,
-          "reduce_ms": 0.8057749946601689,
+          "wall_ms": 18.77528498880565,
+          "reduce_ms": 0.0,
           "readback": 0
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 78,
-          "wall_ms": 15.484240022487938,
-          "reduce_ms": 2.322663029190153,
+          "wall_ms": 14.480721001746133,
+          "reduce_ms": 1.8581339973025024,
           "readback": 0
         },
         "ic_ref (py)": {
           "status": "ERR error=RuntimeError: whnf: step budget exhausted (probable no",
           "interactions": null,
-          "wall_ms": 153.77276198705658,
+          "wall_ms": 147.96640200074762,
           "reduce_ms": null
         }
       },
@@ -2127,42 +2127,42 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 158,
-          "wall_ms": 0.6850039935670793,
-          "reduce_ms": 0.380079000024125,
+          "wall_ms": 1.6161160019692034,
+          "reduce_ms": 1.2864340096712112,
           "readback": 0
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 158,
-          "wall_ms": 28.979973023524508,
-          "reduce_ms": 1.2661130167543888,
+          "wall_ms": 34.846111986553296,
+          "reduce_ms": 8.626950002508238,
           "readback": 0
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 158,
-          "wall_ms": 46.039349981583655,
-          "reduce_ms": 10.307251970516518,
+          "wall_ms": 52.35405801795423,
+          "reduce_ms": 9.512467018794268,
           "readback": 0
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 158,
-          "wall_ms": 24.025290011195466,
-          "reduce_ms": 6.201640993822366,
+          "wall_ms": 23.21237701107748,
+          "reduce_ms": 3.609318024246022,
           "readback": 0
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 158,
-          "wall_ms": 14.06130098621361,
-          "reduce_ms": 0.8997239929158241,
+          "wall_ms": 14.504775987006724,
+          "reduce_ms": 1.8821889825630933,
           "readback": 0
         },
         "ic_ref (py)": {
           "status": "ERR error=RuntimeError: whnf: step budget exhausted (probable no",
           "interactions": null,
-          "wall_ms": 136.72512798802927,
+          "wall_ms": 153.19599900976755,
           "reduce_ms": null
         }
       },
@@ -2192,42 +2192,42 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 238,
-          "wall_ms": 1.1412269959691912,
-          "reduce_ms": 0.8363020024262369,
+          "wall_ms": 2.3178280098363757,
+          "reduce_ms": 1.9881460175383836,
           "readback": 0
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 238,
-          "wall_ms": 28.777461004210636,
-          "reduce_ms": 1.063600997440517,
+          "wall_ms": 35.89013998862356,
+          "reduce_ms": 9.670978004578501,
           "readback": 0
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 238,
-          "wall_ms": 45.99745001178235,
-          "reduce_ms": 10.265352000715211,
+          "wall_ms": 47.070189990336075,
+          "reduce_ms": 4.2285989911761135,
           "readback": 0
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 238,
-          "wall_ms": 25.057530991034582,
-          "reduce_ms": 7.233881973661482,
+          "wall_ms": 25.737696007126942,
+          "reduce_ms": 6.134637020295486,
           "readback": 0
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 238,
-          "wall_ms": 14.56945200334303,
-          "reduce_ms": 1.4078750100452453,
+          "wall_ms": 14.004372991621494,
+          "reduce_ms": 1.3817859871778637,
           "readback": 0
         },
         "ic_ref (py)": {
           "status": "ERR error=RuntimeError: whnf: step budget exhausted (probable no",
           "interactions": null,
-          "wall_ms": 162.50520397443324,
+          "wall_ms": 172.67094299313612,
           "reduce_ms": null
         }
       },
@@ -2257,42 +2257,42 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 318,
-          "wall_ms": 1.1271199909970164,
-          "reduce_ms": 0.8221949974540621,
+          "wall_ms": 1.154956000391394,
+          "reduce_ms": 0.8252740080934018,
           "readback": 0
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 318,
-          "wall_ms": 28.13678001984954,
-          "reduce_ms": 0.42292001307941973,
+          "wall_ms": 28.586565022123978,
+          "reduce_ms": 2.367403038078919,
           "readback": 0
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 318,
-          "wall_ms": 45.113169006071985,
-          "reduce_ms": 9.381070995004848,
+          "wall_ms": 46.103878994472325,
+          "reduce_ms": 3.262287995312363,
           "readback": 0
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 318,
-          "wall_ms": 23.760298994602636,
-          "reduce_ms": 5.936649977229536,
+          "wall_ms": 20.574705995386466,
+          "reduce_ms": 0.97164700855501,
           "readback": 0
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 318,
-          "wall_ms": 15.49338802578859,
-          "reduce_ms": 2.331811032490805,
+          "wall_ms": 13.717431982513517,
+          "reduce_ms": 1.0948449780698866,
           "readback": 0
         },
         "ic_ref (py)": {
           "status": "ERR error=RuntimeError: whnf: step budget exhausted (probable no",
           "interactions": null,
-          "wall_ms": 209.7330890246667,
+          "wall_ms": 211.98456501588225,
           "reduce_ms": null
         }
       },
@@ -2322,42 +2322,42 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 398,
-          "wall_ms": 1.1046970030292869,
-          "reduce_ms": 0.7997720094863325,
+          "wall_ms": 1.2876270047854632,
+          "reduce_ms": 0.9579450124874711,
           "readback": 0
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 398,
-          "wall_ms": 28.448347991798073,
-          "reduce_ms": 0.734487985027954,
+          "wall_ms": 33.809168002335355,
+          "reduce_ms": 7.590006018290296,
           "readback": 0
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 398,
-          "wall_ms": 49.510157987242565,
-          "reduce_ms": 13.778059976175427,
+          "wall_ms": 52.11477802367881,
+          "reduce_ms": 9.273187024518847,
           "readback": 0
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 398,
-          "wall_ms": 22.979824017966166,
-          "reduce_ms": 5.156175000593066,
+          "wall_ms": 24.46667102049105,
+          "reduce_ms": 4.863612033659592,
           "readback": 0
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 398,
-          "wall_ms": 16.420509986346588,
-          "reduce_ms": 3.258932993048802,
+          "wall_ms": 17.86680199438706,
+          "reduce_ms": 5.24421498994343,
           "readback": 0
         },
         "ic_ref (py)": {
           "status": "ERR error=RuntimeError: whnf: step budget exhausted (probable no",
           "interactions": null,
-          "wall_ms": 287.8489430004265,
+          "wall_ms": 259.98460900154896,
           "reduce_ms": null
         }
       },
@@ -2387,42 +2387,42 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 478,
-          "wall_ms": 1.0553940082900226,
-          "reduce_ms": 0.7504690147470683,
+          "wall_ms": 1.3128639839123935,
+          "reduce_ms": 0.9831819916144013,
           "readback": 0
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 478,
-          "wall_ms": 29.587630997411907,
-          "reduce_ms": 1.8737709906417876,
+          "wall_ms": 29.031643993221223,
+          "reduce_ms": 2.812482009176165,
           "readback": 0
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 478,
-          "wall_ms": 45.89522699825466,
-          "reduce_ms": 10.16312898718752,
+          "wall_ms": 45.363534009084105,
+          "reduce_ms": 2.5219430099241436,
           "readback": 0
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 478,
-          "wall_ms": 23.589296004502103,
-          "reduce_ms": 5.765646987129003,
+          "wall_ms": 21.222657000180334,
+          "reduce_ms": 1.6195980133488774,
           "readback": 0
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 478,
-          "wall_ms": 14.81008599512279,
-          "reduce_ms": 1.6485090018250048,
+          "wall_ms": 15.333467978052795,
+          "reduce_ms": 2.7108809736091644,
           "readback": 0
         },
         "ic_ref (py)": {
           "status": "ERR error=RuntimeError: whnf: step budget exhausted (probable no",
           "interactions": null,
-          "wall_ms": 246.8567899777554,
+          "wall_ms": 264.00223100790754,
           "reduce_ms": null
         }
       },
@@ -2452,43 +2452,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 24,
-          "wall_ms": 1.316307985689491,
-          "reduce_ms": 1.0113829921465367,
+          "wall_ms": 1.047844998538494,
+          "reduce_ms": 0.718163006240502,
           "readback": 0
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 24,
-          "wall_ms": 33.38186099426821,
-          "reduce_ms": 5.66800098749809,
+          "wall_ms": 31.955163984093815,
+          "reduce_ms": 5.736002000048757,
           "readback": 0
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 24,
-          "wall_ms": 45.989245001692325,
-          "reduce_ms": 10.257146990625188,
+          "wall_ms": 49.728549987776205,
+          "reduce_ms": 6.886958988616243,
           "readback": 0
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 24,
-          "wall_ms": 23.597652005264536,
-          "reduce_ms": 5.774002987891436,
+          "wall_ms": 22.64771200134419,
+          "reduce_ms": 3.0446530145127326,
           "readback": 0
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 24,
-          "wall_ms": 15.27710899244994,
-          "reduce_ms": 2.1155319991521537,
+          "wall_ms": 14.134508004644886,
+          "reduce_ms": 1.511921000201255,
           "readback": 0
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 24,
-          "wall_ms": 33.71949901338667,
-          "reduce_ms": 9.739477012772113,
+          "wall_ms": 36.4405779982917,
+          "reduce_ms": 12.082670000381768,
           "readback": 0
         }
       },
@@ -2519,43 +2519,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 48,
-          "wall_ms": 0.6667400011792779,
-          "reduce_ms": 0.36181500763632357,
+          "wall_ms": 0.6729080050718039,
+          "reduce_ms": 0.3432260127738118,
           "readback": 0
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 48,
-          "wall_ms": 27.813349006464705,
-          "reduce_ms": 0.0994889996945858,
+          "wall_ms": 27.581822010688484,
+          "reduce_ms": 1.3626600266434252,
           "readback": 0
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 48,
-          "wall_ms": 48.48823801148683,
-          "reduce_ms": 12.756140000419691,
+          "wall_ms": 39.966532989637926,
+          "reduce_ms": 0.0,
           "readback": 0
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 48,
-          "wall_ms": 21.92742598708719,
-          "reduce_ms": 4.10377696971409,
+          "wall_ms": 23.265938012627885,
+          "reduce_ms": 3.6628790257964283,
           "readback": 0
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 48,
-          "wall_ms": 14.260777999879792,
-          "reduce_ms": 1.0992010065820068,
+          "wall_ms": 14.800403005210683,
+          "reduce_ms": 2.177816000767052,
           "readback": 0
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 48,
-          "wall_ms": 29.48656099033542,
-          "reduce_ms": 5.506538989720866,
+          "wall_ms": 29.30318599101156,
+          "reduce_ms": 4.945277993101627,
           "readback": 0
         }
       },
@@ -2586,43 +2586,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 72,
-          "wall_ms": 0.734007015125826,
-          "reduce_ms": 0.4290820215828717,
+          "wall_ms": 0.7236639794427902,
+          "reduce_ms": 0.39398198714479804,
           "readback": 0
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 72,
-          "wall_ms": 30.5638859863393,
-          "reduce_ms": 2.850025979569182,
+          "wall_ms": 27.066509996075183,
+          "reduce_ms": 0.8473480120301247,
           "readback": 0
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 72,
-          "wall_ms": 46.98550800094381,
-          "reduce_ms": 11.253409989876673,
+          "wall_ms": 43.745014001615345,
+          "reduce_ms": 0.9034230024553835,
           "readback": 0
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 72,
-          "wall_ms": 21.6905279958155,
-          "reduce_ms": 3.8668789784424007,
+          "wall_ms": 19.38915197388269,
+          "reduce_ms": 0.0,
           "readback": 0
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 72,
-          "wall_ms": 13.89862401993014,
-          "reduce_ms": 0.7370470266323537,
+          "wall_ms": 14.470791997155175,
+          "reduce_ms": 1.848204992711544,
           "readback": 0
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 72,
-          "wall_ms": 34.938311990117654,
-          "reduce_ms": 10.9582899895031,
+          "wall_ms": 35.15781098394655,
+          "reduce_ms": 10.799902986036614,
           "readback": 0
         }
       },
@@ -2653,43 +2653,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 32938,
-          "wall_ms": 1.6695150115992874,
-          "reduce_ms": 1.364590018056333,
+          "wall_ms": 1.8830389890354127,
+          "reduce_ms": 1.5533569967374206,
           "readback": 16384
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 32938,
-          "wall_ms": 26.929537998512387,
-          "reduce_ms": 0.0,
+          "wall_ms": 26.44260600209236,
+          "reduce_ms": 0.22344401804730296,
           "readback": 16384
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 32938,
-          "wall_ms": 46.00580700207502,
-          "reduce_ms": 10.27370899100788,
+          "wall_ms": 42.02136499225162,
+          "reduce_ms": 0.0,
           "readback": 16384
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 32938,
-          "wall_ms": 19.51552799437195,
-          "reduce_ms": 1.6918789769988507,
+          "wall_ms": 24.572541005909443,
+          "reduce_ms": 4.9694820190779865,
           "readback": 16384
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 32938,
-          "wall_ms": 108.95842598984018,
-          "reduce_ms": 95.7968489965424,
+          "wall_ms": 141.07322299969383,
+          "reduce_ms": 128.4506359952502,
           "readback": 16384
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 32862,
-          "wall_ms": 74.34393599396572,
-          "reduce_ms": 50.36391399335116,
+          "wall_ms": 82.15631599887274,
+          "reduce_ms": 57.79840800096281,
           "readback": 16384
         }
       },
@@ -2720,43 +2720,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 131268,
-          "wall_ms": 5.151805991772562,
-          "reduce_ms": 4.846880998229608,
+          "wall_ms": 4.137998999794945,
+          "reduce_ms": 3.808317007496953,
           "readback": 65536
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 131268,
-          "wall_ms": 32.821431988850236,
-          "reduce_ms": 5.107571982080117,
+          "wall_ms": 27.715784002793953,
+          "reduce_ms": 1.4966220187488943,
           "readback": 65536
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 131268,
-          "wall_ms": 44.59663401939906,
-          "reduce_ms": 8.864536008331925,
+          "wall_ms": 43.52477900101803,
+          "reduce_ms": 0.6831880018580705,
           "readback": 65536
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 131268,
-          "wall_ms": 29.34288899996318,
-          "reduce_ms": 11.51923998259008,
+          "wall_ms": 24.28046998102218,
+          "reduce_ms": 4.677410994190723,
           "readback": 65536
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 131268,
-          "wall_ms": 947.4736700067297,
-          "reduce_ms": 934.3120930134319,
+          "wall_ms": 935.4411930253264,
+          "reduce_ms": 922.8186060208827,
           "readback": 65536
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 131180,
-          "wall_ms": 320.0286510109436,
-          "reduce_ms": 296.048629010329,
+          "wall_ms": 332.78394301305525,
+          "reduce_ms": 308.4260350151453,
           "readback": 65536
         }
       },
@@ -2787,42 +2787,42 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 1063091,
-          "wall_ms": 29.033313010586426,
-          "reduce_ms": 28.72838801704347,
+          "wall_ms": 32.21502399537712,
+          "reduce_ms": 31.88534200307913,
           "readback": 531441
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 1063091,
-          "wall_ms": 50.795287010259926,
-          "reduce_ms": 23.081427003489807,
+          "wall_ms": 62.915102986153215,
+          "reduce_ms": 36.69594100210816,
           "readback": 531441
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 1063091,
-          "wall_ms": 92.46430799248628,
-          "reduce_ms": 56.732209981419146,
+          "wall_ms": 93.07051601354033,
+          "reduce_ms": 50.228925014380366,
           "readback": 531441
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 1063091,
-          "wall_ms": 55.63411000184715,
-          "reduce_ms": 37.81046098447405,
+          "wall_ms": 64.65292899520136,
+          "reduce_ms": 45.04987000836991,
           "readback": 531441
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 1063091,
-          "wall_ms": 24665.00073100906,
-          "reduce_ms": 24651.83915401576,
+          "wall_ms": 27117.747532000067,
+          "reduce_ms": 27105.124944995623,
           "readback": 531441
         },
         "ic_ref (py)": {
           "status": "ERR error=RuntimeError: whnf: step budget exhausted (probable no",
           "interactions": null,
-          "wall_ms": 398.22075300617144,
+          "wall_ms": 464.0968530147802,
           "reduce_ms": null
         }
       },
@@ -2852,42 +2852,42 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 2097400,
-          "wall_ms": 65.15009800205007,
-          "reduce_ms": 64.84517300850712,
+          "wall_ms": 63.62844799878076,
+          "reduce_ms": 63.298766006482765,
           "readback": 1048576
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 2097400,
-          "wall_ms": 111.92299102549441,
-          "reduce_ms": 84.20913101872429,
+          "wall_ms": 103.26669798814692,
+          "reduce_ms": 77.04753600410186,
           "readback": 1048576
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 2097400,
-          "wall_ms": 216.61675200448371,
-          "reduce_ms": 180.88465399341658,
+          "wall_ms": 199.47315898025408,
+          "reduce_ms": 156.63156798109412,
           "readback": 1048576
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 2097400,
-          "wall_ms": 117.12175499997102,
-          "reduce_ms": 99.29810598259792,
+          "wall_ms": 100.49848101334646,
+          "reduce_ms": 80.895422026515,
           "readback": 1048576
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 2097400,
-          "wall_ms": 99951.09156300896,
-          "reduce_ms": 99937.92998601566,
+          "wall_ms": 105455.3470419778,
+          "reduce_ms": 105442.72445497336,
           "readback": 1048576
         },
         "ic_ref (py)": {
           "status": "ERR error=RuntimeError: whnf: step budget exhausted (probable no",
           "interactions": null,
-          "wall_ms": 397.1197350183502,
+          "wall_ms": 347.3048660089262,
           "reduce_ms": null
         }
       },
@@ -2917,43 +2917,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 180600,
-          "wall_ms": 6.755914015229791,
-          "reduce_ms": 6.450989021686837,
+          "wall_ms": 7.109502999810502,
+          "reduce_ms": 6.77982100751251,
           "readback": 90000
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 180600,
-          "wall_ms": 40.83777801133692,
-          "reduce_ms": 13.123918004566804,
+          "wall_ms": 38.123264006571844,
+          "reduce_ms": 11.904102022526786,
           "readback": 90000
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 180600,
-          "wall_ms": 60.044236975954846,
-          "reduce_ms": 24.31213896488771,
+          "wall_ms": 59.28271700395271,
+          "reduce_ms": 16.44112600479275,
           "readback": 90000
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 180600,
-          "wall_ms": 32.41209901170805,
-          "reduce_ms": 14.588449994334951,
+          "wall_ms": 24.097771995002404,
+          "reduce_ms": 4.494713008170947,
           "readback": 90000
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 180600,
-          "wall_ms": 1734.0447799942922,
-          "reduce_ms": 1720.8832030009944,
+          "wall_ms": 1550.0372939859517,
+          "reduce_ms": 1537.414706981508,
           "readback": 90000
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 180600,
-          "wall_ms": 902.3128709814046,
-          "reduce_ms": 878.33284898079,
+          "wall_ms": 733.1804170098621,
+          "reduce_ms": 708.8225090119522,
           "readback": 90000
         }
       },
@@ -2984,42 +2984,42 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 981400,
-          "wall_ms": 30.011152004590258,
-          "reduce_ms": 29.706227011047304,
+          "wall_ms": 23.533448023954406,
+          "reduce_ms": 23.203766031656414,
           "readback": 490000
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 981400,
-          "wall_ms": 61.88584698247723,
-          "reduce_ms": 34.171986975707114,
+          "wall_ms": 64.20412499574013,
+          "reduce_ms": 37.98496301169507,
           "readback": 490000
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 981400,
-          "wall_ms": 117.92146897641942,
-          "reduce_ms": 82.18937096535228,
+          "wall_ms": 96.5009750216268,
+          "reduce_ms": 53.65938402246684,
           "readback": 490000
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 981400,
-          "wall_ms": 56.32688300102018,
-          "reduce_ms": 38.50323398364708,
+          "wall_ms": 54.07139199087396,
+          "reduce_ms": 34.468333004042506,
           "readback": 490000
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 981400,
-          "wall_ms": 23900.043771980563,
-          "reduce_ms": 23886.882194987265,
+          "wall_ms": 19736.08245802461,
+          "reduce_ms": 19723.459871020168,
           "readback": 490000
         },
         "ic_ref (py)": {
           "status": "ERR error=RuntimeError: whnf: step budget exhausted (probable no",
           "interactions": null,
-          "wall_ms": 1884.7967329784296,
+          "wall_ms": 1603.4675939881708,
           "reduce_ms": null
         }
       },
@@ -3049,43 +3049,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 197126,
-          "wall_ms": 4.251331993145868,
-          "reduce_ms": 3.946406999602914,
+          "wall_ms": 4.43740698392503,
+          "reduce_ms": 4.1077249916270375,
           "readback": 17711
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 197126,
-          "wall_ms": 39.61767102009617,
-          "reduce_ms": 11.903811013326049,
+          "wall_ms": 36.429404019145295,
+          "reduce_ms": 10.210242035100237,
           "readback": 17711
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 197126,
-          "wall_ms": 63.77726700156927,
-          "reduce_ms": 28.045168990502134,
+          "wall_ms": 55.17125999904238,
+          "reduce_ms": 12.329668999882415,
           "readback": 17711
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 197126,
-          "wall_ms": 36.45728999981657,
-          "reduce_ms": 18.633640982443467,
+          "wall_ms": 29.143296997062862,
+          "reduce_ms": 9.540238010231405,
           "readback": 17711
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 197126,
-          "wall_ms": 1493.8141890161205,
-          "reduce_ms": 1480.6526120228227,
+          "wall_ms": 1415.8295599918347,
+          "reduce_ms": 1403.206972987391,
           "readback": 17711
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 115173,
-          "wall_ms": 186.56464299419895,
-          "reduce_ms": 162.5846209935844,
+          "wall_ms": 168.92442299285904,
+          "reduce_ms": 144.5665149949491,
           "readback": 17711
         }
       },
@@ -3116,42 +3116,42 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 832847,
-          "wall_ms": 17.411446024198085,
-          "reduce_ms": 17.10652103065513,
+          "wall_ms": 16.913508996367455,
+          "reduce_ms": 16.583827004069462,
           "readback": 75025
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 832847,
-          "wall_ms": 50.19898299360648,
-          "reduce_ms": 22.48512298683636,
+          "wall_ms": 48.84197699720971,
+          "reduce_ms": 22.622815013164654,
           "readback": 75025
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 832847,
-          "wall_ms": 80.52622099057771,
-          "reduce_ms": 44.794122979510576,
+          "wall_ms": 84.22136201988906,
+          "reduce_ms": 41.379771020729095,
           "readback": 75025
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 832847,
-          "wall_ms": 55.412563000572845,
-          "reduce_ms": 37.588913983199745,
+          "wall_ms": 47.829367977101356,
+          "reduce_ms": 28.2263089902699,
           "readback": 75025
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 832847,
-          "wall_ms": 8485.658418008825,
-          "reduce_ms": 8472.496841015527,
+          "wall_ms": 8142.940001009265,
+          "reduce_ms": 8130.317414004821,
           "readback": 75025
         },
         "ic_ref (py)": {
           "status": "ERR error=RuntimeError: whnf: step budget exhausted (probable no",
           "interactions": null,
-          "wall_ms": 262.00671499827877,
+          "wall_ms": 245.38536099134944,
           "reduce_ms": null
         }
       },
@@ -3181,43 +3181,43 @@
         "ic32 (C)": {
           "status": "OK",
           "interactions": 131204,
-          "wall_ms": 4.992522997781634,
-          "reduce_ms": 4.68759800423868,
+          "wall_ms": 5.137706990353763,
+          "reduce_ms": 4.808024998055771,
           "readback": 65536
         },
         "ic32 (Zig)": {
           "status": "OK",
           "interactions": 131204,
-          "wall_ms": 44.41823999513872,
-          "reduce_ms": 16.7043799883686,
+          "wall_ms": 43.15433499868959,
+          "reduce_ms": 16.935173014644533,
           "readback": 65536
         },
         "ic32 (Mojo)": {
           "status": "OK",
           "interactions": 131204,
-          "wall_ms": 61.78394000744447,
-          "reduce_ms": 26.051841996377334,
+          "wall_ms": 55.35685201175511,
+          "reduce_ms": 12.515261012595147,
           "readback": 65536
         },
         "ic32.wasm": {
           "status": "OK",
           "interactions": 131204,
-          "wall_ms": 24.541346007026732,
-          "reduce_ms": 6.717696989653632,
+          "wall_ms": 21.639811020577326,
+          "reduce_ms": 2.03675203374587,
           "readback": 65536
         },
         "ic_float (py)": {
           "status": "OK",
           "interactions": 131204,
-          "wall_ms": 935.1629299926572,
-          "reduce_ms": 922.0013529993594,
+          "wall_ms": 898.5063990112394,
+          "reduce_ms": 885.8838120067958,
           "readback": 65536
         },
         "ic_ref (py)": {
           "status": "OK",
           "interactions": 95,
-          "wall_ms": 34.51790500548668,
-          "reduce_ms": 10.537883004872128,
+          "wall_ms": 27.799384988611564,
+          "reduce_ms": 3.4414769907016307,
           "readback": 0
         }
       },
