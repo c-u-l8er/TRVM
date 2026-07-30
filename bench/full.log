@@ -9,54 +9,54 @@ TRVM cross-runtime benchmark  --  48 workloads x 6 runtimes  (min of 1, timeout 
   live    ic_ref (py)
 
 calibrating process-startup baseline...
-  ic32 (C)         0.33ms
-  ic32 (Zig)       31ms
-  ic32 (Mojo)      45ms
-  ic32.wasm        18ms
-  ic_float (py)    12ms
-  ic_ref (py)      31ms
+  ic32 (C)         0.39ms
+  ic32 (Zig)       29ms
+  ic32 (Mojo)      41ms
+  ic32.wasm        21ms
+  ic_float (py)    14ms
+  ic_ref (py)      25ms
 
 
 ====================================================================================================
 ARITHMETIC
 ====================================================================================================
 [2mworkload                      ic32          ic32          ic32     ic32.wasm      ic_float        ic_ref[0m
-mult 12x12                  0.63ms        0.00ms        4.42ms        4.38ms        3.10ms        0.00ms
-mult 20x20                  0.43ms        1.71ms        0.00ms        3.81ms        3.89ms        6.13ms
-mult 50x50                  0.76ms        0.00ms        0.00ms        4.67ms          22ms          24ms
-mult 80x80                  1.32ms        0.75ms        0.19ms        2.59ms          42ms          45ms
-exp 2^3                     1.05ms        0.00ms        1.17ms        1.73ms        2.24ms        3.22ms
-exp 3^5                     1.64ms        0.00ms        2.03ms        4.94ms        3.46ms        3.38ms
-exp 2^8                     0.66ms        0.00ms        0.00ms        2.37ms        2.93ms        2.30ms
-exp 3^10                    2.80ms        1.89ms        0.83ms        7.44ms         703ms         207ms
-exp 2^12                    0.82ms        0.00ms        3.67ms        6.03ms          23ms          15ms
-exp 2^16                    4.59ms        5.33ms          11ms        3.88ms         924ms         415ms
-tetration 2^^3              0.76ms        4.94ms        6.22ms        8.64ms        4.75ms          14ms
+mult 12x12                  0.44ms        0.00ms        0.00ms        3.82ms        0.73ms        4.96ms
+mult 20x20                  0.40ms        0.00ms        4.54ms        1.50ms        3.28ms          11ms
+mult 50x50                  0.80ms        0.20ms        4.21ms        3.34ms          20ms          26ms
+mult 80x80                  1.00ms        0.00ms        6.24ms        3.21ms          40ms          42ms
+exp 2^3                     0.60ms        0.00ms        5.03ms        2.10ms        1.11ms        1.55ms
+exp 3^5                     0.35ms        0.00ms        0.67ms        2.91ms        1.08ms        4.01ms
+exp 2^8                     0.63ms        0.00ms        0.00ms        0.00ms        1.90ms        7.91ms
+exp 3^10                    3.42ms        0.98ms        9.68ms        6.47ms         690ms         228ms
+exp 2^12                    0.90ms        3.67ms        3.50ms        0.00ms          20ms          14ms
+exp 2^16                    5.43ms        1.33ms          24ms        8.80ms         942ms         305ms
+tetration 2^^3              0.77ms        4.42ms        5.13ms        0.00ms        0.00ms        4.54ms
   [33moutside ic_ref's model[0m tetration 2^^3: want s^16, ic_ref gave ic_ref (py)=s^2
-tetration 3^^2              0.69ms        1.75ms        9.17ms        9.26ms        7.75ms        5.80ms
-tetration 2^^4              4.54ms        9.03ms          16ms          13ms         1.06s        2.83ms
+tetration 3^^2              0.32ms        0.00ms        4.12ms        0.00ms        0.00ms        1.94ms
+tetration 2^^4              4.15ms        1.14ms        8.44ms        2.61ms         849ms        3.36ms
   [33moutside ic_ref's model[0m tetration 2^^4: want s^65536, ic_ref gave ic_ref (py)=s^0
-gauss T(10)                 0.76ms        6.34ms        8.44ms          12ms        6.16ms        6.93ms
-gauss T(30)                 0.72ms        3.69ms          11ms          12ms          11ms          15ms
-gauss T(60)                 1.19ms        7.04ms        6.84ms          14ms          26ms          41ms
+gauss T(10)                 0.50ms        0.00ms        0.95ms        4.41ms        1.23ms        5.62ms
+gauss T(30)                 0.69ms        1.34ms        8.33ms        2.35ms        1.96ms        4.88ms
+gauss T(60)                 1.00ms        3.77ms        4.21ms        6.44ms          13ms          22ms
 
 ====================================================================================================
 RECURSION
 ====================================================================================================
 [2mworkload                      ic32          ic32          ic32     ic32.wasm      ic_float        ic_ref[0m
-fib(10)                     0.54ms        5.20ms          11ms        7.61ms        6.15ms          15ms
-fib(15)                     0.67ms        1.40ms        8.60ms        9.28ms          28ms          14ms
-fib(20)                     2.14ms        6.95ms        6.89ms          15ms         479ms          78ms
-fib(22)                     4.09ms        9.95ms          25ms          12ms         1.66s         207ms
-fact(5)                     0.80ms        2.61ms        8.52ms        6.60ms        7.07ms           ERR
-fact(6)                     0.98ms        1.46ms        1.22ms        7.23ms        9.66ms           ERR
-fact(7)                     1.14ms          10ms        8.39ms          10ms          49ms           ERR
-fact(8)                     4.80ms          21ms          34ms          17ms         575ms           ERR
-pred(10)                    0.65ms        6.19ms          13ms        7.26ms        7.05ms        9.61ms
-pred(50)                    0.76ms        4.81ms        7.68ms        7.13ms          22ms          13ms
-pred(150)                   1.43ms        9.12ms          13ms          12ms         129ms          17ms
-ackermann(0,3)              0.97ms          11ms          22ms        8.75ms        6.21ms          12ms
-ackermann(1,4)              0.57ms          14ms        9.07ms        8.05ms        5.10ms          13ms
+fib(10)                     1.61ms        0.00ms        2.36ms        0.79ms        0.00ms        6.49ms
+fib(15)                     0.33ms        0.00ms        4.28ms        0.00ms          13ms          16ms
+fib(20)                     1.13ms        0.00ms        7.76ms        6.46ms         362ms          59ms
+fib(22)                     3.11ms        3.47ms          13ms        3.93ms         1.41s         128ms
+fact(5)                     1.12ms        1.95ms          10ms        0.63ms        0.00ms           ERR
+fact(6)                     1.24ms        0.00ms        6.86ms        2.71ms        5.33ms           ERR
+fact(7)                     0.81ms        3.88ms        3.98ms        3.50ms          34ms           ERR
+fact(8)                     2.74ms        4.34ms        8.07ms        3.58ms         329ms           ERR
+pred(10)                    0.80ms        0.00ms        2.75ms        1.55ms        1.68ms        1.20ms
+pred(50)                    0.85ms        2.96ms        1.55ms        2.73ms          12ms          12ms
+pred(150)                   0.92ms        2.30ms        2.46ms        3.27ms          78ms          20ms
+ackermann(0,3)              0.61ms        3.95ms        0.00ms        0.00ms        0.16ms        2.00ms
+ackermann(1,4)              1.75ms        2.89ms        2.64ms        2.54ms        0.07ms        6.28ms
 ackermann(2,2)             TIMEOUT       TIMEOUT       TIMEOUT       TIMEOUT           ERR           ERR
   [32mok[0m diverges on all 6 runtimes (as encoded) [2m-- outside IC's safe labelling fragment - must diverge everywhere[0m
 
@@ -64,29 +64,29 @@ ackermann(2,2)             TIMEOUT       TIMEOUT       TIMEOUT       TIMEOUT    
 SHARING
 ====================================================================================================
 [2mworkload                      ic32          ic32          ic32     ic32.wasm      ic_float        ic_ref[0m
-parity 2^4                  0.77ms        4.44ms          11ms        0.07ms        1.52ms           ERR
-parity 2^8                  0.49ms        6.85ms        1.45ms        3.56ms        4.08ms           ERR
-parity 2^12                 0.60ms        1.93ms        9.55ms        0.00ms        2.79ms           ERR
-parity 2^16                 0.76ms        5.38ms        0.00ms        0.25ms        2.98ms           ERR
-parity 2^20                 0.78ms        0.00ms        1.77ms        4.76ms        2.64ms           ERR
-parity 2^24                 0.70ms        0.00ms        1.89ms        0.00ms        2.55ms           ERR
-dup depth 8                 0.57ms        0.00ms        0.00ms          11ms        1.76ms        0.00ms
-dup depth 16                0.70ms        6.42ms        1.13ms        3.04ms        0.74ms        1.18ms
-dup depth 24                0.52ms        0.00ms        0.00ms        1.63ms        0.34ms        4.42ms
+parity 2^4                  0.78ms        2.61ms        9.79ms        1.16ms        0.88ms           ERR
+parity 2^8                  0.65ms        4.70ms        8.48ms        2.24ms        0.00ms           ERR
+parity 2^12                 1.40ms        0.00ms        8.16ms        2.27ms        2.59ms           ERR
+parity 2^16                 0.82ms        0.10ms        4.28ms        2.48ms        0.85ms           ERR
+parity 2^20                 0.66ms        5.91ms        5.80ms        1.74ms        2.50ms           ERR
+parity 2^24                 1.07ms        3.78ms          17ms        6.36ms        0.96ms           ERR
+dup depth 8                 0.63ms        1.59ms        6.79ms        0.62ms        1.48ms        8.00ms
+dup depth 16                0.35ms        2.31ms        3.31ms        0.91ms        0.10ms        5.53ms
+dup depth 24                0.56ms        0.06ms        6.17ms        2.54ms        1.33ms        4.26ms
 
 ====================================================================================================
 THROUGHPUT
 ====================================================================================================
 [2mworkload                      ic32          ic32          ic32     ic32.wasm      ic_float        ic_ref[0m
-exp 2^14                    1.26ms        2.36ms        0.98ms        6.92ms         105ms          59ms
-exp 2^16                    4.45ms        0.59ms          19ms        2.83ms         893ms         299ms
-exp 3^12                      33ms          31ms          52ms          42ms        28.44s           ERR
-exp 2^20                      67ms          77ms         146ms          92ms       107.62s           ERR
-mult 300x300                5.41ms          11ms          11ms          14ms         1.51s         731ms
-mult 700x700                  29ms          30ms          60ms          45ms        19.67s           ERR
-fib(22)                     3.60ms        5.47ms          20ms        8.77ms         1.36s         136ms
-fib(25)                       17ms          20ms          30ms          29ms         8.06s           ERR
-tetration 2^^4              4.37ms        3.03ms          19ms        7.32ms         879ms        0.00ms
+exp 2^14                    1.85ms        3.38ms        8.39ms        1.82ms         120ms          57ms
+exp 2^16                    4.48ms        6.56ms          17ms        6.62ms         1.02s         350ms
+exp 3^12                      28ms          35ms          64ms          36ms        29.66s           ERR
+exp 2^20                      64ms          80ms         147ms          88ms       100.09s           ERR
+mult 300x300                5.65ms          13ms          20ms        9.98ms         1.50s         735ms
+mult 700x700                  25ms          30ms          58ms          43ms        19.65s           ERR
+fib(22)                     4.45ms        7.36ms        9.95ms        3.17ms         1.40s         131ms
+fib(25)                       12ms          18ms          31ms          28ms         8.02s           ERR
+tetration 2^^4              4.34ms        6.11ms          23ms        9.04ms         868ms        1.79ms
   [33moutside ic_ref's model[0m tetration 2^^4: want s^65536, ic_ref gave ic_ref (py)=s^0
 
 
@@ -164,29 +164,29 @@ tetration 2^^4              131204        131204        131204        131204    
 Throughput tier -- reduce time (startup subtracted), per workload:
 
 [2mworkload                      ic32          ic32          ic32     ic32.wasm      ic_float        ic_ref[0m
-exp 2^14                    1.26ms        2.36ms        0.98ms        6.92ms         105ms          59ms
-exp 2^16                    4.45ms        0.59ms          19ms        2.83ms         893ms         299ms
-exp 3^12                      33ms          31ms          52ms          42ms        28.44s           ERR
-exp 2^20                      67ms          77ms         146ms          92ms       107.62s           ERR
-mult 300x300                5.41ms          11ms          11ms          14ms         1.51s         731ms
-mult 700x700                  29ms          30ms          60ms          45ms        19.67s           ERR
-fib(22)                     3.60ms        5.47ms          20ms        8.77ms         1.36s         136ms
-fib(25)                       17ms          20ms          30ms          29ms         8.06s           ERR
-tetration 2^^4              4.37ms        3.03ms          19ms        7.32ms         879ms        0.00ms
+exp 2^14                    1.85ms        3.38ms        8.39ms        1.82ms         120ms          57ms
+exp 2^16                    4.48ms        6.56ms          17ms        6.62ms         1.02s         350ms
+exp 3^12                      28ms          35ms          64ms          36ms        29.66s           ERR
+exp 2^20                      64ms          80ms         147ms          88ms       100.09s           ERR
+mult 300x300                5.65ms          13ms          20ms        9.98ms         1.50s         735ms
+mult 700x700                  25ms          30ms          58ms          43ms        19.65s           ERR
+fib(22)                     4.45ms        7.36ms        9.95ms        3.17ms         1.40s         131ms
+fib(25)                       12ms          18ms          31ms          28ms         8.02s           ERR
+tetration 2^^4              4.34ms        6.11ms          23ms        9.04ms         868ms        1.79ms
 
 
 Reduction throughput (interactions / second, higher is better):
 
 [2mworkload                      ic32          ic32          ic32     ic32.wasm      ic_float        ic_ref[0m
-exp 2^14                 (26.1M/s)     (14.0M/s)     (33.6M/s)      (4.8M/s)       0.31M/s       0.56M/s
-exp 2^16                 (29.5M/s)    (224.0M/s)      (7.0M/s)     (46.4M/s)       0.15M/s       0.44M/s
-exp 3^12                  32.45M/s     (34.3M/s)      20.61M/s      25.05M/s       0.04M/s           ERR
-exp 2^20                  31.51M/s      27.07M/s      14.34M/s      22.70M/s       0.02M/s           ERR
-mult 300x300             (33.4M/s)     (16.2M/s)     (16.5M/s)     (12.9M/s)       0.12M/s       0.25M/s
-mult 700x700              33.71M/s     (32.9M/s)      16.33M/s      22.01M/s       0.05M/s           ERR
-fib(22)                  (54.7M/s)     (36.1M/s)      (9.9M/s)     (22.5M/s)       0.15M/s       0.85M/s
-fib(25)                   50.16M/s     (42.7M/s)     (28.1M/s)      28.72M/s       0.10M/s           ERR
-tetration 2^^4           (30.0M/s)     (43.4M/s)      (7.0M/s)     (17.9M/s)       0.15M/s             -
+exp 2^14                 (17.8M/s)      (9.7M/s)      (3.9M/s)     (18.1M/s)       0.27M/s       0.58M/s
+exp 2^16                 (29.3M/s)     (20.0M/s)      (7.7M/s)     (19.8M/s)       0.13M/s       0.37M/s
+exp 3^12                  38.58M/s      30.75M/s      16.57M/s      29.20M/s       0.04M/s           ERR
+exp 2^20                  32.74M/s      26.06M/s      14.29M/s      23.70M/s       0.02M/s           ERR
+mult 300x300             (32.0M/s)     (14.4M/s)      (9.0M/s)     (18.1M/s)       0.12M/s       0.25M/s
+mult 700x700              39.20M/s      32.86M/s      16.78M/s      22.87M/s       0.05M/s           ERR
+fib(22)                  (44.3M/s)     (26.8M/s)     (19.8M/s)     (62.3M/s)       0.14M/s       0.88M/s
+fib(25)                   69.05M/s     (45.9M/s)     (26.7M/s)      29.97M/s       0.10M/s           ERR
+tetration 2^^4           (30.3M/s)     (21.5M/s)      (5.7M/s)     (14.5M/s)       0.15M/s      (0.1M/s)
 
   [2m(parenthesised) = reduce time below the startup-subtraction error bar; excluded from the ranking.[0m
 
@@ -194,12 +194,12 @@ tetration 2^^4           (30.0M/s)     (43.4M/s)      (7.0M/s)     (17.9M/s)    
 Ranking (geometric mean of interactions/sec over the throughput tier):
 
   runtime             interactions/sec   vs best  completed   startup
-  ic32 (C)                    36.26M/s      1.0x       9/9    0.33ms
-  ic32 (Zig)                  27.07M/s      1.3x       9/9      31ms
-  ic32.wasm                   24.49M/s      1.5x       9/9      18ms
-  ic32 (Mojo)                 16.90M/s      2.1x       9/9      45ms
-  ic_ref (py)                  0.47M/s     76.3x       5/9      31ms
-  ic_float (py)                0.09M/s    396.2x       9/9      12ms
+  ic32 (C)                    43.00M/s      1.0x       9/9    0.39ms
+  ic32 (Zig)                  29.75M/s      1.4x       9/9      29ms
+  ic32.wasm                   26.24M/s      1.6x       9/9      21ms
+  ic32 (Mojo)                 15.84M/s      2.7x       9/9      41ms
+  ic_ref (py)                  0.47M/s     92.3x       5/9      25ms
+  ic_float (py)                0.09M/s    482.7x       9/9      14ms
 
   [2mRanked only on throughput workloads whose reduce time clears the
   startup-subtraction error bar. The small workloads above are for correctness,
@@ -215,7 +215,7 @@ Startup cost -- and why it differs by 100x:
     ic32 (Zig)   gpa.alloc + @memset(heap, 0)  -> eagerly writes all 128 MB
     ic32 (Mojo)  List[UInt64](.., fill=0)      -> eagerly writes all 128 MB
 
-  measured: (C) 0.33ms, (Zig) 31ms, (Mojo) 45ms, ic32.wasm 18ms
+  measured: (C) 0.39ms, (Zig) 29ms, (Mojo) 41ms, ic32.wasm 21ms
   [2mA workload touching a few thousand slots pays for 128 MB of zeroing it never
   reads. This is a fixed per-process cost, invisible in interactions/sec but the
   dominant term for short reductions -- which is most of them.[0m
