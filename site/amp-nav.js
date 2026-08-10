@@ -442,6 +442,15 @@ const LINKS = {
     status: "trvs · ORS v1",
     tier: "alpha",
   },
+  // Broader than the [&] stack -- it carries the non-portfolio domains too, so
+  // it sits under Company rather than in any product column. No status/tier for
+  // the same reason c-u-l8er.link and the home entry carry none: it is a
+  // property, not a versioned artifact.
+  wrand: {
+    label: "Wrand.cc",
+    tagline: "R&D domain graph — the whole portfolio, drawn",
+    href: "https://wrand.cc",
+  },
   contact: {
     label: "Talk to us",
     tagline: "hello@ampersandboxdesign.com",
@@ -507,6 +516,7 @@ const PROPERTY_MAP = {
   // highlight resolves to Company, the same way graphonomous resolves to
   // Products despite also appearing under Compose.
   traaviis: { category: "company", item: "traaviis" },
+  wrand: { category: "company", item: "wrand" },
   culler: { category: "company", item: "culler" },
   docs: { category: "docs", item: null },
 };
@@ -607,7 +617,7 @@ const CATEGORIES = [
   {
     id: "company",
     label: "Company",
-    items: ["culler", "home", "traaviis", "contact"],
+    items: ["culler", "home", "traaviis", "wrand", "contact"],
   },
   {
     id: "compose",
