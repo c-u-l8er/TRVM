@@ -647,11 +647,11 @@ const CATEGORIES = [
 // exists, swap the href; do not swap the label ahead of it.
 // The qualifier is a span so it can drop out when the bar runs out of room —
 // the desktop bar is ~1270px of nowrap content and starts clipping under about
-// 1300px, which is most laptops. Wide screens get "Subscribe to ComputeDriven",
-// everything narrower gets "Subscribe", and the mobile sheet always has room
-// for the full thing. Interpolated raw into innerHTML below, so markup is fine.
+// 1300px, which is most laptops. Wide screens get "Join ComputeDriven",
+// everything narrower gets "Join", and the mobile sheet always has room for the
+// full thing. Interpolated raw into innerHTML below, so markup is fine.
 const CTA = {
-  label: 'Subscribe<span class="cta-long"> to ComputeDriven</span> →',
+  label: 'Join<span class="cta-long"> ComputeDriven</span> →',
   href: "https://computedriven.com",
 };
 
