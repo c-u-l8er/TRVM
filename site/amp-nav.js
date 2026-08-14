@@ -31,7 +31,7 @@
  * License: MIT (Ampersand Box Design)
  */
 
-const VERSION = "0.8.1";
+const VERSION = "0.8.2";
 
 // Canonical URLs per property. The "href" is the destination used in cross-property
 // links; the "label" is what visitors see in the dropdown.
@@ -395,82 +395,82 @@ const LINKS = {
   d_index: {
     label: "[&] Protocol docs",
     tagline: "The protocol documentation hub",
-    href: "https://docs.ampersandboxdesign.com/AmpersandBoxDesign/docs/index.md/",
+    href: "https://docs.ampersandboxdesign.com/#/AmpersandBoxDesign/docs/index.md",
   },
   d_eco: {
     label: "Ecosystem overview",
     tagline: "Every product in the stack, at a glance",
-    href: "https://docs.ampersandboxdesign.com/ECOSYSTEM.md/",
+    href: "https://docs.ampersandboxdesign.com/#/ECOSYSTEM.md",
   },
   d_arch: {
     label: "Architecture",
     tagline: "How the core artifacts fit together",
-    href: "https://docs.ampersandboxdesign.com/AmpersandBoxDesign/docs/architecture.md/",
+    href: "https://docs.ampersandboxdesign.com/#/AmpersandBoxDesign/docs/architecture.md",
   },
   d_compose: {
     label: "Capability composition",
     tagline: "[&] structural composition (CC2)",
-    href: "https://docs.ampersandboxdesign.com/AmpersandBoxDesign/docs/CC2-capability-composition.md/",
+    href: "https://docs.ampersandboxdesign.com/#/AmpersandBoxDesign/docs/CC2-capability-composition.md",
   },
   d_three: {
     label: "The three-protocol stack",
     tagline: "[&] · PULSE · PRISM, working together",
-    href: "https://docs.ampersandboxdesign.com/PULSE/docs/THREE_PROTOCOL_STACK.md/",
+    href: "https://docs.ampersandboxdesign.com/#/PULSE/docs/THREE_PROTOCOL_STACK.md",
   },
   d_memory: {
     label: "Graphonomous — memory",
     tagline: "The continual-learning engine",
-    href: "https://docs.ampersandboxdesign.com/graphonomous/docs/spec/README.md/",
+    href: "https://docs.ampersandboxdesign.com/#/graphonomous/docs/spec/README.md",
   },
   d_prism: {
     label: "PRISM — evaluation",
     tagline: "Benchmark what's broken & what fits",
-    href: "https://docs.ampersandboxdesign.com/opensentience.org/docs/spec/OS-009-PRISM-SPECIFICATION.md/",
+    href: "https://docs.ampersandboxdesign.com/#/opensentience.org/docs/spec/OS-009-PRISM-SPECIFICATION.md",
   },
   d_govern: {
     label: "&govern — governance",
     tagline: "Policy, identity, telemetry, cost",
-    href: "https://docs.ampersandboxdesign.com/AmpersandBoxDesign/docs/capabilities/govern.md/",
+    href: "https://docs.ampersandboxdesign.com/#/AmpersandBoxDesign/docs/capabilities/govern.md",
   },
   d_quickstart: {
     label: "Quickstart",
     tagline: "Run the [&] reference CLI in five minutes",
-    href: "https://docs.ampersandboxdesign.com/AmpersandBoxDesign/docs/quickstart.md/",
+    href: "https://docs.ampersandboxdesign.com/#/AmpersandBoxDesign/docs/quickstart.md",
   },
   d_faq: {
     label: "FAQ",
     tagline: "Straight answers to the common questions",
-    href: "https://docs.ampersandboxdesign.com/AmpersandBoxDesign/docs/faq.md/",
+    href: "https://docs.ampersandboxdesign.com/#/AmpersandBoxDesign/docs/faq.md",
   },
   d_umbrella: {
     label: "The [&] umbrella",
     tagline: "One pipeline: declare → compose → govern → observe",
-    href: "https://docs.ampersandboxdesign.com/AmpersandBoxDesign/docs/UMBRELLA.md/",
+    href: "https://docs.ampersandboxdesign.com/#/AmpersandBoxDesign/docs/UMBRELLA.md",
   },
   d_bendscript: {
     label: "BendScript — documents",
     tagline: "The graph-first doc protocol these pages run on",
-    href: "https://docs.ampersandboxdesign.com/bendscript.com/docs/spec/README.md/",
+    href: "https://docs.ampersandboxdesign.com/#/bendscript.com/docs/spec/README.md",
   },
   d_wrl: {
     label: "WallRiderLang — worlds",
     tagline: "Seal a topology to a SemanticArtifactID",
-    href: "https://docs.ampersandboxdesign.com/WRL/",
+    href: "https://docs.ampersandboxdesign.com/#/WRL",
   },
   d_trvm: {
     label: "TRVM — reduction",
     tagline: "One spec, four packed-word implementations",
-    href: "https://docs.ampersandboxdesign.com/TRVM/",
+    href: "https://docs.ampersandboxdesign.com/#/TRVM",
   },
   d_wrlm: {
     label: "WRLM — proposal",
     tagline: "The only statistical layer in the chain",
-    href: "https://docs.ampersandboxdesign.com/TRVM/WRLM_RESEARCH_BRIEF.md/",
+    href: "https://docs.ampersandboxdesign.com/#/TRVM/WRLM_RESEARCH_BRIEF.md",
   },
   d_traaviis: {
     label: "TRAAVIIS — evidence",
     tagline: "trvs: content-addressed evaluation environments",
-    href: "https://docs.ampersandboxdesign.com/TRAAVIIS/",
+    href: "https://docs.ampersandboxdesign.com/#/TRAAVIIS",
   },
   d_code: {
     label: "Code — the console",
