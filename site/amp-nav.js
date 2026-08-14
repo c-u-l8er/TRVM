@@ -145,20 +145,67 @@ const LINKS = {
     tier: "alpha",
   },
 
-  // Academy — the institutional loop: systems that teach & prove cognition
+  // Academy — the institutional loop: systems that teach & prove cognition.
+  //
+  // Every entry below resolves to a live page. Cloudflare Pages serves this site extensionless
+  // — /read is canonical and /read.html 308-redirects to it — so the hrefs carry no extension.
+  // Pointing at the .html form worked but advertised a redirect from 22 sites, which is the same
+  // canonical hygiene the atlas crawl flagged (finding A6). Supervisor was a nav peer until 2026-08-10 and is now a
+  // spec doc under Docs — it is a specification, not a surface.
+  //
+  // Statuses are deliberately unflattering. The whole category is a prototype, and a menu that
+  // read "shipped" across a placeholder would be the exact failure the pages themselves refuse.
+  academy_home: {
+    label: "Academy",
+    tagline: "The institutional loop — teach, apply, prove",
+    href: "https://academy.opensentience.org",
+    status: "prototype",
+    tier: "spec",
+  },
+  academy_read: {
+    label: "Read",
+    tagline: "Grounded articles — every sentence shows its source",
+    href: "https://academy.opensentience.org/read",
+    status: "prototype",
+    tier: "spec",
+  },
+  academy_practice: {
+    label: "Practice",
+    tagline: "Real repository tasks, not exercises",
+    href: "https://academy.opensentience.org/practice",
+    status: "blocked",
+    tier: "spec",
+  },
+  academy_prove: {
+    label: "Prove",
+    tagline: "Signed, replayable evidence — six proof gates",
+    href: "https://academy.opensentience.org/prove",
+    status: "prototype",
+    tier: "spec",
+  },
+  academy_refusals: {
+    label: "The refusal log",
+    tagline: "Pages we declined to write, and what was missing",
+    href: "https://academy.opensentience.org/refusals",
+    status: "prototype",
+    tier: "spec",
+  },
+  academy_method: {
+    label: "Method",
+    tagline: "How Academy is allowed to be wrong",
+    href: "https://academy.opensentience.org/method",
+    status: "prototype",
+    tier: "spec",
+  },
+  // Workbench is the proof layer, not a peer product: a run here is what turns practice into a
+  // signed, replayable SkillBundle that PRISM can score. It is the one thing in this category
+  // that actually runs.
   workbench: {
     label: "Workbench",
-    tagline: "Skill workshop + 6-gate proof harness",
+    tagline: "Teach once, replay forever — signed SkillBundles, 6 proof gates",
     href: "https://workbench.opensentience.org",
     status: "v0.3.0-alpha",
     tier: "alpha",
-  },
-  supervisor: {
-    label: "Supervisor",
-    tagline: "Teacher loop — invariant curricula",
-    href: "https://opensentience.org/supervisor.html",
-    status: "spec",
-    tier: "spec",
   },
 
   // Protocols — the three-protocol stack ([&] + PULSE + PRISM)
@@ -338,82 +385,82 @@ const LINKS = {
   d_index: {
     label: "[&] Protocol docs",
     tagline: "The protocol documentation hub",
-    href: "https://docs.ampersandboxdesign.com/#/AmpersandBoxDesign/docs/index.md",
+    href: "https://docs.ampersandboxdesign.com/AmpersandBoxDesign/docs/index.md/",
   },
   d_eco: {
     label: "Ecosystem overview",
     tagline: "Every product in the stack, at a glance",
-    href: "https://docs.ampersandboxdesign.com/#/ECOSYSTEM.md",
+    href: "https://docs.ampersandboxdesign.com/ECOSYSTEM.md/",
   },
   d_arch: {
     label: "Architecture",
     tagline: "How the core artifacts fit together",
-    href: "https://docs.ampersandboxdesign.com/#/AmpersandBoxDesign/docs/architecture.md",
+    href: "https://docs.ampersandboxdesign.com/AmpersandBoxDesign/docs/architecture.md/",
   },
   d_compose: {
     label: "Capability composition",
     tagline: "[&] structural composition (CC2)",
-    href: "https://docs.ampersandboxdesign.com/#/AmpersandBoxDesign/docs/CC2-capability-composition.md",
+    href: "https://docs.ampersandboxdesign.com/AmpersandBoxDesign/docs/CC2-capability-composition.md/",
   },
   d_three: {
     label: "The three-protocol stack",
     tagline: "[&] · PULSE · PRISM, working together",
-    href: "https://docs.ampersandboxdesign.com/#/PULSE/docs/THREE_PROTOCOL_STACK.md",
+    href: "https://docs.ampersandboxdesign.com/PULSE/docs/THREE_PROTOCOL_STACK.md/",
   },
   d_memory: {
     label: "Graphonomous — memory",
     tagline: "The continual-learning engine",
-    href: "https://docs.ampersandboxdesign.com/#/graphonomous/docs/spec/README.md",
+    href: "https://docs.ampersandboxdesign.com/graphonomous/docs/spec/README.md/",
   },
   d_prism: {
     label: "PRISM — evaluation",
     tagline: "Benchmark what's broken & what fits",
-    href: "https://docs.ampersandboxdesign.com/#/opensentience.org/docs/spec/OS-009-PRISM-SPECIFICATION.md",
+    href: "https://docs.ampersandboxdesign.com/opensentience.org/docs/spec/OS-009-PRISM-SPECIFICATION.md/",
   },
   d_govern: {
     label: "&govern — governance",
     tagline: "Policy, identity, telemetry, cost",
-    href: "https://docs.ampersandboxdesign.com/#/AmpersandBoxDesign/docs/capabilities/govern.md",
+    href: "https://docs.ampersandboxdesign.com/AmpersandBoxDesign/docs/capabilities/govern.md/",
   },
   d_quickstart: {
     label: "Quickstart",
     tagline: "Run the [&] reference CLI in five minutes",
-    href: "https://docs.ampersandboxdesign.com/#/AmpersandBoxDesign/docs/quickstart.md",
+    href: "https://docs.ampersandboxdesign.com/AmpersandBoxDesign/docs/quickstart.md/",
   },
   d_faq: {
     label: "FAQ",
     tagline: "Straight answers to the common questions",
-    href: "https://docs.ampersandboxdesign.com/#/AmpersandBoxDesign/docs/faq.md",
+    href: "https://docs.ampersandboxdesign.com/AmpersandBoxDesign/docs/faq.md/",
   },
   d_umbrella: {
     label: "The [&] umbrella",
     tagline: "One pipeline: declare → compose → govern → observe",
-    href: "https://docs.ampersandboxdesign.com/#/AmpersandBoxDesign/docs/UMBRELLA.md",
+    href: "https://docs.ampersandboxdesign.com/AmpersandBoxDesign/docs/UMBRELLA.md/",
   },
   d_bendscript: {
     label: "BendScript — documents",
     tagline: "The graph-first doc protocol these pages run on",
-    href: "https://docs.ampersandboxdesign.com/#/bendscript.com/docs/spec/README.md",
+    href: "https://docs.ampersandboxdesign.com/bendscript.com/docs/spec/README.md/",
   },
   d_wrl: {
     label: "WallRiderLang — worlds",
     tagline: "Seal a topology to a SemanticArtifactID",
-    href: "https://docs.ampersandboxdesign.com/#/wrl",
+    href: "https://docs.ampersandboxdesign.com/WRL/",
   },
   d_trvm: {
     label: "TRVM — reduction",
     tagline: "One spec, four packed-word implementations",
-    href: "https://docs.ampersandboxdesign.com/#/trvm",
+    href: "https://docs.ampersandboxdesign.com/TRVM/",
   },
   d_wrlm: {
     label: "WRLM — proposal",
     tagline: "The only statistical layer in the chain",
-    href: "https://docs.ampersandboxdesign.com/#/wrlm",
+    href: "https://docs.ampersandboxdesign.com/TRVM/WRLM_RESEARCH_BRIEF.md/",
   },
   d_traaviis: {
     label: "TRAAVIIS — evidence",
     tagline: "trvs: content-addressed evaluation environments",
-    href: "https://docs.ampersandboxdesign.com/#/traaviis",
+    href: "https://docs.ampersandboxdesign.com/TRAAVIIS/",
   },
   d_code: {
     label: "Code — the console",
@@ -481,7 +528,15 @@ const PROPERTY_MAP = {
   webhost: { category: "compose", item: "webhost" },
   // Academy — institutional loop
   workbench: { category: "academy", item: "workbench" },
-  supervisor: { category: "academy", item: "supervisor" },
+  // The Academy prototype identifies as `academy`. It has no nav item of its own yet — the
+  // entry lands when the reading layer serves a page (ACADEMY.md §6, C1) — so it highlights
+  // the category without claiming an item inside it.
+  academy: { category: "academy", item: "academy_home" },
+  academy_read: { category: "academy", item: "academy_read" },
+  academy_practice: { category: "academy", item: "academy_practice" },
+  academy_prove: { category: "academy", item: "academy_prove" },
+  academy_refusals: { category: "academy", item: "academy_refusals" },
+  academy_method: { category: "academy", item: "academy_method" },
   // Other categories
   ampersand: { category: "protocols", item: "ampersand" },
   ampersandboxdesign: { category: "company", item: "home" },
@@ -589,7 +644,21 @@ const CATEGORIES = [
   {
     id: "academy",
     label: "Academy",
-    items: ["workbench", "supervisor"],
+    mega: true,
+    columns: [
+      {
+        label: "The loop",
+        items: ["academy_home", "academy_method"],
+      },
+      {
+        label: "Three layers",
+        items: ["academy_read", "academy_practice", "academy_prove"],
+      },
+      {
+        label: "Evidence",
+        items: ["workbench", "academy_refusals"],
+      },
+    ],
   },
   {
     id: "docs",
