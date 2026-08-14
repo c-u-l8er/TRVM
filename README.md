@@ -6,9 +6,9 @@ calculus HVM3/HVM4 implement), and the argument and evidence that its reduction
 
 > **Start with [`FINDINGS.md`](FINDINGS.md)** — the legible synthesis: the surviving arc, what
 > was demonstrated, what was investigated and falsified, and what is honestly open. Then
-> [`spec/paper.md`](spec/paper.md) for the runtime in full and [`research/INCRDT.md`](research/INCRDT.md)
+> [`docs/spec/paper.md`](docs/spec/paper.md) for the runtime in full and [`research/INCRDT.md`](research/INCRDT.md)
 > for the identity/memory thread. This README is the file map and reproduction guide. Where any
-> older note disagrees, `FINDINGS.md`, `spec/paper.md`, and this README are canonical.
+> older note disagrees, `FINDINGS.md`, `docs/spec/paper.md`, and this README are canonical.
 
 ## The thesis in one paragraph
 
@@ -28,7 +28,7 @@ sovereign substrate an open agent stack wants.
 ## Repository layout
 
 ```
-spec/                       SOURCE OF TRUTH for any new implementation
+docs/spec/                  SOURCE OF TRUTH for any new implementation
   SPEC.md                   normative 64-bit tagged-word runtime spec
   paper.md                  the runtime, in full (authoritative writeup)
   RELATED_WORK.md           prior-art map; bounds novelty honestly
@@ -38,23 +38,37 @@ spec/                       SOURCE OF TRUTH for any new implementation
 
 runtime/                    the reduction engine — one subdir per implementation
   python/                   reference + oracle (ic_ref, ic_float) + foundations (inet, p2)
-    conformance.py          runs spec/conformance/vectors against this implementation
+    conformance.py          runs docs/spec/conformance/vectors against this implementation
   c/                        ic32.c — packed-word native runtime (`./ic32 --test` → 13/13)
   wasm/                     ic32_wasm.c, ic32.wasm (9.9KB), wrun.js, build.sh
   js/                       swarm.js — ic32.wasm coordination-free across worker_threads
+  zig/                      ic32.zig — third native implementation
+  mojo/                     ic32.mojo — fourth native implementation
+
+bench/                      cross-runtime benchmark over famous math problems
+  bench.py terms.py nf_equiv.py results.json README.md
 
 distribution/               coordination-free protocol artifacts
   dist_ic.py dist_real.py parallel.py dsearch.py share_win.py
 
+forge/                      WRL Forge — the world authoring/sealing toolchain that sits
+                            on top of the runtime (identity spine, Spinner Bench, project
+                            store); see forge/README.md and forge/FORGE_ARCHITECTURE.md
+
+wrlm/                       WRLM — the proposer above the sealed substrate (see below)
+
 research/                   the identity / computational-memory thread (the result)
   INCRDT.md incrdt*.py slotted*.py compmem*.py semilattice.py …
+
+site/                       trvm.dev static site
+tools/                      laws_check.py — citation-consistency checker for LAWS.md
 
 attic/                      superseded / forward-looking, kept for the record
   lc2.py linet.py DESIGN.md plan.py world.py
 ```
 
-The clean multi-implementation axis is **the runtime**: `spec/` plus
-`spec/conformance/vectors` is the contract a future Zig/Rust/Go implementation
+The clean multi-implementation axis is **the runtime**: `docs/spec/` plus
+`docs/spec/conformance/vectors` is the contract a future Rust/Go implementation
 targets; each `runtime/<lang>` proves conformance against the same vectors.
 
 ## The arc (build order — each artifact is self-validating)
@@ -101,6 +115,62 @@ PYTHONPATH=runtime/python:research python3 research/semilattice.py   # ALL CONDI
 ```
 
 (`runtime/wasm/ic32.wasm` is committed prebuilt; `build.sh` rebuilds it.)
+
+## The layers above the runtime
+
+The reducer is the bottom of a four-layer stack. Two of those layers live in this
+repository:
+
+| Layer | What it does | Where |
+|---|---|---|
+| **WRLM** | *proposes* worlds — the only statistical component | `wrlm/` (this repo) |
+| **WRL** | *seals* worlds into a `sem-` identity | [`WRL/`](../WRL) · `forge/` (this repo) |
+| **TRVM** | *reduces* them deterministically | `runtime/` (this repo) |
+| **TRAAVIIS** | *admits* episodes as evidence | [`TRAAVIIS/`](../TRAAVIIS) |
+
+Read that as one sentence: **WRLM proposes, WRL seals, TRVM reduces, TRAAVIIS admits.**
+
+### WRLM — the proposer
+
+Everything below WRLM is deliberately dumb: total, deterministic, content-addressed,
+non-statistical. **WRLM is the only statistical component in the stack** — an *admitted
+generative transducer*, a probabilistic proposer over deterministic sealed worlds. It is
+not a world model, not a memory system, and not a replacement for anything already
+shipped. TRAAVIIS *holds, seals, replays and admits* worlds; WRLM *authors* them under
+supervision. Substrate vs. cortex — neither absorbs the other.
+
+The architecture is **Arm D′**, and the trick is that the edit ops are *derived, not
+generated*:
+
+```
+model emits full WRL text
+  → host parses into an isolated candidate buffer
+  → diagnose_core
+  → seal  (candidate_sem_id)
+  → wrl_diff.semantic_diff(base, candidate)
+  → derived GraphEditV1 op sequence
+  → apply_edit(base, derived_ops)
+  → assert resulting_sem_id == candidate_sem_id
+```
+
+The model writes prose-like text (its strongest modality), but nothing reaches the world
+except through the six frozen typed ops and the existing `apply_edit` seam. **No new
+runtime construct, no new identity rung.**
+
+Correctness is a ladder of four rungs — validity (does it parse, seal and lower),
+target identity (`sem-` equality), goal satisfaction (`GoalSpecV1` evaluation), and
+subjective quality. The first three are *total and free*. The fourth is **out of scope**
+and must never be smuggled in via an LLM judge.
+
+**Status: build-order steps 1 and 2 are shipped and closed; steps 3–10 are paper only.**
+What exists in `wrlm/` today is `GoalSpecV1` (a closed serialized AST, not a language —
+decidable over bounded finite worlds by construction), `TaskBundleV1`, `WorldRecordV1`,
+the `worldview.py` engine adapter, `envelope.py`, a derived coverage domain
+(`wrlm.coverage.v1.2`, 320 published cells) and a 58-world proved pool inhabiting 298 of
+them. There is no model arm yet.
+
+Design of record: [`WRLM_RESEARCH_BRIEF.md`](WRLM_RESEARCH_BRIEF.md). It supersedes
+nothing — WRL, TRVM, TRAAVIIS and Forge remain authoritative for their own layers.
 
 ## Honesty notes (also in the paper)
 
