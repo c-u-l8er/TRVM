@@ -197,14 +197,24 @@ const LINKS = {
     status: "prototype",
     tier: "spec",
   },
+  // Rendered by the Academy promo band, not as a column item — see CATEGORIES.academy.promo.
+  // It still needs a LINKS entry so `property="masterclass"` resolves and the band can mark
+  // itself current when the reader is already on the page.
+  masterclass: {
+    label: "The New SDLC, Made Formal",
+    tagline: "The long read — every claim with the command that would break it",
+    href: "https://ampersandboxdesign.com/agentic-engineering-masterclass.html",
+    status: "live",
+    tier: "shipped",
+  },
   // Workbench is the proof layer, not a peer product: a run here is what turns practice into a
   // signed, replayable SkillBundle that PRISM can score. It is the one thing in this category
   // that actually runs.
   workbench: {
     label: "Workbench",
-    tagline: "Teach once, replay forever — signed SkillBundles, 6 proof gates",
+    tagline: "Record a session you already ran — it becomes a scored SkillBundle",
     href: "https://workbench.opensentience.org",
-    status: "v0.3.0-alpha",
+    status: "v0.4.0-alpha",
     tier: "alpha",
   },
 
@@ -537,6 +547,7 @@ const PROPERTY_MAP = {
   academy_prove: { category: "academy", item: "academy_prove" },
   academy_refusals: { category: "academy", item: "academy_refusals" },
   academy_method: { category: "academy", item: "academy_method" },
+  masterclass: { category: "academy", item: "masterclass" },
   // Other categories
   ampersand: { category: "protocols", item: "ampersand" },
   ampersandboxdesign: { category: "company", item: "home" },
@@ -659,6 +670,15 @@ const CATEGORIES = [
         items: ["workbench", "academy_refusals"],
       },
     ],
+    // A full-width band under the columns. `key` points at a LINKS entry so the band can mark
+    // itself current, and so its href has one definition rather than two.
+    promo: {
+      key: "masterclass",
+      eyebrow: "Long read",
+      title: "The New SDLC, Made Formal",
+      body: "Google named the discipline. This is the substrate underneath it — and every claim on the page ships the command that would break it.",
+      cta: "Read the masterclass",
+    },
   },
   {
     id: "docs",
@@ -968,6 +988,98 @@ const STYLE = /* css */ `
     min-width: 0;
   }
 
+  /* Promo band — spans every column of the mega menu, whatever --cols is.
+     Selector is deliberately two classes: ".dropdown a" (0,1,1) sets display:block and its own
+     padding, and would beat a bare ".promo" (0,1,0) no matter where this rule sits. */
+  .dropdown .promo,
+  .mobile-section .promo {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-areas:
+      "eyebrow cta"
+      "title   cta"
+      "body    cta";
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: 1.25rem;
+    row-gap: 0.15rem;
+    margin-top: 0.4rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--amp-nav-border);
+    border-radius: 10px;
+    background:
+      linear-gradient(115deg, color-mix(in srgb, var(--amp-nav-accent) 12%, transparent) 0%, transparent 62%),
+      var(--amp-nav-hover);
+    text-decoration: none;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  /* Also outruns ".dropdown a:hover", which would otherwise flatten the gradient. */
+  .dropdown .promo:hover,
+  .mobile-section .promo:hover {
+    background:
+      linear-gradient(115deg, color-mix(in srgb, var(--amp-nav-accent) 18%, transparent) 0%, transparent 62%),
+      var(--amp-nav-hover);
+    border-color: color-mix(in srgb, var(--amp-nav-accent) 55%, transparent);
+    transform: translateY(-1px);
+  }
+  .dropdown .promo[aria-current="page"],
+  .mobile-section .promo[aria-current="page"] { border-color: color-mix(in srgb, var(--amp-nav-accent) 45%, transparent); }
+
+  .promo-eyebrow {
+    grid-area: eyebrow;
+    font-size: 9.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--amp-nav-accent);
+  }
+  .promo-title {
+    grid-area: title;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--amp-nav-fg);
+    line-height: 1.3;
+  }
+  .promo-body {
+    grid-area: body;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--amp-nav-muted);
+  }
+  .promo-cta {
+    grid-area: cta;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+    padding: 0.4rem 0.7rem;
+    border-radius: 7px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: var(--amp-nav-cta-bg, var(--amp-nav-accent));
+    color: var(--amp-nav-cta-fg, #08090c);
+  }
+  .promo-cta svg { width: 9px; height: 9px; flex: none; }
+
+  /* Narrow menus and the mobile sheet: stack the CTA under the copy. */
+  @media (max-width: 560px) {
+    .dropdown .promo {
+      grid-template-areas: "eyebrow" "title" "body" "cta";
+      grid-template-columns: 1fr;
+      row-gap: 0.35rem;
+    }
+    .dropdown .promo-cta { justify-self: start; margin-top: 0.2rem; }
+  }
+  /* The sheet opens at <=860px but the stacking query above fires at <=560px, which would leave
+     the band in its two-column form in the 561–860px sheet. Stack it unconditionally in there. */
+  .mobile-section .promo {
+    margin-top: 0.6rem;
+    grid-template-areas: "eyebrow" "title" "body" "cta";
+    grid-template-columns: 1fr;
+    row-gap: 0.35rem;
+  }
+  .mobile-section .promo-cta { justify-self: start; margin-top: 0.2rem; }
+
   .dropdown.mega .col h4 {
     margin: 0 0 0.4rem 0;
     padding: 0 0.75rem;
@@ -1200,6 +1312,23 @@ const TEMPLATE = (property) => {
     `;
   };
 
+  // Full-width band beneath a mega menu's columns. Spans every column via grid-column: 1 / -1,
+  // so it stays one band whatever --cols is set to.
+  const renderPromo = (promo) => {
+    if (!promo) return "";
+    const link = LINKS[promo.key];
+    if (!link) return "";
+    const isCurrent = promo.key === currentItem;
+    return `
+      <a class="promo" href="${escapeAttr(link.href)}" role="menuitem"${isCurrent ? ' aria-current="page"' : ""}>
+        <span class="promo-eyebrow">${promo.eyebrow}</span>
+        <span class="promo-title">${promo.title}</span>
+        <span class="promo-body">${promo.body}</span>
+        <span class="promo-cta">${isCurrent ? "You are reading it" : promo.cta}<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.5 L6.5 5 L3 8.5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+    `;
+  };
+
   const renderCategory = (cat) => {
     const isCurrent = cat.id === currentCategory;
     const dropdownInner = cat.mega
@@ -1225,6 +1354,7 @@ const TEMPLATE = (property) => {
         </button>
         <div class="${dropdownClass}" role="menu"${cat.mega ? ` style="--cols:${cat.columns.length}"` : ""}>
           ${dropdownInner}
+          ${cat.mega ? renderPromo(cat.promo) : ""}
         </div>
       </div>
     `;
@@ -1260,6 +1390,7 @@ const TEMPLATE = (property) => {
       <div class="mobile-section">
         <h3>${cat.label}</h3>
         ${body}
+        ${renderPromo(cat.promo)}
       </div>
     `;
   };
