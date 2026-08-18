@@ -1,4 +1,4 @@
-/* grid_check.mjs v2.15 — GRID-CONSISTENCY-2 (law:grid.consistency@2).
+/* grid_check.mjs v2.16 — GRID-CONSISTENCY-2 (law:grid.consistency@2).
    v1 (round 3): grep blacklist + structural spot-checks. v2 (round 4): LAW
    REGISTRY as the citation authority — every 'law:<id>@<rev>' in every
    shipped artifact must resolve; non-canonical citations only in
@@ -135,7 +135,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -531,6 +531,11 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
     ok(wsrc3.includes(s), `trvm_world.mjs missing write-mediation construct "${s}"`);
   ok(!!g.maintenance?.confinement?.write_mediation,
     "grid maintenance.confinement.write_mediation missing (v1.10)");
+  // transitive ownership + the declared realm limit (v1.11)
+  for (const s of ["const ownValue", "SPEC_FIELDS", "spec-field-unknown", "deepFreeze"])
+    ok(wsrc3.includes(s), `trvm_world.mjs missing transitive-ownership construct "${s}"`);
+  ok(!!g.maintenance?.confinement?.realm_limit,
+    "grid maintenance.confinement.realm_limit missing (v1.11) — the primordial witness must stay declared, not quietly dropped");
 }
 if (existsSync("maintenance_receipt.json")) {
   const mr = JSON.parse(readFileSync("maintenance_receipt.json", "utf8"));

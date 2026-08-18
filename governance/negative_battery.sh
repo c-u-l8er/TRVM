@@ -21,9 +21,18 @@ run_case () {  # name, expected-grep, setup-script(python)
      $BASE/kappa_witnesses.mjs $BASE/scheduler_certificate.json $BASE/refinement_receipt.json $BASE/golden_prehash_vectors.json \
      $BASE/trvm_world.mjs $BASE/world_warrant_receipt.json $BASE/maintenance_receipt.json \
      $BASE/round-3-ledger.md $BASE/round-4-ledger.md $BASE/round-5-ledger.md $BASE/round-6-ledger.md $BASE/round-7-ledger.md $BASE/round-8-ledger.md $BASE/round-9-ledger.md "$d/"
+  # law:evidence.instrument-nonvacuity@1 — a forgery that forges NOTHING is
+  # vacuous, and a vacuous falsifier is worse than an absent one because the
+  # roster still counts it. Six apparatus failures across four rounds would each
+  # have been caught here; the hard-coded "1.0.2" replacement is the exact shape.
+  local pre; pre=$(cd "$d" && cat * 2>/dev/null | sha256sum | cut -d" " -f1)
   ( cd "$d" && python3 -c "$py" )
-  local out; out=$(cd "$d" && node grid_check.mjs 2>&1); local code=$?
+  local post; post=$(cd "$d" && cat * 2>/dev/null | sha256sum | cut -d" " -f1)
   CASES=$((CASES+1))
+  if [ "$pre" = "$post" ]; then
+    echo "FAIL  $name (VACUOUS — the forgery left the tree byte-identical; nothing was tested)"; FAILED=1; return
+  fi
+  local out; out=$(cd "$d" && node grid_check.mjs 2>&1); local code=$?
   if [ $code -ne 0 ] && echo "$out" | grep -qE "$want"; then
     CAUGHT=$((CAUGHT+1))
     echo "PASS  $name → $(echo "$out" | grep -m1 -E "$want" | sed 's/^ *//' | cut -c1-110)"

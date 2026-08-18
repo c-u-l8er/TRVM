@@ -1,6 +1,6 @@
 {
  "record": "invariant-grid",
- "version": "1.10.0",
+ "version": "1.11.0",
  "date": "2026-08-18",
  "v1_criteria": {
   "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
@@ -617,7 +617,7 @@
  },
  "law_registry": {
   "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
-  "grid_version": "1.10.0",
+  "grid_version": "1.11.0",
   "entries": [
    {
     "id": "kappa.monotonicity.unrestricted",
@@ -1018,6 +1018,22 @@
     "canonical": true,
     "statement": "Once a maintenance pass begins, every semantic input governing it — definitions, derivation bindings, dependency topology and coordinator state — is immutable for the duration of the transaction, and no RETAINED ALIAS may mutate those inputs outside the coordinator's guarded transition API. Sealing the coordinator's properties is insufficient: a frozen property still points at a mutable Map, and a registration that stores the caller's spec by reference leaves authoritative configuration in the caller's hands. Writes go through stores that consult the in-flight flag, values are owned and frozen on the way in, and the pass computes against a definition view captured at entry. Separately, a receipt may not assemble one apparently authoritative fact out of two independent sources: publication fields come from the publication, coordinator state is compared against it, and disagreement is DECLARED.",
     "evidence": "World row L-COORD-2 (4/4): an in-pass defs.set refuses and leaves no GHOST in defs or in the after-map; an in-pass cross-node state.set refuses and the receipt's warrant_id now comes from the publication and equals the world's; a caller-owned spec retained across registration is severed and the pass derives honestly with the stored spec frozen against assignment; and poisoning from OUTSIDE a pass still works — the seam L-MAINT-3/L-MAINT-5 depend on — with the snapshot reporting coordinator_diverged rather than preferring a side. All three attack witnesses are frozen RED against World 0.8.0 in probe_coordinator_alias_9d1_repro.mjs, where they reproduced 0/3 confined. grid_check v2.15 scans for the guard constructs; three negative cases die on distinct diagnostics."
+   },
+   {
+    "id": "maintenance.transitive-ownership",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "Ownership on ingest must be TRANSITIVE and SCHEMA-COMPLETE. Transitive: freezing a record while leaving its nested value/witness objects shared leaves an in-pass write that no store guard observes, because no set() occurs. Schema-complete: an ownership layer may sever references, it may NOT silently drop fields — dropping inputs/law_refs/naive turned alias-severing into an undeclared semantic projection over derivation_id. Owned values pass through canonicalBytes, the boundary the World already trusts, rather than a second clone algorithm; unknown spec fields are refused rather than discarded. And divergence detection may not be identity-only: a coordinator record mutated without resealing keeps a matching warrant_id, so the published VALUE is compared too.",
+    "evidence": "World row L-COORD-2 (4/4) plus probe_realm_9d2_repro.mjs, where both defects reproduced against World 0.9.0 — `m.state.get(\"B\").value.x = 999` succeeded with isFrozen(value)=false and coordinator_diverged absent because the ids still matched, and a spec carrying inputs/law_refs/naive stored only [measure,predicate,measureFn] and derived a warrant with law_refs []. Both are CONFINED at 0.10.0 with the witness frozen red at 0.9.0."
+   },
+   {
+    "id": "evidence.instrument-nonvacuity",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "An audit result is creditable only if the instrument independently proves that the intended perturbation occurred, the intended execution path was exercised, and the measured predicate is the one reported. A falsifier that forges nothing, runs nothing, or measures a different predicate than it names is VACUOUS, and a vacuous falsifier is worse than an absent one because the roster still counts it. Mutation cases must show before_hash != after_hash before the detector's verdict counts.",
+    "evidence": "negative_battery.sh computes a pre- and post-perturbation digest of every scratch tree and refuses to credit a case whose forgery changed nothing (diagnostic: VACUOUS). This law is retrospective as much as prospective: it covers the unset $SCRATCH that meant a case could never execute, the hand-typed 44/44 that stopped counting the cases, the hard-coded \"1.0.2\" replacement that a version bump would have turned into a no-op, the prototype half of the authority graph that went untested, the false '9D-4 confined' produced by poisoning a node whose semantic path the pass overwrote, and a probe line that printed 'directly assignable' while testing typeof === 'function'. Six apparatus failures across four rounds, every one of which this rule would have caught mechanically."
    }
   ]
  },
@@ -1307,7 +1323,7 @@
  },
  "artifact_versions": {
   "trvm_law_kernel.mjs": "1.1.0",
-  "trvm_world.mjs": "0.9.0"
+  "trvm_world.mjs": "0.10.0"
  },
  "world": {
   "artifact": "trvm_world.mjs v0.3.0 — a separate executable; the calculus kernel is FROZEN at v1.0.2 and has no world by design",
@@ -1369,6 +1385,12 @@
     "receipt_authority": "snapshot() reads publication fields FROM the publication and compares coordinator state against it; disagreement sets coordinator_diverged",
     "seam_preserved": "poisoning defs/state from outside a pass still works — L-MAINT-3 and L-MAINT-5 model corrupted external state and that is the external-ingest position register() already covers",
     "reproduced_against": "World 0.8.0 — probe_coordinator_alias_9d1_repro.mjs, 0 of 3 confined"
+   },
+   "realm_limit": {
+    "witness": "probe_realm_9d2_repro.mjs 9D.2-c, against World 0.10.0 and every prior version",
+    "statement": "JavaScript #private fields resist reflection and prototype manipulation OF THE OBJECT. They do not protect the objects STORED in those fields from monkey-patching of the shared primordials used to operate on them. Replacing Map.prototype.get and performing an ordinary permitted read hands the private #res Map to the attacker as `this`; writing through it produced a resource at version 777 against a vclock of 1, with NO append-only log entry — the World's central invariant broken with no lock key, no reflection, no public field, and no Map ever handed to the derivation.",
+    "not_closed": "deliberately. Capturing pristine primordials at module load is defence in depth, not a boundary: it commits to auditing Map, Array, Object, JSON, iterators and sorting in perpetuity, which is the hardened-JavaScript/SES problem and not a property of this design.",
+    "closure": "realm separation. Node worker_threads give each worker its own V8 isolate and heap, and structured cloning REFUSES functions — so the arbitrary-closure measureFn API cannot cross that boundary at all. That refusal is the feature: it forces DeriveRequest{derivation_id, program_id, canonical_inputs, granted_resources} with the worker resolving program_id itself, making serialization the authority boundary. Object confinement and HOST confinement remain two distinct laws; a worker isolate can close the first, only an OS-level sandbox closes the second."
    }
   },
   "apply_discipline": "staged publications pre-validate before the first real-world write; a torn apply is receipted {aborted, torn, at: apply, applied: [prefix]} with the after-map reflecting the real world — grid_check verifies torn receipts against the applied prefix (applied names must match the step's after-side, unapplied the before-side); tears are visible, recoverable, and never silent"
@@ -1411,5 +1433,12 @@
   "snapshot() was assembling one authoritative-looking pair from two sources — pub_version from the World, warrant_id from coordinator state. Both now come from the publication and divergence is declared.",
   "new law maintenance.coordinator-write-mediated@1 with World row L-COORD-2 (4/4); trvm_world.mjs 0.9.0 (GuardedStore, ownership on ingest, transaction-local definition view).",
   "grid_check v2.15 scans for the write-mediation constructs; the negative battery gains three cases."
+ ],
+ "changelog_from_1_10_0": [
+  "round 9D.2. ownWarrant was SHALLOW: value/witness stayed shared and unfrozen, so a nested write bypassed GuardedStore entirely — no set() occurred, so #inPass never saw it. Ownership is now transitive, through canonicalBytes rather than a second clone algorithm.",
+  "ownSpec was an UNDECLARED SEMANTIC PROJECTION introduced by the previous round's own alias-severing repair: it kept {measure,predicate,measureFn} and dropped inputs, law_refs and naive, all consumed by the derivers, with inputs participating in derivation_id. Invisible to the corpus only because no shipped spec uses those fields. Now schema-complete, and unknown fields are REFUSED rather than discarded.",
+  "coordinator divergence is no longer identity-only: a record mutated without resealing keeps a matching warrant_id, so the published value is compared too and the flag names which field diverged.",
+  "the primordial-theft witness is FROZEN AND NOT CLOSED, by decision. It is the declared outer limit of same-realm object discipline and the motivation for realm separation — see maintenance.confinement.realm_limit.",
+  "new law evidence.instrument-nonvacuity@1, mechanised in the negative battery: a case whose forgery leaves the tree byte-identical is refused as VACUOUS. Six apparatus failures across four rounds would each have been caught by it."
  ]
 }

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   trvm_world.mjs — v0.9.0 — the WORLD layer: WorldRecord + Warrant v3,
+   trvm_world.mjs — v0.10.0 — the WORLD layer: WorldRecord + Warrant v3,
    executable. The calculus kernel (trvm_law_kernel.mjs, frozen at v1.0.1)
    has no world by design; this artifact is where WORLD-plane law begins.
 
@@ -157,7 +157,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { randomBytes } from "node:crypto";
-const WORLD_VERSION = "0.9.0";
+const WORLD_VERSION = "0.10.0";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
 const cj = (o) => JSON.stringify(o);
@@ -571,9 +571,44 @@ Object.freeze(GuardedStore.prototype);
 // This is what severs registration aliasing — the coordinator captures the
 // measureFn VALUE at registration and can no longer be reached by reassigning
 // the caller's property afterwards.
-const ownSpec = (sp = {}) => Object.freeze({
-  measure: sp.measure, predicate: sp.predicate, measureFn: sp.measureFn,
-});
+// TRANSITIVE ownership, through the boundary the World already trusts.
+// v0.9.0 froze the warrant OBJECT and left `value` and `witness` as the caller's
+// nested objects, so `m.state.get("B").value.x = 999` was an in-pass write that
+// `GuardedStore` never saw — no `.set()` occurred. Reusing `canonicalBytes`
+// rather than inventing a second clone algorithm keeps one definition of what a
+// value is; non-canonical fields (witness is opaque by design) still get a
+// severed, frozen copy.
+const deepFreeze = (v) => {
+  if (v === null || typeof v !== "object" || Object.isFrozen(v)) return v;
+  Object.freeze(v);
+  for (const k of Object.keys(v)) deepFreeze(v[k]);
+  return v;
+};
+const ownValue = (v) => {
+  if (v === null || typeof v !== "object") return v;
+  try { return deepFreeze(JSON.parse(canonicalBytes(v))); }
+  catch { try { return deepFreeze(structuredClone(v)); } catch { return v; } }
+};
+
+// SCHEMA-COMPLETE ownership. v0.9.0's ownSpec kept {measure, predicate,
+// measureFn} and silently dropped `inputs`, `law_refs` and `naive` — all of
+// which the derivers consume, and `inputs` participates in derivation_id. The
+// alias-severing repair was therefore also an UNDECLARED SEMANTIC PROJECTION,
+// invisible to the corpus only because no shipped spec uses those fields. An
+// ownership layer may sever references; it may not quietly change meaning.
+const SPEC_FIELDS = ["measure", "predicate", "inputs", "law_refs", "naive", "measureFn"];
+const ownSpec = (sp = {}) => {
+  const unknown = Object.keys(sp).filter((k) => !SPEC_FIELDS.includes(k));
+  if (unknown.length) throw new Error("spec-field-unknown: " + unknown.sort().join(","));
+  return Object.freeze({
+    measure: sp.measure,
+    predicate: sp.predicate,
+    inputs: ownValue(sp.inputs ?? null),
+    law_refs: Object.freeze([...(sp.law_refs ?? [])]),
+    naive: sp.naive === true,
+    measureFn: sp.measureFn,
+  });
+};
 const ownDef = (d = {}) => Object.freeze({
   kind: d.kind,
   cites: Object.freeze([...(d.cites ?? [])]),
@@ -583,7 +618,10 @@ const ownWarrant = (w) => {
   if (!w || typeof w !== "object") return w;
   const fp = w.read_footprint;
   return Object.freeze({ ...w,
+    value: ownValue(w.value),           // v0.10.0: transitive, not shallow
+    witness: ownValue(w.witness),
     support: Object.freeze([...(w.support ?? [])]),
+    law_refs: Object.freeze([...(w.law_refs ?? [])]),
     read_footprint: fp ? Object.freeze({
       exact: Object.freeze((fp.exact ?? []).map((e) => Object.freeze([...e]))),
       predicates: Object.freeze((fp.predicates ?? []).map((e) => Object.freeze([...e]))),
@@ -799,8 +837,15 @@ class Maintainer {
       const worldId = published ? (published.warrant_id ?? null) : null;
       const coordId = (this.state.get(name) ?? {}).warrant_id ?? null;
       pubs[name] = { pub_version: pub.version, warrant_id: worldId };
+      // NOT ID-ONLY. A coordinator entry mutated without resealing keeps a
+      // warrant_id that still matches the publication, so an identity check
+      // alone reports agreement about a corrupted record. The published value
+      // is compared too.
+      const coord = this.state.get(name) ?? null;
       if (worldId !== null && coordId !== null && worldId !== coordId)
-        pubs[name].coordinator_diverged = true;
+        pubs[name].coordinator_diverged = "warrant_id";
+      else if (published && coord && cj(published.value) !== cj(coord.value))
+        pubs[name].coordinator_diverged = "value";
     }
     return { vclock: world.vclock, pubs };
   }
@@ -1976,7 +2021,7 @@ console.log("═".repeat(96));
     m.state.set("B", { ...b, warrant_id: "f0rged" });   // OUTSIDE a pass: the test seam still works
     const snap = m.snapshot(w);
     rs.push({ id: "divergence-declared",
-      ok: snap.pubs.B.warrant_id === w.read("warrant:B").value.warrant_id && snap.pubs.B.coordinator_diverged === true,
+      ok: snap.pubs.B.warrant_id === w.read("warrant:B").value.warrant_id && snap.pubs.B.coordinator_diverged === "warrant_id",
       note: `poisoning from OUTSIDE a pass still succeeds (the seam L-MAINT-3/5 depend on), and the snapshot reports coordinator_diverged=${snap.pubs.B.coordinator_diverged} rather than silently preferring either side` });
   }
   const good = rs.filter((r) => r.ok).length;
