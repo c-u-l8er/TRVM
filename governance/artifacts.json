@@ -18,7 +18,11 @@
  "ledgers_pattern": "^round-\\d+-ledger\\.md$",
  "tools": [
   "negative_battery.sh",
-  "extract_prehash.mjs"
+  "extract_prehash.mjs",
+  "derive_protocol.mjs",
+  "derive_battery.mjs",
+  "derive_worker.mjs",
+  "derive_realm_battery.mjs"
  ],
  "probes_pattern": "^probe_.*\\.mjs$",
  "probe_roles": {
@@ -41,5 +45,16 @@
   "ic32_handoff_v2": "Lane B pack v2, frozen",
   "ic32_handoff_v3": "Lane B pack v3, frozen — evidence-enable the existing ic32",
   "v04_verbatim": "round-4 verbatim sources, historical"
+ },
+ "derivation_boundary": {
+  "status": "v0.1.0 — protocol proven in-process and across a worker; NOT yet the production derivation path",
+  "files": {
+   "derive_protocol.mjs": "program-as-data, canonical request/result schemas, program registry whose key is the program's hash",
+   "derive_battery.mjs": "10 falsifiers, in-process",
+   "derive_worker.mjs": "the far side; holds no parent reference and resolves programs from its own registry",
+   "derive_realm_battery.mjs": "5 falsifiers across a real worker boundary"
+  },
+  "claimed": "OBJECT authority does not cross: structured cloning refuses callables (DataCloneError), the worker resolves program_sem_id against its own registry, reads are an authority operation the parent performs, and a returned result is re-derived by the authority before it is evidence.",
+  "not_claimed": "determinism of a long-lived evaluator; host confinement; that any existing measureFn has been ported. Three separate scopes, named separately in realm_roadmap."
  }
 }

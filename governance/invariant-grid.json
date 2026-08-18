@@ -1,6 +1,6 @@
 {
  "record": "invariant-grid",
- "version": "1.14.0",
+ "version": "1.15.0",
  "date": "2026-08-18",
  "v1_criteria": {
   "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
@@ -617,7 +617,7 @@
  },
  "law_registry": {
   "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
-  "grid_version": "1.14.0",
+  "grid_version": "1.15.0",
   "entries": [
    {
     "id": "kappa.monotonicity.unrestricted",
@@ -1050,6 +1050,14 @@
     "canonical": true,
     "statement": "A derivation's authority must be bounded by what the coordinator can own. Under the current same-realm arbitrary-closure measureFn API it is NOT, and this law is FALSIFIED BY DESIGN rather than repaired: capturing an arbitrary callable does not capture its semantics, and a function reference may retain mutable authority that is neither enumerable nor ownable. The witness needs no mutable object at all — a `let bias = 0` shared by two closures. Object.freeze, deepFreeze, structuredClone, canonicalBytes, #private fields, GuardedStore and the pass-entry snapshot are all INAPPLICABLE, because JavaScript provides no mechanism to enumerate, copy, canonicalize or freeze a captured lexical environment; freezing measureFn itself does not help either. A second theorem fails with it: derivation_id is computed from measure/predicate/inputs and therefore does NOT identify a derivation's semantics — the witness holds derivation_id constant while behaviour changes from fb to fb+1000. Tolerable as an acknowledged limit of the closure API; NOT tolerable once semantic films assert that an identified program performed a particular transition. Closure is by REPLACING the API, not by hardening it: see realm_roadmap.",
     "evidence": "probe_closureenv_repro.mjs against World 0.11.0 — B is support_changed and re-derives to 1005 where an honest B is 5, in both the coordinator and the World, with derivation_id unchanged and the pass not aborted. Frozen and deliberately NOT gated: the probe exits 0 because it documents a boundary rather than a regression. Four ownership rounds (9D.1 raw maps and caller objects, 9D.2 nested values, 9D.3 fail-open ownership, and this) converged on the conclusion that an arbitrary closure is an unbounded capability container — an architectural boundary, not a missing Object.freeze."
+   },
+   {
+    "id": "derivation.serialized-boundary",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "A derivation crosses an authority boundary as DATA or not at all. The program is a canonical AST and program_sem_id is H(canonical program), so it cannot be a caller-selected label and cannot be rebound — the id IS the program's hash, and the same program has the same id under every conforming implementation while implementation_id carries executable provenance separately. The message domain is TRVM's canonical value domain, never 'structuredClone succeeded': Function, Map, Set, Date, class instances and transferable handles are refused, because those are capabilities rather than data. Reads are an AUTHORITY operation performed on the authoritative side and passed as explicit grants, so the derivation realm holds no world reference and needs none. A result produced on the far side is a CLAIM; it becomes evidence only when the authority re-derives it and the canonical bytes agree.",
+    "evidence": "derive_battery.mjs 10/10 in-process and derive_realm_battery.mjs 5/5 across a real worker_threads boundary. The decisive one is empirical: posting a request carrying a closure throws DataCloneError, so the 9D.4 lexical-cell attack — which no Object.freeze, deepFreeze, canonicalBytes, #private field or GuardedStore could reach — has NO TRANSPORT. The confinement is performed by the boundary rather than by object discipline, which is why replacing the API was the right response to law:derivation.environment-confinement@1 rather than hardening it further. SCOPE, stated rather than implied: this closes derivation-object-confinement only. Determinism of a long-lived evaluator (a worker holding `let counter = 0` leaks no parent authority and still fails to make program_sem_id denote a stable function) and host confinement (Date.now, Math.random, filesystem, network) are separate scopes, unclaimed here."
    }
   ]
  },
@@ -1516,5 +1524,12 @@
   "artifacts.json declares the case input set; both negative runners read it instead of two hand-maintained cp lists that had already diverged.",
   "grid_check refuses any governance artifact present but undeclared, and requires every probe to declare what it witnesses — the coverage direction that fails silently.",
   "instrument-nonvacuity clause 1 mechanised: the intended target is derived from the perturbation script and must equal what actually changed. Verified to fire (TARGET MISMATCH, 63/64) then restored. Clause 4 remains declared open."
+ ],
+ "changelog_from_1_14_0": [
+  "the replacement for the falsified closure API exists and is falsified in both positions: derive_protocol.mjs with 10 in-process falsifiers, and a real worker crossing with 5 more.",
+  "program_sem_id is H(canonical program AST) — a caller cannot select it and a registry cannot rebind it, which is what the 9D.4 witness demanded of any replacement.",
+  "reads are performed by the AUTHORITY and passed as explicit grants, so the derivation realm holds no world reference. An ungranted read is refused by name on the far side.",
+  "new law derivation.serialized-boundary@1, scoped explicitly to object confinement; determinism and host confinement are named as separate unclaimed scopes.",
+  "empirical result worth recording plainly: postMessage of a request carrying a closure throws DataCloneError. The attack that defeated every object-discipline repair cannot be expressed at the boundary at all."
  ]
 }

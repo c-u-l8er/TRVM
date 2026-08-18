@@ -25,7 +25,7 @@ VECTORS := ../docs/spec/conformance/vectors/normalize.json
 
 .PHONY: test conformance native native-selftest zig zig-selftest mojo mojo-selftest \
         wasm-smoke swarm research clean \
-        governance gov-kernel gov-grid gov-world gov-negative gov-bridge gov-strict
+        governance gov-kernel gov-grid gov-world gov-negative gov-bridge gov-strict gov-derive
 
 test: native zig mojo conformance native-selftest zig-selftest mojo-selftest \
       wasm-smoke swarm research governance
@@ -103,7 +103,7 @@ swarm:
 # proves. They meet at the canonical corpus (same 24 vectors, same committed
 # hash) and, since round 10, at canonical semantic bytes. A runtime change that
 # moved semantics would now fail here rather than pass quietly.
-governance: gov-kernel gov-grid gov-world gov-negative gov-bridge
+governance: gov-kernel gov-grid gov-world gov-negative gov-bridge gov-derive
 	@echo "  evidence plane green"
 
 gov-kernel:
@@ -141,6 +141,14 @@ $(GOV)/bridge/ic32_canon: $(GOV)/bridge/ic32_canon.c runtime/c/ic32.c
 gov-strict:
 	@echo "==== [governance] STRICT corpus identity — release / pack-cut gate ===="
 	@cd $(GOV) && TRVM_STRICT_CORPUS=1 TRVM_VECTORS=$(VECTORS) $(NODE) trvm_law_kernel.mjs | tail -1
+
+# The replacement for the falsified arbitrary-closure derivation API: program
+# as data, canonical request/result, and a real worker crossing where structured
+# cloning refuses callables outright.
+gov-derive:
+	@echo "==== [governance] serialized derivation boundary ===="
+	@cd $(GOV) && $(NODE) derive_battery.mjs | tail -1
+	@cd $(GOV) && $(NODE) derive_realm_battery.mjs | tail -1
 
 ## --- identity/memory result ------------------------------------------------
 research:

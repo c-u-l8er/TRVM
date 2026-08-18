@@ -176,7 +176,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -591,6 +591,12 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
       "grid realm_roadmap missing (v1.13) — the replacement path must be declared alongside the falsified law");
   }
   ok(!!g.artifact_roots, "grid artifact_roots missing (v1.14)");
+  {
+    const man2 = existsSync(A("artifacts.json")) ? JSON.parse(readFileSync(A("artifacts.json"), "utf8")) : {};
+    ok(!!man2.derivation_boundary && !!man2.derivation_boundary.not_claimed,
+      "artifacts.json derivation_boundary missing, or missing its not_claimed scope note (v1.15) — " +
+      "the serialized boundary closes OBJECT confinement only, and the record must keep saying so");
+  }
   ok(!!g.film_identity_forward_declaration,
     "grid film_identity_forward_declaration missing (v1.12) — the program_sem_id/implementation_id split must be decided before the film round, not during it");
   ok(!!g.maintenance?.confinement?.realm_limit,
