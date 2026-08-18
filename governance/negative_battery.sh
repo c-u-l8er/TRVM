@@ -13,6 +13,16 @@ BASE="$(cd "$(dirname "$0")" && pwd)"
 # FAIL for want of an out.txt while the forgery it targets was being refused
 # correctly all along. Named once, defaulted, and asserted per case below.
 SCRATCH="${SCRATCH:-/tmp/neg5}"
+# The case input set is DECLARED in artifacts.json, not hand-maintained here.
+# Both runners use the same list: run_case_engine previously omitted
+# maintenance_receipt.json for no stated reason, which is exactly the kind of
+# silent divergence between two copies of a list that this replaces.
+CASE_INPUTS=$(python3 -c "
+import json,re,os
+m=json.load(open('$BASE/artifacts.json'))
+fs=list(m['case_inputs'])
+fs+=sorted(f for f in os.listdir('$BASE') if re.match(m['ledgers_pattern'],f))
+print(' '.join(fs))")
 # law:evidence.instrument-nonvacuity@1 — the mechanised half.
 # A per-file digest, not a whole-tree one: "something changed" is weaker than
 # "the intended target changed", and the law says target. changed_files() names
@@ -27,14 +37,25 @@ file_digests () { ( cd "$1" && for f in *; do [ -f "$f" ] && printf "%s %s\n" "$
 # quietly fixed, because that is the law's whole point.
 changed_files () { { printf "%s\n" "$1"; printf "%s\n" "$2"; } | sort | uniq -u | awk "{print \$2}" | sort -u | tr "\n" "," | sed "s/,$//"; }
 
+# law:evidence.instrument-nonvacuity@1 clause 1 — the INTENDED target.
+# "Something changed" is weaker than "the intended thing changed". The target is
+# derived from the perturbation script itself (files opened for writing, files
+# removed) and compared against what actually moved, so a case that edits the
+# wrong artifact — or edits an extra one by accident — fails as loudly as one
+# that edits nothing. Declaration and effect are checked against each other
+# rather than either being trusted alone.
+intended_targets () { python3 -c "
+import re,sys
+py = sys.argv[1]
+t  = set(re.findall(r\"open\\(['\\\"]([^'\\\"]+)['\\\"]\\s*,\\s*['\\\"]w\", py))
+t |= set(re.findall(r\"os\\.remove\\(['\\\"]([^'\\\"]+)\", py))
+print(','.join(sorted(t)))" "$1"; }
+
 run_case () {  # name, expected-grep, setup-script(python)
   local name="$1" want="$2" py="$3"
   local d=$SCRATCH/$name
   rm -rf "$d" && mkdir -p "$d"
-  cp $BASE/invariant-grid.json $BASE/trvm_law_kernel.mjs $BASE/grid_check.mjs \
-     $BASE/kappa_witnesses.mjs $BASE/scheduler_certificate.json $BASE/refinement_receipt.json $BASE/golden_prehash_vectors.json \
-     $BASE/trvm_world.mjs $BASE/world_warrant_receipt.json $BASE/maintenance_receipt.json \
-     $BASE/round-3-ledger.md $BASE/round-4-ledger.md $BASE/round-5-ledger.md $BASE/round-6-ledger.md $BASE/round-7-ledger.md $BASE/round-8-ledger.md $BASE/round-9-ledger.md "$d/"
+  for f in $CASE_INPUTS; do cp "$BASE/$f" "$d/"; done
   # law:evidence.instrument-nonvacuity@1 — a forgery that forges NOTHING is
   # vacuous, and a vacuous falsifier is worse than an absent one because the
   # roster still counts it. Six apparatus failures across four rounds would each
@@ -46,6 +67,10 @@ run_case () {  # name, expected-grep, setup-script(python)
   local touched; touched=$(changed_files "$pre" "$post")
   if [ -z "$touched" ]; then
     echo "FAIL  $name (VACUOUS — the forgery changed no artifact; nothing was tested)"; FAILED=1; return
+  fi
+  local intended; intended=$(intended_targets "$py")
+  if [ -n "$intended" ] && [ "$intended" != "$touched" ]; then
+    echo "FAIL  $name (TARGET MISMATCH — script intends [$intended], run changed [$touched])"; FAILED=1; return
   fi
   local out; out=$(cd "$d" && node grid_check.mjs 2>&1); local code=$?
   if [ $code -ne 0 ] && echo "$out" | grep -qE "$want"; then
@@ -139,7 +164,7 @@ run_case_engine() {  # like run_case but the verifier is the WORLD ENGINE mode
   local name="$1" want="$2" py="$3"
   local d="$SCRATCH/$name"
   rm -rf "$d" && mkdir -p "$d" || { echo "FAIL  $name (scratch unusable: $d)"; CASES=$((CASES+1)); FAILED=1; return; }
-  cp $BASE/invariant-grid.json $BASE/trvm_law_kernel.mjs $BASE/grid_check.mjs      $BASE/kappa_witnesses.mjs $BASE/scheduler_certificate.json $BASE/refinement_receipt.json $BASE/golden_prehash_vectors.json      $BASE/trvm_world.mjs $BASE/world_warrant_receipt.json      $BASE/round-3-ledger.md $BASE/round-4-ledger.md $BASE/round-5-ledger.md $BASE/round-6-ledger.md $BASE/round-7-ledger.md $BASE/round-8-ledger.md $BASE/round-9-ledger.md "$d/"
+  for f in $CASE_INPUTS; do cp "$BASE/$f" "$d/"; done
   local pre; pre=$(file_digests "$d")
   ( cd "$d" && python3 -c "$py" )
   local post; post=$(file_digests "$d")
@@ -147,6 +172,10 @@ run_case_engine() {  # like run_case but the verifier is the WORLD ENGINE mode
   CASES=$((CASES+1))
   if [ -z "$touched" ]; then
     echo "FAIL  $name (VACUOUS — the forgery changed no artifact; nothing was tested)"; FAILED=1; return
+  fi
+  local intended; intended=$(intended_targets "$py")
+  if [ -n "$intended" ] && [ "$intended" != "$touched" ]; then
+    echo "FAIL  $name (TARGET MISMATCH — script intends [$intended], run changed [$touched])"; FAILED=1; return
   fi
   ( cd "$d" && node trvm_world.mjs --check-receipt > out.txt 2>&1 )
   local code=$?
@@ -520,6 +549,25 @@ run_case realm-roadmap-dropped "realm_roadmap missing" "
 import json
 g = json.load(open('invariant-grid.json'))
 del g['realm_roadmap']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+# ── J. artifact-root / coverage forgeries ────────────────────────────────
+run_case artifact-undeclared "present but UNDECLARED" "
+import json
+m = json.load(open('artifacts.json'))
+m['case_inputs'] = [f for f in m['case_inputs'] if f != 'kappa_witnesses.mjs']
+json.dump(m, open('artifacts.json','w'), indent=1)"
+
+run_case artifact-manifest-corrupt "artifacts.json missing or not v1" "
+import json
+m = json.load(open('artifacts.json'))
+m['type'] = 'TRVM-GOV-ARTIFACTS-v0'
+json.dump(m, open('artifacts.json','w'), indent=1)"
+
+run_case artifact-roots-declaration-dropped "artifact_roots missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+del g['artifact_roots']
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 echo; [ $FAILED -eq 0 ] && echo "NEGATIVE BATTERY: $CASES/$CASES forgeries caught" || echo "NEGATIVE BATTERY: FAILURES PRESENT ($CAUGHT/$CASES caught)"

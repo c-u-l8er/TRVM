@@ -1,0 +1,45 @@
+{
+ "type": "TRVM-GOV-ARTIFACTS-v1",
+ "version": 1,
+ "why": "The negative battery copied a hand-maintained flat file list into each scratch case, so an artifact added to the tree was not covered until somebody remembered to extend the list — and nothing said so. That is the same class as the harness defects law:evidence.instrument-nonvacuity@1 exists to catch: the roster looks complete while its coverage silently shrinks. The artifact set is now DECLARED once, both negative runners read it, and grid_check refuses any governance artifact that is present but undeclared. Adding a file now forces a decision instead of allowing an omission.",
+ "case_inputs": [
+  "invariant-grid.json",
+  "trvm_law_kernel.mjs",
+  "grid_check.mjs",
+  "kappa_witnesses.mjs",
+  "scheduler_certificate.json",
+  "refinement_receipt.json",
+  "golden_prehash_vectors.json",
+  "trvm_world.mjs",
+  "world_warrant_receipt.json",
+  "maintenance_receipt.json",
+  "artifacts.json"
+ ],
+ "ledgers_pattern": "^round-\\d+-ledger\\.md$",
+ "tools": [
+  "negative_battery.sh",
+  "extract_prehash.mjs"
+ ],
+ "probes_pattern": "^probe_.*\\.mjs$",
+ "probe_roles": {
+  "probe_semid.mjs": "round 6 — semantic state identity",
+  "probe_cert.mjs": "round 5 — scheduler certificate",
+  "probe_worldalias_v02_repro.mjs": "round 8 — world aliasing",
+  "probe_support_v03_repro.mjs": "round 8.2 — support soundness",
+  "probe_sembudget_v1_repro.mjs": "round 6B — semantic film budget",
+  "probe_forkescape_v05_repro.mjs": "9B — the fork was not a boundary",
+  "probe_keytheft_v06_repro.mjs": "9C — the hidden key was not hidden",
+  "probe_maintainer_9d_repro.mjs": "9D — the coordinator was not sealed",
+  "probe_coordinator_alias_9d1_repro.mjs": "9D.1 — reachable aliases",
+  "probe_realm_9d2_repro.mjs": "9D.2 — nested values, and the shared realm",
+  "probe_ownfailopen_9d3_repro.mjs": "9D.3 — ownership failed open",
+  "probe_closureenv_repro.mjs": "9D.4 — the authority that was never an object; DECLARED, not repaired"
+ },
+ "subdirs": {
+  "bridge": "cross-plane C canonical-bytes bridge (ic32_canon.c, bridge_check.mjs)",
+  "ic32_handoff": "Lane B pack v1, frozen",
+  "ic32_handoff_v2": "Lane B pack v2, frozen",
+  "ic32_handoff_v3": "Lane B pack v3, frozen — evidence-enable the existing ic32",
+  "v04_verbatim": "round-4 verbatim sources, historical"
+ }
+}

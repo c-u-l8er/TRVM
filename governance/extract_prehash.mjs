@@ -23,6 +23,10 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+const ROOT = process.env.TRVM_GOV_ROOT ?? dirname(fileURLToPath(import.meta.url));
+const A = (n) => join(ROOT, n);
 import {
   KERNEL_VERSION, FloatRt, parse, extrude, readback, semId,
   stateSignature, semStateSignature, semStateId, foldCanonicalLive,
@@ -39,8 +43,8 @@ const CORPUS = (process.env.TRVM_VECTORS
 const sha = (s) => createHash("sha256").update(s).digest("hex");
 const js = (o) => JSON.stringify(o);
 
-const cert = JSON.parse(readFileSync("scheduler_certificate.json", "utf8"));
-const refine = JSON.parse(readFileSync("refinement_receipt.json", "utf8"));
+const cert = JSON.parse(readFileSync(A("scheduler_certificate.json"), "utf8"));
+const refine = JSON.parse(readFileSync(A("refinement_receipt.json"), "utf8"));
 const refById = new Map(refine.per_term.map((r) => [r.name, r]));
 
 // mulberry32 seed + pick match runFloat's defaults; the semantic state is
@@ -158,7 +162,7 @@ if (mismatches.length) {
   for (const m of mismatches) console.error("  · " + m);
   process.exit(1);
 }
-writeFileSync("golden_prehash_vectors.json", JSON.stringify(doc, null, 1));
+writeFileSync(A("golden_prehash_vectors.json"), JSON.stringify(doc, null, 1));
 console.log(`golden_prehash_vectors.json — ${per_term.length} vectors, kernel v${KERNEL_VERSION}`);
 console.log(`  every sem_signature hashes to its sem_state_id, every nf_id matches refinement_receipt`);
 console.log(`  compaction boundary: ${below?.length} chars uncompacted → ${above?.length} chars compacted (nesting ${below?.nesting}→${above?.nesting})`);

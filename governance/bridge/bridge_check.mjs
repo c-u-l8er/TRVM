@@ -15,9 +15,14 @@
 import { readFileSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { fileURLToPath } from "node:url";
+import { dirname, join, resolve } from "node:path";
+const HERE = dirname(fileURLToPath(import.meta.url));
+const ROOT = process.env.TRVM_GOV_ROOT ?? resolve(HERE, "..");
+const A = (n) => join(ROOT, n);
 
-const BIN = "bridge/ic32_canon";
-const CORPUS = process.env.TRVM_VECTORS ?? "../docs/spec/conformance/vectors/normalize.json";
+const BIN = join(HERE, "ic32_canon");
+const CORPUS = process.env.TRVM_VECTORS ?? resolve(ROOT, "../docs/spec/conformance/vectors/normalize.json");
 const fails = [];
 const ok = (c, m) => { if (!c) fails.push(m); };
 
@@ -28,7 +33,7 @@ if (!existsSync(BIN)) {
   process.exit(1);
 }
 
-const golden = JSON.parse(readFileSync("golden_prehash_vectors.json", "utf8"));
+const golden = JSON.parse(readFileSync(A("golden_prehash_vectors.json"), "utf8"));
 const corpus = (() => { const j = JSON.parse(readFileSync(CORPUS, "utf8")); return j.vectors ?? j; })();
 ok(corpus.length === golden.per_term.length,
   `corpus has ${corpus.length} terms, golden vectors have ${golden.per_term.length}`);

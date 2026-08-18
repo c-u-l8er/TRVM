@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   trvm_world.mjs — v0.11.0 — the WORLD layer: WorldRecord + Warrant v3,
+   trvm_world.mjs — v0.12.0 — the WORLD layer: WorldRecord + Warrant v3,
    executable. The calculus kernel (trvm_law_kernel.mjs, v1.1.0 — calculus frozen
    since v1.0.2; 1.1.0 is the additive module interface)
    has no world by design; this artifact is where WORLD-plane law begins.
@@ -157,8 +157,14 @@
    ═══════════════════════════════════════════════════════════════════════ */
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+// explicit artifact root (v0.12.0) — see grid_check v2.19 for why ambient CWD
+// discovery is a provenance defect rather than an untidiness.
+const GOV_ROOT = process.env.TRVM_GOV_ROOT ?? dirname(fileURLToPath(import.meta.url));
+const A = (n) => join(GOV_ROOT, n);
 import { randomBytes } from "node:crypto";
-const WORLD_VERSION = "0.11.0";
+const WORLD_VERSION = "0.12.0";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
 const cj = (o) => JSON.stringify(o);
@@ -1102,7 +1108,7 @@ if (process.argv.includes("--check-receipt")) {
   // replayers — and recompute the receipt commitment. grid_check holds the
   // engine-free half (structure, canonical form, subset); THIS holds the
   // truth half a tampered-but-resealed support cannot survive.
-  const wr = JSON.parse(readFileSync("world_warrant_receipt.json", "utf8"));
+  const wr = JSON.parse(readFileSync(A("world_warrant_receipt.json"), "utf8"));
   const bad = (m) => { console.log("RECEIPT-CHECK: FAIL — " + m); process.exit(1); };
   if (wr.version !== 3) bad("receipt is not v3");
   const rid = H("TRVM-WORLDRECEIPT-v3|" + cj(wr.world_spec) + "|" + cj(wr.warrant) + "|" + wr.footprint_id
@@ -1373,7 +1379,7 @@ console.log("═".repeat(96));
 {
   let ok = false, detail = "scheduler_certificate.json not present";
   if (existsSync("scheduler_certificate.json")) {
-    const cert = JSON.parse(readFileSync("scheduler_certificate.json", "utf8"));
+    const cert = JSON.parse(readFileSync(A("scheduler_certificate.json"), "utf8"));
     const w = new World();
     const corpusRes = "corpus:" + cert.corpus.id;
     w.put(corpusRes, cert.corpus.sha256);
@@ -2085,7 +2091,7 @@ if (!anyFail && !process.argv.includes("--check-receipt")) {
   };
   receipt.receipt_id = H("TRVM-WORLDRECEIPT-v3|" + cj(receipt.world_spec) + "|" + cj(receipt.warrant) + "|" + receipt.footprint_id
     + "|" + cj(receipt.composite.warrant) + "|" + receipt.composite.footprint_id);
-  writeFileSync("world_warrant_receipt.json", JSON.stringify(receipt, null, 1));
+  writeFileSync(A("world_warrant_receipt.json"), JSON.stringify(receipt, null, 1));
   // canonical maintenance receipt: the diamond after one ground movement
   {
     const wm = buildGraphWorld(["a", "b", "c"], [["a", "b"], ["b", "c"]]);
@@ -2101,7 +2107,7 @@ if (!anyFail && !process.argv.includes("--check-receipt")) {
     const mrec = m.pass();
     mrec.informational = { note: "NON-AUTHORITATIVE", generator: "trvm_world.mjs v" + WORLD_VERSION,
       scenario: "diamond D<-{B,C}<-A after deleting node:c" };
-    writeFileSync("maintenance_receipt.json", JSON.stringify(mrec, null, 1));
+    writeFileSync(A("maintenance_receipt.json"), JSON.stringify(mrec, null, 1));
   }
 }
 

@@ -1,4 +1,4 @@
-/* grid_check.mjs v2.18 — GRID-CONSISTENCY-2 (law:grid.consistency@2).
+/* grid_check.mjs v2.20 — GRID-CONSISTENCY-2 (law:grid.consistency@2).
    v1 (round 3): grep blacklist + structural spot-checks. v2 (round 4): LAW
    REGISTRY as the citation authority — every 'law:<id>@<rev>' in every
    shipped artifact must resolve; non-canonical citations only in
@@ -31,10 +31,24 @@
    Run: node grid_check.mjs   (exit 0 iff consistent) */
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+// ── ARTIFACT ROOT (v2.19) ─────────────────────────────────────────────────
+// Ambient CWD discovery is not a detail of tidiness: in an evidence system
+// "which file did I read?" is part of provenance, and a checker whose answer is
+// "whatever was beside the process" cannot state it. The root is now EXPLICIT —
+// anchored at this module's own location, overridable by TRVM_GOV_ROOT — and
+// the verdict line reports it, so a run in the wrong tree is visible in its own
+// output rather than inferred. The negative battery still works unchanged
+// because it copies grid_check.mjs into each scratch case, so the module's own
+// directory IS the case's directory.
+const ROOT = process.env.TRVM_GOV_ROOT ?? dirname(fileURLToPath(import.meta.url));
+const A = (name) => join(ROOT, name);
 const fails = [];
 const ok = (cond, msg) => { if (!cond) fails.push(msg); };
 
-const g = JSON.parse(readFileSync("invariant-grid.json", "utf8"));
+const g = JSON.parse(readFileSync(A("invariant-grid.json"), "utf8"));
 
 // ── A. registry self-validation ───────────────────────────────────────────
 const reg = g.law_registry;
@@ -101,7 +115,7 @@ const citeCheck = (file, where, text, historyCtx) => {
   else if (node && typeof node === "object")
     for (const [k, v] of Object.entries(node)) scanGrid(v, path ? path + "." + k : k);
 })(g, "");
-const ledgers = readdirSync(".").filter((f) => /^round-\d+-ledger\.md$/.test(f))
+const ledgers = readdirSync(ROOT).filter((f) => /^round-\d+-ledger\.md$/.test(f))
   .sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
 const latestLedger = ledgers[ledgers.length - 1];
 const ARTIFACTS = ["refinement_receipt.json", "trvm_world.mjs", "world_warrant_receipt.json", "trvm_law_kernel.mjs", "kappa_witnesses.mjs",
@@ -113,6 +127,33 @@ for (const f of ARTIFACTS) {
     citeCheck(f, i + 1, line, frozen));
 }
 ok(citations > 0, "no law citations found anywhere — the registry is load-bearing only if cited");
+
+// ── B2. artifact coverage: nothing present may be undeclared (v2.20) ──────
+// The direction that matters is not "is every declared file here" — a missing
+// file already fails loudly. It is "is every file here declared", because an
+// artifact nobody wired into the manifest is an artifact the negative battery
+// never copies into a scratch case, and therefore never tests. That failure is
+// silent by construction and the roster keeps counting.
+{
+  const man = existsSync(A("artifacts.json"))
+    ? JSON.parse(readFileSync(A("artifacts.json"), "utf8")) : null;
+  ok(!!man && man.type === "TRVM-GOV-ARTIFACTS-v1", "artifacts.json missing or not v1 (v1.13)");
+  if (man) {
+    const declared = new Set([...(man.case_inputs ?? []), ...(man.tools ?? [])]);
+    const ledgerRx = new RegExp(man.ledgers_pattern);
+    const probeRx = new RegExp(man.probes_pattern);
+    for (const f of declared) ok(existsSync(A(f)), `artifacts.json declares ${f}, which is absent`);
+    const present = readdirSync(ROOT).filter((f) => /\.(mjs|json|sh)$/.test(f));
+    for (const f of present) {
+      if (declared.has(f) || ledgerRx.test(f) || probeRx.test(f)) continue;
+      fails.push(`governance artifact ${f} is present but UNDECLARED in artifacts.json — ` +
+        `the negative battery copies only what is declared, so an undeclared artifact is never tested`);
+    }
+    // and every probe must state what it witnesses
+    for (const f of present.filter((x) => probeRx.test(x)))
+      ok((man.probe_roles ?? {})[f], `probe ${f} has no role declared in artifacts.json probe_roles`);
+  }
+}
 
 // ── C. supplementary banned-phrase tripwire ───────────────────────────────
 // (retired wordings that never name a law; the registry cannot catch these)
@@ -135,7 +176,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -152,7 +193,7 @@ ok(Array.isArray(g[clKey]) && g[clKey].length > 0, `latest changelog ${clKey} mi
   ];
   for (const [file, rx] of declared) {
     ok(av[file] != null, `artifact_versions missing ${file}`);
-    const s = readFileSync(file, "utf8");
+    const s = readFileSync(A(file), "utf8");
     const m = s.match(rx);
     ok(!!m, `${file} does not declare its version constant`);
     if (m && av[file] != null) ok(m[1] === av[file],
@@ -179,7 +220,7 @@ ok(mids.includes("EQUIVARIANCE") && mids.includes("ADEQUACY"),
   "Equivariance/Adequacy dual incomplete");
 ok((g.meta_laws ?? []).some((m) => m.id === "PROGRESS_LIVENESS" && /LOAD-BEARING/.test(m.status ?? "")),
   "Progress not promoted");
-const kernelTxt = existsSync("trvm_law_kernel.mjs") ? readFileSync("trvm_law_kernel.mjs", "utf8") : "";
+const kernelTxt = existsSync(A("trvm_law_kernel.mjs")) ? readFileSync(A("trvm_law_kernel.mjs"), "utf8") : "";
 ok(!kernelTxt.includes('.digest("hex").slice(0, 16)'),
   "kernel still truncates an evidence hash to 64 bits");
 ok(!kernelTxt.includes('.digest("hex").slice(0, 24)'),
@@ -233,8 +274,8 @@ ok(!!g.state_identity?.open, "state_identity open-question note missing");
 // Mirrors the kernel's committedView/certIdOf/manifestHashOf/aggregate — a
 // drift between the two shows up as one side failing, which is the point.
 const SC = g.scheduler_certificate ?? {};
-if (existsSync("scheduler_certificate.json")) {
-  const cert = JSON.parse(readFileSync("scheduler_certificate.json", "utf8"));
+if (existsSync(A("scheduler_certificate.json"))) {
+  const cert = JSON.parse(readFileSync(A("scheduler_certificate.json"), "utf8"));
   ok(cert.version === 2 && cert.type === "SchedulerCertificate", "shipped certificate is not v2");
   const committedView = (c) => [
     ["type", c.type], ["version", c.version], ["representation", c.representation],
@@ -327,8 +368,8 @@ if (existsSync("scheduler_certificate.json")) {
 // COMMITMENT and the SUMMARY ARITHMETIC from per_term, and checks the
 // receipt's declarations against the grid's refinement_receipt section —
 // so an inflated summary or a swapped law ref dies with no engine in sight.
-if (existsSync("refinement_receipt.json")) {
-  const rr = JSON.parse(readFileSync("refinement_receipt.json", "utf8"));
+if (existsSync(A("refinement_receipt.json"))) {
+  const rr = JSON.parse(readFileSync(A("refinement_receipt.json"), "utf8"));
   const RS = g.refinement_receipt ?? {};
   ok(rr.type === "RefinementReceipt" && rr.version === 1, "refinement receipt is not v1");
   ok(rr.relation === RS.relation, "refinement receipt relation != grid declaration");
@@ -364,8 +405,8 @@ if (existsSync("refinement_receipt.json")) {
 // the compaction row's reconstructed pre-compaction string against the
 // compacted signature the oracle emitted. A forged byte anywhere fails one of
 // the three, and each failure names which.
-if (existsSync("golden_prehash_vectors.json")) {
-  const pv = JSON.parse(readFileSync("golden_prehash_vectors.json", "utf8"));
+if (existsSync(A("golden_prehash_vectors.json"))) {
+  const pv = JSON.parse(readFileSync(A("golden_prehash_vectors.json"), "utf8"));
   const PS = g.prehash_vectors ?? {};
   ok(!!g.prehash_vectors, "grid prehash_vectors section missing (v1.8)");
   ok(pv.type === PS.type_expected && pv.version === PS.version_expected,
@@ -398,8 +439,8 @@ if (existsSync("golden_prehash_vectors.json")) {
     }
   }
   // binding 2 — the normal forms are the ones the shipped receipt committed
-  if (existsSync("refinement_receipt.json")) {
-    const rr = JSON.parse(readFileSync("refinement_receipt.json", "utf8"));
+  if (existsSync(A("refinement_receipt.json"))) {
+    const rr = JSON.parse(readFileSync(A("refinement_receipt.json"), "utf8"));
     ok(pv.binds?.refinement_receipt_id === rr.receipt_id,
       "pre-hash vectors cite a different refinement receipt than the one shipped");
     const byName = new Map((rr.per_term ?? []).map((r) => [r.name, r]));
@@ -440,13 +481,13 @@ ok(!!g.warrant?.executable?.composition && !!g.sigma_profile,
 ok(typeof g.world?.canonical_value_domain === "string" && typeof g.world?.deletions === "string",
   "grid world section missing canonical_value_domain or deletions (v1.3)");
 {
-  const wsrc2 = readFileSync("trvm_world.mjs", "utf8");
+  const wsrc2 = readFileSync(A("trvm_world.mjs"), "utf8");
   ok(wsrc2.includes("world-value-not-canonical") && wsrc2.includes("TRVM-VALUE-v1"),
     "trvm_world.mjs missing the canonical-domain refusal or value-hash domain");
   ok(wsrc2.includes("deleted: true"), "trvm_world.mjs missing tombstoned deletion");
 }
 {
-  const wsrc = readFileSync("trvm_world.mjs", "utf8");
+  const wsrc = readFileSync(A("trvm_world.mjs"), "utf8");
   for (const r of g.warrant?.executable?.replay_refusals ?? [])
     ok(wsrc.includes(`"${r}"`), `trvm_world.mjs lacks warrant refusal "${r}"`);
   for (const v of g.warrant?.executable?.freshness_verdicts ?? [])
@@ -454,8 +495,8 @@ ok(typeof g.world?.canonical_value_domain === "string" && typeof g.world?.deleti
   ok(wsrc.includes("TRVM-WARRANT-v3") && wsrc.includes("TRVM-FOOTPRINT-v1") && wsrc.includes("TRVM-SCOPE-v1"),
     "trvm_world.mjs missing a commitment domain tag");
 }
-if (existsSync("world_warrant_receipt.json")) {
-  const wr = JSON.parse(readFileSync("world_warrant_receipt.json", "utf8"));
+if (existsSync(A("world_warrant_receipt.json"))) {
+  const wr = JSON.parse(readFileSync(A("world_warrant_receipt.json"), "utf8"));
   ok(wr.type === "WorldWarrantReceipt" && wr.version === 3, "world receipt is not v3");
   ok(!!wr.world_spec && Array.isArray(wr.world_spec.nodes) && Array.isArray(wr.world_spec.edges) && typeof wr.world_spec.seed === "string",
     "world receipt missing committed world_spec (the engine half's rebuild input)");
@@ -514,7 +555,7 @@ if (existsSync("world_warrant_receipt.json")) {
 ok(!!g.maintenance, "grid maintenance section missing (v1.5)");
 ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
 {
-  const wsrc3 = readFileSync("trvm_world.mjs", "utf8");
+  const wsrc3 = readFileSync(A("trvm_world.mjs"), "utf8");
   for (const s of ["world-write-during-maintenance", "world-lock-capability-refused", "world-already-locked"])
     ok(wsrc3.includes(s), `trvm_world.mjs missing confinement refusal "${s}"`);
   // key confinement (v1.7): private state, crypto key, frozen surfaces
@@ -549,13 +590,14 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
     ok(!!g.realm_roadmap && Array.isArray(g.realm_roadmap.order),
       "grid realm_roadmap missing (v1.13) — the replacement path must be declared alongside the falsified law");
   }
+  ok(!!g.artifact_roots, "grid artifact_roots missing (v1.14)");
   ok(!!g.film_identity_forward_declaration,
     "grid film_identity_forward_declaration missing (v1.12) — the program_sem_id/implementation_id split must be decided before the film round, not during it");
   ok(!!g.maintenance?.confinement?.realm_limit,
     "grid maintenance.confinement.realm_limit missing (v1.11) — the primordial witness must stay declared, not quietly dropped");
 }
-if (existsSync("maintenance_receipt.json")) {
-  const mr = JSON.parse(readFileSync("maintenance_receipt.json", "utf8"));
+if (existsSync(A("maintenance_receipt.json"))) {
+  const mr = JSON.parse(readFileSync(A("maintenance_receipt.json"), "utf8"));
   ok(mr.type === "MaintenanceReceipt" && mr.version === 1, "maintenance receipt is not v1");
   const pid = createHash("sha256").update("TRVM-MAINTPASS-v1|" + mr.vclock_before + "|" + mr.vclock_after + "|" + JSON.stringify(mr.before) + "|" + JSON.stringify(mr.after) + "|" + JSON.stringify(mr.steps)).digest("hex");
   ok(pid === mr.pass_id, "maintenance pass_id does not recompute");
@@ -625,6 +667,6 @@ if (existsSync("maintenance_receipt.json")) {
 console.log(fails.length === 0
   ? `GRID-CONSISTENCY-2: PASS — registry valid (${entries.length} entries), ` +
     `${citations} citations resolved across ${ARTIFACTS.length} artifacts, ` +
-    `no banned stale claims, structure coherent with v${g.version}.`
+    `no banned stale claims, structure coherent with v${g.version}. [root ${ROOT}]`
   : "GRID-CONSISTENCY-2: FAIL\n - " + fails.join("\n - "));
 process.exit(fails.length === 0 ? 0 : 1);

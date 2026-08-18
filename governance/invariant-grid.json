@@ -1,6 +1,6 @@
 {
  "record": "invariant-grid",
- "version": "1.13.0",
+ "version": "1.14.0",
  "date": "2026-08-18",
  "v1_criteria": {
   "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
@@ -617,7 +617,7 @@
  },
  "law_registry": {
   "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
-  "grid_version": "1.13.0",
+  "grid_version": "1.14.0",
   "entries": [
    {
     "id": "kappa.monotonicity.unrestricted",
@@ -1033,7 +1033,7 @@
     "status": "PROPERTY-TESTED",
     "canonical": true,
     "statement": "An audit result is creditable only if the instrument independently proves that the intended perturbation occurred, the intended execution path was exercised, and the measured predicate is the one reported. A falsifier that forges nothing, runs nothing, or measures a different predicate than it names is VACUOUS, and a vacuous falsifier is worse than an absent one because the roster still counts it. Mutation cases must show before_hash != after_hash before the detector's verdict counts.",
-    "evidence": "negative_battery.sh computes a pre- and post-perturbation digest of every scratch tree and refuses to credit a case whose forgery changed nothing (diagnostic: VACUOUS). This law is retrospective as much as prospective: it covers the unset $SCRATCH that meant a case could never execute, the hand-typed 44/44 that stopped counting the cases, the hard-coded \"1.0.2\" replacement that a version bump would have turned into a no-op, the prototype half of the authority graph that went untested, the false '9D-4 confined' produced by poisoning a node whose semantic path the pass overwrote, and a probe line that printed 'directly assignable' while testing typeof === 'function'. Six apparatus failures across four rounds, every one of which this rule would have caught mechanically. MECHANISED (both runners, since v1.12.0): a per-file digest of the scratch tree before and after the perturbation, refusing the case as VACUOUS if no artifact changed, and NAMING the artifact that did — 'something changed' is weaker than 'the intended target changed'. run_case_engine had no check at all until v1.12.0, so the law briefly stated a stronger property than the harness implemented, which is itself the defect this law describes. DECLARED OPEN: clauses 4-6 — that the intended execution PATH ran, and that the reported predicate is the one measured — are only partially covered (the diagnostic-pattern match is a weak form of 6). A common falsifier protocol asserting occurrence counts, target-specific pre/post values and observed verdicts belongs with the artifact-roots round. The detector's own first defect is recorded in the harness: it used a one-sided diff and reported a case that DELETES an artifact as vacuous."
+    "evidence": "negative_battery.sh computes a pre- and post-perturbation digest of every scratch tree and refuses to credit a case whose forgery changed nothing (diagnostic: VACUOUS). This law is retrospective as much as prospective: it covers the unset $SCRATCH that meant a case could never execute, the hand-typed 44/44 that stopped counting the cases, the hard-coded \"1.0.2\" replacement that a version bump would have turned into a no-op, the prototype half of the authority graph that went untested, the false '9D-4 confined' produced by poisoning a node whose semantic path the pass overwrote, and a probe line that printed 'directly assignable' while testing typeof === 'function'. Six apparatus failures across four rounds, every one of which this rule would have caught mechanically. MECHANISED (both runners, v1.14.0): clause 1 — the intended target is DERIVED from the perturbation script (files opened for writing, files removed) and must EQUAL the set that actually changed, so a case editing the wrong artifact, or an extra one, fails as loudly as one editing nothing; clauses 2-3 — per-file digests before and after, refusing VACUOUS and naming the artifact perturbed; clause 5 — the specific diagnostic must match; clause 6 — CAUGHT increments only after all of the above. Both detectors were verified to FIRE by deliberately breaking a case (VACUOUS: 57/58; TARGET MISMATCH: 63/64) and restoring it. STILL DECLARED OPEN: clause 4, independent evidence that the intended EXECUTION PATH ran — the diagnostic match is a weak proxy, and the false '9D-4 confined' result came from a witness that never entered the semantic path it was written for. Closing it needs the verifier to report which rules it evaluated, not merely which one failed."
    },
    {
     "id": "maintenance.ownership-total",
@@ -1339,7 +1339,7 @@
  },
  "artifact_versions": {
   "trvm_law_kernel.mjs": "1.1.0",
-  "trvm_world.mjs": "0.11.0"
+  "trvm_world.mjs": "0.12.0"
  },
  "world": {
   "artifact": "trvm_world.mjs v0.3.0 — a separate executable; the calculus kernel is FROZEN at v1.0.2 and has no world by design",
@@ -1503,5 +1503,18 @@
   "second theorem failure recorded with it: derivation_id is computed from measure/predicate/inputs and does not identify a derivation's SEMANTICS. The witness holds it constant while behaviour changes. Acceptable for the closure API; unacceptable once films assert that an identified program performed a transition — which is the executable falsifier for the already-declared program_sem_id/implementation_id split.",
   "realm_roadmap declared: realm separation moves AHEAD of the C film round, the boundary accepts only the canonical value domain (never 'structuredClone succeeded'), program_sem_id must be an immutable binding rather than a caller-selected label, and object/determinism/host confinement are three separate scopes.",
   "0.11.0 is not a failure. Ordinary object ownership was pushed far enough that the remaining counterexample stopped being a forgotten freeze."
+ ],
+ "artifact_roots": {
+  "resolver": "every governance executable anchors its artifact reads at its own module location (import.meta.url), overridable by TRVM_GOV_ROOT; grid_check reports the resolved root in its verdict line",
+  "why": "in an evidence system 'which file did I read?' is provenance, and a checker whose answer is 'whatever was beside the process' cannot state it. Ambient CWD discovery also silently couples every new consumer to a working directory, which is the coupling the physical subdivision would otherwise have had to unwind",
+  "manifest": "artifacts.json declares the case input set once; both negative runners read it, which also removed a silent divergence where run_case_engine omitted maintenance_receipt.json for no stated reason",
+  "coverage_direction": "grid_check refuses any governance artifact PRESENT but UNDECLARED. A missing declared file already fails loudly; an undeclared present file is never copied into a scratch case and therefore never tested, and that failure is silent by construction",
+  "probe_roles": "every probe_*.mjs must declare what it witnesses, so a frozen witness cannot become an unexplained file"
+ },
+ "changelog_from_1_13_0": [
+  "artifact roots: ambient CWD discovery replaced by explicit roots anchored at import.meta.url across grid_check (v2.20), trvm_world (0.12.0), extract_prehash and bridge_check. grid_check reports its resolved root. Output proved identical apart from the root note.",
+  "artifacts.json declares the case input set; both negative runners read it instead of two hand-maintained cp lists that had already diverged.",
+  "grid_check refuses any governance artifact present but undeclared, and requires every probe to declare what it witnesses — the coverage direction that fails silently.",
+  "instrument-nonvacuity clause 1 mechanised: the intended target is derived from the perturbation script and must equal what actually changed. Verified to fire (TARGET MISMATCH, 63/64) then restored. Clause 4 remains declared open."
  ]
 }
