@@ -91,7 +91,7 @@
  "pass_id": "ee07ab028f6e9cf6f20344db6fc957312bdd49edf9460b1d28aaf4ee393ac69f",
  "informational": {
   "note": "NON-AUTHORITATIVE",
-  "generator": "trvm_world.mjs v0.8.0",
+  "generator": "trvm_world.mjs v0.9.0",
   "scenario": "diamond D<-{B,C}<-A after deleting node:c"
  }
 }

@@ -435,5 +435,24 @@ g = json.load(open('invariant-grid.json'))
 del g['maintenance']['confinement']['coordinator_confinement']
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
+# ── G. round-9D.1 forgeries: the reachable authority graph ────────────────
+run_case writemediation-store-stripped "write-mediation construct" "
+s = open('trvm_world.mjs').read()
+open('trvm_world.mjs','w').write(s.replace('class GuardedStore','class UnguardedStore'))"
+
+run_case writemediation-ownership-stripped "write-mediation construct" "
+s = open('trvm_world.mjs').read()
+open('trvm_world.mjs','w').write(s.replace('ownSpec','passthruSpec'))"
+
+run_case writemediation-divergence-stripped "write-mediation construct" "
+s = open('trvm_world.mjs').read()
+open('trvm_world.mjs','w').write(s.replace('coordinator_diverged','coordinator_ok'))"
+
+run_case writemediation-section-dropped "write_mediation missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+del g['maintenance']['confinement']['write_mediation']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
 echo; [ $FAILED -eq 0 ] && echo "NEGATIVE BATTERY: $CASES/$CASES forgeries caught" || echo "NEGATIVE BATTERY: FAILURES PRESENT ($CAUGHT/$CASES caught)"
 exit $FAILED

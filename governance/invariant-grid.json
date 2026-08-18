@@ -1,6 +1,6 @@
 {
  "record": "invariant-grid",
- "version": "1.9.0",
+ "version": "1.10.0",
  "date": "2026-08-18",
  "v1_criteria": {
   "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
@@ -617,7 +617,7 @@
  },
  "law_registry": {
   "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
-  "grid_version": "1.9.0",
+  "grid_version": "1.10.0",
   "entries": [
    {
     "id": "kappa.monotonicity.unrestricted",
@@ -1010,6 +1010,14 @@
     "canonical": true,
     "statement": "The object HOLDING the maintenance lock is itself an authority surface and must be confined like the one it locks. The Maintainer's root reference and methods are not reassignable (instance and prototype frozen, setPrototypeOf refused), and registration is refused re-entrantly for the duration of a pass. Its defs/state maps stay mutable BY DESIGN: the external-ingest position already exists and is modelled by register(); the attack closed here is not that a map can be written but that it could be written from inside a transaction.",
     "evidence": "World row L-COORD-1 (4/4): a derivation calling addGround mid-pass is refused with maintainer-reentrancy-refused and leaves no def and no after-map entry; assigning this.world is refused by the instance freeze so the pass ABORTS with a receipt instead of unlocking the wrong world and bricking the authoritative one; instance and prototype sealer overrides and setPrototypeOf all throw, and the pass seals a real 64-char pass_id; a nested pass refuses. The pre-fix witnesses are frozen RED in probe_maintainer_9d_repro.mjs against World 0.7.1, where three of the audit's four reproduced. grid_check v2.14 scans for the guard constructs; negative cases coordinator-freeze-stripped, coordinator-proto-freeze-stripped and coordinator-reentrancy-stripped die on distinct diagnostics."
+   },
+   {
+    "id": "maintenance.coordinator-write-mediated",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "Once a maintenance pass begins, every semantic input governing it — definitions, derivation bindings, dependency topology and coordinator state — is immutable for the duration of the transaction, and no RETAINED ALIAS may mutate those inputs outside the coordinator's guarded transition API. Sealing the coordinator's properties is insufficient: a frozen property still points at a mutable Map, and a registration that stores the caller's spec by reference leaves authoritative configuration in the caller's hands. Writes go through stores that consult the in-flight flag, values are owned and frozen on the way in, and the pass computes against a definition view captured at entry. Separately, a receipt may not assemble one apparently authoritative fact out of two independent sources: publication fields come from the publication, coordinator state is compared against it, and disagreement is DECLARED.",
+    "evidence": "World row L-COORD-2 (4/4): an in-pass defs.set refuses and leaves no GHOST in defs or in the after-map; an in-pass cross-node state.set refuses and the receipt's warrant_id now comes from the publication and equals the world's; a caller-owned spec retained across registration is severed and the pass derives honestly with the stored spec frozen against assignment; and poisoning from OUTSIDE a pass still works — the seam L-MAINT-3/L-MAINT-5 depend on — with the snapshot reporting coordinator_diverged rather than preferring a side. All three attack witnesses are frozen RED against World 0.8.0 in probe_coordinator_alias_9d1_repro.mjs, where they reproduced 0/3 confined. grid_check v2.15 scans for the guard constructs; three negative cases die on distinct diagnostics."
    }
   ]
  },
@@ -1299,7 +1307,7 @@
  },
  "artifact_versions": {
   "trvm_law_kernel.mjs": "1.1.0",
-  "trvm_world.mjs": "0.8.0"
+  "trvm_world.mjs": "0.9.0"
  },
  "world": {
   "artifact": "trvm_world.mjs v0.3.0 — a separate executable; the calculus kernel is FROZEN at v1.0.2 and has no world by design",
@@ -1353,6 +1361,14 @@
     "deliberately_mutable": "defs/state — poisoning them from OUTSIDE a pass is the external-ingest position register() already models and the batteries depend on it; the closed attack is mutation from INSIDE a transaction",
     "reproduced_against": "World 0.7.1 — probe_maintainer_9d_repro.mjs, 3 of 4 breached",
     "open": "host-level confinement. Object-authority confinement is closed; a derivation sharing the process retains ambient host authority (filesystem, network, CPU) that no object discipline can withdraw. See scope_note."
+   },
+   "write_mediation": {
+    "surface": "Maintainer.defs / Maintainer.state / registered specs",
+    "structural": "GuardedStore (module-private RAW table is the only unguarded write path); values owned + frozen on ingest via ownDef/ownSpec/ownWarrant, which severs registration aliasing",
+    "transactional": "the pass captures a definition view at entry and computes against it, so a mutation that slips any guard still cannot change what that pass did",
+    "receipt_authority": "snapshot() reads publication fields FROM the publication and compares coordinator state against it; disagreement sets coordinator_diverged",
+    "seam_preserved": "poisoning defs/state from outside a pass still works — L-MAINT-3 and L-MAINT-5 model corrupted external state and that is the external-ingest position register() already covers",
+    "reproduced_against": "World 0.8.0 — probe_coordinator_alias_9d1_repro.mjs, 0 of 3 confined"
    }
   },
   "apply_discipline": "staged publications pre-validate before the first real-world write; a torn apply is receipted {aborted, torn, at: apply, applied: [prefix]} with the after-map reflecting the real world — grid_check verifies torn receipts against the applied prefix (applied names must match the step's after-side, unapplied the before-side); tears are visible, recoverable, and never silent"
@@ -1388,5 +1404,12 @@
   "trvm_world.mjs 0.8.0: Maintainer instance and prototype frozen, private #inPass flag refusing registration re-entry. defs/state stay mutable by design — see the grid's maintenance.confinement.coordinator_confinement section for why.",
   "L-COORD-1's first run caught this round's own fix as incomplete: the instance freeze was in place but Maintainer.prototype was still writable, and the patched prototype returned a forged receipt. The battery was written before the fix was believed, which is the only reason it was found here rather than by the next audit.",
   "grid_check v2.14 scans for the coordinator guard constructs; the negative battery gains three cases on distinct diagnostics."
+ ],
+ "changelog_from_1_9_0": [
+  "round 9D.1: the coordinator was sealed in 0.8.0 and its REACHABLE AUTHORITY GRAPH was not. The external audit's three witnesses reproduced 0/3 confined — #inPass mediated addGround but not defs.set; freezing a property does not freeze the Map behind it; and addGround stored the CALLER's spec object by reference, so swapping measureFn on a retained alias mid-pass was committed with no map access, no reflection, no lock theft.",
+  "the previous round's claim that 9D-4 was 'confined' is RETRACTED: it was an artifact of which node the test poisoned. Poisoning the node being re-derived is overwritten by staged apply; poisoning a different node reached the receipt.",
+  "snapshot() was assembling one authoritative-looking pair from two sources — pub_version from the World, warrant_id from coordinator state. Both now come from the publication and divergence is declared.",
+  "new law maintenance.coordinator-write-mediated@1 with World row L-COORD-2 (4/4); trvm_world.mjs 0.9.0 (GuardedStore, ownership on ingest, transaction-local definition view).",
+  "grid_check v2.15 scans for the write-mediation constructs; the negative battery gains three cases."
  ]
 }

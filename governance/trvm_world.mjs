@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   trvm_world.mjs — v0.8.0 — the WORLD layer: WorldRecord + Warrant v3,
+   trvm_world.mjs — v0.9.0 — the WORLD layer: WorldRecord + Warrant v3,
    executable. The calculus kernel (trvm_law_kernel.mjs, frozen at v1.0.1)
    has no world by design; this artifact is where WORLD-plane law begins.
 
@@ -157,7 +157,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { randomBytes } from "node:crypto";
-const WORLD_VERSION = "0.8.0";
+const WORLD_VERSION = "0.9.0";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
 const cj = (o) => JSON.stringify(o);
@@ -522,6 +522,75 @@ function replayComposite(world, w, measureFn) {
 //     and AFTER publication maps and the ordered steps under
 //     TRVM-MAINTPASS-v1, and AFTER must be reconstructible from BEFORE +
 //     steps by arithmetic (grid_check does exactly that reconstruction).
+// ═══ GuardedStore — the coordinator's maps are capabilities, not raw Maps ══
+// law:maintenance.coordinator-write-mediated@1 (round 9D.1).
+//
+// v0.8.0 froze the Maintainer's PROPERTIES and guarded its METHODS, and the
+// audit walked straight past both: `#inPass` mediates `addGround`, not
+// `defs.set`, and freezing a property does not freeze the Map it points at.
+// Three witnesses reproduced 0/3 confined against 0.8.0
+// (probe_coordinator_alias_9d1_repro.mjs) — a raw `defs.set` planting a GHOST
+// mid-pass, a cross-node `state.set` forging a warrant_id that reached the
+// receipt, and — needing no map access at all — a caller-owned `spec` object
+// retained across registration whose `measureFn` was swapped mid-pass and
+// COMMITTED. Sealing an object says nothing about the authority graph reachable
+// through it.
+//
+// The seam the batteries need is preserved exactly: poisoning from OUTSIDE a
+// pass still works, because that is the external-ingest position `register()`
+// already models. What is refused is the same mutation from INSIDE one. The
+// module-private RAW table is the only unguarded write path and never leaves
+// this file, so the coordinator can still make its own transactional writes.
+const RAW = new WeakMap();
+class GuardedStore {
+  #label; #inPass; #own;
+  constructor(label, inPass, own) {
+    this.#label = label; this.#inPass = inPass; this.#own = own;
+    RAW.set(this, new Map());
+    Object.freeze(this);
+  }
+  #guard(op) {
+    if (this.#inPass()) throw new Error(
+      "maintainer-reentrancy-refused: " + this.#label + "." + op + " during a pass");
+  }
+  get size() { return RAW.get(this).size; }
+  has(k) { return RAW.get(this).has(k); }
+  get(k) { return RAW.get(this).get(k); }          // values are owned+frozen on the way IN
+  keys() { return RAW.get(this).keys(); }
+  values() { return RAW.get(this).values(); }
+  entries() { return RAW.get(this).entries(); }
+  [Symbol.iterator]() { return RAW.get(this).entries(); }
+  forEach(f, t) { return RAW.get(this).forEach(f, t); }
+  set(k, v) { this.#guard("set"); RAW.get(this).set(k, this.#own(v)); return this; }
+  delete(k) { this.#guard("delete"); return RAW.get(this).delete(k); }
+  clear() { this.#guard("clear"); RAW.get(this).clear(); }
+}
+Object.freeze(GuardedStore.prototype);
+
+// Ownership: a stored value must share no mutable structure with the caller's.
+// This is what severs registration aliasing — the coordinator captures the
+// measureFn VALUE at registration and can no longer be reached by reassigning
+// the caller's property afterwards.
+const ownSpec = (sp = {}) => Object.freeze({
+  measure: sp.measure, predicate: sp.predicate, measureFn: sp.measureFn,
+});
+const ownDef = (d = {}) => Object.freeze({
+  kind: d.kind,
+  cites: Object.freeze([...(d.cites ?? [])]),
+  spec: ownSpec(d.spec),
+});
+const ownWarrant = (w) => {
+  if (!w || typeof w !== "object") return w;
+  const fp = w.read_footprint;
+  return Object.freeze({ ...w,
+    support: Object.freeze([...(w.support ?? [])]),
+    read_footprint: fp ? Object.freeze({
+      exact: Object.freeze((fp.exact ?? []).map((e) => Object.freeze([...e]))),
+      predicates: Object.freeze((fp.predicates ?? []).map((e) => Object.freeze([...e]))),
+    }) : fp,
+  });
+};
+
 class Maintainer {
   // law:maintenance.coordinator-confinement@1 (round 9D).
   // 9.1 locked the World, 9.2 sealed its internals and its key, 9.3 closed the
@@ -549,8 +618,9 @@ class Maintainer {
   #inPass = false;
   constructor(world) {
     this.world = world;
-    this.defs = new Map();   // name -> {kind, cites, spec}
-    this.state = new Map();  // name -> current warrant
+    const inPass = () => this.#inPass;
+    this.defs = new GuardedStore("defs", inPass, ownDef);    // name -> {kind, cites, spec}
+    this.state = new GuardedStore("state", inPass, ownWarrant); // name -> current warrant
     Object.freeze(this);     // root identity and methods are not reassignable
   }
   #enter() {
@@ -571,7 +641,7 @@ class Maintainer {
     this.#guard("addGround");
     if (this.defs.has(name)) throw new Error("maintainer: duplicate " + name);
     this.defs.set(name, { kind: "ground", cites: [], spec });
-    const w = deriveWarrant(this.world, spec);
+    const w = deriveWarrant(this.world, this.defs.get(name).spec);  // OWNED spec, not the caller's
     this.state.set(name, w);
     publishWarrant(this.world, name, w);
     return w;
@@ -582,7 +652,7 @@ class Maintainer {
     for (const c of cites) if (!this.defs.has(c))
       throw new Error("maintenance-cycle-guard: " + name + " cites unknown " + c); // forward refs impossible
     this.defs.set(name, { kind: "composite", cites: [...cites], spec });
-    const w = deriveComposite(this.world, spec);
+    const w = deriveComposite(this.world, this.defs.get(name).spec);  // OWNED spec
     this.state.set(name, w);
     publishWarrant(this.world, name, w);
     return w;
@@ -624,8 +694,15 @@ class Maintainer {
     // adversarial code can run — an aborted receipt reports the ACTUAL entry
     // clock, never one sampled after an escape.
     const passStartVclock = this.world.vclock;
-    const before = this.snapshot(this.world);
-    const t = this.topoOrder();
+    // TRANSACTION-LOCAL DEFINITIONS: the pass computes against the definition
+    // set as it stood at entry. Even if some future route mutates the live
+    // store mid-pass, the topology, the derivations and the receipt's name set
+    // all refer to this frozen view — so a mutation that slips past the guard
+    // still cannot change what THIS pass did. Guard and snapshot are belt and
+    // braces on purpose; 0.8.0 had only the guard, and the guard had a gap.
+    const DEFS = new Map(RAW.get(this.defs));
+    const before = this.snapshot(this.world, DEFS);
+    const t = this.topoOrder(DEFS);
     if (t.cycle) return this.sealReceipt({ refused: true, reason: "maintenance-cycle", cycle: t.cycle, before, after: before, steps: [], vb: passStartVclock, va: passStartVclock });
     // CONFINEMENT: the authoritative world is LOCKED for the whole pass —
     // any escaped write through a captured reference refuses instead of
@@ -637,7 +714,7 @@ class Maintainer {
     try {
       for (const name of t.order) {
        try {
-        const def = this.defs.get(name);
+        const def = DEFS.get(name);
         const w = staged.get(name) ?? this.state.get(name);
         const f = freshness(fork, w);
         const pubBefore = fork.read("warrant:" + name).version;
@@ -689,7 +766,7 @@ class Maintainer {
       after = this.world.commit(lockKey, () => {
         for (const s of steps) if (staged.has(s.name)) {
           publishWarrant(this.world, s.name, staged.get(s.name));
-          this.state.set(s.name, staged.get(s.name));
+          RAW.get(this.state).set(s.name, ownWarrant(staged.get(s.name)));  // module-private: the pass writing its own committed result
           applied.push(s.name);
           if (opts.faultApplyAfter === s.name)   // documented fault-injection port
             throw new Error("injected-apply-fault after " + s.name);
@@ -699,18 +776,31 @@ class Maintainer {
     } catch (e) {
       return this.sealReceipt({ aborted: true, torn: true, at: "apply", applied,
         reason: String(e.message).slice(0, 120),
-        before, after: this.snapshot(this.world), steps,
+        before, after: this.snapshot(this.world, DEFS), steps,
         vb: passStartVclock, va: this.world.vclock });
     }
     return this.sealReceipt({ before, after, steps, vb: passStartVclock, va: after.vclock });
     } finally { this.world.unlock(lockKey); }
     } finally { this.#leave(); }
   }
-  snapshot(world) {
+  snapshot(world, defs = RAW.get(this.defs)) {
+    // AUTHORITY, NOT ASSEMBLY. Until 0.9.0 this read pub_version from the WORLD
+    // and warrant_id from coordinator STATE, producing one apparently
+    // authoritative pair out of two independent sources — so a poisoned
+    // coordinator entry put a forged warrant_id into a receipt whose version
+    // number came from an honest publication. The audit's witness 9D.1-b is
+    // exactly that hybrid. Both fields now come from the publication itself;
+    // coordinator state is COMPARED against it and any disagreement is
+    // declared, never silently preferred or silently dropped.
     const pubs = {};
-    for (const name of [...this.defs.keys()].sort()) {
-      pubs[name] = { pub_version: world.read("warrant:" + name).version,
-        warrant_id: (this.state.get(name) ?? {}).warrant_id ?? null };
+    for (const name of [...defs.keys()].sort()) {
+      const pub = world.read("warrant:" + name);
+      const published = (pub && pub.value && typeof pub.value === "object") ? pub.value : null;
+      const worldId = published ? (published.warrant_id ?? null) : null;
+      const coordId = (this.state.get(name) ?? {}).warrant_id ?? null;
+      pubs[name] = { pub_version: pub.version, warrant_id: worldId };
+      if (worldId !== null && coordId !== null && worldId !== coordId)
+        pubs[name].coordinator_diverged = true;
     }
     return { vclock: world.vclock, pubs };
   }
@@ -1810,6 +1900,90 @@ console.log("═".repeat(96));
     good === rs.length ? "PROPERTY-TESTED" : "FALSIFIED?!",
     `${good}/${rs.length}: ` + rs.map((r) => r.id + " — " + r.note).join(" · ") +
     ` — rounds 9.1–9.3 hardened the World and left the object HOLDING ITS LOCK an ordinary class with public fields and patchable methods; three of the audit's four 9D witnesses reproduced against v0.7.1 and are frozen red in probe_maintainer_9d_repro.mjs. The instance and prototype are now frozen and a private in-flight flag refuses registration re-entry; defs/state stay mutable by design, because the attack was never that a Map can be written but that it could be written FROM INSIDE A TRANSACTION (law:maintenance.coordinator-confinement@1)`);
+}
+
+// L-COORD-2 : the reachable authority graph (round 9D.1,
+// law:maintenance.coordinator-write-mediated@1). Sealing an object's
+// PROPERTIES says nothing about the mutable capabilities reachable through
+// them, nor about objects aliased into the coordinator at registration time.
+// All three witnesses stay RED against 0.8.0 in probe_coordinator_alias_9d1_repro.mjs.
+{
+  const rs = [];
+  // (a) the raw map: the guard mediates addGround, so go around it
+  { const w = new World(); w.put("flag", 0);
+    const m = new Maintainer(w);
+    let refusal = null;
+    m.addGround("A", { measure: "rawmap", predicate: "flag", measureFn: (view) => {
+      const f = view.read("flag");
+      if (f === 1) { try { m.defs.set("GHOST", { kind: "ground", cites: [], spec: {
+        measure: "g", predicate: "p", measureFn: () => ({ value: 1, witness: {}, support: [] }) } }); }
+        catch (e) { refusal = e.message; } }
+      return { value: f, witness: { f }, support: ["flag"] };
+    } });
+    w.put("flag", 1);
+    const rec = m.pass();
+    rs.push({ id: "raw-map-write", ok: !m.defs.has("GHOST")
+        && !Object.prototype.hasOwnProperty.call(rec.after, "GHOST")
+        && String(refusal).includes("maintainer-reentrancy-refused: defs.set"),
+      note: `defs.set refuses in-pass ('${String(refusal).slice(0, 46)}'); no GHOST in defs or after-map` });
+  }
+  // (b) cross-node state poison — and the receipt must stop assembling one
+  //     authoritative pair out of two independent sources
+  { const w = new World(); w.put("fa", 0); w.put("fb", 0);
+    const m = new Maintainer(w);
+    let refusal = null;
+    m.addGround("A", { measure: "A", predicate: "fa", measureFn: (view) => {
+      const f = view.read("fa");
+      if (f === 1) { try { const b = m.state.get("B"); m.state.set("B", { ...b, warrant_id: "f0rged" }); }
+        catch (e) { refusal = e.message; } }
+      return { value: f, witness: { f }, support: ["fa"] };
+    } });
+    m.addGround("B", { measure: "B", predicate: "fb",
+      measureFn: (view) => ({ value: view.read("fb"), witness: {}, support: ["fb"] }) });
+    w.put("fa", 1);
+    const rec = m.pass();
+    const worldB = w.read("warrant:B").value;
+    const rB = rec.after.B;
+    rs.push({ id: "cross-node-state-poison",
+      ok: String(refusal).includes("maintainer-reentrancy-refused: state.set")
+          && !!rB && rB.warrant_id === worldB.warrant_id,
+      note: `state.set refuses in-pass; receipt.after.B.warrant_id now comes FROM THE PUBLICATION and equals the world's (${rB && rB.warrant_id === worldB.warrant_id})` });
+  }
+  // (c) registration aliasing — needs no map access at all
+  { const w = new World(); w.put("fa", 0); w.put("fb", 0);
+    const m = new Maintainer(w);
+    const specB = { measure: "B", predicate: "fb",
+      measureFn: (view) => ({ value: view.read("fb"), witness: {}, support: ["fb"] }) };
+    m.addGround("A", { measure: "A", predicate: "fa", measureFn: (view) => {
+      const f = view.read("fa");
+      if (f === 1) { specB.measureFn = () => ({ value: 777, witness: { pwned: true }, support: [] }); }
+      return { value: f, witness: { f }, support: ["fa"] };
+    } });
+    m.addGround("B", specB);
+    w.put("fa", 1); w.put("fb", 5);
+    const rec = m.pass();
+    const assignable = (() => { try { m.defs.get("B").spec.measureFn = () => ({}); return true; } catch { return false; } })();
+    rs.push({ id: "registration-aliasing",
+      ok: !rec.aborted && m.state.get("B").value === 5 && w.read("warrant:B").value.value === 5 && !assignable,
+      note: `the retained caller alias is severed at registration — B derives honestly to ${m.state.get("B").value} (world ${w.read("warrant:B").value.value}), and the stored spec is frozen so direct assignment throws (assignable: ${assignable})` });
+  }
+  // (d) the divergence is DECLARED, not preferred, when it exists
+  { const w = new World(); w.put("fb", 0);
+    const m = new Maintainer(w);
+    m.addGround("B", { measure: "B", predicate: "fb",
+      measureFn: (view) => ({ value: view.read("fb"), witness: {}, support: ["fb"] }) });
+    const b = m.state.get("B");
+    m.state.set("B", { ...b, warrant_id: "f0rged" });   // OUTSIDE a pass: the test seam still works
+    const snap = m.snapshot(w);
+    rs.push({ id: "divergence-declared",
+      ok: snap.pubs.B.warrant_id === w.read("warrant:B").value.warrant_id && snap.pubs.B.coordinator_diverged === true,
+      note: `poisoning from OUTSIDE a pass still succeeds (the seam L-MAINT-3/5 depend on), and the snapshot reports coordinator_diverged=${snap.pubs.B.coordinator_diverged} rather than silently preferring either side` });
+  }
+  const good = rs.filter((r) => r.ok).length;
+  report("L-COORD-2", "(the reachable authority graph: raw map writes, cross-node poison, registration aliasing, declared divergence, MAINTENANCE, BINDING)",
+    good === rs.length ? "PROPERTY-TESTED" : "FALSIFIED?!",
+    `${good}/${rs.length}: ` + rs.map((r) => r.id + " — " + r.note).join(" · ") +
+    ` — 0.8.0 froze the coordinator's PROPERTIES and guarded its METHODS; the audit went around both, because #inPass mediated addGround and not defs.set, and freezing a property does not freeze the Map it points at. Worse, registration stored the CALLER's spec object by reference, so swapping measureFn on a retained alias mid-pass was committed with no map access, no reflection and no lock theft. The stores are now capabilities whose writes consult the in-flight flag, values are owned and frozen on the way in, and the pass computes against a definition view captured at entry (law:maintenance.coordinator-write-mediated@1)`);
 }
 
 }
