@@ -25,7 +25,7 @@ VECTORS := ../docs/spec/conformance/vectors/normalize.json
 
 .PHONY: test conformance native native-selftest zig zig-selftest mojo mojo-selftest \
         wasm-smoke swarm research clean \
-        governance gov-kernel gov-grid gov-world gov-negative
+        governance gov-kernel gov-grid gov-world gov-negative gov-bridge
 
 test: native zig mojo conformance native-selftest zig-selftest mojo-selftest \
       wasm-smoke swarm research governance
@@ -103,7 +103,7 @@ swarm:
 # proves. They meet at the canonical corpus (same 24 vectors, same committed
 # hash) and, since round 10, at canonical semantic bytes. A runtime change that
 # moved semantics would now fail here rather than pass quietly.
-governance: gov-kernel gov-grid gov-world gov-negative
+governance: gov-kernel gov-grid gov-world gov-negative gov-bridge
 	@echo "  evidence plane green"
 
 gov-kernel:
@@ -122,6 +122,16 @@ gov-world:
 gov-negative:
 	@echo "==== [governance] negative battery — every forgery must be caught ===="
 	@cd $(GOV) && ./negative_battery.sh | tail -1
+
+gov-bridge: $(GOV)/bridge/ic32_canon
+	@echo "==== [governance] cross-plane bridge — C canonical bytes vs the JS oracle ===="
+	@cd $(GOV) && $(NODE) bridge/bridge_check.mjs
+
+# The execution plane emitting the evidence plane's canonical bytes. ic32.c is
+# included verbatim with its main renamed — the runtime under test is the
+# runtime that ships.
+$(GOV)/bridge/ic32_canon: $(GOV)/bridge/ic32_canon.c runtime/c/ic32.c
+	$(CC) $(CFLAGS) -o $@ $<
 
 ## --- identity/memory result ------------------------------------------------
 research:

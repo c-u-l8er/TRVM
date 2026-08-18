@@ -1,0 +1,24 @@
+{
+ "pack": "ic32-handoff-v3",
+ "emitted_by": "Lane A, round 12",
+ "date": "2026-08-18",
+ "frozen": true,
+ "supersedes": "ic32-handoff-v2",
+ "kernel_version": "1.1.0",
+ "grid_version": "1.8.0",
+ "rescoped": "v1/v2 briefed building an independent ic32; ic32 already exists in C, Zig, Mojo and WASM under runtime/. v3 briefs evidence-enabling those, with C shipped as the worked example at 48/48 byte equality.",
+ "corpus": "NOT in this pack — docs/spec/conformance/vectors/normalize.json is the single authoritative copy; the kernel's embedded set is bound to it by CONF-2.",
+ "note": "Running the oracle rewrites scheduler_certificate.json's informational.node under a different runtime. cert_id is the invariant — re-verify against cert_id, not the file hash, if you have run it.",
+ "files": {
+  "HANDOFF.md": "6b6fab6edada6a4a45333ce28c74bf304e19a390813a872712647d30a9df1f21",
+  "SEMSTATE-CANONICAL-v1.md": "c1a0d02729303b4eca65baabc5daff17c8a0057f0b564f0d5be1ca04397d662a",
+  "ic32_canon.c": "edd41bd2928373d032b55be8db9dd2120c72ad3c9bd50b22ab68f559a018d2e5",
+  "bridge_check.mjs": "a4ceaad2f6e70d7203ddff70f50c2c11dddff7e3e05bb07ce08dd3fdcc606b64",
+  "golden_prehash_vectors.json": "6d2f68f939bbc3f45719c46a786053d9ad7ac7e5674538dac195642211797b2a",
+  "golden_sem_ids.json": "0758a2a15d61eff25431d9fc4e9a0177c04175a3c93aace079d02891304b3d2d",
+  "invariant-grid.json": "4b0f0cd8d94ce466dfc8a2442fa6bf22ae7462e0f49d60c27db31b92232f79ba",
+  "refinement_receipt.json": "2ca1278d646348e6dfab4621afd3f4332a1b885af83fbc9f022bb11e261e344b",
+  "scheduler_certificate.json": "d2a683dad2d66da8e72be5ff33c74d67be45cd3beea9c6803f90c9af2cd24f07",
+  "trvm_law_kernel.mjs": "4fe7dcf32e3091adb2f0974fb9e0ae677318907fa9ef145832e198d85556ca5f"
+ }
+}
