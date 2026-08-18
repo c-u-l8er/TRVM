@@ -1,6 +1,6 @@
 {
  "record": "invariant-grid",
- "version": "1.12.0",
+ "version": "1.13.0",
  "date": "2026-08-18",
  "v1_criteria": {
   "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
@@ -617,7 +617,7 @@
  },
  "law_registry": {
   "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
-  "grid_version": "1.12.0",
+  "grid_version": "1.13.0",
   "entries": [
    {
     "id": "kappa.monotonicity.unrestricted",
@@ -1042,6 +1042,14 @@
     "canonical": true,
     "statement": "An ownership boundary that cannot own an object must REFUSE the object, never return the caller's reference. v0.10.0 ended in `catch { return v }`, so anything neither canonicalBytes nor structuredClone could handle was handed straight back with the authority the layer existed to take. Ownership now goes through canonicalBytes alone and throws <field>-not-canonical on failure, for spec.inputs, warrant.value and warrant.witness alike. A witness may be semantically OPAQUE without being representationally ARBITRARY: if it participates in warrant_id it needs a canonical representation. Should tagged encodings for Map/Set/Date ever be required, one encoding must serve ownership, equality, warrant_id and replay together.",
     "evidence": "probe_ownfailopen_9d3_repro.mjs, 0/3 confined against World 0.10.0 and 3/3 against 0.11.0 with named refusals. A witness carrying a method defeated both mechanisms and came back by reference; a Map witness passed structuredClone while Object.freeze left its ENTRIES writable — and since JSON.stringify(Map) is '{}', Map([['e',1]]) and Map([['e',999]]) were indistinguishable to warrant identity, so the ownership domain and the identity domain disagreed about what a value is; and spec.inputs took the whole registration-alias species back, with B re-deriving on a caller-mutated input mid-pass."
+   },
+   {
+    "id": "derivation.environment-confinement",
+    "revision": 1,
+    "status": "FALSIFIED",
+    "canonical": true,
+    "statement": "A derivation's authority must be bounded by what the coordinator can own. Under the current same-realm arbitrary-closure measureFn API it is NOT, and this law is FALSIFIED BY DESIGN rather than repaired: capturing an arbitrary callable does not capture its semantics, and a function reference may retain mutable authority that is neither enumerable nor ownable. The witness needs no mutable object at all — a `let bias = 0` shared by two closures. Object.freeze, deepFreeze, structuredClone, canonicalBytes, #private fields, GuardedStore and the pass-entry snapshot are all INAPPLICABLE, because JavaScript provides no mechanism to enumerate, copy, canonicalize or freeze a captured lexical environment; freezing measureFn itself does not help either. A second theorem fails with it: derivation_id is computed from measure/predicate/inputs and therefore does NOT identify a derivation's semantics — the witness holds derivation_id constant while behaviour changes from fb to fb+1000. Tolerable as an acknowledged limit of the closure API; NOT tolerable once semantic films assert that an identified program performed a particular transition. Closure is by REPLACING the API, not by hardening it: see realm_roadmap.",
+    "evidence": "probe_closureenv_repro.mjs against World 0.11.0 — B is support_changed and re-derives to 1005 where an honest B is 5, in both the coordinator and the World, with derivation_id unchanged and the pass not aborted. Frozen and deliberately NOT gated: the probe exits 0 because it documents a boundary rather than a regression. Four ownership rounds (9D.1 raw maps and caller objects, 9D.2 nested values, 9D.3 fail-open ownership, and this) converged on the conclusion that an arbitrary closure is an unbounded capability container — an architectural boundary, not a missing Object.freeze."
    }
   ]
  },
@@ -1463,5 +1471,37 @@
   "the non-vacuity detector's own first defect: a one-sided diff reported a case that DELETES an artifact as vacuous. Fixed to symmetric difference, recorded in the harness.",
   "prose drift repaired: the world header said the calculus kernel was frozen at v1.0.1 while the shipped KERNEL_VERSION is 1.1.0.",
   "film identity split declared BEFORE the film round: program_sem_id (equal across conforming implementations) vs implementation_id (executable provenance)."
+ ],
+ "realm_roadmap": {
+  "decision": "Realm separation moves AHEAD of the C semantic-film round. The criterion was stated in advance — a fourth ownership variant means the object-discipline surface is too large to enumerate — and it was met by probe_closureenv_repro.mjs.",
+  "not_a_failure_of_0_11_0": "ordinary object ownership was pushed far enough that the remaining counterexample is no longer a forgotten freeze; it is a lexical cell, which no object discipline reaches.",
+  "message_domain": "the realm boundary accepts ONLY TRVM's canonical value domain — null, boolean, finite number, string, canonical arrays, canonical plain objects — plus explicitly specified tagged extensions later. Function, Map, Set, Date, SharedArrayBuffer, MessagePort, class instances and transferable handles are REFUSED. 'structuredClone succeeded' must never become the definition of authority-safe: the Map witness of 9D.3 already proved structuredClone and JSON.stringify disagree about what a value is. If it cannot be represented in the canonical request language, it cannot accidentally become derivation authority.",
+  "program_identity_binding": "program_sem_id may NOT be a caller-selected label, or evilClosure simply becomes {\"program_sem_id\":\"honest-program\"} while arbitrary code runs. It must be an immutable binding — H(canonical semantic program representation), or a registry entry whose rebinding is itself an authority-bearing operation — with per-implementation refinement evidence beneath it.",
+  "three_separate_scopes": [
+   "derivation-object-confinement — a worker isolate can close this: no parent World, Maintainer, closure cell, Map or function object crosses a serialization boundary",
+   "derivation-determinism — a persistent worker holding `let counter = 0` leaks no parent authority yet program_sem_id=P still fails to denote a stable function. Nondeterministic inputs must be impossible, reset between derivations, or committed explicitly in the film",
+   "derivation-host-confinement — Date.now, Math.random, worker globals, env, filesystem, network. Needs an OS-level sandbox; a worker isolate does not reach it"
+  ],
+  "convergence": "realm separation and transition portability are ONE round, not two. A derivation that must name a program instead of shipping a closure is already most of what a film needs to identify a step, so the first target is one tiny deterministic program with a JS and a C implementation, proving JS-film -> C-checker accepts and C-film -> JS-checker accepts. That closes closure authority, program-semantic identity, cross-realm execution, cross-implementation transition semantics and the film gap together.",
+  "order": [
+   "freeze the lexical-cell witness (done)",
+   "record same-realm closure ownership as a declared boundary failure, not a patch target (done)",
+   "artifact-root resolver + manifest-driven falsifiers + the open instrument-nonvacuity clauses",
+   "DeriveRequest/DeriveResult canonical schemas",
+   "immutable program_sem_id binding",
+   "move one derivation across a worker boundary with no callable crossing",
+   "that same program as the first C<->JS film / cross-replay witness",
+   "root release identity",
+   "physical governance subdivision",
+   "Zig/Mojo/WASM",
+   "worker object confinement strengthened to host/process confinement"
+  ]
+ },
+ "changelog_from_1_12_0": [
+  "the stated decision rule fired. A fourth ownership variant — a lexical cell shared by two closures, with no mutable object anywhere — cannot be reached by Object.freeze, deepFreeze, structuredClone, canonicalBytes, #private, GuardedStore or the pass-entry snapshot. Same-realm arbitrary-closure ownership is now a DECLARED BOUNDARY FAILURE rather than a patch target.",
+  "new law derivation.environment-confinement@1, registered FALSIFIED BY DESIGN and canonical: the statement is what must hold, the current API does not hold it, and closure comes by replacing the API rather than hardening it.",
+  "second theorem failure recorded with it: derivation_id is computed from measure/predicate/inputs and does not identify a derivation's SEMANTICS. The witness holds it constant while behaviour changes. Acceptable for the closure API; unacceptable once films assert that an identified program performed a transition — which is the executable falsifier for the already-declared program_sem_id/implementation_id split.",
+  "realm_roadmap declared: realm separation moves AHEAD of the C film round, the boundary accepts only the canonical value domain (never 'structuredClone succeeded'), program_sem_id must be an immutable binding rather than a caller-selected label, and object/determinism/host confinement are three separate scopes.",
+  "0.11.0 is not a failure. Ordinary object ownership was pushed far enough that the remaining counterexample stopped being a forgotten freeze."
  ]
 }

@@ -502,5 +502,25 @@ g = json.load(open('invariant-grid.json'))
 del g['film_identity_forward_declaration']
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
+# ── I. the declared boundary failure must stay declared ──────────────────
+run_case closure-law-greenwashed "not FALSIFIED" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id']=='derivation.environment-confinement': e['status']='PROPERTY-TESTED'
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case closure-law-deleted "environment-confinement@1 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries'] if e['id']!='derivation.environment-confinement']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case realm-roadmap-dropped "realm_roadmap missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+del g['realm_roadmap']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
 echo; [ $FAILED -eq 0 ] && echo "NEGATIVE BATTERY: $CASES/$CASES forgeries caught" || echo "NEGATIVE BATTERY: FAILURES PRESENT ($CAUGHT/$CASES caught)"
 exit $FAILED
