@@ -25,7 +25,7 @@ VECTORS := ../docs/spec/conformance/vectors/normalize.json
 
 .PHONY: test conformance native native-selftest zig zig-selftest mojo mojo-selftest \
         wasm-smoke swarm research clean \
-        governance gov-kernel gov-grid gov-world gov-negative gov-bridge
+        governance gov-kernel gov-grid gov-world gov-negative gov-bridge gov-strict
 
 test: native zig mojo conformance native-selftest zig-selftest mojo-selftest \
       wasm-smoke swarm research governance
@@ -132,6 +132,15 @@ gov-bridge: $(GOV)/bridge/ic32_canon
 # runtime that ships.
 $(GOV)/bridge/ic32_canon: $(GOV)/bridge/ic32_canon.c runtime/c/ic32.c
 	$(CC) $(CFLAGS) -o $@ $<
+
+# Release / pack-cut gate. CONF-2 may report NOT_APPLICABLE for a standalone
+# oracle whose corpus file is absent — equality is then UNKNOWN, not agreed. An
+# artifact that leaves the repository must never be cut from such a run, so this
+# target makes an unreachable corpus fatal. Not part of `make test`, which is a
+# development gate; this is the emission gate.
+gov-strict:
+	@echo "==== [governance] STRICT corpus identity — release / pack-cut gate ===="
+	@cd $(GOV) && TRVM_STRICT_CORPUS=1 TRVM_VECTORS=$(VECTORS) $(NODE) trvm_law_kernel.mjs | tail -1
 
 ## --- identity/memory result ------------------------------------------------
 research:

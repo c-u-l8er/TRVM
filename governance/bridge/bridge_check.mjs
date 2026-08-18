@@ -1,9 +1,10 @@
 /* bridge_check.mjs — the cross-plane gate (round 12).
    Feeds the canonical corpus to the C runtime's canonical-bytes emitter and
    requires BYTE equality with the golden pre-hash vectors — the signature
-   strings, not merely their digests. Digest equality would let a C canonical
-   form that is wrong in a way SHA-256 happens to absorb pass unnoticed; string
-   equality localizes the divergence to the character.
+   strings, not merely their digests. Digest equality would establish agreement
+   only UNDER SHA-256's collision-resistance assumption; byte equality discharges
+   that assumption entirely and, when it fails, localizes the disagreement to the
+   character rather than reporting an opaque mismatch.
 
    Two implementations, two representations (JS node objects with a heap of
    dups; C packed words with no Dup node at all), one canonical form. If this
@@ -44,7 +45,7 @@ for (const [stage, rows] of stages) {
     total++;
     // the term the C side was fed must be the term the vector describes
     ok(corpus[i].term === t.term, `${t.name}: corpus term != golden term (row ${i})`);
-    // BYTE equality first — this is the rung digest equality cannot reach
+    // BYTE equality first — assumption-free, and character-localizable
     if (got.sig !== want.sem_signature) {
       fails.push(`${t.name}/${stage}: canonical signature differs\n      C  ${got.sig}\n      JS ${want.sem_signature}`);
       continue;

@@ -1,4 +1,4 @@
-/* grid_check.mjs v2.13 — GRID-CONSISTENCY-2 (law:grid.consistency@2).
+/* grid_check.mjs v2.14 — GRID-CONSISTENCY-2 (law:grid.consistency@2).
    v1 (round 3): grep blacklist + structural spot-checks. v2 (round 4): LAW
    REGISTRY as the citation authority — every 'law:<id>@<rev>' in every
    shipped artifact must resolve; non-canonical citations only in
@@ -135,7 +135,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -521,6 +521,11 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
   for (const s of ["#lockKey", "randomBytes(32)", "Object.freeze(World.prototype)", "Object.freeze(this)"])
     ok(wsrc3.includes(s), `trvm_world.mjs missing key-confinement construct "${s}"`);
   ok(!!g.maintenance?.confinement?.key_confinement, "grid maintenance.confinement.key_confinement missing (v1.7)");
+  // coordinator confinement (v1.9): the object holding the lock is a surface too
+  for (const s of ["Object.freeze(Maintainer.prototype)", "#inPass", "maintainer-reentrancy-refused"])
+    ok(wsrc3.includes(s), `trvm_world.mjs missing coordinator-confinement construct "${s}"`);
+  ok(!!g.maintenance?.confinement?.coordinator_confinement,
+    "grid maintenance.confinement.coordinator_confinement missing (v1.9)");
 }
 if (existsSync("maintenance_receipt.json")) {
   const mr = JSON.parse(readFileSync("maintenance_receipt.json", "utf8"));

@@ -1448,10 +1448,15 @@ report("CONF-1", "(normal form, normalize, all vectors, DERIVATION)",
     const j = JSON.parse(readFileSync(CANON, "utf8"));
     canon = hashOf(j.vectors ?? j);
   } catch (e) { err = e.code ?? String(e.message).slice(0, 40); }
+  // STRICT mode (TRVM_STRICT_CORPUS=1): the audit's ruling is that standalone
+  // use may leave the equality unknown, but pack cutting and release CI must
+  // never emit an artifact whose corpus identity was merely unchecked. Under
+  // strict mode an unreachable corpus is a FALSIFICATION, not an exemption.
+  const STRICT = process.env.TRVM_STRICT_CORPUS === "1";
   report("CONF-2", "(corpus identity, embedded vs canonical, projected commitment, BINDING)",
-    canon === null ? "NOT_APPLICABLE" : (canon === mine ? "REGRESSION-LOCKED" : "FALSIFIED?!"),
+    canon === null ? (STRICT ? "FALSIFIED?!" : "NOT_APPLICABLE") : (canon === mine ? "REGRESSION-LOCKED" : "FALSIFIED?!"),
     canon === null
-      ? `canonical corpus not reachable at ${CANON} (${err}) — the embedded set is UNCHECKED against it this run, which is not the same as agreeing with it. Set TRVM_CORPUS, or run from a tree that carries docs/spec/conformance/vectors/normalize.json`
+      ? `canonical corpus not reachable at ${CANON} (${err}) — the embedded set is UNCHECKED against it this run, which is not the same as agreeing with it${STRICT ? ", and TRVM_STRICT_CORPUS=1 makes unchecked FATAL: a release or handoff pack may not be cut from a run that could not prove its corpus identity" : ". Standalone oracle use may leave this unknown; release and pack-cut runs must set TRVM_STRICT_CORPUS=1, where it becomes a falsification"}. Set TRVM_CORPUS, or run from a tree carrying docs/spec/conformance/vectors/normalize.json`
       : `embedded corpus and ${CANON} commit to the SAME hash under the four-field corpus projection (${mine.slice(0, 16)}…): the copy the oracle ships standalone cannot drift from the corpus the runtime plane conforms against. The projection is why — the canonical file carries a fifth provenance field (ic_ref_agrees) that must not enter the commitment, or repointing the kernel at the authoritative source would silently reseal every certificate ever issued`);
 }
 

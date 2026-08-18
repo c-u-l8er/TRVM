@@ -1,6 +1,6 @@
 {
  "record": "invariant-grid",
- "version": "1.8.0",
+ "version": "1.9.0",
  "date": "2026-08-18",
  "v1_criteria": {
   "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
@@ -617,7 +617,7 @@
  },
  "law_registry": {
   "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
-  "grid_version": "1.8.0",
+  "grid_version": "1.9.0",
   "entries": [
    {
     "id": "kappa.monotonicity.unrestricted",
@@ -1002,6 +1002,14 @@
     "canonical": true,
     "statement": "The canonical digest is DEFINED as sha256 of a canonical signature string, and those pre-hash BYTES are a published artifact rather than an internal detail: stateDigest(s) == sha256(stateSignature(s)) through one code path, never two, so a shipped signature cannot drift from the digest it explains. golden_prehash_vectors.json carries the signature strings for every corpus state (initial and normal form) plus the §5 compaction boundary, so a second implementation diffs the STRING and sees where its canonical form diverges instead of only learning that a hash differs.",
     "evidence": "Kernel row L-BYTES-1: 48/48 corpus states satisfy sha256(stateSignature) == semStateId, the compaction boundary is well-formed on all of them (7 compacted to exactly 65 chars, longest uncompacted exactly 80), and equivariance is asserted at the BYTE level — alpha-variants and label permutations produce the identical signature string, which a digest-level check could not distinguish from a canonical form that agrees only after hashing. grid_check v2.13 verifies the shipped vectors engine-free: every signature is re-hashed against its id, every normal-form nf_id is matched against the refinement receipt, and the compaction row's reconstructed pre-compaction string is re-hashed against the emitted compacted signature. Negative battery cases prehash-signature-tampered, prehash-id-resealed, prehash-nfid-unanchored, and prehash-compaction-lie each die on a distinct diagnostic."
+   },
+   {
+    "id": "maintenance.coordinator-confinement",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "The object HOLDING the maintenance lock is itself an authority surface and must be confined like the one it locks. The Maintainer's root reference and methods are not reassignable (instance and prototype frozen, setPrototypeOf refused), and registration is refused re-entrantly for the duration of a pass. Its defs/state maps stay mutable BY DESIGN: the external-ingest position already exists and is modelled by register(); the attack closed here is not that a map can be written but that it could be written from inside a transaction.",
+    "evidence": "World row L-COORD-1 (4/4): a derivation calling addGround mid-pass is refused with maintainer-reentrancy-refused and leaves no def and no after-map entry; assigning this.world is refused by the instance freeze so the pass ABORTS with a receipt instead of unlocking the wrong world and bricking the authoritative one; instance and prototype sealer overrides and setPrototypeOf all throw, and the pass seals a real 64-char pass_id; a nested pass refuses. The pre-fix witnesses are frozen RED in probe_maintainer_9d_repro.mjs against World 0.7.1, where three of the audit's four reproduced. grid_check v2.14 scans for the guard constructs; negative cases coordinator-freeze-stripped, coordinator-proto-freeze-stripped and coordinator-reentrancy-stripped die on distinct diagnostics."
    }
   ]
  },
@@ -1291,7 +1299,7 @@
  },
  "artifact_versions": {
   "trvm_law_kernel.mjs": "1.1.0",
-  "trvm_world.mjs": "0.7.1"
+  "trvm_world.mjs": "0.8.0"
  },
  "world": {
   "artifact": "trvm_world.mjs v0.3.0 — a separate executable; the calculus kernel is FROZEN at v1.0.2 and has no world by design",
@@ -1337,7 +1345,15 @@
    "entry_truth": "passStartVclock and the before-map are captured before topo/fork/any user code; refused and aborted receipts carry them",
    "error_attribution": "per-node execution tags escaping errors with the node name; aborted receipts report {at: <node>}",
    "scope_note": "register/addGround validate and derive against the LIVE world by design — not transactional; their writes are ordinary mediated transitions. Worker-domain isolation is the declared v-next (the audit's option 2), aligned with portable/ic32 derivations.",
-   "key_confinement": "the lock key is crypto-random (randomBytes) and lives in a true private field (#lockKey) — no public property or method returns it except lock() to the locker; ALL World state is private (#res/#vclock/#log/#queries); vclock is a getter, log returns dead copies, resourceEntries() returns metadata copies; World.prototype and every instance are frozen, so method patching and instance shadowing throw. A retained World reference carries no authority the transaction did not hand it."
+   "key_confinement": "the lock key is crypto-random (randomBytes) and lives in a true private field (#lockKey) — no public property or method returns it except lock() to the locker; ALL World state is private (#res/#vclock/#log/#queries); vclock is a getter, log returns dead copies, resourceEntries() returns metadata copies; World.prototype and every instance are frozen, so method patching and instance shadowing throw. A retained World reference carries no authority the transaction did not hand it.",
+   "coordinator_confinement": {
+    "surface": "Maintainer",
+    "structural": "instance frozen (root identity + methods non-reassignable), Maintainer.prototype frozen, setPrototypeOf refused",
+    "temporal": "private #inPass flag; addGround/addComposite/register/pass refuse re-entry during a pass",
+    "deliberately_mutable": "defs/state — poisoning them from OUTSIDE a pass is the external-ingest position register() already models and the batteries depend on it; the closed attack is mutation from INSIDE a transaction",
+    "reproduced_against": "World 0.7.1 — probe_maintainer_9d_repro.mjs, 3 of 4 breached",
+    "open": "host-level confinement. Object-authority confinement is closed; a derivation sharing the process retains ambient host authority (filesystem, network, CPU) that no object discipline can withdraw. See scope_note."
+   }
   },
   "apply_discipline": "staged publications pre-validate before the first real-world write; a torn apply is receipted {aborted, torn, at: apply, applied: [prefix]} with the after-map reflecting the real world — grid_check verifies torn receipts against the applied prefix (applied names must match the step's after-side, unapplied the before-side); tears are visible, recoverable, and never silent"
  },
@@ -1365,5 +1381,12 @@
   "new artifact golden_prehash_vectors.json (TRVM-PREHASH-VECTORS-v1, 24 terms, vectors_id committed) — the canonical signature STRINGS for initial and normal-form states, anchored to the refinement receipt's nf_ids, plus the compaction boundary with a self-proving pre-compaction reconstruction.",
   "grid_check v2.13 verifies the vectors engine-free (re-hash every signature, match every nf_id to the receipt, re-hash the compaction reconstruction) and the negative battery gains four forgeries on distinct diagnostics.",
   "negative_battery.sh: $SCRATCH was used by run_case_engine and never assigned, so the one engine-mode case wrote to the filesystem root and could never execute in a clean shell — it reported FAIL for want of an output file while the forgery it targets was being refused correctly all along. The 44/44 claimed at 9.3 was 43/44 plus a case that could not run; it is now genuinely 48/48."
+ ],
+ "changelog_from_1_8_0": [
+  "round 9D closed, eight rounds after it was opened and one round after 9.3 shipped explicitly provisional: the external audit's coordinator attacks were reproduced against World 0.7.1 and 3 of 4 BREACHED — a reentrant addGround left a GHOST def and put an unpublished name in the receipt's after-map; assigning this.world mid-pass made finally{unlock} release the WRONG world and left the authoritative one permanently locked with no receipt at all; and sealReceipt was replaceable on the instance, returning a forged no_op receipt from an honest pass.",
+  "new law maintenance.coordinator-confinement@1 with World row L-COORD-1 (4/4) and the pre-fix witnesses frozen red in probe_maintainer_9d_repro.mjs.",
+  "trvm_world.mjs 0.8.0: Maintainer instance and prototype frozen, private #inPass flag refusing registration re-entry. defs/state stay mutable by design — see the grid's maintenance.confinement.coordinator_confinement section for why.",
+  "L-COORD-1's first run caught this round's own fix as incomplete: the instance freeze was in place but Maintainer.prototype was still writable, and the patched prototype returned a forged receipt. The battery was written before the fix was believed, which is the only reason it was found here rather than by the next audit.",
+  "grid_check v2.14 scans for the coordinator guard constructs; the negative battery gains three cases on distinct diagnostics."
  ]
 }

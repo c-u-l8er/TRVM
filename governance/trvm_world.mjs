@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   trvm_world.mjs — v0.7.1 — the WORLD layer: WorldRecord + Warrant v3,
+   trvm_world.mjs — v0.8.0 — the WORLD layer: WorldRecord + Warrant v3,
    executable. The calculus kernel (trvm_law_kernel.mjs, frozen at v1.0.1)
    has no world by design; this artifact is where WORLD-plane law begins.
 
@@ -157,7 +157,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { randomBytes } from "node:crypto";
-const WORLD_VERSION = "0.7.1";
+const WORLD_VERSION = "0.8.0";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
 const cj = (o) => JSON.stringify(o);
@@ -523,10 +523,43 @@ function replayComposite(world, w, measureFn) {
 //     TRVM-MAINTPASS-v1, and AFTER must be reconstructible from BEFORE +
 //     steps by arithmetic (grid_check does exactly that reconstruction).
 class Maintainer {
+  // law:maintenance.coordinator-confinement@1 (round 9D).
+  // 9.1 locked the World, 9.2 sealed its internals and its key, 9.3 closed the
+  // apply boundary — and every one of those fixes was about the WORLD, while
+  // the coordinator holding the lock stayed an ordinary object with public
+  // fields and patchable methods. The audit's prediction that "the coordinator
+  // becomes the next authority surface" was exact: three of its four witnesses
+  // reproduced against v0.7.1 (probe_maintainer_9d_repro.mjs) —
+  //   · a derivation calling addGround mid-pass left a GHOST def behind, since
+  //     defs.set precedes the world write the lock refuses, and snapshot() then
+  //     put a name in the receipt's after-map that the world never published;
+  //   · assigning this.world mid-pass made `finally { this.world.unlock() }`
+  //     unlock the WRONG world, leaving the authoritative one permanently
+  //     locked and no receipt sealed at all — a bricked world, not a leak;
+  //   · replacing sealReceipt on the instance returned a fully forged receipt
+  //     (no_op:true, zero steps, chosen pass_id) from an otherwise honest pass.
+  // Closed structurally where the attack is structural and temporally where it
+  // is temporal: the instance and prototype are frozen (so neither the root
+  // reference nor any method can be reassigned), and a private in-flight flag
+  // refuses registration re-entry during a pass. `defs`/`state` stay MUTABLE by
+  // design — the batteries poison them from outside to build adversarial states,
+  // which is the external-ingest position `register()` already models. The
+  // attack was never that a Map can be written; it was that it could be written
+  // FROM INSIDE A TRANSACTION, and that is what the flag refuses.
+  #inPass = false;
   constructor(world) {
     this.world = world;
     this.defs = new Map();   // name -> {kind, cites, spec}
     this.state = new Map();  // name -> current warrant
+    Object.freeze(this);     // root identity and methods are not reassignable
+  }
+  #enter() {
+    if (this.#inPass) throw new Error("maintainer-reentrancy-refused: a pass is already in flight");
+    this.#inPass = true;
+  }
+  #leave() { this.#inPass = false; }
+  #guard(what) {
+    if (this.#inPass) throw new Error("maintainer-reentrancy-refused: " + what + " during a pass");
   }
   mfnOf(def) {
     if (def.kind === "ground") return def.spec.measureFn;
@@ -535,6 +568,7 @@ class Maintainer {
     });
   }
   addGround(name, spec) {
+    this.#guard("addGround");
     if (this.defs.has(name)) throw new Error("maintainer: duplicate " + name);
     this.defs.set(name, { kind: "ground", cites: [], spec });
     const w = deriveWarrant(this.world, spec);
@@ -543,6 +577,7 @@ class Maintainer {
     return w;
   }
   addComposite(name, cites, spec) {
+    this.#guard("addComposite");
     if (this.defs.has(name)) throw new Error("maintainer: duplicate " + name);
     for (const c of cites) if (!this.defs.has(c))
       throw new Error("maintenance-cycle-guard: " + name + " cites unknown " + c); // forward refs impossible
@@ -553,6 +588,7 @@ class Maintainer {
     return w;
   }
   register(name, warrant) {   // external ingest: the quarantine door
+    this.#guard("register");
     const def = this.defs.get(name);
     if (!def) return { accepted: false, reason: "unknown-name" };
     const r = def.kind === "ground"
@@ -579,6 +615,10 @@ class Maintainer {
     return { order };
   }
   pass(opts = {}) {
+    // RE-ENTRY REFUSED before anything else: a derivation that reaches back
+    // into the coordinator finds every registration door shut for the duration.
+    this.#enter();
+    try {
     // ENTRY TRUTH first (law:maintenance.capability-confinement@1, independent
     // half): the pass-entry vclock and before-map are captured BEFORE any
     // adversarial code can run — an aborted receipt reports the ACTUAL entry
@@ -664,6 +704,7 @@ class Maintainer {
     }
     return this.sealReceipt({ before, after, steps, vb: passStartVclock, va: after.vclock });
     } finally { this.world.unlock(lockKey); }
+    } finally { this.#leave(); }
   }
   snapshot(world) {
     const pubs = {};
@@ -689,6 +730,12 @@ class Maintainer {
     return receipt;
   }
 }
+
+// Method patching must throw, not merely be discouraged — the instance freeze
+// alone leaves the PROTOTYPE writable, and the L-COORD-1 sealer case caught
+// exactly that in this round's first draft: `Maintainer.prototype.sealReceipt`
+// was still assignable and a patched pass returned a forged receipt.
+Object.freeze(Maintainer.prototype);
 
 // ═══ The shared footprint: SchedulerCertificate as a warrant ═══════════════
 // law:footprint.shared@1 — the certificate's corpus{id,sha256} is an exact
@@ -808,6 +855,79 @@ function buildGraphWorld(nodes, edges) {
   return w;
 }
 
+// L-COORD-1 : the coordinator's own authority surface (round 9D,
+// law:maintenance.coordinator-confinement@1). Each half is the audit's witness
+// run forward against the sealed Maintainer; probe_maintainer_9d_repro.mjs
+// keeps all three RED against v0.7.1 by design.
+function coordBattery() {
+  const out = [];
+  // (a) reentrant registration: the def must not survive, and the receipt must
+  //     not name a publication the world never made
+  { const w = new World(); w.put("flag", 0);
+    const m = new Maintainer(w);
+    let refusal = null;
+    m.addGround("A", { measure: "reentrant", predicate: "flag", measureFn: (view) => {
+      const f = view.read("flag");
+      if (f === 1) { try { m.addGround("GHOST", { measure: "g", predicate: "p",
+        measureFn: () => ({ value: 1, witness: {}, support: [] }) }); } catch (e) { refusal = e.message; } }
+      return { value: f, witness: { f }, support: ["flag"] };
+    } });
+    w.put("flag", 1);
+    let rec = null, threw = null;
+    try { rec = m.pass(); } catch (e) { threw = String(e.message); }
+    out.push({ id: "reentrant-addGround",
+      ok: !m.defs.has("GHOST") && !!rec && !Object.prototype.hasOwnProperty.call(rec.after, "GHOST")
+          && String(refusal).includes("maintainer-reentrancy-refused"),
+      note: `refused with '${String(refusal).slice(0, 44)}'; defs clean: ${!m.defs.has("GHOST")}; after-map clean: ${rec ? !Object.prototype.hasOwnProperty.call(rec.after, "GHOST") : "no receipt"}${threw ? "; threw " + threw.slice(0, 40) : ""}` });
+  }
+  // (b) root identity: reassigning this.world must throw, and the authoritative
+  //     world must NOT be left locked (the v0.7.1 witness bricked it)
+  { const wA = new World(); wA.put("flag", 0);
+    const wB = new World(); wB.put("flag", 99);
+    const m = new Maintainer(wA);
+    m.addGround("A", { measure: "rootswap", predicate: "flag", measureFn: (view) => {
+      const f = view.read("flag");
+      if (f === 1) { m.world = wB; }
+      return { value: f, witness: { f }, support: ["flag"] };
+    } });
+    wA.put("flag", 1);
+    let rec = null; try { rec = m.pass(); } catch { /* must not happen */ }
+    const stillA = m.world === wA;
+    const writable = (() => { try { wA.put("post", 1); return wA.read("post").value === 1; } catch { return false; } })();
+    out.push({ id: "root-identity-swap", ok: stillA && !!rec && rec.aborted && writable,
+      note: `assignment refused on the frozen instance (m.world===wA: ${stillA}); the pass ABORTS with a receipt (${!!rec}) instead of throwing past the unlock, and the world is still writable afterwards (${writable}) — v0.7.1 unlocked wB and left wA permanently locked` });
+  }
+  // (c) the sealer: neither instance nor prototype may be patched
+  { const w = new World(); w.put("flag", 0);
+    const m = new Maintainer(w);
+    m.addGround("A", { measure: "sealswap", predicate: "flag",
+      measureFn: (view) => ({ value: view.read("flag"), witness: {}, support: ["flag"] }) });
+    w.put("flag", 1);
+    let instThrew = false, protoThrew = false;
+    try { m.sealReceipt = () => ({ forged: true }); } catch { instThrew = true; }
+    try { Maintainer.prototype.sealReceipt = () => ({ forged: true }); } catch { protoThrew = true; }
+    const protoSwap = (() => { try { Object.setPrototypeOf(m, {}); return false; } catch { return true; } })();
+    const rec = m.pass();
+    out.push({ id: "receipt-sealer-swap",
+      ok: instThrew && protoThrew && protoSwap && !rec.forged && typeof rec.pass_id === "string" && rec.pass_id.length === 64,
+      note: `instance override throws (${instThrew}), prototype override throws (${protoThrew}), setPrototypeOf throws (${protoSwap}); the pass seals a real receipt with a 64-char pass_id (${rec.pass_id ? rec.pass_id.length : 0})` });
+  }
+  // (d) nested pass
+  { const w = new World(); w.put("flag", 0);
+    const m = new Maintainer(w);
+    let nested = null;
+    m.addGround("A", { measure: "nested", predicate: "flag", measureFn: (view) => {
+      const f = view.read("flag");
+      if (f === 1) { try { m.pass(); } catch (e) { nested = e.message; } }
+      return { value: f, witness: { f }, support: ["flag"] };
+    } });
+    w.put("flag", 1);
+    m.pass();
+    out.push({ id: "nested-pass", ok: String(nested).includes("maintainer-reentrancy-refused"),
+      note: `a pass invoked from inside a derivation refuses: '${String(nested).slice(0, 52)}'` });
+  }
+  return out;
+}
 // ═══ harness ═══════════════════════════════════════════════════════════════
 const QUICK = process.argv.includes("--quick");
 let anyFail = false;
@@ -1682,6 +1802,16 @@ console.log("═".repeat(96));
   report("L-APPLY-1", "(apply under compound failure: injected tear RECEIPTED with the applied prefix, real world matches, lock released, next pass repairs; prototype-children inert, MAINTENANCE, BINDING)",
     childPut && childRead && freshIso && tornOk && prefixTruth && lockFree && recovered ? "PROPERTY-TESTED" : "FALSIFIED?!",
     `an injected fault after applying A tears the pass: the receipt says {aborted, torn, at: apply, applied: [A]} with vclock_after = the REAL post-tear clock (${tornOk}) — pre-fix this path skipped sealReceipt and propagated raw past a half-applied world; the world shows exactly the prefix (A advanced and matches the after-map; B untouched and matches the before-map: ${prefixTruth}); the lock releases (${lockFree}); the NEXT pass re-derives B and converges to all-fresh (${recovered}) — tears are visible, recoverable, and receipted, never silent. Staged values are pre-validated before the first real write, so organic tears are unreachable by construction. Prototype-chain children throw on private-field access (${childPut}/${childRead}); constructor laundering yields only a fresh isolated world (${freshIso}) (law:maintenance.atomicity@1, law:maintenance.receipt@1)`);
+
+{
+  const rs = coordBattery();
+  const good = rs.filter((r) => r.ok).length;
+  report("L-COORD-1", "(the coordinator as authority surface: reentrant registration, root-identity swap, sealer replacement, nested pass, MAINTENANCE, BINDING)",
+    good === rs.length ? "PROPERTY-TESTED" : "FALSIFIED?!",
+    `${good}/${rs.length}: ` + rs.map((r) => r.id + " — " + r.note).join(" · ") +
+    ` — rounds 9.1–9.3 hardened the World and left the object HOLDING ITS LOCK an ordinary class with public fields and patchable methods; three of the audit's four 9D witnesses reproduced against v0.7.1 and are frozen red in probe_maintainer_9d_repro.mjs. The instance and prototype are now frozen and a private in-flight flag refuses registration re-entry; defs/state stay mutable by design, because the attack was never that a Map can be written but that it could be written FROM INSIDE A TRANSACTION (law:maintenance.coordinator-confinement@1)`);
+}
+
 }
 
 const RECEIPT_SPEC = { nodes: ["a", "b", "c", "d"], edges: [["a", "b"], ["b", "c"]], seed: "a" };

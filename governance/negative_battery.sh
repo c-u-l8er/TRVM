@@ -405,5 +405,35 @@ t['initial']['sem_state_id'] = hashlib.sha256(sig.encode()).hexdigest()
 reseal(); json.dump(v, open('golden_prehash_vectors.json','w'), indent=1)"
 
 
+# ── F. round-9D forgeries: the coordinator's guards ───────────────────────
+# Each strips one construct the coordinator-confinement law names. These are
+# artifact-tamper cases in the same family as confinement-guard-stripped and
+# prototype-freeze-stripped: the law is only as real as the source that carries
+# it, so removing the guard must fail the checker even though nothing else moved.
+run_case coordinator-freeze-stripped "coordinator-confinement construct" "
+s = open('trvm_world.mjs').read()
+open('trvm_world.mjs','w').write(s.replace('Object.freeze(Maintainer.prototype);',''))"
+
+run_case coordinator-reentrancy-stripped "coordinator-confinement construct" "
+s = open('trvm_world.mjs').read()
+open('trvm_world.mjs','w').write(s.replace('maintainer-reentrancy-refused','maintainer-allows-reentry'))"
+
+run_case coordinator-inpass-stripped "coordinator-confinement construct" "
+s = open('trvm_world.mjs').read()
+open('trvm_world.mjs','w').write(s.replace('#inPass','_openPass'))"
+
+run_case coordinator-law-corrupt "canonical flag of maintenance.coordinator-confinement" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id']=='maintenance.coordinator-confinement': e['canonical']=False
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case coordinator-section-dropped "coordinator_confinement missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+del g['maintenance']['confinement']['coordinator_confinement']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
 echo; [ $FAILED -eq 0 ] && echo "NEGATIVE BATTERY: $CASES/$CASES forgeries caught" || echo "NEGATIVE BATTERY: FAILURES PRESENT ($CAUGHT/$CASES caught)"
 exit $FAILED
