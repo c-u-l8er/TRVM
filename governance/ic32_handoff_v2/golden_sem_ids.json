@@ -1,0 +1,315 @@
+{
+ "type": "GoldenSemIds",
+ "version": 1,
+ "note": "DERIVED convenience projection; refinement_receipt.json is authoritative. Vector list extracted verbatim from the frozen kernel EMBEDDED_VECTORS; parity columns joined from the receipt per_term rows.",
+ "corpus": {
+  "id": "conformance-vectors",
+  "sha256": "c2775f7b09180194c2d8e0a862fa5f5fb418a7244cb807ebab21664a30d8aae0"
+ },
+ "schedule": "rotating free-choice index (steps % enabled)",
+ "provenance": {
+  "kernel": {
+   "file": "trvm_law_kernel.mjs",
+   "version": "1.0.2",
+   "sha256": "80b8b0dabd6976ae1dfbb778552cce0946c5c843a387bc9eac6ecf4baa5025fd"
+  },
+  "refinement_receipt": {
+   "sha256": "0de6c710b2aca56d3ca245a6d2cafca9771228d2494b6627175b002d5b2dc45c",
+   "receipt_id": "bdcfc58ce8031cd61311f059fb26487502e5bd33d987b99291f249f952c87249"
+  },
+  "scheduler_certificate": {
+   "sha256": "e9014e84655fa747fafedaf57d4cd2a64879217d2186c81b3d0f6a77a5345619",
+   "cert_id": "a08ee15d6baf9020beaa56b7cc0d970e3825b9c88a01984141a861250b2ec32b"
+  }
+ },
+ "vectors": [
+  {
+   "name": "identity",
+   "term": "λx.x",
+   "nf": "λa.a",
+   "ref_interactions": 0,
+   "nf_id": "sem-1f10ab22e7733422758958046a42f4522b020c1ac1b2a8368382b131a1064aa6",
+   "sem_film_id": "0a9e6c0d6895e82f650ca5fb560b940a37cc97cbc3e312057c291dae40471ea5",
+   "steps": 0,
+   "interactions": 0,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "K_true",
+   "term": "λa.λb.a",
+   "nf": "λa.λb.a",
+   "ref_interactions": 0,
+   "nf_id": "sem-66dc327b9eaaacfcdcb21466a07a83c664e4299b4ea9185968225c81a5a8075d",
+   "sem_film_id": "01ed8627b83b218615d4dbbae5b10d388335c2730b9b030e4a66dc84ddee5ece",
+   "steps": 0,
+   "interactions": 0,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "K_false",
+   "term": "λa.λb.b",
+   "nf": "λa.λb.b",
+   "ref_interactions": 0,
+   "nf_id": "sem-9281e63a5d2631b73c841f16d43857ff280fbcdd9fb33f802ab0e47ce40f9578",
+   "sem_film_id": "1cf96abd5b55ce4cefa81d9b143fd09c9ce9f09f3c2e0a23c150857724f58af2",
+   "steps": 0,
+   "interactions": 0,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "apply_id",
+   "term": "(λx.λt.(t x) λy.y)",
+   "nf": "λa.(a λb.b)",
+   "ref_interactions": 1,
+   "nf_id": "sem-05e42f83c7a145915e76884b86e073b7a2ba1f268e1da67686ee4f9cbeea6b55",
+   "sem_film_id": "fa2e6f12c92be87980e60eba5f94c8d8707736adceaa0cb012b670599946ba1e",
+   "steps": 1,
+   "interactions": 1,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "not_true",
+   "term": "(λb.λt.λf.((b f) t) λT.λF.T)",
+   "nf": "λa.λb.b",
+   "ref_interactions": 3,
+   "nf_id": "sem-9281e63a5d2631b73c841f16d43857ff280fbcdd9fb33f802ab0e47ce40f9578",
+   "sem_film_id": "dd5797b931a8d4e2b7d20958f5df4b36ecef3602cf28ed9c870b7a60affb22c0",
+   "steps": 3,
+   "interactions": 3,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "dup_pair",
+   "term": "!{a,b} = {λx.x,λy.y}; (a b)",
+   "nf": "λa.a",
+   "ref_interactions": 2,
+   "nf_id": "sem-1f10ab22e7733422758958046a42f4522b020c1ac1b2a8368382b131a1064aa6",
+   "sem_film_id": "c6ae53596b07a33d2b23904be217ca6961c03d3dc97f941204906aa14b9c144a",
+   "steps": 2,
+   "interactions": 2,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "sup_app",
+   "term": "({λx.x,λy.y} λz.z)",
+   "nf": "&0{λa.a,λb.b}",
+   "ref_interactions": 5,
+   "nf_id": "sem-5811ddb9fc66feb490df1df03fb7e16683a0878eeb4ddc419803a2e532c4e655",
+   "sem_film_id": "747109ec40c88d4bd98c8021110cc8842b0c21fec263709b54c8378b95528613",
+   "steps": 5,
+   "interactions": 5,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_not_2",
+   "term": "((λf.λx.!{f0,f1}=f;(f0 (f1 x)) λB.λT.λF.((B F) T)) λa.λb.a)",
+   "nf": "λa.λb.a",
+   "ref_interactions": 16,
+   "nf_id": "sem-66dc327b9eaaacfcdcb21466a07a83c664e4299b4ea9185968225c81a5a8075d",
+   "sem_film_id": "fcbb9de38f42ca65a2c408d2334c3e4226afd0786d5c3543b0f2c6e45e4407e4",
+   "steps": 16,
+   "interactions": 16,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_apply_0",
+   "term": "((λf.λx.x S) Z)",
+   "nf": "Z",
+   "ref_interactions": 2,
+   "nf_id": "sem-bbeebd879e1dff6918546dc0c179fdde505f2a21591c9a9c96e36b054ec5af83",
+   "sem_film_id": "0031f249c59459b5adab3d7f8a68c72a7be1805e3f24c5e154b7749d904b425a",
+   "steps": 2,
+   "interactions": 2,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_apply_1",
+   "term": "((λf.λx.(f x) S) Z)",
+   "nf": "(S Z)",
+   "ref_interactions": 2,
+   "nf_id": "sem-c8fc0b9e3c6a69d88a3405e6d4c435d15755d40ac260b0ab7cac8c8c2a46e3af",
+   "sem_film_id": "937f09066196d22b1787555659ec72ab350b0372ef512c0e8bd4eb07776bed94",
+   "steps": 2,
+   "interactions": 2,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_apply_2",
+   "term": "((λf.λx.!&1001{c0,c1}=f;(c0 (c1 x)) S) Z)",
+   "nf": "(S (S Z))",
+   "ref_interactions": 3,
+   "nf_id": "sem-30d719c1b7be5cad842f9a2fab15e5c61f682afba30923602d8bcab544e41691",
+   "sem_film_id": "3c9c53b7771de21e34bfbfb7c909818f54e4d7a2aa1fd09a45897b1cc60c9627",
+   "steps": 3,
+   "interactions": 3,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_apply_3",
+   "term": "((λf.λx.!&1002{c0,t0}=f;!&1003{c1,c2}=t0;(c0 (c1 (c2 x))) S) Z)",
+   "nf": "(S (S (S Z)))",
+   "ref_interactions": 4,
+   "nf_id": "sem-69671c58b226a0265aeaeeb73e62097a85c79c0eac0ab8399e8956833ec7d489",
+   "sem_film_id": "3a1edacd6e4de10ef58c74f706299986ecdce8a5673783734e76b28669d8b631",
+   "steps": 4,
+   "interactions": 4,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_apply_4",
+   "term": "((λf.λx.!&1004{c0,t0}=f;!&1005{c1,t1}=t0;!&1006{c2,c3}=t1;(c0 (c1 (c2 (c3 x)))) S) Z)",
+   "nf": "(S (S (S (S Z))))",
+   "ref_interactions": 5,
+   "nf_id": "sem-c330c3e7e7ecaabc088772f90ad105ee702944ce3086b29ae6dc5e14120e3927",
+   "sem_film_id": "44d3b42e73b25d2861df69efe556a0621885d09a87bf0ed6fcc6d5bc2c93532b",
+   "steps": 5,
+   "interactions": 5,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_apply_5",
+   "term": "((λf.λx.!&1007{c0,t0}=f;!&1008{c1,t1}=t0;!&1009{c2,t2}=t1;!&1010{c3,c4}=t2;(c0 (c1 (c2 (c3 (c4 x))))) S) Z)",
+   "nf": "(S (S (S (S (S Z)))))",
+   "ref_interactions": 6,
+   "nf_id": "sem-07206b4b5d7c6a8b1d51a20fb01d4588208cdb111de6b4dff41005ef9aa9c330",
+   "sem_film_id": "ceddca4fc913e8fddda9f2aa789324f09d6df9657e8960ffc93e74775bb07ee6",
+   "steps": 6,
+   "interactions": 6,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_apply_6",
+   "term": "((λf.λx.!&1011{c0,t0}=f;!&1012{c1,t1}=t0;!&1013{c2,t2}=t1;!&1014{c3,t3}=t2;!&1015{c4,c5}=t3;(c0 (c1 (c2 (c3 (c4 (c5 x)))))) S) Z)",
+   "nf": "(S (S (S (S (S (S Z))))))",
+   "ref_interactions": 7,
+   "nf_id": "sem-065cf9595b8f9b74921f68e4a68b309c1eb46c5aa032d330d165ae430a8603ab",
+   "sem_film_id": "fe6f0587c3b4bb4f4ca84f01ea7c6060f7db3378fd79877936283e5f36ccfeed",
+   "steps": 7,
+   "interactions": 7,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_exp_2_2",
+   "term": "((λf.λx.!&1001{c0,c1}=f;(c0 (c1 x)) λf.λx.!&1002{c0,c1}=f;(c0 (c1 x))) S)",
+   "nf": "λa.(S (S (S (S a))))",
+   "ref_interactions": 21,
+   "nf_id": "sem-95c79c94787b4b81aae0fd2490df0dafa25c419e815e6038f0aa7042817124f8",
+   "sem_film_id": "68a2693020a1b90eb9cf4094d700f9de54cf9434656a7781226c97025c70e249",
+   "steps": 21,
+   "interactions": 21,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_exp_3_2",
+   "term": "((λf.λx.!&1001{c0,t0}=f;!&1002{c1,c2}=t0;(c0 (c1 (c2 x))) λf.λx.!&1003{c0,c1}=f;(c0 (c1 x))) S)",
+   "nf": "λa.(S (S (S (S (S (S (S (S a))))))))",
+   "ref_interactions": 42,
+   "nf_id": "sem-7469723b710bba28c06b0ae389a5adacb0982372965a498adebde0edb32b44bd",
+   "sem_film_id": "64f3b327d42634126d92b0080c84f438c5b28d57235852d855b09a69ef95247c",
+   "steps": 42,
+   "interactions": 42,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_exp_2_3",
+   "term": "((λf.λx.!&1001{c0,c1}=f;(c0 (c1 x)) λf.λx.!&1002{c0,t0}=f;!&1003{c1,c2}=t0;(c0 (c1 (c2 x)))) S)",
+   "nf": "λa.(S (S (S (S (S (S (S (S (S a)))))))))",
+   "ref_interactions": 36,
+   "nf_id": "sem-882259c8ff8083cade23a74742397983d023a91d46e52e0dd51c9cbc375dced2",
+   "sem_film_id": "10ed5431f5ee3b182a8b5a93d882320d5a831a41d97a86b6b16eaca82aa18b08",
+   "steps": 36,
+   "interactions": 36,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_exp_3_3",
+   "term": "((λf.λx.!&1001{c0,t0}=f;!&1002{c1,c2}=t0;(c0 (c1 (c2 x))) λf.λx.!&1003{c0,t0}=f;!&1004{c1,c2}=t0;(c0 (c1 (c2 x)))) S)",
+   "nf": "λa.(S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S a)))))))))))))))))))))))))))",
+   "ref_interactions": 91,
+   "nf_id": "sem-4d9bda5072d2d32bd0db0b170733bb9ebb1f207c9e9946f2f9d15315500890cd",
+   "sem_film_id": "5922049b4592ed5cb66013fd16cd09ca1fd1dabe3bef2e83f145d284aa03dd37",
+   "steps": 91,
+   "interactions": 91,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_exp_4_2",
+   "term": "((λf.λx.!&1001{c0,t0}=f;!&1002{c1,t1}=t0;!&1003{c2,c3}=t1;(c0 (c1 (c2 (c3 x)))) λf.λx.!&1004{c0,c1}=f;(c0 (c1 x))) S)",
+   "nf": "λa.(S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S a))))))))))))))))",
+   "ref_interactions": 71,
+   "nf_id": "sem-491774b8d5c2adf00ed561871c6acb713e0708355614b272f801e8001ba99148",
+   "sem_film_id": "86f828a3c6e757c5c167a53f3bdcd2ac663b34718fb647128de7193a0a4a9c54",
+   "steps": 71,
+   "interactions": 71,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_exp_2_4",
+   "term": "((λf.λx.!&1001{c0,c1}=f;(c0 (c1 x)) λf.λx.!&1002{c0,t0}=f;!&1003{c1,t1}=t0;!&1004{c2,c3}=t1;(c0 (c1 (c2 (c3 x))))) S)",
+   "nf": "λa.(S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S a))))))))))))))))",
+   "ref_interactions": 55,
+   "nf_id": "sem-491774b8d5c2adf00ed561871c6acb713e0708355614b272f801e8001ba99148",
+   "sem_film_id": "ef05997999032819150f0ffe60b0a421cf2fbb35d109887e45a6373a0226f628",
+   "steps": 55,
+   "interactions": 55,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_not_parity_2",
+   "term": "(((λf.λx.!&1001{c0,c1}=f;(c0 (c1 x)) λp.λt.λf.((p f) t)) λa.λb.a) X)",
+   "nf": "λa.X",
+   "ref_interactions": 17,
+   "nf_id": "sem-8e35fca8cc2a646332d7b3d7fe8e9560ee6b0a1249bced2f3b5f63b86880b708",
+   "sem_film_id": "3459ed3d7b19cf97e6945519c8e9a6a66751b5eec4006efb36db442ebce62fd8",
+   "steps": 17,
+   "interactions": 17,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_not_parity_3",
+   "term": "(((λf.λx.!&1001{c0,t0}=f;!&1002{c1,c2}=t0;(c0 (c1 (c2 x))) λp.λt.λf.((p f) t)) λa.λb.a) X)",
+   "nf": "λa.a",
+   "ref_interactions": 28,
+   "nf_id": "sem-1f10ab22e7733422758958046a42f4522b020c1ac1b2a8368382b131a1064aa6",
+   "sem_film_id": "44b94c5f1e8d7de2ab3d922cf5fb662554d428db2cc023b88cda093b93d4c18c",
+   "steps": 28,
+   "interactions": 28,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  },
+  {
+   "name": "church_not_parity_4",
+   "term": "(((λf.λx.!&1001{c0,t0}=f;!&1002{c1,t1}=t0;!&1003{c2,c3}=t1;(c0 (c1 (c2 (c3 x)))) λp.λt.λf.((p f) t)) λa.λb.a) X)",
+   "nf": "λa.X",
+   "ref_interactions": 39,
+   "nf_id": "sem-8e35fca8cc2a646332d7b3d7fe8e9560ee6b0a1249bced2f3b5f63b86880b708",
+   "sem_film_id": "2625e5e0328433f70b143dc75e9ec20abbf8cfa845bd7ba60db2841bad2e29a9",
+   "steps": 39,
+   "interactions": 39,
+   "sem_chain_equal": true,
+   "sem_film_replay_on_adversarial_allocator": "ok"
+  }
+ ]
+}

@@ -1,0 +1,20 @@
+{
+ "pack": "ic32-handoff-v2",
+ "emitted_by": "Lane A, round 10",
+ "date": "2026-08-18",
+ "frozen": true,
+ "supersedes": "ic32-handoff-v1",
+ "kernel_version": "1.1.0",
+ "grid_version": "1.8.0",
+ "note": "v1 remains frozen and valid. v2 closes v1's one declared gap (golden pre-hash byte vectors) and carries the kernel at 1.1.0 — additive, same calculus: cert_id and all 144 scheduler receipts are byte-identical across the bump. Verify these sha256s before starting; a drifted pack is not this pack. Running the oracle rewrites scheduler_certificate.json's informational.node under a different runtime — cert_id is the invariant, so re-verify against cert_id, not the file hash, if you have run it.",
+ "files": {
+  "HANDOFF.md": "b386caf1e0fbe6f6dce7dc04d0d1701aa397154da4d0c20e03c0e51845f3736e",
+  "SEMSTATE-CANONICAL-v1.md": "c1a0d02729303b4eca65baabc5daff17c8a0057f0b564f0d5be1ca04397d662a",
+  "golden_prehash_vectors.json": "6d2f68f939bbc3f45719c46a786053d9ad7ac7e5674538dac195642211797b2a",
+  "golden_sem_ids.json": "0758a2a15d61eff25431d9fc4e9a0177c04175a3c93aace079d02891304b3d2d",
+  "invariant-grid.json": "4b0f0cd8d94ce466dfc8a2442fa6bf22ae7462e0f49d60c27db31b92232f79ba",
+  "refinement_receipt.json": "2ca1278d646348e6dfab4621afd3f4332a1b885af83fbc9f022bb11e261e344b",
+  "scheduler_certificate.json": "d2a683dad2d66da8e72be5ff33c74d67be45cd3beea9c6803f90c9af2cd24f07",
+  "trvm_law_kernel.mjs": "99ca6c2d19aa3fb6ce7bb27ded6f95ca2a4d2eee8cfe673ec1425a6bfb581d07"
+ }
+}

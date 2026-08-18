@@ -1,0 +1,97 @@
+{
+ "type": "MaintenanceReceipt",
+ "version": 1,
+ "refused": false,
+ "aborted": false,
+ "torn": false,
+ "vclock_before": 17,
+ "vclock_after": 21,
+ "before": {
+  "A": {
+   "pub_version": 13,
+   "warrant_id": "37364b7694b01386abac40f7532da97fb6cde3e271bbd1622528b704853a6a1c"
+  },
+  "B": {
+   "pub_version": 14,
+   "warrant_id": "0cf94606a2b6fd7e6a3c10bac9d32b286b0fd024a8a8f2b939c8c5608e536f9d"
+  },
+  "C": {
+   "pub_version": 15,
+   "warrant_id": "ab27b8bca45825ba604868e924b21cae25fc0dbb5632f5ed794902af42093d40"
+  },
+  "D": {
+   "pub_version": 16,
+   "warrant_id": "776726c4efce1bcb7dc0daa3d8c5ba63f827e681d8845939a74b13bb0550ad2e"
+  }
+ },
+ "after": {
+  "A": {
+   "pub_version": 18,
+   "warrant_id": "0f9219ea1f4010cc6c87cc1fcd89a740cd087e3149bae6dec3899ffd43770201"
+  },
+  "B": {
+   "pub_version": 19,
+   "warrant_id": "d3a4b27eaaa2c0ee3d0aa6edba17a031aa5f9a6f1331dab39248b5da387e02c5"
+  },
+  "C": {
+   "pub_version": 20,
+   "warrant_id": "f25719db9cc9cebd2edb8c9e80e160177d17b605d618886ffe41974999cf3a39"
+  },
+  "D": {
+   "pub_version": 21,
+   "warrant_id": "b980a4e818266eeaefe68111727ecbd344afaf3355716ff17b98936efeda0b94"
+  }
+ },
+ "steps": [
+  {
+   "name": "A",
+   "verdict": "support_changed",
+   "action": "rederived",
+   "warrant_id_before": "37364b7694b01386abac40f7532da97fb6cde3e271bbd1622528b704853a6a1c",
+   "warrant_id_after": "0f9219ea1f4010cc6c87cc1fcd89a740cd087e3149bae6dec3899ffd43770201",
+   "pub_before": 13,
+   "pub_after": 18
+  },
+  {
+   "name": "B",
+   "verdict": "support_changed",
+   "action": "rederived",
+   "warrant_id_before": "0cf94606a2b6fd7e6a3c10bac9d32b286b0fd024a8a8f2b939c8c5608e536f9d",
+   "warrant_id_after": "d3a4b27eaaa2c0ee3d0aa6edba17a031aa5f9a6f1331dab39248b5da387e02c5",
+   "pub_before": 14,
+   "pub_after": 19
+  },
+  {
+   "name": "C",
+   "verdict": "support_changed",
+   "action": "rederived",
+   "warrant_id_before": "ab27b8bca45825ba604868e924b21cae25fc0dbb5632f5ed794902af42093d40",
+   "warrant_id_after": "f25719db9cc9cebd2edb8c9e80e160177d17b605d618886ffe41974999cf3a39",
+   "pub_before": 15,
+   "pub_after": 20
+  },
+  {
+   "name": "D",
+   "verdict": "support_changed",
+   "action": "rederived",
+   "warrant_id_before": "776726c4efce1bcb7dc0daa3d8c5ba63f827e681d8845939a74b13bb0550ad2e",
+   "warrant_id_after": "b980a4e818266eeaefe68111727ecbd344afaf3355716ff17b98936efeda0b94",
+   "pub_before": 16,
+   "pub_after": 21
+  }
+ ],
+ "no_op": false,
+ "law_refs": [
+  "law:maintenance.pass@1",
+  "law:maintenance.quarantine@1",
+  "law:maintenance.atomicity@1",
+  "law:maintenance.receipt@1",
+  "law:maintenance.acyclicity@1"
+ ],
+ "pass_id": "ee07ab028f6e9cf6f20344db6fc957312bdd49edf9460b1d28aaf4ee393ac69f",
+ "informational": {
+  "note": "NON-AUTHORITATIVE",
+  "generator": "trvm_world.mjs v0.7.1",
+  "scenario": "diamond D<-{B,C}<-A after deleting node:c"
+ }
+}

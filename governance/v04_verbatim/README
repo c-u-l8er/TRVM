@@ -1,0 +1,8 @@
+Frozen verbatim v0.4 blocks. The original v0.4 kernel file was lost to an
+environment reset; these blocks were mechanically SPLIT out of the verified
+v0.5 build (trvm_law_kernel_v05.mjs) by subtracting the v0.5 builder's own
+literal sections, and the split was proven faithful by byte-identical
+reassembly of v0.5. core_parse_digest.mjs = v0.4 lines 48-322 (RNG, terms,
+Rt, rules, whnf/normalRef, parse, show, stateDigest/semId/chase);
+ast_engine.mjs = v0.4 lines 324-399; tail_lib.mjs = v0.4 lines 454-504
+(wellFormed, vectors scaffolding, genTerm).

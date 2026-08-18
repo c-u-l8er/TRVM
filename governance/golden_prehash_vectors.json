@@ -1,0 +1,434 @@
+{
+ "type": "TRVM-PREHASH-VECTORS-v1",
+ "version": 1,
+ "spec": "SEMSTATE-CANONICAL-v1.md §5 (canonical signature) over §3–§4 (live discovery order, canonical fold)",
+ "kernel_version": "1.1.0",
+ "law_refs": [
+  "law:digest.canonical-bytes@1",
+  "law:state.semantic-quotient@1",
+  "law:digest.adequacy@2"
+ ],
+ "corpus": {
+  "id": "conformance-vectors",
+  "sha256": "c2775f7b09180194c2d8e0a862fa5f5fb418a7244cb807ebab21664a30d8aae0"
+ },
+ "binds": {
+  "refinement_receipt_id": "bdcfc58ce8031cd61311f059fb26487502e5bd33d987b99291f249f952c87249",
+  "scheduler_certificate_id": "a08ee15d6baf9020beaa56b7cc0d970e3825b9c88a01984141a861250b2ec32b",
+  "note": "per_term[].normal_form.nf_id must equal refinement_receipt.per_term[].nf_id for the same name; every sem_signature must sha256 to its sem_state_id. Both are checkable without running the engine."
+ },
+ "per_term": [
+  {
+   "name": "identity",
+   "term": "λx.x",
+   "termination": "NORMAL_FORM",
+   "steps": 0,
+   "initial": {
+    "sem_signature": "L0(N0)",
+    "sem_state_id": "546334a80cfb56f8163e59ffb85a0b1edec290fc2e4948fe1de3dbd43748be45"
+   },
+   "normal_form": {
+    "nf": "λa.a",
+    "sem_signature": "L0(N0)",
+    "sem_state_id": "546334a80cfb56f8163e59ffb85a0b1edec290fc2e4948fe1de3dbd43748be45",
+    "nf_id": "sem-1f10ab22e7733422758958046a42f4522b020c1ac1b2a8368382b131a1064aa6"
+   }
+  },
+  {
+   "name": "K_true",
+   "term": "λa.λb.a",
+   "termination": "NORMAL_FORM",
+   "steps": 0,
+   "initial": {
+    "sem_signature": "L0(L1(N0))",
+    "sem_state_id": "5b26e45194e1ef55c6fc8edcc911a05038e2e6cd8bbac3fcd0730f0a0ce090c9"
+   },
+   "normal_form": {
+    "nf": "λa.λb.a",
+    "sem_signature": "L0(L1(N0))",
+    "sem_state_id": "5b26e45194e1ef55c6fc8edcc911a05038e2e6cd8bbac3fcd0730f0a0ce090c9",
+    "nf_id": "sem-66dc327b9eaaacfcdcb21466a07a83c664e4299b4ea9185968225c81a5a8075d"
+   }
+  },
+  {
+   "name": "K_false",
+   "term": "λa.λb.b",
+   "termination": "NORMAL_FORM",
+   "steps": 0,
+   "initial": {
+    "sem_signature": "L0(L1(N1))",
+    "sem_state_id": "db6cd2a4d13888d6f5c733913db6b864feac66cc2f0fac08fbe3a3792f2059ba"
+   },
+   "normal_form": {
+    "nf": "λa.λb.b",
+    "sem_signature": "L0(L1(N1))",
+    "sem_state_id": "db6cd2a4d13888d6f5c733913db6b864feac66cc2f0fac08fbe3a3792f2059ba",
+    "nf_id": "sem-9281e63a5d2631b73c841f16d43857ff280fbcdd9fb33f802ab0e47ce40f9578"
+   }
+  },
+  {
+   "name": "apply_id",
+   "term": "(λx.λt.(t x) λy.y)",
+   "termination": "NORMAL_FORM",
+   "steps": 1,
+   "initial": {
+    "sem_signature": "A(L0(L1(A(N1,N0))),L2(N2))",
+    "sem_state_id": "3394f5a8bee2e99975d4ad62a40acdc610d574741573e93f7eb1f1984b9b2b0a"
+   },
+   "normal_form": {
+    "nf": "λa.(a λb.b)",
+    "sem_signature": "L0(A(N0,L1(N1)))",
+    "sem_state_id": "51907a3afd389f2cd7234ac01e1af44e14bd8657d2b912c807cff597febc8c0a",
+    "nf_id": "sem-05e42f83c7a145915e76884b86e073b7a2ba1f268e1da67686ee4f9cbeea6b55"
+   }
+  },
+  {
+   "name": "not_true",
+   "term": "(λb.λt.λf.((b f) t) λT.λF.T)",
+   "termination": "NORMAL_FORM",
+   "steps": 3,
+   "initial": {
+    "sem_signature": "A(L0(L1(L2(A(A(N0,N2),N1)))),L3(L4(N3)))",
+    "sem_state_id": "e33f277a6fe051ecbff20d90087bb032009dffc06c4891d133f0997218b9f794"
+   },
+   "normal_form": {
+    "nf": "λa.λb.b",
+    "sem_signature": "L0(L1(N1))",
+    "sem_state_id": "db6cd2a4d13888d6f5c733913db6b864feac66cc2f0fac08fbe3a3792f2059ba",
+    "nf_id": "sem-9281e63a5d2631b73c841f16d43857ff280fbcdd9fb33f802ab0e47ce40f9578"
+   }
+  },
+  {
+   "name": "dup_pair",
+   "term": "!{a,b} = {λx.x,λy.y}; (a b)",
+   "termination": "NORMAL_FORM",
+   "steps": 2,
+   "initial": {
+    "sem_signature": "D0[0,1](S0(L2(N2),L3(N3)),A(N0,N1))",
+    "sem_state_id": "9cdebe1497191318cbd127d902aa6d826929b95df745d6db7439bfa3ef2331b3"
+   },
+   "normal_form": {
+    "nf": "λa.a",
+    "sem_signature": "L0(N0)",
+    "sem_state_id": "546334a80cfb56f8163e59ffb85a0b1edec290fc2e4948fe1de3dbd43748be45",
+    "nf_id": "sem-1f10ab22e7733422758958046a42f4522b020c1ac1b2a8368382b131a1064aa6"
+   }
+  },
+  {
+   "name": "sup_app",
+   "term": "({λx.x,λy.y} λz.z)",
+   "termination": "NORMAL_FORM",
+   "steps": 5,
+   "initial": {
+    "sem_signature": "A(S0(L0(N0),L1(N1)),L2(N2))",
+    "sem_state_id": "f13f8d40a7f64e43085c09534d07d59cdf8b7309642937f9547593534c1c1d68"
+   },
+   "normal_form": {
+    "nf": "&0{λa.a,λb.b}",
+    "sem_signature": "S0(L0(N0),L1(N1))",
+    "sem_state_id": "839a73c3e72b0bb5d6175733d4f2405fcf804bf7bfb930d573b36395efd88853",
+    "nf_id": "sem-5811ddb9fc66feb490df1df03fb7e16683a0878eeb4ddc419803a2e532c4e655"
+   }
+  },
+  {
+   "name": "church_not_2",
+   "term": "((λf.λx.!{f0,f1}=f;(f0 (f1 x)) λB.λT.λF.((B F) T)) λa.λb.a)",
+   "termination": "NORMAL_FORM",
+   "steps": 16,
+   "initial": {
+    "sem_signature": "D0[0,1](N2,A(A(L2(L3(A(N0,A(N1,N3)))),L4(L5(L6(A(A(N4,N6),N5))))),L7(L8(N7))))",
+    "sem_state_id": "699d70ab580473e55eae07b50665c6e30e41c05c9960013908708cd412952b28"
+   },
+   "normal_form": {
+    "nf": "λa.λb.a",
+    "sem_signature": "L0(L1(N0))",
+    "sem_state_id": "5b26e45194e1ef55c6fc8edcc911a05038e2e6cd8bbac3fcd0730f0a0ce090c9",
+    "nf_id": "sem-66dc327b9eaaacfcdcb21466a07a83c664e4299b4ea9185968225c81a5a8075d"
+   }
+  },
+  {
+   "name": "church_apply_0",
+   "term": "((λf.λx.x S) Z)",
+   "termination": "NORMAL_FORM",
+   "steps": 2,
+   "initial": {
+    "sem_signature": "A(A(L0(L1(N1)),Ffree:S),Ffree:Z)",
+    "sem_state_id": "de0b900d03b5df5c1ec9292d60deb8cc09452013730134ef02eacca0cdf93673"
+   },
+   "normal_form": {
+    "nf": "Z",
+    "sem_signature": "Ffree:Z",
+    "sem_state_id": "1d5b88ab1b760d63365530f71ee81c746740a46ccb06f5cf3526e8a0ed0cdf4c",
+    "nf_id": "sem-bbeebd879e1dff6918546dc0c179fdde505f2a21591c9a9c96e36b054ec5af83"
+   }
+  },
+  {
+   "name": "church_apply_1",
+   "term": "((λf.λx.(f x) S) Z)",
+   "termination": "NORMAL_FORM",
+   "steps": 2,
+   "initial": {
+    "sem_signature": "A(A(L0(L1(A(N0,N1))),Ffree:S),Ffree:Z)",
+    "sem_state_id": "e2343a1dd55351704b33ba4ed8071f3142f47f38c867e551d7b2b6de9a259b84"
+   },
+   "normal_form": {
+    "nf": "(S Z)",
+    "sem_signature": "A(Ffree:S,Ffree:Z)",
+    "sem_state_id": "7271160c7ed48131faff548aa07249d01fc012dc069ca283f605c881998d2a40",
+    "nf_id": "sem-c8fc0b9e3c6a69d88a3405e6d4c435d15755d40ac260b0ab7cac8c8c2a46e3af"
+   }
+  },
+  {
+   "name": "church_apply_2",
+   "term": "((λf.λx.!&1001{c0,c1}=f;(c0 (c1 x)) S) Z)",
+   "termination": "NORMAL_FORM",
+   "steps": 3,
+   "initial": {
+    "sem_signature": "D0[0,1](N2,A(A(L2(L3(A(N0,A(N1,N3)))),Ffree:S),Ffree:Z))",
+    "sem_state_id": "9bea477523cf60162c2a6ff393633e000e6f5fbf4149b22456457d063b92dfc2"
+   },
+   "normal_form": {
+    "nf": "(S (S Z))",
+    "sem_signature": "A(Ffree:S,A(Ffree:S,Ffree:Z))",
+    "sem_state_id": "58e0848f94c5f3a485d36ebcd29694bc6e441deeef9bf9b4d16bf0210e6dc60a",
+    "nf_id": "sem-30d719c1b7be5cad842f9a2fab15e5c61f682afba30923602d8bcab544e41691"
+   }
+  },
+  {
+   "name": "church_apply_3",
+   "term": "((λf.λx.!&1002{c0,t0}=f;!&1003{c1,c2}=t0;(c0 (c1 (c2 x))) S) Z)",
+   "termination": "NORMAL_FORM",
+   "steps": 4,
+   "initial": {
+    "sem_signature": "D0[0,1](N2,D1[3,4](N1,A(A(L2(L5(A(N0,A(N3,A(N4,N5))))),Ffree:S),Ffree:Z)))",
+    "sem_state_id": "13fd6c52a7bb62f5c453512f2615ec68254c715d6cd2e8555bb1b65ee0e694ea"
+   },
+   "normal_form": {
+    "nf": "(S (S (S Z)))",
+    "sem_signature": "A(Ffree:S,A(Ffree:S,A(Ffree:S,Ffree:Z)))",
+    "sem_state_id": "03ed30e70378d3584ee76e8a33f89d698728b334cf595c0cc300656608a16c55",
+    "nf_id": "sem-69671c58b226a0265aeaeeb73e62097a85c79c0eac0ab8399e8956833ec7d489"
+   }
+  },
+  {
+   "name": "church_apply_4",
+   "term": "((λf.λx.!&1004{c0,t0}=f;!&1005{c1,t1}=t0;!&1006{c2,c3}=t1;(c0 (c1 (c2 (c3 x)))) S) Z)",
+   "termination": "NORMAL_FORM",
+   "steps": 5,
+   "initial": {
+    "sem_signature": "#4ec7c49fe2190d029da87141653146edb30baa3cf74b221e5e04c52450efe30e",
+    "sem_state_id": "f9d24413072cca4e07ce9c8deb100cb610dd1105bb261bbfdfaf22a38f8709b5"
+   },
+   "normal_form": {
+    "nf": "(S (S (S (S Z))))",
+    "sem_signature": "A(Ffree:S,A(Ffree:S,A(Ffree:S,A(Ffree:S,Ffree:Z))))",
+    "sem_state_id": "f03bc00aac9f9278beddc9d7260595710441841576db105e02943ea558de24fe",
+    "nf_id": "sem-c330c3e7e7ecaabc088772f90ad105ee702944ce3086b29ae6dc5e14120e3927"
+   }
+  },
+  {
+   "name": "church_apply_5",
+   "term": "((λf.λx.!&1007{c0,t0}=f;!&1008{c1,t1}=t0;!&1009{c2,t2}=t1;!&1010{c3,c4}=t2;(c0 (c1 (c2 (c3 (c4 x))))) S) Z)",
+   "termination": "NORMAL_FORM",
+   "steps": 6,
+   "initial": {
+    "sem_signature": "#3e67aacad58929fd82fdc8405216f14d9133ea7857cd6338cae545467a68e37f",
+    "sem_state_id": "0335e0d6e68f8c487c23b32c7752c035c44186ef7150fc2c59a5c7cb069cb497"
+   },
+   "normal_form": {
+    "nf": "(S (S (S (S (S Z)))))",
+    "sem_signature": "A(Ffree:S,A(Ffree:S,A(Ffree:S,A(Ffree:S,A(Ffree:S,Ffree:Z)))))",
+    "sem_state_id": "5a96be0da15e5d05adada97d15c40409d2a4b333136ba6a8649bbd7d3e1fd110",
+    "nf_id": "sem-07206b4b5d7c6a8b1d51a20fb01d4588208cdb111de6b4dff41005ef9aa9c330"
+   }
+  },
+  {
+   "name": "church_apply_6",
+   "term": "((λf.λx.!&1011{c0,t0}=f;!&1012{c1,t1}=t0;!&1013{c2,t2}=t1;!&1014{c3,t3}=t2;!&1015{c4,c5}=t3;(c0 (c1 (c2 (c3 (c4 (c5 x)))))) S) Z)",
+   "termination": "NORMAL_FORM",
+   "steps": 7,
+   "initial": {
+    "sem_signature": "#70907a2d9d470c9761c36f7d8880c3870d804930890bd1ea07670120485ff6af",
+    "sem_state_id": "ba4b0cc49a2a219603eb182ad000b8095c19b4a7cecb4b08f1955c54679459c7"
+   },
+   "normal_form": {
+    "nf": "(S (S (S (S (S (S Z))))))",
+    "sem_signature": "A(Ffree:S,A(Ffree:S,A(Ffree:S,A(Ffree:S,A(Ffree:S,A(Ffree:S,Ffree:Z))))))",
+    "sem_state_id": "118fd7e4cc14bc17d924ed276d9aab431cdc8cdaed29bcf754c8417cd332cca6",
+    "nf_id": "sem-065cf9595b8f9b74921f68e4a68b309c1eb46c5aa032d330d165ae430a8603ab"
+   }
+  },
+  {
+   "name": "church_exp_2_2",
+   "term": "((λf.λx.!&1001{c0,c1}=f;(c0 (c1 x)) λf.λx.!&1002{c0,c1}=f;(c0 (c1 x))) S)",
+   "termination": "NORMAL_FORM",
+   "steps": 21,
+   "initial": {
+    "sem_signature": "#a7064325c3f3fa7de6019ef5fd718fe9459b16cd619c896a552ccc767d124dab",
+    "sem_state_id": "55f0bb9661b9f2de0385c847fed4b8194467142cee388515ed660ab6e0009cf8"
+   },
+   "normal_form": {
+    "nf": "λa.(S (S (S (S a))))",
+    "sem_signature": "L0(A(Ffree:S,A(Ffree:S,A(Ffree:S,A(Ffree:S,N0)))))",
+    "sem_state_id": "c538103f4675540710ad76ec7f8a6733252135d5f260b9971f4cc936bc193f3f",
+    "nf_id": "sem-95c79c94787b4b81aae0fd2490df0dafa25c419e815e6038f0aa7042817124f8"
+   }
+  },
+  {
+   "name": "church_exp_3_2",
+   "term": "((λf.λx.!&1001{c0,t0}=f;!&1002{c1,c2}=t0;(c0 (c1 (c2 x))) λf.λx.!&1003{c0,c1}=f;(c0 (c1 x))) S)",
+   "termination": "NORMAL_FORM",
+   "steps": 42,
+   "initial": {
+    "sem_signature": "D0[0,1](N2,#888c50db519b2bcaffe5bf764f921167ac7d0b7b51d387973983e30927f171a8)",
+    "sem_state_id": "53ded3485e7b62f618586238acef46482bd0c390a9304e425ff990e4fa6cd43d"
+   },
+   "normal_form": {
+    "nf": "λa.(S (S (S (S (S (S (S (S a))))))))",
+    "sem_signature": "L0(#6ca34d35f5adf8900a5475ec77d4a9245f18fd099fc5e0fcc6ca5f3d3b6078a2)",
+    "sem_state_id": "dd691f2366f9378d88dce0928b3cdfb999c4b46f9f856c67f38fe0046bf0715a",
+    "nf_id": "sem-7469723b710bba28c06b0ae389a5adacb0982372965a498adebde0edb32b44bd"
+   }
+  },
+  {
+   "name": "church_exp_2_3",
+   "term": "((λf.λx.!&1001{c0,c1}=f;(c0 (c1 x)) λf.λx.!&1002{c0,t0}=f;!&1003{c1,c2}=t0;(c0 (c1 (c2 x)))) S)",
+   "termination": "NORMAL_FORM",
+   "steps": 36,
+   "initial": {
+    "sem_signature": "D0[0,1](N2,#630f9cd7507ef7923ca33de7fe8542c89324922e5992df2ccaab577d8bbe23cf)",
+    "sem_state_id": "fdf71382ec729540ccc6b6d5c1e220062abb965daeb3496edc0a054060f85713"
+   },
+   "normal_form": {
+    "nf": "λa.(S (S (S (S (S (S (S (S (S a)))))))))",
+    "sem_signature": "L0(A(Ffree:S,#6ca34d35f5adf8900a5475ec77d4a9245f18fd099fc5e0fcc6ca5f3d3b6078a2))",
+    "sem_state_id": "2ed28fbcc4ffef791945a9ae89112643a113038c63259f7ecd7cfabde91ffd3d",
+    "nf_id": "sem-882259c8ff8083cade23a74742397983d023a91d46e52e0dd51c9cbc375dced2"
+   }
+  },
+  {
+   "name": "church_exp_3_3",
+   "term": "((λf.λx.!&1001{c0,t0}=f;!&1002{c1,c2}=t0;(c0 (c1 (c2 x))) λf.λx.!&1003{c0,t0}=f;!&1004{c1,c2}=t0;(c0 (c1 (c2 x)))) S)",
+   "termination": "NORMAL_FORM",
+   "steps": 91,
+   "initial": {
+    "sem_signature": "D0[0,1](N2,#8273b59351c4688792231e09682072378d302c6084adcde866d9739382d0bb3f)",
+    "sem_state_id": "88fb6b446bf07d84a81964c0868530f15aad385ce74ecaf4cdb63992bb8f2af7"
+   },
+   "normal_form": {
+    "nf": "λa.(S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S a)))))))))))))))))))))))))))",
+    "sem_signature": "L0(A(Ffree:S,#e16dae5a23cf6a6f61e2e1874f92479175c28e2e810c32ce0f7c44af37b927ff))",
+    "sem_state_id": "869caf860e932b4440ca96da4acccf109758223439766eb521a5e0e6f0070f64",
+    "nf_id": "sem-4d9bda5072d2d32bd0db0b170733bb9ebb1f207c9e9946f2f9d15315500890cd"
+   }
+  },
+  {
+   "name": "church_exp_4_2",
+   "term": "((λf.λx.!&1001{c0,t0}=f;!&1002{c1,t1}=t0;!&1003{c2,c3}=t1;(c0 (c1 (c2 (c3 x)))) λf.λx.!&1004{c0,c1}=f;(c0 (c1 x))) S)",
+   "termination": "NORMAL_FORM",
+   "steps": 71,
+   "initial": {
+    "sem_signature": "D0[0,1](N2,#5fea95bfa2be1c8d8231a7766198e5972eebe70186a3085e6ed4ffd66defed5f)",
+    "sem_state_id": "2ef9f7406cc14ac8c3daf1da0573b586f8b5664bf1ddc5bf27aecc5a77702b03"
+   },
+   "normal_form": {
+    "nf": "λa.(S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S a))))))))))))))))",
+    "sem_signature": "L0(#920302105643130ee27050093a8cb039206771e84d50358430f098bc8303502a)",
+    "sem_state_id": "cb0d4ef07f3bf64d67b5a70da53685686fc582ac1768c59d9fff16fcfb8ad8cd",
+    "nf_id": "sem-491774b8d5c2adf00ed561871c6acb713e0708355614b272f801e8001ba99148"
+   }
+  },
+  {
+   "name": "church_exp_2_4",
+   "term": "((λf.λx.!&1001{c0,c1}=f;(c0 (c1 x)) λf.λx.!&1002{c0,t0}=f;!&1003{c1,t1}=t0;!&1004{c2,c3}=t1;(c0 (c1 (c2 (c3 x))))) S)",
+   "termination": "NORMAL_FORM",
+   "steps": 55,
+   "initial": {
+    "sem_signature": "D0[0,1](N2,#18f1ff471fc323b034ea19bc48ab117c89d4c4cf664773197f87dc9a22d8e055)",
+    "sem_state_id": "a3a112797c52794b070b3ae2e667c1ab22c593d4afb89e398c5eeb4be6027021"
+   },
+   "normal_form": {
+    "nf": "λa.(S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S a))))))))))))))))",
+    "sem_signature": "L0(#920302105643130ee27050093a8cb039206771e84d50358430f098bc8303502a)",
+    "sem_state_id": "cb0d4ef07f3bf64d67b5a70da53685686fc582ac1768c59d9fff16fcfb8ad8cd",
+    "nf_id": "sem-491774b8d5c2adf00ed561871c6acb713e0708355614b272f801e8001ba99148"
+   }
+  },
+  {
+   "name": "church_not_parity_2",
+   "term": "(((λf.λx.!&1001{c0,c1}=f;(c0 (c1 x)) λp.λt.λf.((p f) t)) λa.λb.a) X)",
+   "termination": "NORMAL_FORM",
+   "steps": 17,
+   "initial": {
+    "sem_signature": "#1e3363334257ce31cf489ac138b7a0d9e9c8919cec0f80109be61d6f5f71cce9",
+    "sem_state_id": "8b6954a0325f42458537968598718ef28e9d443788dbeb6b32392c2928a52c9f"
+   },
+   "normal_form": {
+    "nf": "λa.X",
+    "sem_signature": "L0(Ffree:X)",
+    "sem_state_id": "1926004f4c21d7e0f604fe1aadae3c4f6cc39cdfd24471593afe8bd578334808",
+    "nf_id": "sem-8e35fca8cc2a646332d7b3d7fe8e9560ee6b0a1249bced2f3b5f63b86880b708"
+   }
+  },
+  {
+   "name": "church_not_parity_3",
+   "term": "(((λf.λx.!&1001{c0,t0}=f;!&1002{c1,c2}=t0;(c0 (c1 (c2 x))) λp.λt.λf.((p f) t)) λa.λb.a) X)",
+   "termination": "NORMAL_FORM",
+   "steps": 28,
+   "initial": {
+    "sem_signature": "#dfef460f53205459ec01222fbe4c4b1fac0ff323da40b6133f1dff1f804516a8",
+    "sem_state_id": "710fdefe6304a4bf9d7909de1c45f22394b39571836829ab46f169b89c9160e3"
+   },
+   "normal_form": {
+    "nf": "λa.a",
+    "sem_signature": "L0(N0)",
+    "sem_state_id": "546334a80cfb56f8163e59ffb85a0b1edec290fc2e4948fe1de3dbd43748be45",
+    "nf_id": "sem-1f10ab22e7733422758958046a42f4522b020c1ac1b2a8368382b131a1064aa6"
+   }
+  },
+  {
+   "name": "church_not_parity_4",
+   "term": "(((λf.λx.!&1001{c0,t0}=f;!&1002{c1,t1}=t0;!&1003{c2,c3}=t1;(c0 (c1 (c2 (c3 x)))) λp.λt.λf.((p f) t)) λa.λb.a) X)",
+   "termination": "NORMAL_FORM",
+   "steps": 39,
+   "initial": {
+    "sem_signature": "#2d2782dde71a1c0568f14292c581a55d4f6b71bd99b955b547a7c17f2df8c079",
+    "sem_state_id": "2831bba19959c0391df9378385a06e4da405b8c08b879c2e949b047601fbd771"
+   },
+   "normal_form": {
+    "nf": "λa.X",
+    "sem_signature": "L0(Ffree:X)",
+    "sem_state_id": "1926004f4c21d7e0f604fe1aadae3c4f6cc39cdfd24471593afe8bd578334808",
+    "nf_id": "sem-8e35fca8cc2a646332d7b3d7fe8e9560ee6b0a1249bced2f3b5f63b86880b708"
+   }
+  }
+ ],
+ "compaction": {
+  "rule": "SEMSTATE-CANONICAL-v1 §5: a signature longer than 80 characters is replaced by '#' + sha256(signature), full width (65 chars). Ids print in decimal, no padding.",
+  "last_uncompacted": {
+   "nesting": 6,
+   "term": "(F (F (F (F (F (F F))))))",
+   "sem_signature": "A(Ffree:F,A(Ffree:F,A(Ffree:F,A(Ffree:F,A(Ffree:F,A(Ffree:F,Ffree:F))))))",
+   "length": 73,
+   "compacted": false,
+   "sem_state_id": "bedf9ec7f70b8a8041e068e1aae7ca742030bf2c52df462535335c9ae996ffe5"
+  },
+  "first_compacted": {
+   "nesting": 7,
+   "term": "(F (F (F (F (F (F (F F)))))))",
+   "sem_signature": "#b3733b1b9e4aed67dc8364d1e07b695f17cb8749c9de28b4511ca5bf91539dd5",
+   "length": 65,
+   "compacted": true,
+   "sem_state_id": "860f1803f1ce0a42e9ade7dfbf9bc6834b7547fc6f120aaa03f15248fcbb4b0a"
+  },
+  "first_compacted_precompaction": {
+   "signature": "A(Ffree:F,A(Ffree:F,A(Ffree:F,A(Ffree:F,A(Ffree:F,A(Ffree:F,A(Ffree:F,Ffree:F)))))))",
+   "length": 84
+  }
+ },
+ "informational": {
+  "generator": "extract_prehash.mjs via trvm_law_kernel.mjs v1.1.0",
+  "node": "v25.2.1"
+ },
+ "vectors_id": "731b50b7e18847a9240fa14064f22fad58698278205ef76fd957860307d25a35"
+}

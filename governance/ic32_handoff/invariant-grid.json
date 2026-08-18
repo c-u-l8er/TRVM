@@ -1,0 +1,1270 @@
+{
+ "record": "invariant-grid",
+ "version": "1.5.0",
+ "date": "2026-08-18",
+ "v1_criteria": {
+  "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
+  "criteria": {
+   "conformance": "reference semantics reproduced on the vector corpus — CONF-1",
+   "dual_state_identity": "execution + semantic identities, each adversarially tested, scopes declared — L-SEMID-1/2, law:state.exec-identity@1, law:state.semantic-quotient@1",
+   "progress_free_and_adversarial": "completion, NF agreement, readback purity, count invariance under 6 schedulers incl. 2 starvation adversaries, receipts for every run — L-SCHED-FLOAT-1, law:sched.free.float@1, law:sched.adversarial.float@1",
+   "plane_partition": "INTERACT/COLLAPSE as executable relations with the measured interleaved fixpoint — law:plane.rule-partition@1, law:plane.separation.fixpoint@1",
+   "films": "execution films with live-relation enabledness (18 refusals) AND portable semantic films (19 refusals) with a CLOSED terminal contract — every accepted terminal class carries a complete, committed, re-derived witness schema — law:film.evidence-chain@5, law:film.terminal-witness@1, semantic_film section",
+   "certificates": "receipt-based SchedulerCertificate v2, field discipline, full re-execution checker, engine-free grid half — law:sched.certificate@2, law:cert.field-discipline@1",
+   "refinement_bridge": "cross-allocator semantic-chain equality and semantic-film replay, receipted — law:refine.alloc-portability@1",
+   "artifact_identity": "executable == artifact, locked, per artifact — law:kernel.identity@2 (an identity MAP once the world layer shipped a second executable)",
+   "self_falsification": "every by-design red row still red; the registry, citations, and this record checked by grid_check — law:grid.consistency@2"
+  },
+  "declared_not_met_by_design": "cross-IMPLEMENTATION refinement (ic32) — the interface exists (semantic films, RefinementReceipt), the second implementation does not yet."
+ },
+ "changelog_from_0_1": [
+  "Law is a 3-axis object plus shape: (quantity, transition, precondition, schema). The kappa pair forced this: same quantity, same transition, same schema — the precondition alone flips FALSIFIED to PROVED.",
+  "Every schema now carries a typed signature so the computer can reject category-stretching, not just display it.",
+  "Three candidate schemas added as v0.2 hypotheses: CLOSURE, COHERENCE, WELL_FOUNDEDNESS. Eight was the v0.1 hypothesis, not a constant of nature. Open research question: the smallest generating basis that classifies the corpus without semantic stretching.",
+  "Warrant gains SUPPORT (the measurement carrier) and world_revision. Two invalidation modes: support intact (quantity moves under known laws) vs support changed (re-derive, all bets off).",
+  "Instrument model is many-to-many: an instrument is a BUNDLE of claims on law cells, each with entitlement, settlement rule, and witness. 'A currency is a claim on a law' stays as the page copy.",
+  "Cells carry a counterlaw pointer: every proved conditional law names its falsified unrestricted sibling. The pair teaches more than either member.",
+  "Status vocabulary: PROVED, PROPERTY-TESTED, MODEL-CHECKED-FRAGMENT, EMPIRICAL, OPEN, NOT_APPLICABLE, FALSIFIED. Falsified-by-design rows must keep failing: a passing red row means the definition changed.",
+  "New evidence class: trvm_law_kernel.mjs — the grid compiled into a runtime's own falsifier, with two discoveries logged below."
+ ],
+ "law_shape": {
+  "tuple": [
+   "quantity",
+   "transition",
+   "precondition",
+   "schema"
+  ],
+  "note": "A cell is a claim that a quantity obeys a schema under a transition given preconditions. Empty = OPEN research obligation. Adding a new quantity auto-generates one obligation per applicable schema."
+ },
+ "schemas": [
+  {
+   "id": "CONSERVATION",
+   "signature": "given transition R: Q(y) = Q(x)",
+   "instances": [
+    "C1 ledger",
+    "C7 capacity",
+    "cell 25 cost",
+    "cell 34 PII as DP epsilon-ledger",
+    "cell 19 dissent",
+    "cell 23 attention",
+    "no-authority-minting (predicted)"
+   ]
+  },
+  {
+   "id": "MONOTONICITY",
+   "signature": "given preorder <= and transition R: Q(x) <= Q(y)",
+   "instances": [
+    "append-only audit (17)",
+    "monotonic inheritance (15)",
+    "adversarial monotonicity (28)",
+    "sigma T2",
+    "C6",
+    "ChainCaps attenuation (meet; never gained)",
+    "TRVM write-once sub store (kernel L-MONO-1, CALM)",
+    "kappa carrier-preserving edge addition (C2, PROVED)"
+   ]
+  },
+  {
+   "id": "IDEMPOTENCE",
+   "signature": "given operation f: f(f(x)) = f(x)",
+   "instances": [
+    "iota (11)",
+    "C5",
+    "B7 max-merge register",
+    "kernel L-IDEM-1 (re-normalize fires zero interactions)",
+    "exactly-once billing (predicted)"
+   ]
+  },
+  {
+   "id": "ANNIHILATION",
+   "signature": "given binary op (x): 0 (x) a = 0 = a (x) 0",
+   "instances": [
+    "deny-default (16)",
+    "bridge annihilator",
+    "C2 no-overdraft",
+    "capability floor (26)",
+    "gamma reserve (42)",
+    "kernel L-ANNIH-1 (invalid step -> typed refusal, state digest unchanged)",
+    "embodiment safety envelope via CBFs (predicted)"
+   ]
+  },
+  {
+   "id": "LOCALITY",
+   "signature": "given disjointness # and composition (+): f(x (+) y) = f(x) (+) f(y) when x # y",
+   "instances": [
+    "sigma T4 (= separation-logic frame rule)",
+    "C3",
+    "B5",
+    "kernel L-LOCAL-1 (disjoint components co-reduce to their solo NFs under one interleaved schedule)",
+    "parallel argumentation frame (predicted)"
+   ]
+  },
+  {
+   "id": "DECAY",
+   "signature": "given temporal action advance_D: Q(advance_D(x)) = D_delta(Q(x))",
+   "instances": [
+    "beta B1/B2/B4",
+    "delta demurrage (41)",
+    "salience (21)",
+    "anti-saturation (29)",
+    "permission sunset (predicted)",
+    "kernel: NOT_APPLICABLE at the calculus layer — no clock, honestly recorded"
+   ]
+  },
+  {
+   "id": "BINDING",
+   "signature": "given context c: valid(a, c') => c' satisfies bind(a)",
+   "instances": [
+    "non-replay (33)",
+    "holdout commitment (27)",
+    "seal integrity (20)",
+    "continuity (30)",
+    "psi (12)",
+    "kernel L-BIND-1/2 (film frames bind pre-state hashes; tamper -> typed refusal at exactly the altered index)",
+    "warrant epoch + support (this record)"
+   ]
+  },
+  {
+   "id": "DERIVATION",
+   "signature": "given canonical inputs I: derive(I) is unique/canonical — order-, schedule-, machine-independent",
+   "instances": [
+    "kappa K1 (the machine-checked theorem)",
+    "sigma T1",
+    "B6",
+    "verdict portability",
+    "kernel CONF-1 24/24 + L-DERIV-1 (450 completed random schedules all reach the reference NF) + L-DERIV-3 (200 random affine terms)",
+    "ComputeDriven: the discipline of making Derivation OBSERVABLE — same declared inputs, admissible world, composition, and rules yield the same derivable identity, or an explicit witness explaining why not"
+   ]
+  }
+ ],
+ "candidate_schemas_v0_2": [
+  {
+   "id": "CLOSURE",
+   "signature": "x, y in D => compose(x, y) in D",
+   "evidence": "kernel L-CLOSE-1: every reachable state stays inside the term grammar (property-tested). Compose's A & B in Capability is the same shape.",
+   "status": "PROPERTY-TESTED at the kernel; hypothesis as a table-wide schema"
+  },
+  {
+   "id": "COHERENCE",
+   "signature": "different valid composition paths commute (associativity/exchange at the claimed semantic layer)",
+   "evidence": "CP5-CP7 printed FALSIFIED are exactly coherence failures under the phase carrier; the repair is a carrier-scoped coherence law.",
+   "status": "OPEN"
+  },
+  {
+   "id": "WELL_FOUNDEDNESS",
+   "signature": "forbidden structural cycles/infinite descent cannot exist",
+   "evidence": "authority no-cycles (14) reclassified here from MONOTONICITY — it was a stretch, exactly what typed signatures catch.",
+   "status": "OPEN; reclassification pending"
+  }
+ ],
+ "flagship_pair": {
+  "law": {
+   "id": "kappa_S.add-internal-edge.fixed-SCC-support.monotonicity",
+   "quantity": "kappa_S (support-parameterized)",
+   "transition": "add edge inside G[S]",
+   "preconditions": [
+    "S is an SCC of G (and remains one; internal edges cannot change that)"
+   ],
+   "schema": "MONOTONICITY",
+   "claim": "kappa_S(G') >= kappa_S(G)",
+   "status": "PROVED",
+   "evidence": {
+    "kind": "exhaustive+argument",
+    "scope": "n=4 exhaustive: 9,240 internal-edge additions across every SCC of every digraph, 0 decreases",
+    "argument": "an internal edge can only grow each bipartition's directed cut counts, so their minimum cannot drop; no selection, no ties, no carrier bookkeeping in the statement"
+   },
+   "counterlaw": {
+    "id": "kappa.add_edge.unrestricted.monotonicity",
+    "status": "FALSIFIED",
+    "witnesses_n4": 168,
+    "note": "selection-dependent scalar kappa additionally FALSIFIED for equivariance at SCC ties (C3, 360/360 over 720 relabelings) — kept red"
+   }
+  },
+  "moral": "Parameterize by support and the theorem simplifies while the scalar's two failures (monotonicity, equivariance) both dissolve into policy questions. Measurement is invariant. Selection is policy. Warrant authorizes."
+ },
+ "warrant": {
+  "version": 3,
+  "shape": [
+   "measure",
+   "predicate",
+   "value",
+   "witness",
+   "support",
+   "read_footprint",
+   "derivation_id"
+  ],
+  "read_footprint": {
+   "exact": "[resource @ version] — the objects the derivation actually read",
+   "predicates": "[scope-query @ version] — e.g. all_edges_incident(support), neighborhood(seed, depth); guards the phantom-read case kappa exposed, where a node absent at read time joins the SCC without touching any old edge"
+  },
+  "freshness": "fresh(warrant, world) iff every exact read and every predicate scope evaluates unchanged at current versions; unrelated changes do not invalidate",
+  "invalidation_modes": {
+   "support_intact": "internal change under proved conditional laws — cheap re-check may keep the warrant",
+   "support_changed": "re-derive; every known kappa decrease lives here",
+   "scope_dirty": "a predicate scope changed (phantom) — re-derive even though all exact reads are byte-identical"
+  },
+  "executable": {
+   "artifact": "trvm_world.mjs v0.5.0",
+   "commitment": "warrant_id = H(\"TRVM-WARRANT-v3\" | canonical committed fields [measure, predicate, value, witness, support(sorted), read_footprint(sorted), derivation_id, at_vclock]); footprint_id = H(\"TRVM-FOOTPRINT-v1\" | exact | predicates)",
+   "field_discipline": "COMMITTED: measure, predicate, value, witness, support, read_footprint, derivation_id, at_vclock. DERIVED on jailed replay: value, witness, every read's footprint membership and version, every scope digest. INFORMATIONAL: informational.* (precedent law:cert.field-discipline@1).",
+   "replay_refusals": [
+    "undeclared-read",
+    "undeclared-scope",
+    "footprint-version-mismatch",
+    "scope-digest-mismatch",
+    "value-mismatch",
+    "witness-mismatch",
+    "warrant-id-mismatch",
+    "support-not-subset",
+    "derivation-threw",
+    "support-mismatch"
+   ],
+   "freshness_verdicts": [
+    "fresh",
+    "support_changed",
+    "scope_dirty",
+    "support_intact"
+   ],
+   "verdict_witnesses": "every verdict carries a complete witness: fresh -> {checked_exact, checked_scopes}; support_changed/support_intact -> {resource, was, now}; scope_dirty -> {scope, was, now} (law:film.terminal-witness@1 applied to verdicts)",
+   "laws": [
+    "law:world.version-monotone@1",
+    "law:warrant.freshness@1",
+    "law:warrant.footprint-soundness@1",
+    "law:warrant.phantom-scope@1",
+    "law:warrant.invalidation-trichotomy@1",
+    "law:footprint.shared@1",
+    "law:warrant.composition@1",
+    "law:warrant.frame@1",
+    "law:warrant.support-soundness@1",
+    "law:warrant.maintenance@1",
+    "law:maintenance.quiescence@1"
+   ],
+   "composition": {
+    "publication": "publishWarrant(world, name, w) writes warrant:<name> = {value, warrant_id, footprint_id} and registers the reified freshness scope warrant-fresh:<name> (the citee's footprint re-evaluated)",
+    "pairing_rule": "every warrant:<name> exact read in a composite footprint MUST be paired with the warrant-fresh:<name> predicate — grid_check enforces the pairing on the shipped receipt; the naive unpaired composite exists in the battery as the kept-red laundering witness",
+    "replay": "replayComposite jails to the composite's own footprint: publications and freshness scopes only, never citee internals; a derivation that throws without a jail violation refuses derivation-threw"
+   },
+   "support_discipline": {
+    "two_properties": "support ⊆ exact reads (structural, pre-derivation) AND support == canonical derivation-produced support (semantic, post-derivation) — both enforced in replayWarrant AND replayComposite",
+    "canonical_form": "sorted, deduplicated at seal; order is non-semantic by construction",
+    "refresh": "refreshWarrant re-derives and RESTORES support; the audit's laundering chain breaks at the gate the maintenance loop will use",
+    "receipt_engine_half": "world_spec is COMMITTED in the receipt (TRVM-WORLDRECEIPT-v3); --check-receipt rebuilds and replays",
+    "future_work": "mechanically derivable support (derivation trace -> dependency extraction, the Adapton demanded-edge idea) rather than author-declared-then-verified — noted per the audit's architectural observation; equality-to-replay is the v3 contract"
+   },
+   "maintenance": {
+    "operation": "maintainWorld(world, registry): DAG from committed footprints; admission refusals (pairing rule, total registration, acyclicity); deterministic topo order, citees first; per-step derive -> jailed replay -> republish; post-pass quiescence sweep; re-pass within budget, refuse beyond it",
+    "refusals": [
+     "maintenance-unguarded-citation",
+     "maintenance-unregistered-citee",
+     "maintenance-cycle",
+     "maintenance-rederive-incoherent",
+     "maintenance-budget-exhausted"
+    ],
+    "falsifier": "naiveMaintain — kept in the artifact, kept red in L-MAINT-1: caller-order single pass, quiescent:true stamped with no sweep; the glitch (a citer re-derived against its citee's stale publication) is its executable failure",
+    "receipt": "maintenance_receipt.json (TRVM-MAINTRECEIPT-v1): world_spec + mutation COMMITTED; dag, topo_order, registry_manifest, rounds (per-step pre-verdicts, warrant-id/footprint-id movement, value_preserved), quiescence (verified sweep at vclock), final_warrants, counts",
+    "division_of_verification": "grid_check v2.9 = engine-free half; trvm_world.mjs --check-maintenance = engine half (rebuild, mutate, re-run, require bit-identical receipt)",
+    "laws": [
+     "law:warrant.maintenance@1",
+     "law:maintenance.quiescence@1"
+    ]
+   }
+  }
+ },
+ "instrument_model": {
+  "copy": "A currency is a claim on a law.",
+  "formal": "Instrument := { claims: [ { law_cell, entitlement, settlement_rule, witness } ] } — many-to-many; e.g. theta bundles (USD backing x CONSERVATION), (work identity x BINDING), (settlement receipt x DERIVATION), (redemption x IDEMPOTENCE); delta bundles (balance x DECAY), (spend x CONSERVATION-with-explicit-sink), (epoch x BINDING)."
+ },
+ "kernel_evidence": {
+  "artifact": "trvm_law_kernel.mjs",
+  "summary": "A fifth TRVM implementation class: faithful port of ic_ref.py's eight rules; PASSES all 24 conformance vectors; scheduler is first-class (redexes enumerated, fired in seeded-random order) so DERIVATION is a tested law; films bind per-step revisions; replay refuses tampering with a typed error; invalid steps annihilate to refusal with no partial mutation; the law grid runs as the kernel's own falsifier and the build fails if an asserted law breaks OR a by-design red row starts passing.",
+  "discoveries": [
+   {
+    "name": "scheduler-safety gate",
+    "finding": "DUP-VAR/DUP-APP may fire under free scheduling only on GENUINELY stuck values (free-headed). The reference normal-order strategy hides this precondition; firing DUP-VAR on a bound-but-unsubbed variable can tie sub[x]=Var(a), sub[a]=Var(x) — a black hole normal order can never reach. A precondition the spec should state for any coordination-free scheduler."
+   },
+   {
+    "name": "affinity is the precondition of confluence",
+    "finding": "L-DERIV-4 keeps a non-affine witness red: on input reusing a binder (&502{b,b}) the write-once sub store is overwritten and schedules disagree on the NF. Derivation holds GIVEN affinity — the precondition axis demonstrated inside the kernel."
+   }
+  ],
+  "digest_v2": "State digest rebuilt after review falsified v1 (different programs digested identically): canonical first-occurrence ids for names and labels via sub-chasing preorder DFS, then memoized DAG hash — alpha- and label-equivariant, binder-faithful, linear in DAG size. Regression: L-EQV-1.",
+  "round2_credits": "Collapse-rule gate pre-existed in forge/random_order.py; upstream IC classes DUP-VAR/DUP-APP under the Collapsing extension — kernel comment now credits both and adopts the INTERACT/COLLAPSE plane split.",
+  "round3": "L-DERIV-1 relabeled to completed-schedule confluence; L-PROG-1 scheduler battery added; L-EQV-1 split into ADEQUACY + EQUIVARIANCE duals; film v3 chained frames with pre/post binding and terminal records; all evidence hashes full-width; stale CALM header sentence removed.",
+  "round_4": {
+   "artifact": "trvm_law_kernel.mjs v0.5 (single file; AST engine retained as the retracted relation; floating-dup engine + film v3.1 + SchedulerCertificate + ~20 batteries; the suite is the kernel's own falsifier)",
+   "headline": "the retraction round: v0.4's L-PROG-1 moral was wrong; free-choice progress is FALSIFIED on the AST term relation (false quiescence) and PROPERTY-TESTED on floating-dup-heap-v1, with the freedom claim now carried by a checkable certificate",
+   "falsifier_catches_during_build": [
+    "heap-invisible redexes: enumeration initially missed App redexes inside heap-dup values — caught by the NF batteries; enumeration made total over the live pool",
+    "dead-dup affinity corruption: DEAD heap dups could fire on shared live values, double-consuming affinity (fuzz witness diverged lambda a.b vs lambda a.a); fix — enumerate LIVE ids only. 'Garbage must not compute' is an AFFINITY THEOREM on this representation, not an optimization [ROUND-5 REVISION: 400+ dead-firing probe runs — including an exact replication of the pre-fix fuzz stream — produced ZERO NF divergence; the lambda a.b corruption is attributable to the READBACK hole (the second catch's readback fix), not to dead-firing affinity corruption. Dead enumeration's confirmed harms are ILLEGAL-RELATION transitions and quiescence distortion; the live-only relation stands, its evidence story corrected — see round_5]"
+   ],
+   "battery_census": "CONF-1 PASS 24/24; L-DERIV-1/2/3, L-MONO-1/2, L-IDEM-1, L-SCHED-FLOAT-1, L-PLANE-SEP-1, L-COLLAPSE-PROG-1, L-BIND-1/2/3, L-CERT-1, L-ADEQ-2, L-EQV-1, L-ANNIH-1, L-LOCAL-1, L-CLOSE-1 PROPERTY-TESTED; L-ADEQ-1 REGRESSION-LOCKED; L-DERIV-4, L-CONS-1, L-FQ-AST-1 FALSIFIED by design; L-DECAY NOT_APPLICABLE"
+  },
+  "round_5": {
+   "artifact": "trvm_law_kernel.mjs v0.6 (SchedulerCertificate v2 with run manifest + full-re-execution checker; replay enabledness; L-CERT-2 and L-BIND-4 adversarial batteries; ~22 batteries total)",
+   "headline": "the evidence-binding round: external audit forged 10/10 certificate field mutations plus a hollow zero-exhibit certificate past BOTH checkers (assurance composition), and probes showed film replay accepting illegal dead-locus transitions; both authority channels now re-derive their evidence — receipts re-executed, frames checked for live-relation enabledness",
+   "audit_verification": [
+    "Probe A: 10/10 single-field certificate mutations + hollow combined accepted by checkSchedulerCertificate v1 (executed against the real checker before the fix)",
+    "Probe B: hollow certificate (zero exhibits, 999,999 fabricated runs, empty claims) passed grid_check v2 — GRID-CONSISTENCY-2: PASS, exit 0",
+    "Probes C/C2/C3: 227 adversarial prefer-dead runs produced digest-consistent dead-locus films that replayFloat ACCEPTED; 176 further dead-firing runs on the exact pre-fix fuzz stream: ZERO NF divergence (Bug-A diagnosis revised)"
+   ],
+   "battery_census": "adds L-CERT-2 (15 laundered forgeries + hollow, each refused on a distinct semantic re-derivation) and L-BIND-4 (dead-locus film refused illegal-transition; undeclared-plane film refused plane-not-permitted); L-CERT-1 upgraded to full re-execution of all 96 receipts; all round-4 rows retained and green under the stricter replay"
+  },
+  "round_6": {
+   "headline": "The identity round: the standing Coherence question answered NO by external audit and CLOSED by a SPLIT — execution identity (allocation-sensitive, replay-grade) vs semantic identity (live-only, discovery-ordered, id/dead/alpha/label/allocation-invariant) — plus the executable ic32 bridge (semantic films replay across an adversarial allocator) and starvation-adversarial scheduling inside the certified battery. v1.0.0: the calculus layer's law set is closed over its own claims.",
+   "audit_verification": [
+    "GPT's heap-id-swap witness reproduced byte-for-byte (18b4e47b... vs 6bca1878...; behaviors verified identical: enabled DUP-VAR,DUP-VAR; NF ((X Y) (X Y)); 2 steps; 2 interactions).",
+    "Extension found here: a DEAD heap entry also perturbs floatDigest while the live state (and semStateId) is unchanged.",
+    "Design probe: a MONOTONE allocator perturbation is invisible to sorted folds — the separation witness requires NON-monotone (order-reversing) allocation; DescFloatRt is built accordingly.",
+    "Version regression confirmed: v0.6 source printed a v0.5 banner; build_v06.py described itself as assembling v0.5. Both locked (then law:kernel.identity@1, superseded by @2 in round 7)."
+   ],
+   "batteries": "L-SEMID-1 (split, adversarial), L-SEMID-2 (adequacy, sampled), L-REFINE-1 (dual-allocator lockstep + cross-replay + RefinementReceipt), L-ID-1 (identity lock), L-SCHED-FLOAT-1 widened to 144 receipts."
+  },
+  "round_6_1": {
+   "headline": "The terminal-witness closure: the round-6B audit falsified TRVM-SEMFILM-v1's BUDGET_EXHAUSTED contract (accepted, unproven, uncommitted) — the same species as the round-4 execution-film terminal hole, reintroduced by the third replay implementation. Closed as a schema-level LAW (law:film.terminal-witness@1), not a patch.",
+   "audit_verification": [
+    "AUDIT-SEM-BUDGET reproduced exactly: enabled0=1, budget_mutation_preserves_id=true, r1.ok=true, r2.ok=true against v1.0.0 before the fix.",
+    "Root cause pair: semFilmIdOf omitted budget/remaining_work from the commitment; replaySemFilm had no BUDGET_EXHAUSTED re-derivation branch at all.",
+    "L-REFINE-1 NOT retracted, per the audit's own scoping: its 24 films all terminate NORMAL_FORM, a path that does re-derive quiescence and the NF."
+   ],
+   "new_positive": "Honest PARTIAL semantic films replay across allocators (L-SEMTERM-1's positive direction) — portable checkpoints, the checkpointing primitive long cross-implementation runs will need.",
+   "batteries": "L-SEMTERM-1 (12 forgeries, each on its declared refusal, including the audit witness honestly resealed under v1.1)."
+  },
+  "round_7": {
+   "headline": "The warrant round: Warrant v3 goes from grid spec to executable machinery in a NEW artifact (trvm_world.mjs v0.1.0) — verifying-trace freshness with reified predicate scopes, JAILED replay (undeclared reads refuse), the kappa phantom constructed and guarded, the invalidation trichotomy with early cutoff, and the round-5 shared-footprint requirement discharged by wrapping the shipped SchedulerCertificate as a warrant. Kernel untouched at v1.0.1; identity becomes a MAP (kernel.identity@2).",
+   "first_run": "all six batteries passed on first execution; skeptical re-review confirmed each assertion bites (notably: the phantom's true-size-3-vs-warranted-2 while 'fresh' is a genuine wrong-answer witness, and the unrelated-churn immunity covers 50 writes).",
+   "batteries": "L-WORLD-1, L-WAR-1..5 in trvm_world.mjs; world_warrant_receipt.json checked engine-free by grid_check v2.5."
+  },
+  "round_8": {
+   "headline": "The composition round: warrants cite warrants through publications paired with REIFIED FRESHNESS scopes — the composition phantom (staleness laundered through a publication that never moved) constructed and kept red; propagation proved through chains and diamonds with footprint dedup; the jail doubles as the abstraction boundary (citee internals refuse). Plus sigma T4 executable: the frame rule as a 120/120 verdict-prediction property over random writes. trvm_world.mjs v0.2.0; kernel untouched.",
+   "batteries": "L-COMP-1..3, L-FRAME-1; receipt v2 carries a ground and a composite warrant, both id-recomputed engine-free."
+  },
+  "round_8_1": {
+   "headline": "The write-mediation closure: the round-8B audit falsified the substrate under the whole warrant layer — JS reference aliasing let state change without an identity transition, splitting the two verifiers (freshness fresh, replay value-mismatch). Closed as a law: canonical resource-value domain, store-owned bytes with content hashes, fresh parses on read, tombstoned deletions (law:world.write-mediated@1), plus the corollary FRESH => REPLAY-COHERENT (law:warrant.fresh-replay-coherence@1). All thirteen world batteries green on the fixed substrate.",
+   "audit_verification": [
+    "AUDIT-WORLD-ALIAS reproduced exactly against v0.2.0: version 1 unchanged, freshness fresh, replay value-mismatch after read(r).value.push(2); ingress variant leaked {a:{b:[1,99]}}; deletion read back at version 0 while the vclock said 2.",
+    "The audit also caught a vacuous assertion (`... || true`) in L-WORLD-1 — the battery introducing the monotonicity law contained a check that could not fail. Removed; battery strengthened; recorded without excuse.",
+    "Composition (round 8) was built before this audit arrived; it is not retracted — every composition battery re-ran green on the write-mediated substrate, and the composition laws' statements did not depend on the aliasing hole."
+   ],
+   "batteries": "L-WORLD-1 (strengthened), L-ALIAS-1, L-COHERE-1; all ten prior world batteries re-run green."
+  },
+  "round_8_2": {
+   "headline": "The support-soundness closure: support was committed but never re-derived — the audit forged it empty, replayed ok, split the invalidation classification, and laundered the forgery through refresh; the receipt version passed grid_check. Closed with dual-property replay in both replayers, canonical support, truth-restoring refresh, and the receipt's engine half (--check-receipt). All batteries re-run green; refusals now 10.",
+   "audit_verification": [
+    "AUDIT-SUPPORT-LAUNDER reproduced exactly against v0.3.0: forged [] support replayed ok; honest support_changed vs forged support_intact on the same world change; refresh succeeded and preserved []; the pruned-support receipt with honest reseals passed grid_check.",
+    "Also confirmed: replayComposite had NEITHER support check — it gains both, one discipline across warrant kinds.",
+    "L-COMP-3's pruned-publication forgery now dies EARLIER (support-not-subset, structural); the battery was sharpened to also run the fully consistent forgery (publication pruned from footprint AND support), which still dies at the jail with undeclared-read."
+   ],
+   "batteries": "L-SUPPORT-1 (the locked chain + six forgeries + reorder-noop); all thirteen prior world batteries re-run green; RECEIPT-CHECK engine mode."
+  }
+ },
+ "status_vocabulary": [
+  "PROVED",
+  "PROPERTY-TESTED",
+  "REGRESSION-LOCKED",
+  "MODEL-CHECKED-FRAGMENT",
+  "EMPIRICAL",
+  "OPEN",
+  "NOT_APPLICABLE",
+  "FALSIFIED"
+ ],
+ "carried_from_0_1": "retrodictions, predictions, ontology split, and maturity/evidence separation as in v0.1 — with escalation-order integrity formal vs escalation-benefit empirical split retained, PII cell grounded as DP epsilon on the affine rung, and the uninhabitable kappa entry SUPERSEDED by the flagship pair above (uninhabitable was the wrong word: the unrestricted cell is FALSIFIED; the carrier-preserving cell is PROVED).",
+ "changelog_from_0_2": [
+  "TWO STRATA. Object laws constrain quantities inside a domain (the eight). Meta-laws constrain relationships between layers/compositions: EQUIVARIANCE (new, promoted on evidence), CLOSURE, COHERENCE, REFINEMENT, WELL_FOUNDEDNESS, PROGRESS/LIVENESS (candidate). CLOSURE/COHERENCE/WELL_FOUNDEDNESS moved from candidate-orbitals to the meta stratum — they were never awkward ninth orbitals; they live one level up.",
+  "EQUIVARIANCE earned its place by catching two real bugs in one review round: scalar kappa is not renaming-invariant at SCC ties (360/360 split over 720 relabelings of one graph — verified), and the kernel's v1 state digest collapsed binder connectivity (different programs digested identically — verified against the shipped code, fixed, regression L-EQV-1 added).",
+  "KAPPA IS NOW A PROFILE. kappa_S is defined per SCC support; topology emits {(support, size, kappa_S, cut witness)}; POLICY selects (largest / max-kappa / threshold / query-overlap); the warrant records both. The clean theorem C2-prime: for fixed SCC support S, adding an edge inside G[S] never decreases kappa_S — exhaustive n=4 (9,240 internal additions, 0 decreases) + argument. Slogan: Measurement is invariant. Selection is policy. Warrant authorizes.",
+  "WARRANT v3: freshness binds to what the derivation READ, not to a global epoch — {exact: [resource@version], predicates: [scope-query@version]}. The predicate scope handles the phantom-read problem kappa exposed (new edges from a node that did not exist when you read can grow the SCC without touching any old edge). Independently mirrored by Atomix's read-scope sealing.",
+  "EXECUTION PRIVILEGES. The operational meaning of an established law: a freedom the runtime may exercise. Confluence -> reorder/parallelize reduction; monotonicity/I-confluence -> coordination-free merge; locality -> concurrent disjoint transitions; idempotence -> retry/dedupe; conservation -> bounded transfer accounting; binding -> context-checked consumption; decay -> deterministic expiry; annihilation -> fail-closed refusal; derivation -> independent regeneration; equivariance -> placement/renaming freedom (node ids and worker placement cannot leak into semantics). A FALSIFIED law is executable too: it REMOVES an optimizer permission (unrestricted kappa-monotonicity is forbidden as a rewrite justification).",
+  "NAMING SPLIT adopted: STATE_APPLY (period COMMIT), ARTIFACT_COMMIT (//commit canonicalize-freeze), EFFECT_SETTLE (external finality). Three different irreversibility boundaries deserve three names in IR and films.",
+  "FOUR PLANES for TRVM: INTERACT (core rules, confluence) / COLLAPSE-OBSERVE (readback; DUP-VAR & DUP-APP live here per upstream IC's Collapsing extension and forge/random_order.py's pre-existing guard) / WORLD (ADMIT-APPLY, CALM & I-confluence, walls) / EFFECT (seal -> revalidate -> settle). Walls = where the proof of coordination-free admissibility ends.",
+  "FRAMING. Cells are metamorphic relations (Q, T, P, R); the table is a domain-specific periodic grammar for DISCOVERING metamorphic relations and compiling the held ones into runtime privileges and the falsified ones into removed permissions.",
+  "HONESTY EDITS. L-MONO-1 renamed substitution-store inflationarity (a monotone-state ingredient; the CALM-level claim about specification outcomes belongs to the world layer — cf. Complete CALM, arXiv 2602.09435, verified). L-DERIV-4 reclassified as a DOMAIN-EXCLUSION witness (affinity is definitional; the witness shows why the domain boundary exists). Kernel's scheduler gate credited to forge/random_order.py, which already enforced it."
+ ],
+ "meta_laws": [
+  {
+   "id": "EQUIVARIANCE",
+   "signature": "Q(phi(x)) = phi(Q(x)) for identity-preserving renaming phi (scalar case: Q(phi(G)) = Q(G))",
+   "evidence": [
+    "C3: scalar kappa FALSIFIED at ties (kept red)",
+    "C4: kappa profile invariant over 720 exhaustive + 200 random relabelings",
+    "kernel L-EQV-1: digest faithful to binders, blind to names/labels (regression for a fixed real bug)",
+    "printer name-assignment; slotted/de-Bruijn canonicalization in prior TRVM work"
+   ],
+   "catches": [
+    "carrier-tie bugs",
+    "alpha mistakes",
+    "label canonicalization defects",
+    "worker/node ids leaking into semantics"
+   ]
+  },
+  {
+   "id": "ADEQUACY",
+   "signature": "P(x) = P(y) => O(x) = O(y) — a projection must retain every relation needed to reconstruct the promised observable",
+   "evidence": [
+    "film v1 binder collision (fixed; regression L-ADEQ-1)",
+    "scalar kappa collapsing two support situations into one number",
+    "Law 6 lineage: hidden state that affects future behavior must survive in the observable",
+    "round 5: ASSURANCE COMPOSITION — the certificate checker and the grid checker each verified fragments and their union did not verify the certificate's substantive claim (10/10 forgeries + hollow accepted); the verification projection erased the evidence basis. Fixed by making evidence re-derivable from receipts and committing every normative field (law:cert.field-discipline@1)"
+   ],
+   "dual": "EQUIVARIANCE (don't distinguish the irrelevant) / ADEQUACY (don't erase the relevant)"
+  },
+  {
+   "id": "CLOSURE",
+   "signature": "x,y in D => compose(x,y) in D",
+   "evidence": [
+    "kernel L-CLOSE-1"
+   ],
+   "status": "PROPERTY-TESTED at kernel"
+  },
+  {
+   "id": "COHERENCE",
+   "signature": "different permitted semantic paths preserve the promised observable (rewriting-logic sense: rules coherent with equations)",
+   "evidence": [
+    "CP5-CP7 are coherence witnesses",
+    "interleaving canonicalization with world transition is the open obligation",
+    "round 4: within-relation coherence on floating-dup-heap-v1 — any free path to pool-quiescence followed by pure-collapse readback yields the same NF (96/96); open: floatDigest invariance under heap-id permutation (state_identity.open)",
+    "Round 6: the heap-order obligation named in v0.5 is RESOLVED by splitting identity (law:state.exec-identity@1, law:state.semantic-quotient@1) — and the semantic quotient immediately pays: per-step semantic chains equal across an adversarial allocator on the whole corpus (law:refine.alloc-portability@1)",
+    "Round 8.1: the world layer's identity law — every observable mutation induces an identity transition (law:world.write-mediated@1) — and its warrant corollary FRESH => REPLAY-COHERENT (law:warrant.fresh-replay-coherence@1); the audit witness that falsified the implication on the aliasing substrate is reproduced and kept in the record"
+   ],
+   "status": "OPEN"
+  },
+  {
+   "id": "REFINEMENT",
+   "signature": "implementation behavior stays inside declared behavior",
+   "evidence": [
+    "async-route lesson: ref and native agreed with each other while both disagreed with the declaration — a refinement witness, not a derivation failure"
+   ],
+   "status": "OPEN"
+  },
+  {
+   "id": "WELL_FOUNDEDNESS",
+   "signature": "forbidden cycles / infinite descent excluded",
+   "evidence": [
+    "authority no-cycles (14) reclassified here"
+   ],
+   "status": "OPEN"
+  },
+  {
+   "id": "PROGRESS_LIVENESS",
+   "signature": "typed protocols exclude deadlock and guarantee progress",
+   "evidence": [
+    "kernel v0.4: 150/600 random schedules budget-exhausted while completed runs never disagreed (AST relation)",
+    "round 4: L-PROG-1 RETRACTED — its six 'slow' terms were false quiescence; witness kept red as L-FQ-AST-1 (law:sched.free.ast-term@1)",
+    "round 4: free-choice progress re-established on floating-dup-heap-v1 — 96/96 runs, 4 schedulers, max 91 steps, certified (law:sched.free.float@1); readback purity bounds the residual collapse work (law:collapse.progress@1)",
+    "rewriting literature: confluence and termination are independent properties"
+   ],
+   "status": "LOAD-BEARING (promoted round 3; re-grounded round 4 after the "
+  }
+ ],
+ "kappa_profile": {
+  "definition": "kappa_S(G) for S an SCC of G; topology emits the full profile [{support, size, kappa_S, witness_cut}]; selection is a named policy; the warrant records profile id, support id, selector policy id, predicate, witness, read scope (exact + predicate) and scope revision.",
+  "theorems": {
+   "K1": "kappa>0 iff some SCC of size>=2 exists (selection-free; survives ties)",
+   "C2prime": "fixed SCC support S: E(G[S]) subset-of E(G'[S]) implies kappa_S(G') >= kappa_S(G) — exhaustive n=4 (9,240 internal additions, 0 decreases) + argument",
+   "C3": "scalar kappa with largest-SCC selection is NOT renaming-invariant at ties — FALSIFIED, kept red",
+   "C4": "the profile IS renaming-invariant — 720/720 exhaustive on the tie witness, 200/200 random n=5"
+  }
+ },
+ "changelog_from_0_3": [
+  "SELF-CONSISTENCY. Round-3 review caught this record contradicting its own changelog: flagship_pair still held the superseded carrier-preserving theorem and the canonical warrant key still held the v2 shape while the changelog described v3. Both canonical keys are now replaced, the superseded forms moved to an explicit history key, and grid_check.mjs (GRID-CONSISTENCY-1) makes recurrence a build failure: a generated record may not contradict its own latest declared revision. This is REFINEMENT applied to the record itself.",
+  "ADEQUACY joins the meta-laws as Equivariance's dual: Equivariance = do not distinguish irrelevant differences (Q(phi x) = phi(Q x)); Adequacy = do not erase relevant differences (P(x)=P(y) => O(x)=O(y)). Genealogy: the film binder collision and the kappa scalar were both adequacy failures; kernel rows L-ADEQ-1 / L-EQV-1 now test the pair separately.",
+  "PROGRESS promoted from candidate to load-bearing, on kernel evidence: 150/600 random schedules blew the budget while completed runs never disagreed, and the L-PROG-1 battery shows four naive enumeration schedulers all failing the same six duplication-heavy terms at a 20k budget while the reference normal-order strategy finishes all 24 in at most 91 interactions. Confluence proves where you may arrive; Progress proves your scheduler can get you there. Privileges split: CONFLUENCE grants result-reordering; PROGRESS(strategy) grants scheduling under that strategy; both grant parallel free scheduling.",
+  "C4 now tests full structured equivariance Q(phi G) = phi(Q G) with supports mapped through the permutation (round 3 caught that the earlier test only reached the (size, kappa) quotient): 720/720 exhaustive on the tie witness + 200/200 random n=5. Witness-cut equivariance deferred pending a canonical cut-selection policy — selection is policy, again.",
+  "EVIDENCE-GRADE HASHES. All kernel evidence identities (state digests, sem ids, film frame ids) are now full untruncated SHA-256, including internal tree-hash compaction (a truncated inner node would undercut the outer commitment). Policy recorded: FastDigest64 may exist for tables/debugging but never flows into films, artifact ids, commitments, certificates, or receipts.",
+  "FILM v3. Frames now bind pre AND post canonical state ids and hash-chain (frame_id = H(prev | pre | rule | path | post)); films end with a terminal record {termination: NORMAL_FORM | BUDGET_EXHAUSTED, steps, last_frame}; replay verifies both states and recomputes the chain, refusing with typed reasons (revision-mismatch, post-state-mismatch, chain-mismatch)."
+ ],
+ "changelog_from_0_4": [
+  "RETRACTION. Round-3's L-PROG-1 moral — 'the strategy is the progress certificate' — was wrong twice over. The six scheduler failures were not slowness but FALSE QUIESCENCE: enumeration reported no redexes at steps 15/26/21/37/37/27 with almost no interactions consumed, and the reference driver, resumed from those states, burns a 2,000,000 budget in a sub-map knot. The witness stays red by design (L-FQ-AST-1, law:sched.free.ast-term@1). A red row must be DIAGNOSED before it is narrated.",
+  "REPRESENTATION, NOT PLANES. Restricting free choice to INTERACT-plane rules still knots 18/24 — plane mixing was never the seam; the body-carrying AST term representation was. Scheduling freedom is re-stated on floating-dup-heap-v1 (dups extruded to a heap, tree kept dup-free) and PROPERTY-TESTED there: 96/96 runs across 4 schedulers complete within 91 steps and agree with the reference NF (law:sched.free.float@1). Freedom is a property of RELATION+REPRESENTATION, and it now travels with a checkable SchedulerCertificate (law:sched.certificate@1) rather than as prose.",
+  "QUIESCENCE SHARPENED to pool-quiescence + READBACK PURITY: from quiescence the readback fires ZERO INTERACT-plane rules — only DUP-VAR collapse, exactly one per residual live dup (law:collapse.progress@1; 8 residual-collapse states surfaced in 84 fuzz states — the class exists off the vectors too). The AST relation's false quiescence violated exactly this purity: its readback fired INTERACT and diverged.",
+  "THE HARNESS CAUGHT ITS BUILDER TWICE IN ONE DAY: (a) enumeration initially missed App redexes inside heap-dup values — NF batteries flagged it; totality over the live pool restored; (b) DEAD heap dups could fire on shared live values and double-consume affinity — a fuzz term diverged (lambda a.b vs lambda a.a); enumeration now ranges over LIVE ids only. 'Garbage must not compute' is an affinity theorem on this representation, not an optimization. Both are negative results that DESIGNED the engine; both would have shipped silently without the falsifier suite.",
+  "FILM v3.1 closes round-3's terminal hole: the terminal (termination, steps, last frame, final state, normal-form or budget+remaining-work witness, plane profile) is bound into film_id, frames carry plane + typed locus (t:/d:/v:), and replay RE-DERIVES the terminal instead of trusting it — a forged normal_form with an honestly recomputed film_id is still refused (false-normal-form). 16 typed refusals; frame.i declared non-authoritative (law:film.evidence-chain@4).",
+  "PLANES made first-class and MEASURED: INTERACT/COLLAPSE partition the rules (law:plane.rule-partition@1); phased composition is an interleaved FIXPOINT, max alternation depth 4 observed, because collapse re-enables interact (law:plane.separation.fixpoint@1). Interaction counts on the certified relation are schedule-invariant AND equal the spec's embedded counts — the JS normal-order conformance driver itself agrees with the spec only 18/24 (law:deriv.count-invariance.float@1).",
+  "LAW REGISTRY replaces prose as the citation authority: every law carries id@revision, a canonical flag, and supersession lineage; grid_check v2 (law:grid.consistency@2) validates the registry and resolves every 'law:' citation across kernel, kappa witnesses, grid, scheduler certificate, and ledgers — an unknown or silently-stale reference is a build failure. The round-3 grep blacklist survives only as a supplementary tripwire.",
+  "REGRESSION-LOCKED joins the status vocabulary (after PROPERTY-TESTED): evidence pinned to a fixed regression corpus, replayed every build (L-ADEQ-1, law:digest.adequacy@2) — distinct from fresh sampling and honest about it."
+ ],
+ "changelog_from_0_5": [
+  "AUTHORITY OUTRAN EVIDENCE, TWICE — and both channels are now re-derivation. External audit forged all 10 single-field mutations of the round-4 SchedulerCertificate (representation, criterion, strategy, budget, evidence inflated to 999,999 runs, claims and law refs erased, corpus id, ALL exhibits erased, profile broadened with a fake rule) past checkSchedulerCertificate v1, and a hollow zero-exhibit certificate ALSO passed grid_check: an assurance-COMPOSITION bug — fragment verifiers whose union did not verify the substantive claim. All verified here by probe before the fix (law:sched.certificate@2 supersedes the superseded @1).",
+  "EXHIBIT != EVIDENCE BASIS. Six films were witnesses for a 96-run claim; nothing re-derived the 96. SchedulerCertificate v2 carries a RUN MANIFEST — one receipt per run (term, scheduler, seed, steps, interactions, termination, state/nf/film ids, readback counts) — and the checker RE-EXECUTES every receipt deterministically; aggregates are recomputed by arithmetic; claims are verified semantically; law refs must be JUSTIFIED by verified claims. Every field is Derived, Committed, or Informational (law:cert.field-discipline@1); a laundered forgery (commitment honestly recomputed) must survive the semantic re-derivations — L-CERT-2 shows 15/15 do not, plus the hollow zero-receipt certificate.",
+  "FILMS MUST WITNESS THE RELATION. Probes built digest-consistent, honestly-committed films firing DEAD heap loci — mechanically firable, outside the live relation — and v0.5 replay accepted them (227 adversarial runs). Replay now requires each frame's rule to be in the declared rule pool and its locus ENABLED in the live enumeration under that pool (plane-not-permitted, illegal-transition; 18 typed refusals; law:film.evidence-chain@5 supersedes the superseded @4). Digest consistency binds WHICH states were visited, not WHETHER the transitions were legal.",
+  "A DIAGNOSIS RETRACTED, SYMMETRICALLY. Round 4 attributed the lambda a.b fuzz divergence to dead-dup 'affinity double-consumption'. 400+ dead-firing probe runs — including an exact replication of the pre-fix fuzz stream — produced ZERO NF divergence: the corruption is attributable to the READBACK hole (Bug B); dead enumeration's confirmed harms are illegal-relation transitions and quiescence distortion. The live-only relation stands; its round-4 evidence story is corrected in kernel_evidence.round_4. The round-4 discipline — a red row must be diagnosed before it is narrated — applied to the narrator's own bug story.",
+  "DIVISION OF VERIFICATION, BY CONSTRUCTION. grid_check v2.1 recomputes the engine-free half (commitments, aggregate arithmetic, completeness, and representation/profile/refs/claims/exhibits against this record's own machine-readable scheduler_certificate section); the kernel checker re-executes the engine half (every receipt, every claim, every exhibit frame). No certificate field is covered by zero re-derivations. The builder itself became reproducible again the same way: the lost v0.4 source was recovered by SPLITTING the verified v0.5 build into its constituent blocks and proving the split by byte-identical reassembly."
+ ],
+ "changelog_from_0_6": [
+  "THE IDENTITY QUESTION, ANSWERED AGAINST US AND CLOSED. External audit constructed the witness this record had named-but-not-built: floatDigest varies under heap-id permutation on behaviorally identical states (18b4e47b... vs 6bca1878...). Reproduced byte-for-byte, extended (dead entries perturb it too), and resolved by a SPLIT, not a weakening: execStateId stays allocation-sensitive and replay-grade (law:state.exec-identity@1); semStateId folds the LIVE heap in discovery order and quotients ids, dead content, allocation order, alpha, and labels (law:state.semantic-quotient@1). One digest is never forced to mean two things.",
+  "THE IC32 BRIDGE IS EXECUTABLE TODAY. An adversarial DESCENDING allocator — chosen because a monotone perturbation is invisible to sorted folds — runs every vector in lockstep with the standard one: per-step semantic chains equal 24/24, NFs reference-equal, counts equal. SEMANTIC FILMS (canonical loci, semantic pre/post, TRVM-SEMFILM-v1 commitment) replay across allocators 24/24; execution films are refused 17/24 and bit-identical 7/24. refinement_receipt.json records the asymmetry (law:refine.alloc-portability@1); grid_check recomputes its arithmetic and commitment engine-free.",
+  "STARVATION INSIDE THE CERTIFICATE. starve_dups and starve_apps join the battery — 144 receipts, six committed scheduler names, max steps unchanged at 91 (law:sched.adversarial.float@1). Fairness evidence travels in the same receipts as freedom evidence.",
+  "THE EXECUTABLE MAY NOT DISAGREE WITH THE ARTIFACT. The audit caught v0.6 source printing a v0.5 banner one round after evidence-binding. KERNEL_VERSION is a constant; header, banner, and certificate generator must agree (L-ID-1, REGRESSION-LOCKED, law:kernel.identity@1), and grid_check locks grid.version to the kernel source.",
+  "V1.0.0 DECLARED, WITH ITS SCOPE STATED. The calculus layer's law set is closed over its own claims (see v1_criteria); WORLD/EFFECT, sigma, CP5-CP7, and Warrant v3 with the shared support/footprint concept are the named next layers. The one criterion declared NOT met by design: a second implementation — the interface for it is what this round built."
+ ],
+ "changelog_from_1_0_0": [
+  "THE TERMINAL CONTRACT, FALSIFIED AND CLOSED AS A LAW. Round-6B audit: a zero-frame BUDGET_EXHAUSTED semantic film over an enabled state replayed ok under TRVM-SEMFILM-v1, and budget/remaining_work were outside the commitment entirely (budget_mutation_preserves_id: true). Reproduced byte-for-byte, then closed at the SCHEMA level (law:film.terminal-witness@1): every accepted terminal class must have a complete declared witness schema, every witness field committed, every witness field re-derived on replay. TRVM-SEMFILM-v1.1 commits budget and remaining_work; replay re-derives the budget terminal, TIGHTER than execution films where the honest generator permits (steps === budget; remaining_work > 0). The third replay implementation was not entitled to inherit the correctness of the first two — recorded twice now, and the law exists so ic32 (the fourth) inherits the OBLIGATION instead.",
+  "L-REFINE-1 STANDS, SCOPED HONESTLY. Per the audit's own analysis, the 24/24 cross-allocator result holds: every refinement film terminates NORMAL_FORM, the path that always re-derived its terminal. What was false was the PROTOCOL's claim to be closed over every terminal it accepts — the v1_criteria films line now says what is actually proven.",
+  "A NEW POSITIVE FELL OUT: honest PARTIAL semantic films replay across allocators (portable checkpoints) — L-SEMTERM-1's positive direction, the primitive long cross-implementation runs will need."
+ ],
+ "changelog_from_1_0_1": [
+  "THE WARRANT BECAME EXECUTABLE, IN ITS OWN ARTIFACT. Warrant v3 had been a grid spec since round 3; trvm_world.mjs v0.1.0 implements it whole: WorldRecord (monotone vclock, append-only log, reified scope queries), tracked derivation views, warrant commitment under TRVM-WARRANT-v3 with round-5 field discipline, freshness as a generalized verifying trace, and JAILED replay where an undeclared read refuses — the authority-must-not-outrun-evidence law applied to reads (law:warrant.footprint-soundness@1). The calculus kernel is FROZEN at v1.0.1, per the closure audit's own recommendation.",
+  "THE PHANTOM IS NO LONGER A SENTENCE IN A SPEC. The kappa phantom-read case — a member joining the measured structure without touching any read resource — is CONSTRUCTED: true component size 3, warranted value 2, unguarded warrant 'fresh'. Kept red by construction. The guard is a reified predicate scope whose digest lives in the footprint; the same phantom classifies scope_dirty under it (law:warrant.phantom-scope@1).",
+  "STALENESS IS A CLASSIFICATION WITH WITNESSES, AND ONE CLASS IS CHEAP. support_changed / scope_dirty / support_intact each carry a complete verdict witness (film.terminal-witness applied to verdicts); support_intact performs EARLY CUTOFF — jailed re-derivation reproducing the value refreshes the footprint and reseals instead of discarding (law:warrant.invalidation-trichotomy@1).",
+  "ONE EVIDENCE LANGUAGE. The round-5 requirement — certificate and warrant share a support/footprint concept — is discharged executably: the shipped 144-receipt SchedulerCertificate wraps as a Warrant v3 whose single exact read is the corpus resource; certificate freshness IS warrant freshness (law:footprint.shared@1).",
+  "IDENTITY BECAME A MAP. Two executables now ship; grid.version is the record's own lineage and artifact_versions locks each executable's declared constant (kernel.identity@2 supersedes @1; grid_check v2.5 parses both constants from source)."
+ ],
+ "changelog_from_1_1_0": [
+  "COMPOSITION WITHOUT LAUNDERING. A warrant cites a warrant only through its PUBLICATION, and the battery constructs what publication-only citation costs: the citee goes phantom-stale, its publication never moves, and the naive composite is 'fresh' while transitively wrong — the phantom, one level up, kept red. The repair reifies freshness itself as a scope (warrant-fresh:<name> = the citee's footprint re-evaluated), so one ground movement dirties every guarded citer through chains and diamonds without any publication write (law:warrant.composition@1).",
+  "THE JAIL IS THE ABSTRACTION BOUNDARY. Composite replay reads publications and freshness scopes — never citee internals; a replayer reaching inside refuses undeclared-read, and a derivation that throws without a jail violation refuses derivation-threw (ninth refusal). Composites provably use only published values.",
+  "SIGMA T4, EXECUTABLE. The frame rule as a property test: footprint membership + scope influence PREDICT the freshness verdict on 120/120 random writes — writes outside a warrant's evidence cannot change its verdict (law:warrant.frame@1). The sigma_profile section records the T1/T2/T4 world-layer instantiations."
+ ],
+ "changelog_from_1_2_0": [
+  "STATE CANNOT CHANGE WITHOUT AN IDENTITY TRANSITION. The audit's AUDIT-WORLD-ALIAS falsified the substrate: the store held JS values by reference, so world.read(r).value.push(2) mutated the world with no put and no version movement — and the two verifiers DISAGREED (freshness: fresh; jailed replay: value-mismatch). Closed as law:world.write-mediated@1: a canonical resource-value domain, store-owned bytes under TRVM-VALUE-v1 content hashes, fresh parses on every read, both alias directions dead at the boundary — same version implies same canonical value. The witness is reproduced and kept.",
+  "DELETED IS NOT NEVER-EXISTED. Deletions are tombstones carrying the deletion version; the version layer no longer collapses the two histories, and the lifecycle (absent -> put -> update -> delete -> recreate) is a battery.",
+  "FRESH => REPLAY-COHERENT, AS ITS OWN LAW. The implication the witness falsified is now law:warrant.fresh-replay-coherence@1, property-tested over 200 random histories with adversarial alias attempts: every fresh verdict replays ok, and the per-history version=>hash invariant holds with the store cross-checked against its own log.",
+  "AN AUDIT CAUGHT A VACUOUS ASSERTION. L-WORLD-1's first version contained `... || true` — incapable of failing, in the battery introducing the monotonicity law. Removed, battery strengthened (latest-read on all six live resources, tombstone lifecycle, version=>hash), and confessed in the evidence line rather than silently fixed.",
+  "THE LAYERS' LESSONS RHYME, AND THE RECORD SAYS SO. Round 5: authority must not outrun evidence. Round 6: identity must know what it identifies. Round 8.1: evidence cannot outrun the state identity of the world it describes — the world-layer analog of the execution-vs-semantic split, recorded in world.round_8_1_witness."
+ ],
+ "changelog_from_1_3_0": [
+  "SUPPORT IS DERIVED, NOT DECLARED INTO AUTHORITY. The audit forged a warrant's support to [] with an honest reseal: replay accepted it, the next support movement classified support_intact instead of support_changed, refreshWarrant preserved the forgery, and the receipt version passed grid_check — authority outran evidence again, one layer up. Closed as law:warrant.support-soundness@1: canonical support at seal, dual-property enforcement (subset AND exact equality with the derivation's own output) in BOTH replayers, truth-restoring refresh, and the receipt's committed world_spec + --check-receipt engine half. The locked regression is the audit's exact chain.",
+  "THE CLASSIFICATION LIMIT IS STATED, NOT HIDDEN. freshness() cannot see a support forgery without running the engine — the record says so; the gates that matter (replay, refresh, receipt check) all re-derive.",
+  "ONE DISCIPLINE ACROSS WARRANT KINDS. replayComposite had neither support check; it now runs both, and the pruned-publication forgery dies twice over (structurally, then — when made fully consistent — at the jail)."
+ ],
+ "warrant_history": {
+  "v2_superseded": {
+   "shape": [
+    "measure",
+    "predicate",
+    "witness",
+    "support",
+    "world_revision"
+   ],
+   "example": {
+    "measure": "kappa",
+    "value": 2,
+    "predicate": "kappa > 0",
+    "witness": [
+     "0->1",
+     "1->0"
+    ],
+    "support": [
+     "node:0",
+     "node:1",
+     "node:2"
+    ],
+    "world_revision": "sha256:..."
+   },
+   "invalidation_modes": {
+    "support_intact": "internal edges changed: kappa moves under the proved conditional laws; the warrant may survive with a re-check",
+    "support_changed": "the carrier itself changed: re-derive; all bets are off (all 168 + 519 decreases live here)"
+   }
+  }
+ },
+ "flagship_history": {
+  "carrier_formulation_superseded": {
+   "law": {
+    "id": "kappa.add_edge.carrier-preserving.monotonicity",
+    "quantity": "kappa",
+    "transition": "add_edge",
+    "preconditions": [
+     "selected_carrier(before) == selected_carrier(after)  (vertex set of the largest SCC; ties by Tarjan order)"
+    ],
+    "schema": "MONOTONICITY",
+    "claim": "kappa(after) >= kappa(before)",
+    "status": "PROVED",
+    "evidence": {
+     "kind": "exhaustive+argument",
+     "scope": "n=4 exhaustive: 13,542 preserving additions, 0 decreases; n=5 sample: 31,001, 0 decreases",
+     "argument": "an added edge inside the carrier can only grow directed cut counts (min cannot drop); outside or incident edges do not enter any bipartition of the carrier"
+    },
+    "counterlaw": {
+     "id": "kappa.add_edge.unrestricted.monotonicity",
+     "status": "FALSIFIED",
+     "witnesses_n4": 168,
+     "witnesses_n5_sample": 519,
+     "first_witness": "graph#223 + edge 3->0, kappa 2->1"
+    }
+   },
+   "moral": "Same quantity, same transition, same schema. The precondition is the whole difference. Measurement support is first-class."
+  }
+ },
+ "reduction_certificate": {
+  "shape": {
+   "confluence": "proved | property_tested | ...",
+   "progress": "strong | strategy_specific(strategy) | unknown",
+   "scheduler": "normal_order | fair_worklist | bounded_parallel | unrestricted",
+   "domain": "affine_ic_core",
+   "extensions": [
+    "collapse"
+   ]
+  },
+  "rule": "confluence=yes + progress=unknown permits parallel reduction under a certified scheduler but NOT arbitrary unbounded redex selection — a mathematical freedom must not become a practical livelock machine",
+  "superseded_by": "scheduler_certificate",
+  "history_note": "v0.4 declarative shape kept as history; the executable, checkable form is scheduler_certificate (law:sched.certificate@1)"
+ },
+ "hash_policy": {
+  "ArtifactHash256": "full SHA-256; films, sem ids, commitments, certificates, receipts — never truncated, including internal tree-hash nodes",
+  "FastDigest64": "permitted for tables/debugging only; must never flow into an evidence path"
+ },
+ "law_registry": {
+  "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
+  "grid_version": "1.5.0",
+  "entries": [
+   {
+    "id": "kappa.monotonicity.unrestricted",
+    "revision": 1,
+    "status": "FALSIFIED",
+    "canonical": true,
+    "statement": "kappa(G') >= kappa(G) under arbitrary single-edge addition — NO",
+    "evidence": "C1: 24,576 edge-additions at n=4, kappa decreased in 168; first witness graph#223, add 3->0, kappa 2->1 (dense SCC absorbs a peripheral node via one thin return edge). Kept red by design; the falsifier is the design pressure that produced the flagship."
+   },
+   {
+    "id": "kappa.carrier-preserving.monotonicity",
+    "revision": 2,
+    "status": "PROVED",
+    "canonical": false,
+    "statement": "kappa(G') >= kappa(G) when the SELECTED CARRIER (largest SCC, Tarjan tie-break) survives the addition — holds, but the predicate is selection- and tie-sensitive",
+    "evidence": "C2: n=4 exhaustive — 13,542 carrier-preserving additions, 0 decreases; all 168 decreases on the carrier-changed side; honest partition 13,542+6,534+4,500 = 24,576 (revision 2 = the round-2 accounting repair). n=5 sample: 31,001 preserved -> 0 decreases.",
+    "superseded_by": "kappa.internal-edge.monotonicity@4",
+    "revision_note": "kept as history: superseded by the support-local statement, whose predicate mentions no selection policy and no ties"
+   },
+   {
+    "id": "kappa.internal-edge.monotonicity",
+    "revision": 4,
+    "status": "PROVED",
+    "canonical": true,
+    "statement": "kappa_S(G') >= kappa_S(G) for edge addition inside G[S], S a fixed SCC support — the support-parameterized statement is the theorem; policy chooses S afterward",
+    "evidence": "C2': 9,240 internal-edge additions across every SCC of every n=4 digraph, 0 decreases, plus the cut-counting argument (an internal edge can only grow each bipartition's directed cut counts, so their minimum cannot drop).",
+    "grid_law_id": "kappa_S.add-internal-edge.fixed-SCC-support.monotonicity",
+    "supersedes": "kappa.carrier-preserving.monotonicity@2",
+    "revision_note": "revision counts the kappa-monotonicity family's iterations: unrestricted(1) -> carrier-preserving(2) -> support-local candidate(3, round-3 review) -> internal-edge flagship(4)"
+   },
+   {
+    "id": "kappa.support-equivariance",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "the kappa profile with MAPPED supports satisfies Q(phi G) = phi(Q G) for vertex relabelings phi (supports carried through phi and compared, not quotiented away)",
+    "evidence": "C4: 720/720 exhaustive relabelings of the tie graph + 200/200 random n=5 graphs. Scalar kappa with largest-SCC selection stays FALSIFIED at ties (C3, kept red)."
+   },
+   {
+    "id": "sched.free.ast-term",
+    "revision": 1,
+    "status": "FALSIFIED",
+    "canonical": true,
+    "statement": "on the body-carrying AST term relation, free choice among enumerated redexes reaches the reference normal form for every scheduler — NO",
+    "evidence": "Round-4 diagnosis of v0.4's L-PROG-1: the six failing church_exp terms are FALSE QUIESCENCE, not slowness — findRedexes()==[] at steps 15/26/21/37/37/27 with ~0 interactions consumed, then reference normalization from the quiescent state burns a 2,000,000 budget (sub-map knot). Restricting free choice to INTERACT-plane rules only still knots 18/24: the seam is the representation, not plane mixing. Kept red as kernel row L-FQ-AST-1."
+   },
+   {
+    "id": "sched.free.float",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "on floating-dup-heap-v1 (dups extruded to a heap; tree dup-free), ANY free choice among enabled redexes completes to the reference normal form",
+    "evidence": "L-SCHED-FLOAT-1: 4 schedulers x 24 conformance vectors = 96/96 completed, 96/96 NF-match, 96/96 readback-pure, 0 budget-outs, max 91 steps at a 20k budget. The scheduling freedom is a property of the RELATION+REPRESENTATION, certified — not of the calculus in the abstract. Round 6: the certified battery widens to 6 schedulers — the four free ones plus two STARVATION ADVERSARIES (law:sched.adversarial.float@1) — 144 receipts, 144/144 completed/NF-matched/readback-pure, max steps UNCHANGED at 91."
+   },
+   {
+    "id": "plane.rule-partition",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "the rule set partitions into INTERACT {APP-LAM, APP-SUP, APP-ERA, DUP-LAM, DUP-SUP=, DUP-SUP!, DUP-ERA} and COLLAPSE {DUP-VAR, DUP-APP}; every fired frame carries its plane and replay refuses plane-mismatch",
+    "evidence": "Executable partition (PLANE_OF total over the rule vocabulary); every filmed frame's plane checked in replay and in the scheduler-certificate checker."
+   },
+   {
+    "id": "plane.separation.fixpoint",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "phased INTERACT-then-COLLAPSE composes only as an INTERLEAVED FIXPOINT: COLLAPSE can re-enable INTERACT (copying a stuck application exposes new APP redexes) — it is not a two-phase pipeline",
+    "evidence": "L-PLANE-SEP-1: 48/48 phased runs reach the reference NF; measured max alternation depth 4 on the corpus; collapse re-enabled interact in 12 runs."
+   },
+   {
+    "id": "collapse.progress",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "READBACK PURITY + BOUNDEDNESS: from pool-quiescence the readback fires ZERO INTERACT-plane rules — only DUP-VAR collapse, exactly one per residual live dup",
+    "evidence": "L-COLLAPSE-PROG-1: all conformance vectors + 84 fuzz quiescent states, 8 of which carry live residual dups (first non-vector confirmation of the residual-collapse class); zero INTERACT at readback, one DUP-VAR per residual, all NF-match. The AST relation's false quiescence violated exactly this purity: its readback fired INTERACT and diverged."
+   },
+   {
+    "id": "deriv.count-invariance.float",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "on floating-dup-heap-v1 the interaction count is schedule-invariant AND equals the spec's embedded reference counts",
+    "evidence": "L-DERIV-2: 24/24 vectors — all schedulers agree on the count and the count equals the spec's ref_interactions. The JS normal-order conformance driver itself matches the spec counts only 18/24: the certified relation is MORE spec-faithful than the driver."
+   },
+   {
+    "id": "film.evidence-chain",
+    "revision": 3,
+    "status": "PROPERTY-TESTED",
+    "canonical": false,
+    "statement": "films are hash-chained frames (frame_id = H(prev|pre|rule|path|post)); replay refuses 5 typed tamper classes — TERMINAL UNBOUND (round-4 hole: replay never checked film.terminal and there was no film_id)",
+    "evidence": "v0.4 rows L-BIND-1/2. Kept as history; shape retained under film_history.v3.",
+    "superseded_by": "film.evidence-chain@4"
+   },
+   {
+    "id": "film.evidence-chain",
+    "revision": 4,
+    "status": "PROPERTY-TESTED",
+    "canonical": false,
+    "statement": "v3.1: frames carry plane + typed locus and chain by frame_id = H(prev|pre|plane|rule|locus|post); the TERMINAL is bound into film_id = H(\"TRVM-FILM-v3.1\" | last_frame | termination | steps | final_state_id | normal_form_id | budget | remaining_work | planes); replay RE-DERIVES the terminal and recomputes the commitment; 16 typed refusals",
+    "evidence": "L-BIND-1/2/3: 5/5 mutation attacks refused with distinct typed reasons, including a forged normal_form with an HONESTLY RECOMPUTED film_id -> refused false-normal-form (the commitment cannot launder a false claim; replay re-derives). Honest BUDGET_EXHAUSTED films replay ok with the remaining-work witness verified; frame.i mutation accepted as declared non-authoritative metadata. Round-5 audit (superseded): replay accepted digest-consistent, honestly-committed films firing DEAD heap loci — 227 adversarial prefer-dead runs — transitions mechanically firable but outside the live relation.",
+    "supersedes": "film.evidence-chain@3",
+    "superseded_by": "film.evidence-chain@5"
+   },
+   {
+    "id": "digest.adequacy",
+    "revision": 1,
+    "status": "FALSIFIED",
+    "canonical": false,
+    "statement": "the v1 state digest identifies states exactly when observables agree — NO: binder collision (two states with different binding structure digested equal)",
+    "evidence": "The original film binder-collision bug; fixed, and the fix is pinned by the regression corpus of digest.adequacy@2. Kept as history.",
+    "superseded_by": "digest.adequacy@2"
+   },
+   {
+    "id": "digest.adequacy",
+    "revision": 2,
+    "status": "REGRESSION-LOCKED",
+    "canonical": true,
+    "statement": "the repaired digest separates every state pair the binder-collision class produced: P(x)=P(y) => O(x)=O(y) on the pinned corpus",
+    "evidence": "Kernel row L-ADEQ-1 replays the pinned regression corpus every build (evidence class REGRESSION-LOCKED: a fixed corpus, not fresh sampling).",
+    "supersedes": "digest.adequacy@1"
+   },
+   {
+    "id": "digest.adequacy.sampled",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "on freshly sampled term pairs the digest separates semantically distinct states",
+    "evidence": "Kernel row L-ADEQ-2: 269 distinct-NF pairs this round, 0 digest collisions."
+   },
+   {
+    "id": "sched.certificate",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": false,
+    "statement": "scheduling-freedom claims travel as a portable SchedulerCertificate: corpus-hash-bound, plane-profiled, with replayable exhibit films; an independent checker verifies or refuses",
+    "evidence": "L-CERT-1: positive check passes (corpus re-hash + per-frame plane membership + full replay + terminal-NF); a certificate whose plane profile is narrower than the rules its own films fired is refused: plane-violation:church_exp_2_2:DUP-VAR. Round-5 audit (superseded): 10/10 single-field forgeries (representation, criterion, strategy, budget, evidence inflation to 999,999 runs, claims/law-refs erased, corpus id, ALL exhibits erased, profile broadened with a fake rule) plus a hollow zero-exhibit certificate were ACCEPTED — the checker re-derived only the corpus hash and replayed only what it was handed; the hollow certificate also passed grid_check (assurance-composition hole).",
+    "superseded_by": "sched.certificate@2"
+   },
+   {
+    "id": "grid.consistency",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": false,
+    "statement": "the generated record may not contradict its own latest declared revision — enforced by grep blacklist over known-stale phrases (v1 checker)",
+    "evidence": "Round-3 GRID-CONSISTENCY-1. Kept as history; the blacklist survives as a supplementary check in v2.",
+    "superseded_by": "grid.consistency@2"
+   },
+   {
+    "id": "grid.consistency",
+    "revision": 2,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "REGISTRY-DRIVEN consistency: every 'law:' citation in every artifact resolves against this registry; canonical uniqueness per id; supersession lineage closed; a citation of a non-canonical entry outside superseded/history context fails the build",
+    "evidence": "grid_check v2 validates the registry itself (unique id@rev, supersedes targets exist, canonical = max revision per id) and scans kernel, kappa witnesses, grid, scheduler certificate, and ledgers.",
+    "supersedes": "grid.consistency@1"
+   },
+   {
+    "id": "sched.certificate",
+    "revision": 2,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "scheduling-freedom claims travel as SchedulerCertificate v2: every field is DERIVED (checker recomputes it), COMMITTED (inside cert_id = H(\"TRVM-SCHEDCERT-v2\" | canonical committed-field serialization)), or INFORMATIONAL (declared non-authoritative). The EVIDENCE BASIS is the run manifest — one receipt per run — which the checker RE-EXECUTES deterministically; aggregates are recomputed by arithmetic over verified receipts; claims are verified semantically; law refs must be justified by verified claims; exhibits are witnesses tied into the manifest, not the evidence basis",
+    "evidence": "Kernel L-CERT-1 (positive: 96 receipts fully re-executed; naive edit dies at cert-id-mismatch) and L-CERT-2 (15 laundered forgeries with honestly recomputed commitments each refused on a distinct semantic re-derivation, plus the hollow zero-receipt certificate with 999,999 fabricated runs). grid_check v2.1 repeats the engine-free half: commitments and aggregates recomputed, completeness, profile/refs/claims against this grid's data.",
+    "supersedes": "sched.certificate@1"
+   },
+   {
+    "id": "cert.field-discipline",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "every field of an evidence artifact is exactly one of DERIVED / COMMITTED / INFORMATIONAL; nothing normative may be merely asserted — authority may not outrun evidence",
+    "evidence": "Instantiated by SchedulerCertificate v2 and enforced by both checkers (L-CERT-1/2). Genealogy: the round-5 assurance-composition finding — two fragment verifiers whose union did not verify the substantive claim."
+   },
+   {
+    "id": "film.evidence-chain",
+    "revision": 5,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "v3.1 format unchanged; the @5 revision is REPLAY: each frame's rule must be in the film's DECLARED rule pool and its locus ENABLED in the live enumeration under that pool before it may fire (plane-not-permitted, illegal-transition; 18 typed refusals). Digest consistency is necessary but NOT sufficient — a film witnesses a derivation in the certified relation, so replay re-derives per-frame membership",
+    "evidence": "Kernel L-BIND-4: a dead-locus film (6 dead firings, digests and film_id honest) refused illegal-transition; an undeclared-plane film (COLLAPSE frames under an INTERACT-only declaration, film_id honestly recomputed) refused plane-not-permitted. L-BIND-1/2/3 retained under the stricter replay. Probes: 227 adversarial dead-locus films replayed ok under @4.",
+    "supersedes": "film.evidence-chain@4"
+   },
+   {
+    "id": "state.exec-identity",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "execStateId (= floatDigest: total heap folded in id order, dead entries included, canonical alpha/label digest) is EXECUTION identity — deliberately allocation-sensitive, which is exactly what makes it replay-grade within one implementation and one allocator discipline. Films and certificate receipts bind THIS id, and only this id.",
+    "evidence": "L-SEMID-1 (the round-6 audit witness reproduced byte-for-byte: two behaviorally identical states, digests 18b4e47b... vs 6bca1878... under a heap-id swap — VARIANCE asserted, by declaration not by accident); L-REFINE-1 (execution films are allocator-bound: the descending allocator's films are refused by replayFloat on 17/24 vectors and bit-identical on the 7 single-dup ones)."
+   },
+   {
+    "id": "state.semantic-quotient",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "semStateId is SEMANTIC identity: the LIVE heap folded in first-reachable DISCOVERY ORDER from the root, then the canonical digest. The quotient makes heap-id bijections, DEAD heap content, allocation order, alpha-renaming, and dup/sup label bijections unobservable. Cross-allocator and cross-implementation claims bind THIS id, never the execution id.",
+    "evidence": "L-SEMID-1 (invariance under the audit witness swap, dead-entry injection, alpha-rename, label bijection, the DESCENDING adversarial allocator, and mid-run random heap-id bijections — with execution identity varying alongside); L-SEMID-2 (adequacy, sampled: 0 collisions over all corpus pairs, the locked digest-adequacy pair separates semantically too, under the stated SHA-256 collision-resistance assumption); L-REFINE-1 (per-step semantic chains equal across allocators on all 24 vectors)."
+   },
+   {
+    "id": "kernel.identity",
+    "revision": 1,
+    "status": "REGRESSION-LOCKED",
+    "canonical": false,
+    "statement": "The executable may not disagree with the artifact identity: KERNEL_VERSION is a runtime constant; the source header carries it, the banner prints it, and the emitted certificate's generator string cites it. Locked, not property-tested: this guards a specific regression the round-6 audit witnessed (v0.6 source printing a v0.5 banner), one round after the evidence-binding round.",
+    "evidence": "L-ID-1 (source-header scan + certificate generator equality); grid_check v2.3 additionally locks grid.version to the kernel's KERNEL_VERSION (engine-free, source-text scan). Superseded in round 7: with a second executable (trvm_world.mjs) the single grid.version==KERNEL_VERSION lockstep is the wrong shape — identity became a MAP.",
+    "superseded_by": "kernel.identity@2"
+   },
+   {
+    "id": "refine.alloc-portability",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "The refinement bridge: two allocators of the SAME relation (ascending FloatRt; adversarial descending DescFloatRt, the stand-in for a second implementation until ic32) run every vector in lockstep with equal per-step SEMANTIC chains, equal reference NFs, equal interaction counts. The SEMANTIC FILM — canonical loci, semantic pre/post ids, committed terminal (TRVM-SEMFILM-v1) — built on one allocator REPLAYS on the other by locus matching; execution films do not travel. A RefinementReceipt records the asymmetry per term.",
+    "evidence": "L-REFINE-1: 24/24 semantic chains equal; semantic films replay cross-allocator 24/24; execution film A replays 24/24, execution film B refused by replayFloat 17/24 and bit-identical 7/24 (single-dup states where fold order cannot differ) — refinement_receipt.json carries the per-term record and grid_check v2.3 recomputes its arithmetic and commitment engine-free."
+   },
+   {
+    "id": "sched.adversarial.float",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "Persistent starvation of a redex CLASS does not break progress on the floating-dup relation: starve_dups fires an APP whenever any is enabled; starve_apps fires a heap DUP whenever any is enabled. Both complete, NF-agree, stay readback-pure, and preserve the schedule-invariant interaction count on the whole corpus — inside the certified battery, with receipts, not as a side experiment.",
+    "evidence": "L-SCHED-FLOAT-1 (144 receipts across 6 schedulers; max steps 91 — the adversaries did not even worsen the bound on this corpus); the SchedulerCertificate commits all six scheduler names and the checker re-executes every adversarial receipt like any other."
+   },
+   {
+    "id": "film.terminal-witness",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "Every terminal class a replay accepts must have a complete DECLARED witness schema; every witness field is COMMITTED into the film id; and replay independently RE-DERIVES every witness field. A terminal that is accepted but not proven is a forgery channel, whatever the rest of the chain proves. (Generalizes the round-4 execution-film terminal closure and the round-5 enabledness closure to a schema-level obligation on EVERY replay implementation, present and future — ic32 included.)",
+    "evidence": "Round-6B audit witness AUDIT-SEM-BUDGET, reproduced executably: a zero-frame BUDGET_EXHAUSTED semantic film over an enabled state replayed ok under TRVM-SEMFILM-v1, and budget/remaining_work mutations did not change film_id (budget_mutation_preserves_id: true). Closed by TRVM-SEMFILM-v1.1: both witness fields committed; replay re-derives the budget terminal (integers, remaining_work == live enabled count under the declared pool, steps === budget, remaining_work > 0). L-SEMTERM-1: honest 7-step partial film replays on BOTH allocators; 12/12 forgeries refused, each on its declared reason, including the audit witness honestly resealed."
+   },
+   {
+    "id": "kernel.identity",
+    "revision": 2,
+    "status": "REGRESSION-LOCKED",
+    "canonical": true,
+    "statement": "No executable may disagree with its artifact identity, and the RECORD may not disagree with any of them: every shipped executable declares a version constant; the grid carries artifact_versions, a map from artifact to declared version; grid_check parses each constant from source and locks the map. grid.version is the RECORD's own lineage version, decoupled from any single artifact.",
+    "evidence": "L-ID-1 (kernel-side: header == constant == certificate generator); grid_check v2.5 (engine-free: KERNEL_VERSION and WORLD_VERSION parsed from source, each locked to artifact_versions). Supersedes @1, whose single-artifact lockstep round 7 outgrew."
+   },
+   {
+    "id": "world.version-monotone",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "The WorldRecord's versions strictly increase on a global vclock; the log is append-only and dense; a read returns the latest write. Scope queries are REGISTERED and their evaluations REIFIED as digests of canonical result sets — a predicate observation is itself a versioned observable, not an ambient fact.",
+    "evidence": "trvm_world.mjs L-WORLD-1 (50 writes + delete: strict vclock, dense append-only log, latest-read). Round 8.1: the audit found the battery's first version contained an assertion incapable of failing (`... || true`) — removed, and the battery strengthened to latest-read on all six live resources, the full deletion lifecycle with tombstones, and the per-history version=>hash map."
+   },
+   {
+    "id": "warrant.freshness",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "A warrant is a VERIFYING TRACE generalized: freshness(warrant, world) iff every exact read [resource@version] and every predicate scope [query@digest] re-evaluates unchanged. Unrelated writes never invalidate — freshness reads the footprint, not the world's write counter. (The build-systems verifying-trace idea, plus the predicate-lock idea from serializable databases, as one shape.)",
+    "evidence": "trvm_world.mjs L-WAR-1: component-size warrant fresh at seal and STILL fresh after 50 unrelated writes; goes stale precisely when its footprint moves (L-WAR-4)."
+   },
+   {
+    "id": "warrant.footprint-soundness",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "The read footprint is an AUTHORITY CLAIM, so replay is JAILED: the derivation re-runs under a view that permits only the declared footprint — an undeclared read or scope refuses (undeclared-read, undeclared-scope), versions must match (footprint-version-mismatch), scopes must re-digest (scope-digest-mismatch), and value/witness/commitment re-derive (value-mismatch, witness-mismatch, warrant-id-mismatch, support-not-subset). A pruned footprint dies at the jail even when honestly resealed. Authority must not outrun evidence — the rounds-5/6 law, applied to reads.",
+    "evidence": "trvm_world.mjs L-WAR-2: honest replay ok; pruned-footprint, inflated-value, unsealed-mutation, and support-beyond-footprint forgeries each refused on their declared reason."
+   },
+   {
+    "id": "warrant.phantom-scope",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "Exact reads alone cannot witness membership of a set that grew: a resource absent at read time can join the measured structure without touching any read resource (the kappa phantom case, executable). The guard is a predicate scope: a reified query whose digest is committed in the footprint; the phantom flips the digest and classifies scope_dirty even though every exact read is byte-identical. The UNGUARDED warrant's fresh-while-wrong witness is kept red by construction.",
+    "evidence": "trvm_world.mjs L-WAR-3: phantom constructed (new node + edge via a writer that leaves every read resource untouched): true size 3 vs warranted 2 with the naked warrant 'fresh'; the scope-guarded warrant classifies scope_dirty on the incident-edge digest."
+   },
+   {
+    "id": "warrant.invalidation-trichotomy",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "Staleness is classified, each verdict with a complete witness (law:film.terminal-witness@1 applied to verdicts): support_changed (a support resource moved — re-derive), scope_dirty (a predicate scope moved — re-derive; the phantom lives here), support_intact (a read-but-not-support resource moved — eligible for EARLY CUTOFF: jailed re-derivation that reproduces the value refreshes the footprint and reseals instead of discarding).",
+    "evidence": "trvm_world.mjs L-WAR-4: three worlds, one verdict each, witnesses asserted; the support_intact case refreshes — value preserved, footprint reversioned, warrant_id resealed, refreshed warrant fresh."
+   },
+   {
+    "id": "footprint.shared",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "Warrants and certificates speak ONE evidence language: a Footprint {exact, predicates} with footprint_id. The SchedulerCertificate maps into it — corpus{id,sha256} is one exact read, evidence is the value, the run-manifest hash is the witness — so certificate freshness IS warrant freshness. (The requirement round 5 adopted, discharged.)",
+    "evidence": "trvm_world.mjs L-WAR-5: the shipped 144-receipt certificate wrapped as a Warrant v3; fresh at seal, fresh under unrelated writes, support_changed exactly when the corpus resource moves."
+   },
+   {
+    "id": "warrant.composition",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "A warrant cites another warrant ONLY through its publication — a world resource carrying {value, warrant_id, footprint_id} — and every publication read in a composite footprint is PAIRED with a reified freshness scope (warrant-fresh:<name>, the citee's footprint re-evaluated against the current world). Publication reads alone LAUNDER STALENESS: the citee can go phantom-stale without its publication moving, and the naive composite stays fresh while transitively wrong — that witness is constructed and kept red. The jail is the abstraction boundary: composite replay reads publications and freshness scopes, never citee internals.",
+    "evidence": "trvm_world.mjs L-COMP-1 (the composition phantom: citee scope_dirty and provably wrong, naive composite 'fresh', guarded composite scope_dirty on the same world); L-COMP-2 (chain + diamond: one ground movement dirties every guarded citer along both paths, with footprint dedup at the join); L-COMP-3 (honest composite replay ok; a replayer reaching for citee internals refuses undeclared-read; the pruned publication refuses undeclared-read)."
+   },
+   {
+    "id": "warrant.frame",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "The frame rule at the world layer (sigma T4's instance): a write's effect on a warrant's verdict is exactly predicted by footprint membership and scope influence. Writes outside a warrant's evidence (neither an exact-read resource nor influencing any scope result) can NEVER change its verdict; writes inside change it as classified (support hit -> support_changed; scope influence -> scope_dirty; non-support exact hit -> support_intact).",
+    "evidence": "trvm_world.mjs L-FRAME-1: 120/120 random writes (23 inside the evidence, 97 outside) with the predicted verdict matching the actual freshness classification on every draw."
+   },
+   {
+    "id": "world.write-mediated",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "World state is WRITE-MEDIATED: a resource's observable value cannot change except through a version-advancing World transition — same version IMPLIES same canonical value; every observable world mutation induces an observable world identity transition. Mechanism: a canonical resource-value domain (null, boolean, finite number, string, arrays, plain objects with sorted keys; everything else refuses world-value-not-canonical), the store owning canonical BYTES under TRVM-VALUE-v1 content hashes, and fresh parses on every read — both alias directions (ingress after put, egress through read results) die at the boundary. Deletions are TOMBSTONES: the deletion version is observable, so 'deleted' and 'never existed' do not collapse at the version layer.",
+    "evidence": "Round-8B audit witness AUDIT-WORLD-ALIAS, reproduced executably against v0.2.0: world.read(r).value.push(2) mutated the world with no put, no version change — freshness said fresh while jailed replay said value-mismatch (the two verifiers disagreed); the ingress variant leaked {a:{b:[1,99]}}. v0.3.0: L-ALIAS-1 (the witness verbatim now a no-op with verifier agreement restored; ingress and nested aliases dead; 6/6 non-canonical refusals); L-WORLD-1 (tombstone lifecycle, version=>hash)."
+   },
+   {
+    "id": "warrant.fresh-replay-coherence",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "FRESH implies REPLAY-COHERENT: for a deterministic derivation, if freshness(warrant, world) is fresh then jailed replay must succeed — the two verification mechanisms may not disagree. This is the corollary of write-mediation that warrant soundness actually consumes; the audit witness falsified exactly this implication on the aliasing substrate.",
+    "evidence": "trvm_world.mjs L-COHERE-1: 200 random histories with adversarial alias attempts (retained and fresh read references), unrelated writes, identical rewrites, and support deletions — every FRESH verdict (151/151) replayed ok; non-fresh verdicts agree with replay or are support_intact refresh candidates; per-history version=>hash invariant over all logged pairs, store cross-checked against its own log."
+   },
+   {
+    "id": "warrant.support-soundness",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "Support is DERIVED, not declared into authority: replay(D, W) = ok implies support(D) == support(W) exactly — the subset rule (support ⊆ exact footprint) is necessary but NOT sufficient, and both replayers enforce both properties (support-mismatch, the tenth refusal). Support is CANONICAL at seal (sorted, deduplicated; reordering is a no-op by construction). refreshWarrant RESTORES derivation-produced support — a forged support cannot survive the early-cutoff path. Division of verification for the shipped receipt: grid_check holds the engine-free half (subset, canonical form, commitments); `trvm_world.mjs --check-receipt` rebuilds the world from the receipt's COMMITTED world_spec and replays both warrants — the engine half a tampered-but-resealed support cannot survive.",
+    "evidence": "Round-8C audit witness AUDIT-SUPPORT-LAUNDER, reproduced executably against v0.3.0: forged-empty support replayed ok, classified support_intact where the honest warrant said support_changed on the same world change, refresh PRESERVED the forgery, and the support-pruned receipt (honestly resealed) passed grid_check — a three-way assurance-composition hole. v0.4.0: L-SUPPORT-1 locks the exact chain (replay now refuses; the freshness classification limit is STATED — freshness cannot see forgery without the engine; refresh restores [\"r:x\"] and the next movement classifies support_changed) plus six forgeries incl. composite prune/inflation; the engine mode refuses the receipt attack with support-mismatch."
+   },
+   {
+    "id": "warrant.maintenance",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "Re-derive-on-dirty is a SUPERVISED operation over the citation DAG. The DAG is extracted from COMMITTED FOOTPRINTS, not declarations: an edge citee->citer exists iff the citer's footprint exact-reads the citee's publication. Admission enforces the pairing rule (maintenance-unguarded-citation: a publication read without its warrant-fresh scope could launder staleness through maintenance itself), total registration (maintenance-unregistered-citee: supervision cannot be partial), and acyclicity (maintenance-cycle, with the residual node set as witness). Processing is in deterministic topological order, citees before citers — one pass suffices on a DAG absent external writes — and every re-derivation is VERIFIED by jailed replay BEFORE its publication becomes citable (maintenance-rederive-incoherent): evidence precedes authority, round 5's law applied to the maintainer itself. The operation is a receipt (TRVM-MAINTRECEIPT-v1): DAG, topo order, per-step pre-verdicts and warrant-id movements, value_preserved flags (the trichotomy's early-cutoff economy, legible), the quiescence sweep, and the final warrants. Division of verification: grid_check v2.9 holds the engine-free half (commitment recompute, topo respects edges, sweep coverage, dirty-only steps, manifest/edge/footprint cross-checks, pairing on final warrants); `trvm_world.mjs --check-maintenance` rebuilds the world from the committed spec, applies the committed mutation, RE-RUNS maintenance, and requires a bit-identical receipt.",
+    "evidence": "L-MAINT-1 (the glitch, kept red: naive [citer,citee] pass seals a value derived from the citee's STALE publication and stamps quiescent:true unverified; the supervised pass on an identical scenario repairs both); L-MAINT-2 (diamond: one topo pass, each dirty warrant derived+replay-verified exactly once, the unrelated warrant ZERO times — law:warrant.frame@1 at the maintenance layer — values recomputed, DAG matches committed footprints); L-MAINT-3 (value-preserving movement maintains with every step flagged value_preserved and values unchanged); L-MAINT-4 (all five refusals on their declared reasons with witnesses); maintenance_receipt.json deterministic across double runs; --check-maintenance green; six forgery cases in the negative battery."
+   },
+   {
+    "id": "maintenance.quiescence",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "A completion claim must not outrun the world it leaves behind: `quiescent` is a POST-VERIFIED full freshness sweep over EVERY registered warrant at a recorded vclock — never a plan's success bit. Within budget the loop re-passes; out of budget it REFUSES (maintenance-budget-exhausted) carrying the residual dirty set as witness. NO refusal path emits a verified-quiescence claim. The receipt's quiescence block commits the sweep itself (name + verdict per registered warrant), so the claim is checkable engine-free: a sweep that omits a warrant or records a non-fresh verdict under a verified flag fails grid_check structurally.",
+    "evidence": "The falsifier came first and is kept red by construction: naiveMaintain returns quiescent:true after a single unswept pass, and L-MAINT-1 exhibits the world calling the lie (post-hoc freshness of the glitched composite is support_changed, its value the stale-derived one). L-MAINT-4's budget case: a concurrent writer keeps the world moving; the loop spends max_rounds and refuses with residual_dirty=[A] rather than claim, and no refusal output anywhere contains a verified-quiescence claim. Forgery cases: a pruned sweep and a forged sweep verdict (both honestly resealed) die engine-free with named diagnostics."
+   }
+  ]
+ },
+ "planes": {
+  "partition": "law:plane.rule-partition@1 — every rule belongs to exactly one plane; filmed frames carry their plane; replay and the certificate checker refuse plane-mismatch",
+  "INTERACT": {
+   "rules": [
+    "APP-LAM",
+    "APP-SUP",
+    "APP-ERA",
+    "DUP-LAM",
+    "DUP-SUP=",
+    "DUP-SUP!",
+    "DUP-ERA"
+   ],
+   "gate": "none beyond redex shape — always safe under free choice on floating-dup-heap-v1"
+  },
+  "COLLAPSE": {
+   "rules": [
+    "DUP-VAR",
+    "DUP-APP"
+   ],
+   "gate": "value genuinely stuck: head chases to a FREE variable (DUP-VAR on free variables; DUP-APP on free-headed stuck applications); at readback, residual live dups resolve by DUP-VAR only (law:collapse.progress@1)"
+  },
+  "composition": "interleaved fixpoint — COLLAPSE can re-enable INTERACT (copying a stuck application exposes new APP redexes); measured max alternation depth 4 on the corpus (law:plane.separation.fixpoint@1); NOT a two-phase pipeline",
+  "out_of_scope": "WORLD and EFFECT planes are declared, not modeled: the calculus layer has no world; their laws live with the PULSE/warrant machinery"
+ },
+ "film_v3_1": {
+  "frame": [
+   "i (ordinal — DECLARED NON-AUTHORITATIVE: replay counts for itself; mutating i alone is accepted)",
+   "prev (frame_id of predecessor; 'genesis' for the first frame)",
+   "pre (pre_state_id = floatDigest of the pool before the step)",
+   "plane (INTERACT | COLLAPSE)",
+   "rule",
+   "locus — typed: t:<path> tree App | d:<id> heap-dup fire | v:<id>:<path> App inside a heap-dup value",
+   "post (post_state_id)",
+   "frame_id = H(prev|pre|plane|rule|locus|post)"
+  ],
+  "terminal": [
+   "termination: NORMAL_FORM | BUDGET_EXHAUSTED",
+   "steps",
+   "last_frame (frame_id of the final frame; 'genesis' for zero-step films)",
+   "final_state_id (floatDigest at halt)",
+   "normal_form_id (NORMAL_FORM only — semantic digest of the pure-collapse readback)",
+   "budget + remaining_work (BUDGET_EXHAUSTED only — enabled-redex count at halt, the honest witness that work remained)",
+   "planes (the plane profile the run was permitted, echoed into the commitment)"
+  ],
+  "film_id": "H(\"TRVM-FILM-v3.1\" | last_frame | termination | steps | final_state_id | normal_form_id | budget | remaining_work | planes) — the TERMINAL is inside the commitment; v3's hole (terminal never checked by replay, no film-level id) is closed",
+  "replay": "replayFloat (@5 revision, law:film.evidence-chain@5): reads the terminal first; per frame it verifies the pre-state digest, requires the frame's RULE to be in the film's declared rule pool (terminal.planes) and its LOCUS to be enabled in the live enumeration under that pool, fires, then verifies rule, plane, post-state digest and hash chain; afterwards the terminal is RE-DERIVED (last frame, step count, final state, normal-form or remaining-work claim) and film_id recomputed. Digest consistency alone is necessary but NOT sufficient: a forged claim with an honestly recomputed commitment — or an honestly digested sequence of ILLEGAL transitions — is still refused, because replay re-derives the world and membership in the relation, then the commitment",
+  "replay_refusals": [
+   "revision-mismatch",
+   "plane-not-permitted",
+   "illegal-transition",
+   "not-a-redex",
+   "rule-mismatch",
+   "plane-mismatch",
+   "post-state-mismatch",
+   "chain-mismatch",
+   "terminal-missing",
+   "terminal-last-frame-mismatch",
+   "terminal-steps-mismatch",
+   "terminal-state-mismatch",
+   "false-normal-form",
+   "terminal-nf-mismatch",
+   "terminal-malformed",
+   "terminal-work-mismatch",
+   "terminal-budget-mismatch",
+   "film-id-mismatch"
+  ],
+  "planes_field_note": "terminal.planes is a RULE POOL (rule names), not plane labels: it declares which rules the run was permitted; the plane partition maps each rule to INTERACT or COLLAPSE"
+ },
+ "film_history": {
+  "note": "superseded shapes retained verbatim for lineage; canonical shape is film_v3_1 (law:film.evidence-chain@4)",
+  "v3": {
+   "frame": [
+    "seq",
+    "prev_frame_id",
+    "pre_state_id",
+    "rule_id",
+    "redex_path",
+    "post_state_id",
+    "frame_id = H(prev|pre|rule|path|post)",
+    "(reserved: law_certificate_ids, scheduler_certificate_id)"
+   ],
+   "terminal": [
+    "termination: NORMAL_FORM | BUDGET_EXHAUSTED | REFUSED",
+    "steps",
+    "last_frame",
+    "normal_form_id (sem-, full SHA-256)"
+   ],
+   "replay_refusals": [
+    "revision-mismatch",
+    "post-state-mismatch",
+    "chain-mismatch",
+    "rule-mismatch",
+    "not-a-redex"
+   ]
+  }
+ },
+ "scheduler_certificate": {
+  "version": 2,
+  "law": "law:sched.certificate@2 with law:cert.field-discipline@1",
+  "representation": "floating-dup-heap-v1",
+  "corpus_id": "conformance-vectors",
+  "law_refs_expected": [
+   "law:sched.free.float@1",
+   "law:plane.rule-partition@1",
+   "law:deriv.count-invariance.float@1"
+  ],
+  "claims_vocabulary": [
+   "completion",
+   "nf-agreement-with-reference",
+   "readback-purity",
+   "interaction-count-invariance",
+   "spec-count-equality"
+  ],
+  "claim_requirements": {
+   "law:sched.free.float@1": [
+    "completion",
+    "nf-agreement-with-reference",
+    "readback-purity"
+   ],
+   "law:plane.rule-partition@1": [],
+   "law:deriv.count-invariance.float@1": [
+    "interaction-count-invariance",
+    "spec-count-equality"
+   ]
+  },
+  "exhibit_terms": [
+   "church_exp_2_2",
+   "church_exp_3_2",
+   "church_exp_2_3",
+   "church_exp_3_3",
+   "church_exp_4_2",
+   "church_exp_2_4"
+  ],
+  "field_discipline": {
+   "derived": [
+    "every receipt (via full deterministic re-execution: steps, interactions, termination, final_state_id, nf_id, nf_matched, readback counts, film_id)",
+    "evidence aggregates (arithmetic over verified receipts)",
+    "corpus sha256 (from the vectors the checker is handed)"
+   ],
+   "committed": [
+    "type",
+    "version",
+    "representation",
+    "plane_profile",
+    "quiescence_criterion",
+    "strategy{kind,schedulers}",
+    "budget",
+    "corpus{id,sha256}",
+    "claims",
+    "law_refs",
+    "run_manifest_hash",
+    "exhibit_film_ids"
+   ],
+   "informational": [
+    "informational.* (generator, node, note) — outside cert_id, forbidden from supporting law claims"
+   ]
+  },
+  "receipt_fields": [
+   "term_name",
+   "scheduler",
+   "seed",
+   "steps",
+   "interactions",
+   "termination",
+   "final_state_id",
+   "nf_id",
+   "nf_matched",
+   "readback{interact,collapse,live}",
+   "film_id"
+  ],
+  "commitment": "cert_id = H(\"TRVM-SCHEDCERT-v2\" | canonical committed-field serialization); run_manifest_hash = H(JSON(receipts)); silent edits break the commitment, laundered edits (commitment honestly recomputed) must survive the semantic re-derivations — and are refused there",
+  "verification_division": "grid_check v2.1 (ENGINE-FREE): recomputes cert_id and run_manifest_hash, recomputes aggregates by arithmetic over receipts, checks completeness (schedulers x terms, once each, nonzero), and checks representation, profile, corpus id, law refs, claims and exhibit coverage against THIS section's data. Kernel checkSchedulerCertificateV2 (ENGINE): re-EXECUTES every receipt deterministically and verifies claims semantically. Together no field is uncovered — the round-5 composition hole (fragment verifiers whose union verified nothing) is closed by construction",
+  "evidence_snapshot": {
+   "schedulers": 6,
+   "terms": 24,
+   "runs": 144,
+   "completed": 144,
+   "nf_matched": 144,
+   "readback_pure": 144,
+   "max_steps": 91
+  },
+  "supersedes": "scheduler_certificate v1 (round-4 shape; registry entry sched.certificate@1, superseded) — which itself superseded reduction_certificate (v0.4)",
+  "strategy_schedulers": [
+   "leftmost",
+   "deepest",
+   "middle",
+   "random",
+   "starve_dups",
+   "starve_apps"
+  ],
+  "round_6_note": "Two of the six schedulers are starvation adversaries (law:sched.adversarial.float@1); the certificate shape, laws, and checker are unchanged — the battery widened and the receipts carry it."
+ },
+ "l_prog_history": {
+  "v0_4_claim": "L-PROG-1 read four naive schedulers failing 6/24 duplication-heavy terms at a 20k budget, vs reference normal-order 24/24 within 91 interactions, as 'the strategy is the progress certificate'",
+  "round_4_diagnosis": "the six failures were FALSE QUIESCENCE, not slowness: findRedexes()==[] at steps 15/26/21/37/37/27 with ~0 interactions consumed; reference normalization from the quiescent states then burns a 2,000,000 budget firing ~0 interactions (sub-map knot). Quiescent witness (church_exp_2_2, step 15): !&1001{a,b}=!&1002{c,d}=b;&1001{c,(e (f &1002{d,g}))};h",
+  "stronger_finding": "free scheduling restricted to INTERACT-plane rules only still knots 18/24 — the seam is the body-carrying AST term REPRESENTATION, not plane mixing",
+  "resolution": "L-PROG-1 retired. The false-quiescence witness stays red by design as L-FQ-AST-1 (law:sched.free.ast-term@1, FALSIFIED). Scheduling freedom re-stated and certified on floating-dup-heap-v1 (L-SCHED-FLOAT-1, law:sched.free.float@1): 96/96 runs complete within 91 steps, NF-agree, readback-pure",
+  "moral": "a red row must be diagnosed before it is narrated: v0.3 read the failures as slowness and drew a true-but-wrong moral; the falsifier had actually caught a representation-level unsoundness of free scheduling on that relation"
+ },
+ "state_identity": {
+  "resolution": "The v0.5/v0.6 open question — is floatDigest invariant under heap-id permutation? — is answered NO, by an external-audit witness reproduced here byte-for-byte: two states with identical behavior (same enabled rules, same NF ((X Y) (X Y)), same counts) digest to 18b4e47b34d38339... vs 6bca1878284b4dfd... under a heap-id swap, and a DEAD heap entry perturbs the digest while the live state is untouched. The verdict adopted is the audit's: this is not a bug in the digest — it is the WRONG QUOTIENT for semantic claims. Identity SPLITS.",
+  "execution_identity": "execStateId (= floatDigest) — total heap, id-order fold, dead entries included. Allocation-sensitive BY DECLARATION; replay-grade; bound by films and certificate receipts (law:state.exec-identity@1).",
+  "semantic_identity": "semStateId — LIVE heap only, folded in first-reachable discovery order, canonical alpha/label digest. Quotients heap-id bijections, dead content, allocation order, alpha, labels (law:state.semantic-quotient@1). Bound by semantic films and the RefinementReceipt; the id a second implementation must reproduce.",
+  "design_rule": "One digest is never forced to mean two things: portable claims name semStateId, replay claims name execStateId, and any artifact that binds one of them says WHICH. (Adopted from the round-6 review's execution_state_id / semantic_state_id proposal.)",
+  "open": "Cross-IMPLEMENTATION invariance (ic32) is constructed-for but not yet exercised: DescFloatRt is an adversarial stand-in, not a second implementation. The semantic-film replay protocol is the interface ic32 must satisfy."
+ },
+ "semantic_film": {
+  "law": "law:refine.alloc-portability@1 with law:state.semantic-quotient@1 and law:film.terminal-witness@1",
+  "domain_tag": "TRVM-SEMFILM-v1.1",
+  "frame_fields": [
+   "i (non-authoritative)",
+   "plane",
+   "rule",
+   "locus (CANONICAL: t:<path> | d:<discovery-ix> | v:<discovery-ix>:<path>)",
+   "pre (semStateId)",
+   "post (semStateId)",
+   "prev",
+   "frame_id"
+  ],
+  "terminal_fields": [
+   "termination",
+   "steps",
+   "last_frame",
+   "final_sem_id",
+   "normal_form_id",
+   "planes (RULE pool, as in execution films)",
+   "budget (BUDGET_EXHAUSTED witness, committed)",
+   "remaining_work (BUDGET_EXHAUSTED witness, committed, re-derived as the live enabled count under the declared pool)"
+  ],
+  "replay": "replaySemFilm(term, film, RtClass): extrude on a FRESH runtime of ANY class implementing the relation; per frame, the rule must be in the declared pool, the semantic pre must match, the canonical locus must MATCH an enabled redex (enabledness is inherent — an unmatched locus refuses), the rule/plane/post/chain re-derive; the terminal re-derives including semantic quiescence and the NF. For BUDGET_EXHAUSTED the terminal witness is re-derived, not accepted: budget and remaining_work must be integers, remaining_work must equal the live enabled count under the declared pool at the replayed final state, steps must EQUAL the declared budget, and remaining_work must be > 0.",
+  "replay_refusals": [
+   "sem-terminal-missing",
+   "sem-plane-not-permitted",
+   "sem-revision-mismatch",
+   "sem-locus-not-enabled",
+   "sem-not-a-redex",
+   "sem-rule-mismatch",
+   "sem-plane-mismatch",
+   "sem-post-mismatch",
+   "sem-chain-mismatch",
+   "sem-terminal-last-frame-mismatch",
+   "sem-terminal-steps-mismatch",
+   "sem-terminal-state-mismatch",
+   "sem-false-normal-form",
+   "sem-terminal-nf-mismatch",
+   "sem-terminal-malformed",
+   "sem-film-id-mismatch",
+   "sem-terminal-work-mismatch",
+   "sem-budget-mismatch",
+   "sem-no-remaining-work"
+  ],
+  "relation_to_execution_films": "Execution films (film_v3_1) stay the LOCAL evidence: allocator-bound, replayed by replayFloat on the same discipline that made them. Semantic films are the PORTABLE evidence: what travels across allocators today and implementations tomorrow. L-REFINE-1 exhibits both directions on every vector.",
+  "supersedes_domain": "TRVM-SEMFILM-v1 (round-6.1: accepted BUDGET_EXHAUSTED while committing and re-deriving none of its witness fields — the audit's AUDIT-SEM-BUDGET forged it with a zero-frame film)",
+  "strictness_delta_vs_execution_films": "Deliberate: semantic replay requires steps === budget (execution replay requires steps >= budget) and remaining_work > 0 (execution replay accepts 0). The honest generator stops exactly at steps === budget, and a BUDGET_EXHAUSTED claim on a quiescent state is an under-claim — tolerated in the local evidence object, refused in the portable one where the terminal class IS the claim. Revisit at film.evidence-chain@6 if execution films should be tightened to match."
+ },
+ "refinement_receipt": {
+  "type": "RefinementReceipt",
+  "version": 1,
+  "law_refs_expected": [
+   "law:refine.alloc-portability@1",
+   "law:state.semantic-quotient@1",
+   "law:state.exec-identity@1"
+  ],
+  "relation": "floating-dup-heap-v1",
+  "allocators": {
+   "A": "ascending (FloatRt)",
+   "B": "descending-stride-13 (DescFloatRt), an adversarial stand-in for a second implementation until ic32"
+  },
+  "per_term_fields": [
+   "name",
+   "steps",
+   "interactions",
+   "sem_chain_equal",
+   "nf_id",
+   "sem_film_id",
+   "exec_film_id_A",
+   "exec_film_id_B",
+   "exec_films_equal",
+   "sem_film_replay_on_B",
+   "exec_film_B_replay"
+  ],
+  "commitment": "receipt_id = H(\"TRVM-REFINE-v1\" | JSON(per_term) | JSON(summary))",
+  "summary_arithmetic": "sem_chains_equal = count(per_term.sem_chain_equal); exec_films_B_refused_by_A_replay = count(exec_film_B_replay startswith 'refused'); exec_films_identical_across_allocators = count(exec_films_equal); refused + identical = terms; sem_films_replayed_on_B = count(sem_film_replay_on_B == 'ok'). grid_check v2.3 recomputes ALL of these engine-free and recomputes the commitment; the kernel battery re-derives the underlying runs."
+ },
+ "artifact_versions": {
+  "trvm_law_kernel.mjs": "1.0.2",
+  "trvm_world.mjs": "0.5.0"
+ },
+ "world": {
+  "artifact": "trvm_world.mjs v0.5.0 — a separate executable; the calculus kernel is FROZEN at v1.0.2 and has no world by design",
+  "record": "versioned resource store (name -> {value, version}) on a global monotone vclock; append-only dense log; registered scope queries reified as digests (domain TRVM-SCOPE-v1)",
+  "views": {
+   "tracked": "the honest builder: records every exact read [resource@version] and every scope evaluation [query@digest] into the footprint",
+   "jailed": "the replayer: permits ONLY the declared footprint; undeclared access refuses — authority must not outrun evidence"
+  },
+  "flagship": "the kappa-flavored graph world: nodes, edges, and forward adjacency indices as resources; component-size measures whose footprints are their traversals; the phantom constructed via a writer that adds a member without touching any read resource",
+  "research_anchors": "verifying/constructive traces and early cutoff (build systems a la carte); demanded computation graphs and nominal identifiers (Adapton family); predicate locks / SSI phantom protection (serializable databases); reified tracked queries (hermetic build glob tracking). The warrant is the common shape: a portable verifying trace with predicate scopes and a jailed replayer.",
+  "canonical_value_domain": "null | boolean | finite number | string | array of canonical | plain object with canonical (sorted) key order. Everything else refuses world-value-not-canonical. The store owns canonical bytes; value_hash = H('TRVM-VALUE-v1' | bytes); every read is a fresh parse. (law:world.write-mediated@1)",
+  "deletions": "TOMBSTONES: del advances the vclock and the tombstone carries the deletion version; read returns {value: undefined, version: delVersion, deleted: true}; 'never existed' stays {version: 0}. names() and exists() are extensional (live only).",
+  "round_8_1_witness": "AUDIT-WORLD-ALIAS (external): state changed without an identity transition — read-aliased mutation left version and vclock fixed while freshness said fresh and replay said value-mismatch. The layer's own analog of the round-6 execution-vs-semantic identity problem: evidence cannot outrun the state identity of the world it describes. The law beneath warrant freshness is not merely that versions increase — it is that every observable mutation induces an identity transition."
+ },
+ "sigma_profile": {
+  "note": "sigma T1/T2/T4 named as instances in the schemas since round 3; this section records their WORLD-layer instantiations, executable.",
+  "T1_derivation": "derivation_id = H(canonical inputs) on every warrant; the DERIVATION schema's kernel instances (CONF-1, L-DERIV-*) carry the calculus half — law:warrant.freshness@1 carries the world half",
+  "T2_monotonicity": "the WorldRecord's global vclock and append-only dense log — law:world.version-monotone@1 (L-WORLD-1)",
+  "T4_frame": "writes outside a warrant's evidence never change its verdict — law:warrant.frame@1 (L-FRAME-1, 120/120 predicted); the separation-logic frame rule as a world property"
+ },
+ "changelog_from_1_4_0": [
+  "round 9 (the maintenance round): re-derive-on-dirty becomes a SUPERVISED operation over the citation DAG — law:warrant.maintenance@1 and law:maintenance.quiescence@1 enter the registry (41 entries).",
+  "the falsifier came first, per house rules: naiveMaintain (caller-order single pass, quiescent stamped unverified) exhibits the classic incremental-computation GLITCH — a citer re-derived against its citee's STALE publication — kept red by construction in L-MAINT-1.",
+  "the DAG is evidence, not declaration: edges are read off committed footprints; admission refuses unguarded citations (the pairing rule at the maintenance gate), unregistered citees, and cycles.",
+  "every re-derivation is verified by jailed replay BEFORE republication (maintenance-rederive-incoherent) — evidence precedes authority, at the maintainer itself.",
+  "quiescence is a post-verified sweep at a recorded vclock; out of budget the loop REFUSES with the residual dirty set; no refusal path claims.",
+  "maintenance_receipt.json ships (TRVM-MAINTRECEIPT-v1) with committed world_spec + mutation; grid_check v2.9 holds the engine-free half, --check-maintenance the engine half (bit-identical re-run).",
+  "trvm_world.mjs 0.4.0 -> 0.5.0; kernel untouched at 1.0.2 — frozen means frozen."
+ ]
+}

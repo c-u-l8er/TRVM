@@ -18,12 +18,17 @@ IC32Z   := runtime/zig/ic32z
 IC32M   := runtime/mojo/ic32m
 WASM    := runtime/wasm/ic32.wasm
 PYPATH  := runtime/python:distribution:research
+GOV     := governance
+# The evidence plane reads the ONE canonical corpus; the embedded copy in the
+# kernel is a fallback, and both commit to the same hash by corpus projection.
+VECTORS := ../docs/spec/conformance/vectors/normalize.json
 
 .PHONY: test conformance native native-selftest zig zig-selftest mojo mojo-selftest \
-        wasm-smoke swarm research clean
+        wasm-smoke swarm research clean \
+        governance gov-kernel gov-grid gov-world gov-negative
 
 test: native zig mojo conformance native-selftest zig-selftest mojo-selftest \
-      wasm-smoke swarm research
+      wasm-smoke swarm research governance
 	@echo ""
 	@echo "==== TRVM full battery complete ===="
 
@@ -92,6 +97,31 @@ swarm:
 	@echo "==== [swarm] ic32.wasm coordination-free across worker_threads ===="
 	@if command -v $(NODE) >/dev/null 2>&1; then $(NODE) runtime/js/swarm.js | tail -4; \
 	else echo "  (node not found — skipping swarm)"; fi
+
+## --- evidence / law plane --------------------------------------------------
+# The execution plane above computes; this plane identifies, constrains, and
+# proves. They meet at the canonical corpus (same 24 vectors, same committed
+# hash) and, since round 10, at canonical semantic bytes. A runtime change that
+# moved semantics would now fail here rather than pass quietly.
+governance: gov-kernel gov-grid gov-world gov-negative
+	@echo "  evidence plane green"
+
+gov-kernel:
+	@echo "==== [governance] law kernel — conformance + the periodic-law grid ===="
+	@cd $(GOV) && TRVM_VECTORS=$(VECTORS) $(NODE) trvm_law_kernel.mjs | tail -2
+
+gov-grid:
+	@echo "==== [governance] invariant grid — registry, citations, engine-free receipts ===="
+	@cd $(GOV) && $(NODE) grid_check.mjs
+
+gov-world:
+	@echo "==== [governance] World — warrants, maintenance, confinement ===="
+	@cd $(GOV) && $(NODE) trvm_world.mjs | tail -1
+	@cd $(GOV) && $(NODE) trvm_world.mjs --check-receipt
+
+gov-negative:
+	@echo "==== [governance] negative battery — every forgery must be caught ===="
+	@cd $(GOV) && ./negative_battery.sh | tail -1
 
 ## --- identity/memory result ------------------------------------------------
 research:
