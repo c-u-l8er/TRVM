@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   trvm_world.mjs — v0.10.0 — the WORLD layer: WorldRecord + Warrant v3,
-   executable. The calculus kernel (trvm_law_kernel.mjs, frozen at v1.0.1)
+   trvm_world.mjs — v0.11.0 — the WORLD layer: WorldRecord + Warrant v3,
+   executable. The calculus kernel (trvm_law_kernel.mjs, v1.1.0 — calculus frozen
+   since v1.0.2; 1.1.0 is the additive module interface)
    has no world by design; this artifact is where WORLD-plane law begins.
 
    WHAT THIS IS (round 7 — the warrant round)
@@ -157,7 +158,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { randomBytes } from "node:crypto";
-const WORLD_VERSION = "0.10.0";
+const WORLD_VERSION = "0.11.0";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
 const cj = (o) => JSON.stringify(o);
@@ -584,11 +585,32 @@ const deepFreeze = (v) => {
   for (const k of Object.keys(v)) deepFreeze(v[k]);
   return v;
 };
-const ownValue = (v) => {
-  if (v === null || typeof v !== "object") return v;
-  try { return deepFreeze(JSON.parse(canonicalBytes(v))); }
-  catch { try { return deepFreeze(structuredClone(v)); } catch { return v; } }
-};
+// OWNERSHIP FAILS CLOSED. v0.10.0 ended in `catch { return v }`, so an object
+// neither mechanism could own was handed straight back — the caller kept the
+// authority the layer existed to take. Three variants reproduced against it
+// (probe_ownfailopen_9d3_repro.mjs): a witness carrying a method defeated both
+// paths; a Map witness passed structuredClone while `Object.freeze` left its
+// ENTRIES writable; and spec.inputs took the whole registration-alias species
+// back, with B re-deriving on a mutated input mid-pass.
+//
+// The Map case is the one that matters beyond aliasing. `JSON.stringify(new
+// Map([["e",1]]))` is `{}`, so Map([["e",1]]) and Map([["e",999]]) are
+// indistinguishable to warrant identity: the OWNERSHIP domain and the IDENTITY
+// domain disagreed about what a value is. One domain now, and it is the one the
+// World already refuses on — a witness may be semantically OPAQUE without being
+// representationally ARBITRARY. If tagged encodings for Map/Set/Date are ever
+// needed, they must be defined once and used by ownership, equality,
+// warrant_id and replay together, never by structuredClone on one side and
+// JSON.stringify on the other.
+function ownCanonical(v, label) {
+  try {
+    const bytes = canonicalBytes(v);
+    return v === null || typeof v !== "object" ? v : deepFreeze(JSON.parse(bytes));
+  } catch (e) {
+    throw new Error(label + "-not-canonical: " +
+      String(e.message).replace(/^world-value-not-canonical: /, ""));
+  }
+}
 
 // SCHEMA-COMPLETE ownership. v0.9.0's ownSpec kept {measure, predicate,
 // measureFn} and silently dropped `inputs`, `law_refs` and `naive` — all of
@@ -603,7 +625,7 @@ const ownSpec = (sp = {}) => {
   return Object.freeze({
     measure: sp.measure,
     predicate: sp.predicate,
-    inputs: ownValue(sp.inputs ?? null),
+    inputs: ownCanonical(sp.inputs ?? null, "spec.inputs"),
     law_refs: Object.freeze([...(sp.law_refs ?? [])]),
     naive: sp.naive === true,
     measureFn: sp.measureFn,
@@ -618,8 +640,8 @@ const ownWarrant = (w) => {
   if (!w || typeof w !== "object") return w;
   const fp = w.read_footprint;
   return Object.freeze({ ...w,
-    value: ownValue(w.value),           // v0.10.0: transitive, not shallow
-    witness: ownValue(w.witness),
+    value: ownCanonical(w.value, "warrant.value"),       // transitive AND fail-closed
+    witness: ownCanonical(w.witness ?? null, "warrant.witness"),
     support: Object.freeze([...(w.support ?? [])]),
     law_refs: Object.freeze([...(w.law_refs ?? [])]),
     read_footprint: fp ? Object.freeze({

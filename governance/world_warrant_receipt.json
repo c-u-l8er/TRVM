@@ -97,7 +97,7 @@
   ],
   "informational": {
    "note": "NON-AUTHORITATIVE",
-   "generator": "trvm_world.mjs v0.10.0"
+   "generator": "trvm_world.mjs v0.11.0"
   },
   "warrant_id": "20f2849e7be06e0b1fb04f373986d19c7dfcaef14c2e50d4396b3fc20e885a5c"
  },
@@ -136,7 +136,7 @@
    ],
    "informational": {
     "note": "NON-AUTHORITATIVE",
-    "generator": "trvm_world.mjs v0.10.0"
+    "generator": "trvm_world.mjs v0.11.0"
    },
    "warrant_id": "c0c12c75925fbbbf6c57654ce9685a0262bfbd58b62ebc89c8d639d605495d73"
   },
@@ -158,7 +158,7 @@
  },
  "informational": {
   "note": "NON-AUTHORITATIVE",
-  "generator": "trvm_world.mjs v0.10.0"
+  "generator": "trvm_world.mjs v0.11.0"
  },
- "receipt_id": "c9a99f3986bc81445a2f77c6d93baa66ab51f48d3bf96dff4407c17a7ba1dd53"
+ "receipt_id": "5355823c78e629515dcaf0b96ae0c3ab64aed7802839c19cfdcdbc8a78021343"
 }

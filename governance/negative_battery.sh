@@ -13,6 +13,20 @@ BASE="$(cd "$(dirname "$0")" && pwd)"
 # FAIL for want of an out.txt while the forgery it targets was being refused
 # correctly all along. Named once, defaulted, and asserted per case below.
 SCRATCH="${SCRATCH:-/tmp/neg5}"
+# law:evidence.instrument-nonvacuity@1 — the mechanised half.
+# A per-file digest, not a whole-tree one: "something changed" is weaker than
+# "the intended target changed", and the law says target. changed_files() names
+# what the perturbation actually moved, so a case that edits the wrong artifact
+# is as visible as one that edits nothing.
+file_digests () { ( cd "$1" && for f in *; do [ -f "$f" ] && printf "%s %s\n" "$(sha256sum "$f" | cut -d" " -f1)" "$f"; done | sort ); }
+# Symmetric difference, not one-sided: a case that DELETES an artifact removes a
+# line from the "after" set, which a one-sided comm cannot see. The first draft
+# used comm -13 and duly reported refine-receipt-missing — a case that deletes
+# refinement_receipt.json — as VACUOUS. The non-vacuity detector's own first
+# defect was a vacuity blind spot, found by running it. Recorded rather than
+# quietly fixed, because that is the law's whole point.
+changed_files () { { printf "%s\n" "$1"; printf "%s\n" "$2"; } | sort | uniq -u | awk "{print \$2}" | sort -u | tr "\n" "," | sed "s/,$//"; }
+
 run_case () {  # name, expected-grep, setup-script(python)
   local name="$1" want="$2" py="$3"
   local d=$SCRATCH/$name
@@ -25,17 +39,18 @@ run_case () {  # name, expected-grep, setup-script(python)
   # vacuous, and a vacuous falsifier is worse than an absent one because the
   # roster still counts it. Six apparatus failures across four rounds would each
   # have been caught here; the hard-coded "1.0.2" replacement is the exact shape.
-  local pre; pre=$(cd "$d" && cat * 2>/dev/null | sha256sum | cut -d" " -f1)
+  local pre; pre=$(file_digests "$d")
   ( cd "$d" && python3 -c "$py" )
-  local post; post=$(cd "$d" && cat * 2>/dev/null | sha256sum | cut -d" " -f1)
+  local post; post=$(file_digests "$d")
   CASES=$((CASES+1))
-  if [ "$pre" = "$post" ]; then
-    echo "FAIL  $name (VACUOUS — the forgery left the tree byte-identical; nothing was tested)"; FAILED=1; return
+  local touched; touched=$(changed_files "$pre" "$post")
+  if [ -z "$touched" ]; then
+    echo "FAIL  $name (VACUOUS — the forgery changed no artifact; nothing was tested)"; FAILED=1; return
   fi
   local out; out=$(cd "$d" && node grid_check.mjs 2>&1); local code=$?
   if [ $code -ne 0 ] && echo "$out" | grep -qE "$want"; then
     CAUGHT=$((CAUGHT+1))
-    echo "PASS  $name → $(echo "$out" | grep -m1 -E "$want" | sed 's/^ *//' | cut -c1-110)"
+    echo "PASS  $name [$touched] → $(echo "$out" | grep -m1 -E "$want" | sed 's/^ *//' | cut -c1-96)"
   else
     echo "FAIL  $name (exit=$code; wanted /$want/)"; echo "$out" | head -5; FAILED=1
   fi
@@ -125,13 +140,20 @@ run_case_engine() {  # like run_case but the verifier is the WORLD ENGINE mode
   local d="$SCRATCH/$name"
   rm -rf "$d" && mkdir -p "$d" || { echo "FAIL  $name (scratch unusable: $d)"; CASES=$((CASES+1)); FAILED=1; return; }
   cp $BASE/invariant-grid.json $BASE/trvm_law_kernel.mjs $BASE/grid_check.mjs      $BASE/kappa_witnesses.mjs $BASE/scheduler_certificate.json $BASE/refinement_receipt.json $BASE/golden_prehash_vectors.json      $BASE/trvm_world.mjs $BASE/world_warrant_receipt.json      $BASE/round-3-ledger.md $BASE/round-4-ledger.md $BASE/round-5-ledger.md $BASE/round-6-ledger.md $BASE/round-7-ledger.md $BASE/round-8-ledger.md $BASE/round-9-ledger.md "$d/"
-  ( cd "$d" && python3 -c "$py" && node trvm_world.mjs --check-receipt > out.txt 2>&1 )
+  local pre; pre=$(file_digests "$d")
+  ( cd "$d" && python3 -c "$py" )
+  local post; post=$(file_digests "$d")
+  local touched; touched=$(changed_files "$pre" "$post")
+  CASES=$((CASES+1))
+  if [ -z "$touched" ]; then
+    echo "FAIL  $name (VACUOUS — the forgery changed no artifact; nothing was tested)"; FAILED=1; return
+  fi
+  ( cd "$d" && node trvm_world.mjs --check-receipt > out.txt 2>&1 )
   local code=$?
   local msg=$(grep -aoE "$want" "$d/out.txt" | head -1)
-  CASES=$((CASES+1))
   if [ $code -ne 0 ] && [ -n "$msg" ]; then
     CAUGHT=$((CAUGHT+1))
-    echo "PASS  $name → engine: $msg"
+    echo "PASS  $name [$touched] → engine: $msg"
   else
     echo "FAIL  $name (engine exit=$code; wanted /$want/)"; FAILED=1
   fi
@@ -461,6 +483,23 @@ run_case writemediation-section-dropped "write_mediation missing" "
 import json
 g = json.load(open('invariant-grid.json'))
 del g['maintenance']['confinement']['write_mediation']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+# ── H. round-9D.3 forgeries: ownership must fail closed ──────────────────
+run_case ownership-failopen-restored "fail-open ownership path" "
+s = open('trvm_world.mjs').read()
+i = s.index('function ownCanonical')
+j = s.index('}', s.index('throw new Error(label', i)) + 1
+open('trvm_world.mjs','w').write(s[:i] + 'function ownCanonical(v, label) { try { return v; } catch { return v; } }' + s[j+1:])"
+
+run_case ownership-refusal-stripped "total-ownership construct" "
+s = open('trvm_world.mjs').read()
+open('trvm_world.mjs','w').write(s.replace('-not-canonical: ','-not-canonical_'))"
+
+run_case film-identity-declaration-dropped "film_identity_forward_declaration missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+del g['film_identity_forward_declaration']
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 echo; [ $FAILED -eq 0 ] && echo "NEGATIVE BATTERY: $CASES/$CASES forgeries caught" || echo "NEGATIVE BATTERY: FAILURES PRESENT ($CAUGHT/$CASES caught)"
