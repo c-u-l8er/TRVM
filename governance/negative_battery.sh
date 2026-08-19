@@ -746,8 +746,8 @@ open('derive_protocol.mjs','w').write(src)"
 
 run_case acceptance-claims-committable "must not return .committable" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('return { ok: true, validated: true, fresh_at_check: true, trace_conforms: v.trace_conforms,',
-                  'return { ok: true, validated: true, fresh_at_check: true, committable: true, trace_conforms: v.trace_conforms,')
+src = src.replace('{ ok: true, validated: true, fresh_at_check: true,',
+                  '{ ok: true, validated: true, fresh_at_check: true, committable: true,')
 open('derive_protocol.mjs','w').write(src)"
 
 run_case authorize-options-reopened "must whitelist its options" "
@@ -880,6 +880,52 @@ run_case lowering-spike-dropped "lowering_spike missing" "
 import json
 g = json.load(open('invariant-grid.json'))
 del g['lowering_spike']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+
+# ── round 22: an execution claim is not provenance ──────────────────────────
+
+run_case derive-caller-picks-implementation "deriveLocally must take NO implementation parameter" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('export function deriveLocally(registry, req) {',
+                  'export function deriveLocally(registry, req, caller_id) {')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case provenance-observation-removed "must observe what the host launched" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('implementation-claim-contradicts-observation', 'implementation-claim-ok')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case validator-does-provenance-again "must report implementation_claimed" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('implementation_claimed: impl', 'implementation_id: impl')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case provenance-law-v2-deleted "implementation-provenance@2 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if not (e['id'] == 'derivation.implementation-provenance' and e['revision'] == 2)]
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case false-claim-history-scrubbed "must stay on the record AS a false claim" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.implementation-provenance' and e['revision'] == 1:
+        e['revision_note'] = 'superseded by a later revision'
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case runner-contract-dropped "clean_baseline.runner_contract missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+del g['clean_baseline']['runner_contract']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case outcome-hashes-a-sentence "encodes refusal STRUCTURALLY" "
+import json
+g = json.load(open('invariant-grid.json'))
+del g['lowering_spike']['identities']['outcome_encoding']
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 

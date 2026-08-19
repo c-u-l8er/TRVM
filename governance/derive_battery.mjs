@@ -10,6 +10,7 @@ import {
   CORE_SPEC, CORE_SEM_ID, validateProgram, SEMANTIC_RESULT_FIELDS, EXECUTION_ENVELOPE_FIELDS,
   validateTraceConformance,
   validateFootprintFresh, DerivationAuthority, checkIntent, requestSemId,
+  JS_IMPLEMENTATION_ID as JS_IMPL,
 } from "./derive_protocol.mjs";
 import { createHash } from "node:crypto";
 
@@ -218,17 +219,22 @@ const mkReq = (over = {}) => {
   // THE POINT OF THE SPLIT: a conforming foreign implementation validates, and
   // its provenance is reported rather than compared away. Comparing whole
   // results would make cross-implementation validation fail by construction.
-  const asIfC = withExec(honest, { implementation_id: "impl-c-derive-v0.6.0" });
+  const asIfC = withExec(honest, { implementation_id: "impl-c-derive-v0.7.0" });
   const v = validateForeignResult(reg, req, asIfC);
   const sameSemantics = canonicalBytes(semanticProjection(asIfC)) === canonicalBytes(semanticProjection(honest));
-  R("semantic-projection-is-portable", v.ok && v.implementation_id === "impl-c-derive-v0.6.0" && sameSemantics,
-    `a result identical in semantics but produced by impl-c-derive-v0.2.0 validates, and the authority ` +
-    `records WHO ran it (${v.implementation_id}). program_sem_id is equal across implementations; ` +
-    `implementation_id is outside the semantic projection, which is what makes a portable film possible`);
-  // and the requirement is enforced against the foreign claim too
-  const mismatched = validateForeignResult(reg, { ...req, expected_implementation_id: JS_IMPLEMENTATION_ID }, asIfC);
-  R("implementation-requirement-checked-on-result", !mismatched.ok && /implementation-mismatch: want/.test(mismatched.reason),
-    `a result from a different executor than the one required is refused: ${mismatched.reason}`);
+  R("semantic-projection-is-portable", v.ok && v.implementation_claimed === "impl-c-derive-v0.7.0" && sameSemantics,
+    `a result identical in semantics but CLAIMING impl-c-derive-v0.7.0 agrees on the semantic projection, ` +
+    `and the validator reports what it CLAIMED (${v.implementation_claimed}) rather than certifying it. ` +
+    `program_sem_id is equal across implementations; execution evidence is outside the projection, which ` +
+    `is what makes a portable film possible`);
+  // the validator establishes MEANING and CONFORMANCE and NOT provenance, and
+  // v0.6.0's asking it to do provenance is exactly the P-1 forgery
+  const stillValidates = validateForeignResult(reg, { ...req, expected_implementation_id: JS_IMPLEMENTATION_ID }, asIfC);
+  R("validator-does-not-do-provenance", stillValidates.ok && stillValidates.semantic_agreement === true,
+    `a result claiming a foreign executor still VALIDATES against a request requiring JS — because ` +
+    `comparing the request's expectation against the result's own label is a claim against a claim. ` +
+    `Provenance is the authority's job, against what the host OBSERVED it launch (P-1, ` +
+    `probe_execclaim_v07_repro.mjs)`);
 }
 
 // ── 9. the registry cannot be made to lie ────────────────────────────────
@@ -435,6 +441,58 @@ const mkReq = (over = {}) => {
   R("authority-requires-a-world", noReader === "authority-requires-a-world-reader",
     `${noReader} — an authority without a World cannot answer the temporal question, and one that ` +
     `silently could not would report fresh by never looking`);
+}
+
+
+// ── 15. provenance is OBSERVED, never claimed ────────────────────────────
+{
+  const live = { res: { fb: { value: 5, version: 1 } }, read(r) { return { ...this.res[r] }; },
+    scope(q) { return "scope:" + q; } };
+  const auth = new DerivationAuthority(live);
+  const mk = (opts, id) => auth.authorize({ intent_id: id, program_sem_id: PID,
+    canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } }, opts).request;
+  const C = "impl-c-derive-v0.7.0";
+  const jsHandle = auth.registerExecutor(JS_IMPLEMENTATION_ID);
+  const req = mk({}, "pv1");
+  const res = deriveLocally(reg, req).result;
+  const observed = auth.accept(reg, req, res, jsHandle);
+  const unobserved = auth.accept(reg, req, res);
+  R("provenance-requires-observation",
+    observed.ok && observed.implementation_provenance === "observed"
+      && observed.implementation_id === JS_IMPLEMENTATION_ID
+      && unobserved.ok && unobserved.implementation_provenance === "unavailable"
+      && unobserved.implementation_id === undefined,
+    `observed -> provenance ${observed.implementation_provenance}, id ${observed.implementation_id}; ` +
+    `unobserved -> ${unobserved.implementation_provenance} with NO id. The honest answer where v0.6.0 ` +
+    `repeated the result's own claim back as if it were provenance`);
+  const forged = withExec(res, { implementation_id: C });
+  const contradicted = auth.accept(reg, req, forged, jsHandle);
+  const cReq = mk({ expected_implementation_id: C }, "pv2");
+  const cRes = { ...res, request_id: cReq.request_id };
+  const noObs = auth.accept(reg, cReq, cRes, null);
+  const wrongObs = auth.accept(reg, cReq, cRes, jsHandle);
+  R("claim-checked-against-observation",
+    !contradicted.ok && /implementation-claim-contradicts-observation/.test(contradicted.reason)
+      && !noObs.ok && noObs.reason === "implementation-provenance-unavailable"
+      && !wrongObs.ok && /implementation-mismatch: want .*, observed impl-js/.test(wrongObs.reason),
+    `a C claim against an observed JS executor -> ${contradicted.reason.split(":")[0]}; a C requirement ` +
+    `with no observation -> ${noObs.reason}; with JS observed -> ${wrongObs.reason.split(",")[0]}…`);
+  let forgedHandle = "ACCEPTED";
+  const bad = auth.accept(reg, req, res, { token: Symbol(C) });
+  if (!bad.ok) forgedHandle = bad.reason;
+  R("executor-handles-are-authority-issued", forgedHandle === "executor-not-registered-with-this-authority",
+    `${forgedHandle} — the handle carries a private Symbol this authority minted, so a caller cannot ` +
+    `fabricate one or name an executor the host never launched`);
+  let malformed = "ACCEPTED";
+  try { auth.registerExecutor("c"); } catch (e) { malformed = e.message; }
+  R("registered-identity-well-formed", malformed === "executor-implementation-id-malformed",
+    `${malformed} — WHAT identity a native executable registers (the launcher hashing the binary it ` +
+    `execs) is DECLARED OPEN; WHETHER an observation exists is not optional any more`);
+  R("acceptance-success-shape-narrow",
+    observed.trace_conforms === undefined && observed.committable === undefined
+      && observed.fresh_at_check === true,
+    `accept success = {${Object.keys(observed).join(", ")}} — trace_conforms is redundant on success ` +
+    `and a boolean per check invites weighing them; it stays in the validator and in failure diagnostics`);
 }
 
 console.log("═".repeat(96));

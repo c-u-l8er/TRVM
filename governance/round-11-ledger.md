@@ -334,3 +334,47 @@ and **`cmd | tail -1` takes the exit status of `tail`**. A crashing subject prin
 **100. Gate.** grid **v1.22.0** — 63 entries / 346 citations · negative battery **105/105** · derive **40/40 · 10/10** · probes **2/2+2/2**, **4/4+5/5**, **5/5**, **3/3+4/4**, **1/1+4/4** · harness **9/9** · bridge 48/48 · kernel PASS · World 0.12.0 PASS. `scheduler_certificate.json` byte-identical — sixteenth consecutive round.
 
 **The uncomfortable summary of rounds 15 through 21.** Seven consecutive rounds, and in six of them the defect was in the evidence apparatus rather than in the thing it measures: a footprint that could be produced without a read, an identity that bound a spelling, an issuance that authenticated the wrong object, a trace excluded from comparison and therefore from checking, a fixture that was already red, and a gate that could not fail. The calculus has not moved in sixteen rounds. What keeps moving is the machinery that claims to be watching it.
+
+
+---
+
+## Round 22 — an execution claim is not provenance
+
+**101. The law said impersonation was closed. JavaScript could impersonate C all the way through acceptance, and had been able to for seven rounds.** `law:derivation.implementation-provenance@1` — superseded by `@2` in this round, and kept on the record as the history of a false claim rather than quietly revised — stated *"a caller therefore cannot cause a result to claim an implementation that did not produce it"*, and named its open half as "not yet a digest of executable bytes". **P-1**, frozen in `probe_execclaim_v07_repro.mjs`: `deriveLocally(registry, req, implementationId)` took the identity as a **parameter**, so —
+
+```
+authorize(intent, {expected_implementation_id: "impl-c-derive-v0.6.0"})
+deriveLocally(reg, req, "impl-c-derive-v0.6.0")     ← the JS evaluator runs
+authority.accept(reg, req, res)
+
+  → { ok: true, validated: true, fresh_at_check: true,
+      trace_conforms: true, implementation_id: "impl-c-derive-v0.6.0" }
+```
+
+Every byte honest JS output; only the label C. Acceptance compared the caller's **expectation** against the caller's own **label** — a claim against a claim — and agreed with itself. Worse, `trace_conforms: true` made the forgery read as *better attested* than an unforged result.
+
+**102. Hashing the executable would not have closed it, which is why the declared-open item was mis-scoped.** A digest carried inside the same untrusted result is self-asserted: a forger writes the digest too. The missing object was never a stronger label. **It is independent observation of which executor actually ran** — and the host has that, because the host is what spawned the worker.
+
+**103. Round 19's two envelopes were one short.**
+
+```
+semantic_result        portable MEANING
+execution_evidence     the execution CLAIM — what the result says happened
+host observation       the only OBSERVATION — what the host launched
+```
+
+`deriveLocally` takes no implementation parameter; an implementation's identity comes from the implementation. `validateForeignResult` establishes semantic agreement and trace conformance and **explicitly not provenance**, reporting `implementation_claimed` rather than certifying it. `registerExecutor` records what the host launched and returns a handle carrying a private `Symbol`, so a caller cannot fabricate one. Acceptance compares the requirement against the **observation**, refuses `implementation-claim-contradicts-observation` when the label disagrees with it, and answers **`implementation-provenance-unavailable`** — never "verified" — where no observation exists. What a native executable should register (a trusted launcher hashing the binary it execs) stays declared open; **whether** an observation exists is no longer optional.
+
+**104. `trace_conforms` leaves the acceptance success shape.** It is not wrong the way `committable` was — it is a stable verdict about this result against this frozen core, not a claim that decays — but on success it is redundant, because acceptance cannot reach success without it, and a boolean per check invites a reader to weigh them. It stays in the validator and in the failure diagnostics, where `semantic_agreement: true, trace_conforms: false` is exactly the distinction worth having. `fresh_at_check` stays, because its temporal limitation is meaningful.
+
+**105. The forgery was sitting in the realm battery as a passing test.** `cross-implementation-shape` took an honest JS result, relabelled it `impl-c-derive-…`, and asserted that validation succeeded and "the authority records WHO ran it". That *is* P-1, written as a green case, since round 15. It now asserts what it always measured: a result **claiming** a foreign executor agrees on meaning and conforms on its trace, and the validator reports the claim rather than certifying it.
+
+**106. The runner half of `clean-baseline@1` becomes executable, and stays out of the bounded nine.** `runner_contract.sh`, **3/3**: it extracts the *actual* governance recipe form from the Makefile, builds a throwaway target from it, and requires success on exit 0, failure on exit 1, and failure on a crash that prints nothing. If it cannot find the recipe form it fails rather than passing vacuously. The nine harness species are about falsifier non-vacuity; process-status propagation is a different layer, and separating them is principled rather than a way to keep the count at nine.
+
+**107. And the outcome identity is ruled before it is built.** `outcome_sem_id` must **not** hash a human-readable reason. Rendering `"program-type: add of non-number"` is diagnostics; hashing it would recreate round 16's *"the identity bound a spelling"* one layer up, where two conforming implementations could differ by a comma. `TRVM-DERIVE-OUTCOME-v1` encodes structurally: `{status:"value", value}` or `{status:"refused", code, locus}`, `code` drawn from the frozen core's refusal vocabulary.
+
+**108. Gate.** grid **v1.23.0** — 64 entries / 347 citations · `derive_protocol.mjs` **0.7.0** · kernel PASS · World 0.12.0 PASS · `--check-receipt` PASS · negative battery **112/112** with seven new forgeries · bridge 48/48 · derive **45/45 in-process, 10/10 across a realm** · probes **2/2+2/2**, **4/4+5/5**, **5/5**, **3/3+4/4**, **1/1+4/4**, **1/1+6/6** · harness **9/9** · runner contract **3/3**. `scheduler_certificate.json` byte-identical — seventeenth consecutive round.
+
+**109. The review pack that carried round 21 was itself broken, and said so in the file the manifest authenticated.** The bundle's `gate/make-governance.txt` contained `make: *** No rule to make target 'governance'` and its captured negative battery contained `cd: governance: No such file or directory` — because the capture ran from the wrong directory — while the README asserted 105/105 from them. There was even a drift witness in the same bundle: the captured harness said 347 citations where the README said 346. The manifest verified perfectly, because a manifest authenticates *bytes*, not *meaning*. Round 21's thesis, reproduced by round 21's own review pack: **a displayed gate is not an executable gate.** The repair is the same one: the pack must be executable, its counts generated by replaying it, never transcribed.
+
+**The seam list, seven rounds long.** grant vs footprint · syntax vs semantics · grant identity vs issuance · semantics vs execution trace · perturbation vs baseline · subject status vs runner status · and now **execution claim vs observed executor**. Every one of them a place where two things that felt like one thing were not. The calculus has not moved in seventeen rounds; what keeps moving is the boundary between kinds of evidence.

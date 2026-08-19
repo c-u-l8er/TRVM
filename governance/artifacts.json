@@ -23,7 +23,8 @@
   "extract_prehash.mjs",
   "derive_battery.mjs",
   "derive_realm_battery.mjs",
-  "harness_selftest.sh"
+  "harness_selftest.sh",
+  "runner_contract.sh"
  ],
  "case_input_note": "derive_protocol.mjs and derive_worker.mjs moved from tools to case_inputs at v1.16: their SOURCE now carries invariants grid_check asserts (no __reads path, reads from read_grants, executor-asserted implementation_id), so they must be present in every scratch case for those assertions to run. The batteries stay tools — they are runners, not artifacts under test.",
  "probes_pattern": "^probe_.*\\.mjs$",
@@ -44,7 +45,8 @@
   "probe_coresem_v03_repro.mjs": "DERIVE-CORE-v1 — program_sem_id bound syntax and claimed semantics: add was JavaScript '+', bind() validated nothing, arity was unconstrained, and the footprint's ORDER was inside the semantic projection. Frozen against v0.2.0, CONFINED against live; PAIRED, and it gates",
   "probe_stalegrant_v03_repro.mjs": "ROUND 17 — the GAP witness: containment, re-derivation and schema all pass on a result whose World has moved. Not a regression repro; there was no freshness check at all before it",
   "probe_issuebind_v05_repro.mjs": "ROUND 17 — issuance authenticated the grant rather than the request, an options bag let a caller write authority content, and acceptance took both of its proofs from its caller. Frozen against the draft, CONFINED against live; PAIRED, and it gates",
-  "probe_traceforge_v06_repro.mjs": "ROUND 19 — read_trace was outside the semantic projection and therefore unchecked: a reversed trace validated and was accepted. Frozen against v0.5.0, CONFINED against live; PAIRED, and it gates"
+  "probe_traceforge_v06_repro.mjs": "ROUND 19 — read_trace was outside the semantic projection and therefore unchecked: a reversed trace validated and was accepted. Frozen against v0.5.0, CONFINED against live; PAIRED, and it gates",
+  "probe_execclaim_v07_repro.mjs": "ROUND 22 — the law said impersonation was closed while deriveLocally took the implementation identity as a caller parameter: JS impersonated C through acceptance. Frozen against v0.6.0, CONFINED against live; PAIRED, and it gates"
  },
  "subdirs": {
   "bridge": "cross-plane C canonical-bytes bridge (ic32_canon.c, bridge_check.mjs)",
@@ -54,17 +56,18 @@
   "v04_verbatim": "round-4 verbatim sources, historical"
  },
  "derivation_boundary": {
-  "status": "v0.6.0 — protocol proven in-process and across a worker; NOT yet the production derivation path",
+  "status": "v0.7.0 — protocol proven in-process and across a worker; NOT yet the production derivation path",
   "files": {
    "derive_protocol.mjs": "program-as-data over a FROZEN core, canonical request/result schemas, authority grants separated from the observed read footprint, live-footprint freshness, and a DerivationAuthority that is the only constructor of a request and the only holder of acceptance",
-   "derive_battery.mjs": "40 falsifiers, in-process",
+   "derive_battery.mjs": "45 falsifiers, in-process",
    "derive_worker.mjs": "the far side; holds no parent reference, resolves programs from its own registry, reads only its grant snapshot, and asserts its own implementation_id",
    "derive_realm_battery.mjs": "10 falsifiers across a real worker boundary",
    "probe_derivegrant_v02_repro.mjs": "the two v0.1.0 defects, frozen — and the same witnesses run against live, which is what makes it a gate rather than a document",
    "probe_coresem_v03_repro.mjs": "the four semantic gaps behind one program_sem_id, frozen at v0.2.0",
    "probe_stalegrant_v03_repro.mjs": "every check passing on a result the World has moved past",
    "probe_issuebind_v05_repro.mjs": "issuance bound to the grant instead of the request, frozen",
-   "probe_traceforge_v06_repro.mjs": "a forged execution trace accepted as evidence, frozen"
+   "probe_traceforge_v06_repro.mjs": "a forged execution trace accepted as evidence, frozen",
+   "probe_execclaim_v07_repro.mjs": "JS impersonating C through acceptance, frozen"
   },
   "two_evidence_objects": {
    "read_grants + grant_id": "the AUTHORITY GRANT — what the authority made available. A capability record, deliberately allowed to be broader than what is read, because under data-dependent traversal the authority cannot know the needed subset in advance. grant_id = H(canonical read_grants) binds the snapshot so it cannot be edited in flight.",
@@ -73,7 +76,7 @@
   },
   "granting_model": "SNAPSHOT (model A): the authority resolves a bounded canonical world slice once, and both the executor and the re-deriving authority evaluate against those same bytes. Chosen over read-RPC (model B) because it is deterministic, films cleanly, and does not turn every primitive evaluation into a cross-realm round trip. The cost is least-authority: the grant may reveal more than the program reads. Confidentiality against the derivation realm is the trigger to revisit, and it is named here rather than discovered later.",
   "claimed": "OBJECT authority does not cross: structured cloning refuses callables (DataCloneError), the worker resolves program_sem_id against its own registry, it can read only the grant snapshot the authority resolved, the returned footprint is validated as a SUBSET of that grant on the authority's own evidence before any re-derivation, the executor asserts implementation_id and the caller may only state a requirement against it, and a returned result is re-derived by the authority — on the semantic projection, so a conforming foreign implementation can agree — before it is evidence.",
-  "not_claimed": "determinism of a long-lived evaluator; host confinement; that any existing measureFn has been ported; that implementation_id is bound to executable BYTES (it is a declared constant, so impersonation is closed and provenance is not — the trusted-launcher measurement is declared and not built); that the World's lock composition around acceptance has been BUILT (it is specified and the caller's obligation is stated, not enforced); and that any lowering into TRVM terms has been attempted.",
+  "not_claimed": "determinism of a long-lived evaluator; host confinement; that any existing measureFn has been ported; that a NATIVE executor's registered identity is bound to its binary (the trusted launcher hashing what it execs is unbuilt — WHETHER observation exists is now mandatory, WHAT a native executable registers is not yet); that the World's lock composition around acceptance has been BUILT (specified, with the caller's obligation stated rather than enforced); and that any lowering into TRVM terms has been attempted.",
   "frozen_core": "TRVM-DERIVE-CORE-v1. program_sem_id = H('TRVM-PROGRAM-v2' | core_sem_id | canonical AST) where core_sem_id = H(canonical CORE_SPEC), so the id commits SEMANTICS and not only syntax. v0.2.0 hashed the AST alone while the record said the language was deliberately not frozen — the two cannot both be true, and four behaviours could differ behind one id. Every v0.2.0 program id is retired.",
   "footprint_is_a_set": "read_footprint is a canonical DEPENDENCY SET, sorted and deduplicated; access order with repeats lives in read_trace, which is excluded from the semantic projection alongside implementation_id. Depending on {a,b} must not become a different identity because one implementation visited a then b — execution strategy does not silently become semantics, the same principle that keeps ref_interactions out of conformance identity. The core still FIXES evaluation order so refusals and traces reproduce.",
   "three_questions": {
@@ -87,6 +90,12 @@
    "semantic_result": "value · witness · support · read_footprint. Determines portable meaning; this is what cross-implementation validation compares.",
    "execution_evidence": "implementation_id · read_trace. Conformance and provenance. EXCLUDED from the comparison and NOT excluded from checking — the core fixes evaluation order, so a disagreeing trace is a conformance failure of the implementation. The semantic film will live here.",
    "why": "v0.5.0 kept read_trace as a sibling of value and read_footprint, excluded it from the projection, and checked nothing about it: a reversed trace validated and was accepted. Non-semantic does not mean unverified, and a flat shape made the exclusion read as permission."
+  },
+  "three_objects": {
+   "semantic_result": "portable MEANING — what cross-implementation validation compares.",
+   "execution_evidence": "the execution CLAIM — what the result says happened. Checked for trace conformance against the authority's own re-derivation, and never mistaken for provenance.",
+   "host observation": "the only OBSERVATION. The authority records what it launched via an authority-issued executor handle; acceptance compares the request's expectation against THAT, and answers implementation-provenance-unavailable where none exists.",
+   "why": "round 19's two envelopes were one short. A conforming trace does not prove C executed anything, and neither does a string, and neither would a digest of the executable carried inside the same untrusted result."
   }
  }
 }

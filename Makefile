@@ -155,6 +155,8 @@ gov-strict:
 gov-harness:
 	@echo "==== [governance] harness self-test — the apparatus is measured too ===="
 	@cd $(GOV) && out=$$(./harness_selftest.sh) && printf "%s\n" "$$out" | tail -1
+# law:evidence.clean-baseline@1, runner half — separate from the bounded nine
+	@cd $(GOV) && out=$$(./runner_contract.sh) && printf "%s\n" "$$out" | tail -1
 
 # The replacement for the falsified arbitrary-closure derivation API: program
 # as data, canonical request/result, and a real worker crossing where structured
@@ -174,6 +176,7 @@ gov-derive:
 	@cd $(GOV) && out=$$($(NODE) probe_stalegrant_v03_repro.mjs) && printf "%s\n" "$$out" | tail -1
 	@cd $(GOV) && out=$$($(NODE) probe_issuebind_v05_repro.mjs) && printf "%s\n" "$$out" | tail -1
 	@cd $(GOV) && out=$$($(NODE) probe_traceforge_v06_repro.mjs) && printf "%s\n" "$$out" | tail -1
+	@cd $(GOV) && out=$$($(NODE) probe_execclaim_v07_repro.mjs) && printf "%s\n" "$$out" | tail -1
 
 ## --- identity/memory result ------------------------------------------------
 research:

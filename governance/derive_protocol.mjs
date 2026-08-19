@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   derive_protocol.mjs — v0.6.0 — the serialized derivation boundary
+   derive_protocol.mjs — v0.7.0 — the serialized derivation boundary
 
    law:derivation.environment-confinement@1 is FALSIFIED under the arbitrary-
    closure measureFn API, and the record says closure comes from REPLACING the
@@ -76,7 +76,7 @@
 import { createHash } from "node:crypto";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const PROTOCOL_VERSION = "0.6.0";
+export const PROTOCOL_VERSION = "0.7.0";
 
 /* ── the canonical value domain, shared with the World ────────────────────
    Deliberately a copy of the World's rule rather than an import: this module
@@ -522,7 +522,7 @@ export function footprintWithinGrant(fp, read_grants) {
    reader callable, which was the closure-authority shape this whole line of
    work exists to remove — in-process only, but the same species. Now the
    evaluator receives nothing but canonical data. */
-export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.6.0";
+export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.7.0";
 
 function readerFromGrants(read_grants) {
   return {
@@ -605,7 +605,13 @@ export function evaluate(ast, read_grants, inputs = {}) {
    the same bytes the executor had. Freshness against the LIVE world is a
    separate operation keyed on the footprint, which is exactly why the two
    records must not be collapsed. */
-export function deriveLocally(registry, req, implementationId = JS_IMPLEMENTATION_ID) {
+export function deriveLocally(registry, req) {
+  // NO implementation parameter. v0.6.0 took one, defaulted to JS, and let a
+  // caller stamp the JS evaluator's output "impl-c-derive-…" — after which the
+  // authority compared the caller's expectation against the caller's own label
+  // and agreed with itself. Frozen as P-1 in probe_execclaim_v07_repro.mjs.
+  // An implementation's identity comes from the implementation.
+  const implementationId = JS_IMPLEMENTATION_ID;
   const rc = checkRequest(req);
   if (!rc.ok) return { ok: false, reason: rc.reason };
   if ("expected_implementation_id" in req && req.expected_implementation_id !== implementationId)
@@ -646,10 +652,12 @@ export function validateForeignResult(registry, req, res) {
   if (!rr.ok) return { ok: false, reason: rr.reason };
   const fw = footprintWithinGrant(res.semantic_result.read_footprint, req.read_grants);
   if (!fw.ok) return { ok: false, reason: fw.reason };
+  // NO PROVENANCE HERE. This function establishes semantic agreement and trace
+  // conformance. Comparing req.expected_implementation_id against the string
+  // inside the result compares a claim with a claim: a canonical result arriving
+  // from outside is an untrusted EXECUTION CLAIM however perfect its bytes are.
+  // Provenance is the authority's job, against what the host OBSERVED it launch.
   const impl = res.execution_evidence.implementation_id;
-  if ("expected_implementation_id" in req && impl !== req.expected_implementation_id)
-    return { ok: false, reason: "implementation-mismatch: want " + req.expected_implementation_id +
-      ", result claims " + impl };
   // the local re-derivation is JS by definition, so the caller's requirement —
   // which may name a foreign executor — is dropped rather than applied to us
   const { expected_implementation_id: _requirement, ...localReq } = req;
@@ -665,7 +673,8 @@ export function validateForeignResult(registry, req, res) {
   const tc = validateTraceConformance(mine.result.execution_evidence.read_trace,
     res.execution_evidence.read_trace);
   if (!tc.ok) return { ok: false, reason: tc.reason, semantic_agreement: true, trace_conforms: false };
-  return { ok: true, semantic_agreement: true, trace_conforms: true, implementation_id: impl };
+  // implementation_claimed, not implementation_id: this is what the result SAYS
+  return { ok: true, semantic_agreement: true, trace_conforms: true, implementation_claimed: impl };
 }
 
 /* ── FRESHNESS: a different question from containment ─────────────────────
@@ -766,6 +775,7 @@ export function requestSemId(req) {
  *  that neither proof can arrive as an argument. */
 export class DerivationAuthority {
   #issued = new Map();
+  #executors = new Map();
   #reader;
   constructor(reader) {
     if (!reader || typeof reader.read !== "function" || typeof reader.scope !== "function")
@@ -804,6 +814,26 @@ export class DerivationAuthority {
     return { ok: true, request: req };
   }
 
+  /** THE HOST OBSERVES WHAT IT LAUNCHED. This is the only way an implementation
+   *  identity becomes PROVENANCE rather than a claim, and it is why hashing the
+   *  executable would not by itself have been enough: a binary hash carried
+   *  inside the same untrusted result is still self-asserted. The missing object
+   *  was never the digest — it was independent observation of which executor
+   *  actually ran.
+   *
+   *  The handle is authority-issued and holds a private Symbol, so a caller
+   *  cannot fabricate one or name an executor this authority never launched.
+   *  DECLARED OPEN, and now correctly scoped: WHAT identity to register for a
+   *  native executable — the trusted launcher hashing the binary it is about to
+   *  exec — is unbuilt. WHETHER observation exists at all is no longer optional. */
+  registerExecutor(implementation_id) {
+    if (typeof implementation_id !== "string" || !implementation_id.startsWith("impl-"))
+      throw new Error("executor-implementation-id-malformed");
+    const token = Symbol(implementation_id);
+    this.#executors.set(token, implementation_id);
+    return Object.freeze({ token });
+  }
+
   /** Was THIS request — every field of it — issued by THIS authority? */
   wasIssued(req) {
     const stored = this.#issued.get(req?.request_id);
@@ -818,8 +848,9 @@ export class DerivationAuthority {
    *  it, in one call, in an order where each stage fails on its own evidence:
    *
    *    1. issuance   this request, whole, is one THIS authority issued
-   *    2. validation schema, footprint-within-grant, re-derivation
-   *    3. freshness  the footprint's dependencies are still live NOW
+   *    2. validation schema, footprint-within-grant, re-derivation, trace
+   *    3. provenance the OBSERVED executor, not the claimed one
+   *    4. freshness  the footprint's dependencies are still live NOW
    *
    *  IT DOES NOT RETURN `committable`, and the earlier draft's doing so was
    *  wrong. One call cannot make a result committable, because the World can
@@ -835,15 +866,45 @@ export class DerivationAuthority {
    *
    *  No lock capability is exported to reach that: rounds 9B-9C are the record
    *  of what happens when transaction authority gets passed around. */
-  accept(registry, req, res) {
+  accept(registry, req, res, executor = null) {
     const iss = this.wasIssued(req);
     if (!iss.ok) return { ok: false, reason: iss.reason };
     const v = validateForeignResult(registry, req, res);
     if (!v.ok) return v;
+
+    // ── PROVENANCE, against observation rather than against a string ──────
+    let observed;
+    if (executor !== null) {
+      observed = this.#executors.get(executor?.token);
+      if (observed === undefined)
+        return { ok: false, reason: "executor-not-registered-with-this-authority" };
+    }
+    if ("expected_implementation_id" in req) {
+      if (observed === undefined)
+        return { ok: false, reason: "implementation-provenance-unavailable" };
+      if (observed !== req.expected_implementation_id)
+        return { ok: false, reason: "implementation-mismatch: want " +
+          req.expected_implementation_id + ", observed " + observed };
+    }
+    if (observed !== undefined && v.implementation_claimed !== observed)
+      return { ok: false, reason: "implementation-claim-contradicts-observation: claims " +
+        v.implementation_claimed + ", observed " + observed };
+
     const f = validateFootprintFresh(this.#reader, res.semantic_result.read_footprint);
     if (!f.ok) return { ok: false, reason: f.reason };
-    return { ok: true, validated: true, fresh_at_check: true, trace_conforms: v.trace_conforms,
-      implementation_id: res.execution_evidence.implementation_id };
+
+    // trace_conforms is NOT in the success shape. On success it is redundant —
+    // acceptance could not have got here without it — and a boolean per check
+    // invites a reader to weigh them. It stays in validateForeignResult and in
+    // the failure diagnostics, where `semantic_agreement: true, trace_conforms:
+    // false` is exactly the distinction worth having. fresh_at_check stays
+    // because its temporal limitation is meaningful: it is an observation at a
+    // moment, not a promise about the next one.
+    return observed === undefined
+      ? { ok: true, validated: true, fresh_at_check: true,
+          implementation_provenance: "unavailable" }
+      : { ok: true, validated: true, fresh_at_check: true,
+          implementation_provenance: "observed", implementation_id: observed };
   }
 }
 Object.freeze(DerivationAuthority.prototype);

@@ -121,11 +121,14 @@ function v5Validate(registry, req, res) {
   const { request: req } = auth.authorize(intent);
   const honest = deriveLocally(reg, req).result;
   const acc = auth.accept(reg, req, honest);
-  R("honest-still-accepted", acc.ok && acc.trace_conforms === true && acc.validated === true
-      && acc.committable === undefined,
-    `an honest result is accepted with validated ${acc.validated}, trace_conforms ${acc.trace_conforms} ` +
-    `and still NO committable — the new check refuses a forgery without inventing a stronger claim ` +
-    `about the honest case`);
+  const v = validateForeignResult(reg, req, honest);
+  R("honest-still-accepted", acc.ok && acc.validated === true && acc.committable === undefined
+      && acc.trace_conforms === undefined && v.trace_conforms === true,
+    `an honest result is accepted with validated ${acc.validated} and NO committable. Round 22 also ` +
+    `removed trace_conforms from the acceptance SUCCESS shape — redundant there, since acceptance could ` +
+    `not have reached success without it — while the validator still reports it (${v.trace_conforms}) ` +
+    `and the failure diagnostics still carry semantic_agreement + trace_conforms, which is where the ` +
+    `distinction is worth having`);
 }
 
 /* ── and the shape now says which fields carry which trust status ─────────── */

@@ -192,7 +192,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -706,7 +706,7 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         "issuance must bind request_sem_id, not grant_id — binding the grant answers 'was this issued?' " +
         "about a GRANT while the thing being accepted is a REQUEST, and an input swap under an " +
         "untouched request_id passes (probe_issuebind_v05_repro.mjs I-1)");
-      ok(/accept\(registry, req, res\) \{/.test(dsrc) && !/export function acceptForeignResult/.test(dsrc),
+      ok(/accept\(registry, req, res, executor = null\) \{/.test(dsrc) && !/export function acceptForeignResult/.test(dsrc),
         "acceptance must be a METHOD on the authority and not a free function — one taking `issuer` and " +
         "`liveReader` as parameters lets the caller supply both proofs of its own authority (I-3)");
       ok(!/committable/.test(dsrc.replace(/\/\*[\s\S]*?\*\//g, "")),
@@ -733,6 +733,41 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
       ok(!!gi && /THE WHOLE REQUEST/.test(gi.statement ?? "") && /takes no proof from/.test(gi.statement ?? ""),
         "derivation.grant-issuance@1 no longer states that issuance binds the whole request and that " +
         "acceptance takes no proof from its caller");
+      // ── v1.23: an execution claim is not provenance ───────────────────
+      ok(/export function deriveLocally\(registry, req\) \{/.test(dsrc),
+        "deriveLocally must take NO implementation parameter — v0.6.0 took one and a caller could run " +
+        "the JS evaluator while stamping its output impl-c-derive-… (P-1, probe_execclaim_v07_repro.mjs)");
+      ok(dsrc.includes("registerExecutor(implementation_id)") &&
+         /implementation-claim-contradicts-observation/.test(dsrc) &&
+         /implementation-provenance-unavailable/.test(dsrc),
+        "the authority must observe what the host launched and compare the claim against it — a " +
+        "conforming trace does not prove C executed anything, and neither does a string");
+      ok(/implementation_claimed: impl/.test(dsrc) &&
+         !/expected_implementation_id" in req && impl !== req\.expected_implementation_id/.test(dsrc),
+        "validateForeignResult must report implementation_claimed and must NOT compare the request's " +
+        "expectation against the result's own label — that is a claim against a claim, which is P-1");
+      {
+        const ip2 = entries.find((x) => x.id === "derivation.implementation-provenance" && x.revision === 2);
+        ok(!!ip2 && ip2.canonical === true,
+          "law derivation.implementation-provenance@2 missing or non-canonical");
+        ok(!!ip2 && /AN EXECUTION CLAIM IS NOT PROVENANCE/.test(ip2.statement ?? ""),
+          "derivation.implementation-provenance@2 no longer opens with 'an execution claim is not " +
+          "provenance' — that sentence is the whole round");
+        const ip1 = entries.find((x) => x.id === "derivation.implementation-provenance" && x.revision === 1);
+        ok(!!ip1 && /record of a FALSE claim/i.test(ip1.revision_note ?? ""),
+          "derivation.implementation-provenance@1 must stay on the record AS a false claim — it said " +
+          "impersonation was closed and shipped that for seven rounds");
+        ok(!!g.clean_baseline?.runner_contract,
+          "grid clean_baseline.runner_contract missing (v1.23) — the runner half is executable now");
+        const rc = existsSync(A("runner_contract.sh")) ? readFileSync(A("runner_contract.sh"), "utf8") : "";
+        ok(/out=\$\$\(\$\(NODE\) derive_battery\.mjs\)/.test(rc),
+          "runner_contract.sh must extract the ACTUAL governance recipe form from the Makefile, or it " +
+          "tests a paraphrase of the thing that was broken");
+        ok(/outcome_sem_id MUST NOT hash a human-readable reason/.test(
+             g.lowering_spike?.identities?.outcome_encoding ?? ""),
+          "lowering_spike must rule that outcome_sem_id encodes refusal STRUCTURALLY — hashing a " +
+          "rendered English reason recreates round 16's 'identity bound a spelling' one layer up");
+      }
       const man4 = existsSync(A("artifacts.json")) ? JSON.parse(readFileSync(A("artifacts.json"), "utf8")) : {};
       ok(!!man4.derivation_boundary?.acceptance_is_not_commitment,
         "artifacts.json derivation_boundary missing acceptance_is_not_commitment (v1.18)");

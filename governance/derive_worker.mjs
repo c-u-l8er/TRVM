@@ -1,4 +1,4 @@
-/* derive_worker.mjs — v0.6.0 — the far side of the realm boundary.
+/* derive_worker.mjs — v0.7.0 — the far side of the realm boundary.
    Holds NO parent reference of any kind: it receives canonical data on a
    message port, resolves the program from its OWN registry by id, evaluates
    against the grant snapshot the request carries, and posts back canonical

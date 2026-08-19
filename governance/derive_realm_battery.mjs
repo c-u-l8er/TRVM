@@ -120,17 +120,20 @@ R("crossing-derives", honest.ok && honest.result.semantic_result.value === 5
     `round-14 prose collapsed them and the mechanism supported neither`);
 }
 
-// 9. a conforming foreign implementation validates on the semantic projection
+// 9. a conforming foreign implementation agrees on MEANING; provenance is not
+//    established by relabelling a result, and this case no longer pretends it is
 {
   const req = mkReq();
   const asIfC = { ...honest.result,
-    execution_evidence: { ...honest.result.execution_evidence, implementation_id: "impl-c-derive-v0.6.0" } };
+    execution_evidence: { ...honest.result.execution_evidence, implementation_id: "impl-c-derive-v0.7.0" } };
   const v = validateForeignResult(reg, req, asIfC);
-  R("cross-implementation-shape", v.ok && v.implementation_id === "impl-c-derive-v0.6.0"
+  R("cross-implementation-shape", v.ok && v.implementation_claimed === "impl-c-derive-v0.7.0"
+      && v.semantic_agreement === true && v.trace_conforms === true
       && canonicalBytes(semanticProjection(asIfC)) === canonicalBytes(semanticProjection(honest.result)),
-    `the same result stamped by a C executor validates and its provenance is RECORDED rather than ` +
-    `compared away. This is the shape a real C implementation plugs into — it is not a claim that one ` +
-    `exists, and this battery does not have one`);
+    `a result CLAIMING impl-c-derive-v0.7.0 agrees semantically and conforms on its trace, and the ` +
+    `validator reports what it CLAIMED (implementation_claimed) rather than certifying it. Until round ` +
+    `22 this same case relabelled a JS result and called the outcome provenance — which is exactly the ` +
+    `P-1 forgery, sitting in the battery as a passing test`);
 }
 
 // 10. intent → authority → realm → acceptance, and the World moving underneath
