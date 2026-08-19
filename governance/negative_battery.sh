@@ -744,5 +744,29 @@ del m['derivation_boundary']['acceptance_is_not_commitment']
 json.dump(m, open('artifacts.json','w'), indent=1)"
 
 
+# ── round 18: the apparatus gate ────────────────────────────────────────────
+
+run_case harness-selftest-law-deleted "law evidence.harness-selftest@1 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if e['id'] != 'evidence.harness-selftest']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case clean-baseline-species-dropped "no longer requires the clean-baseline" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'evidence.harness-selftest':
+        e['statement'] = e['statement'].replace('UNPERTURBED case tree', 'perturbed case tree')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case harness-selftest-undeclared "does not declare harness_selftest.sh" "
+import json
+m = json.load(open('artifacts.json'))
+m['tools'] = [t for t in m['tools'] if t != 'harness_selftest.sh']
+json.dump(m, open('artifacts.json','w'), indent=1)"
+
+
 echo; [ $FAILED -eq 0 ] && echo "NEGATIVE BATTERY: $CASES/$CASES forgeries caught" || echo "NEGATIVE BATTERY: FAILURES PRESENT ($CAUGHT/$CASES caught)"
 exit $FAILED

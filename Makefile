@@ -25,7 +25,7 @@ VECTORS := ../docs/spec/conformance/vectors/normalize.json
 
 .PHONY: test conformance native native-selftest zig zig-selftest mojo mojo-selftest \
         wasm-smoke swarm research clean \
-        governance gov-kernel gov-grid gov-world gov-negative gov-bridge gov-strict gov-derive
+        governance gov-kernel gov-grid gov-world gov-negative gov-bridge gov-strict gov-derive gov-harness
 
 test: native zig mojo conformance native-selftest zig-selftest mojo-selftest \
       wasm-smoke swarm research governance
@@ -103,7 +103,7 @@ swarm:
 # proves. They meet at the canonical corpus (same 24 vectors, same committed
 # hash) and, since round 10, at canonical semantic bytes. A runtime change that
 # moved semantics would now fail here rather than pass quietly.
-governance: gov-kernel gov-grid gov-world gov-negative gov-bridge gov-derive
+governance: gov-kernel gov-grid gov-world gov-negative gov-bridge gov-derive gov-harness
 	@echo "  evidence plane green"
 
 gov-kernel:
@@ -141,6 +141,14 @@ $(GOV)/bridge/ic32_canon: $(GOV)/bridge/ic32_canon.c runtime/c/ic32.c
 gov-strict:
 	@echo "==== [governance] STRICT corpus identity — release / pack-cut gate ===="
 	@cd $(GOV) && TRVM_STRICT_CORPUS=1 TRVM_VECTORS=$(VECTORS) $(NODE) trvm_law_kernel.mjs | tail -1
+
+# law:evidence.harness-selftest@1 — six consecutive rounds found the defect in
+# the INSTRUMENT rather than the engine, so the known failure species get a gate
+# of their own. Bounded on purpose: nine enumerated shapes, and no recursion
+# into tests of tests.
+gov-harness:
+	@echo "==== [governance] harness self-test — the apparatus is measured too ===="
+	@cd $(GOV) && ./harness_selftest.sh | tail -1
 
 # The replacement for the falsified arbitrary-closure derivation API: program
 # as data, canonical request/result, and a real worker crossing where structured

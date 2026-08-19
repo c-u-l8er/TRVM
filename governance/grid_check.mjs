@@ -192,7 +192,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -715,6 +715,16 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
       const man4 = existsSync(A("artifacts.json")) ? JSON.parse(readFileSync(A("artifacts.json"), "utf8")) : {};
       ok(!!man4.derivation_boundary?.acceptance_is_not_commitment,
         "artifacts.json derivation_boundary missing acceptance_is_not_commitment (v1.18)");
+      // ── v1.19: the apparatus has a gate of its own ────────────────────
+      const hs = entries.find((x) => x.id === "evidence.harness-selftest");
+      ok(!!hs && hs.canonical === true && hs.status === "REGRESSION-LOCKED",
+        "law evidence.harness-selftest@1 missing, non-canonical, or not REGRESSION-LOCKED — six rounds " +
+        "found the instrument wrong rather than the engine, and the known species have a gate");
+      ok(!!hs && /UNPERTURBED case tree/.test(hs.statement ?? ""),
+        "evidence.harness-selftest@1 no longer requires the clean-baseline meta-case — a contaminated " +
+        "baseline is the one failure a battery of forgeries structurally cannot see");
+      ok((man4.tools ?? []).includes("harness_selftest.sh"),
+        "artifacts.json does not declare harness_selftest.sh (v1.19)");
     }
     {
       const man3 = existsSync(A("artifacts.json")) ? JSON.parse(readFileSync(A("artifacts.json"), "utf8")) : {};

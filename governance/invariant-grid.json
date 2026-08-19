@@ -1,6 +1,6 @@
 {
  "record": "invariant-grid",
- "version": "1.18.0",
+ "version": "1.19.0",
  "date": "2026-08-18",
  "v1_criteria": {
   "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
@@ -617,7 +617,7 @@
  },
  "law_registry": {
   "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
-  "grid_version": "1.18.0",
+  "grid_version": "1.19.0",
   "entries": [
    {
     "id": "kappa.monotonicity.unrestricted",
@@ -1034,6 +1034,14 @@
     "canonical": true,
     "statement": "An audit result is creditable only if the instrument independently proves that the intended perturbation occurred, the intended execution path was exercised, and the measured predicate is the one reported. A falsifier that forges nothing, runs nothing, or measures a different predicate than it names is VACUOUS, and a vacuous falsifier is worse than an absent one because the roster still counts it. Mutation cases must show before_hash != after_hash before the detector's verdict counts.",
     "evidence": "negative_battery.sh computes a pre- and post-perturbation digest of every scratch tree and refuses to credit a case whose forgery changed nothing (diagnostic: VACUOUS). This law is retrospective as much as prospective: it covers the unset $SCRATCH that meant a case could never execute, the hand-typed 44/44 that stopped counting the cases, the hard-coded \"1.0.2\" replacement that a version bump would have turned into a no-op, the prototype half of the authority graph that went untested, the false '9D-4 confined' produced by poisoning a node whose semantic path the pass overwrote, and a probe line that printed 'directly assignable' while testing typeof === 'function'. Six apparatus failures across four rounds, every one of which this rule would have caught mechanically. MECHANISED (both runners, v1.14.0): clause 1 — the intended target is DERIVED from the perturbation script (files opened for writing, files removed) and must EQUAL the set that actually changed, so a case editing the wrong artifact, or an extra one, fails as loudly as one editing nothing; clauses 2-3 — per-file digests before and after, refusing VACUOUS and naming the artifact perturbed; clause 5 — the specific diagnostic must match; clause 6 — CAUGHT increments only after all of the above. Both detectors were verified to FIRE by deliberately breaking a case (VACUOUS: 57/58; TARGET MISMATCH: 63/64) and restoring it. STILL DECLARED OPEN: clause 4, independent evidence that the intended EXECUTION PATH ran — the diagnostic match is a weak proxy, and the false '9D-4 confined' result came from a witness that never entered the semantic path it was written for. Closing it needs the verifier to report which rules it evaluated, not merely which one failed."
+   },
+   {
+    "id": "evidence.harness-selftest",
+    "revision": 1,
+    "status": "REGRESSION-LOCKED",
+    "canonical": true,
+    "statement": "The apparatus is measured by a gate, not by attention. law:evidence.instrument-nonvacuity@1 requires each falsifier to be non-vacuous; this requires the HARNESS ITSELF to demonstrate that it detects the failure species that have actually occurred in this tree. Nine are enumerated and each has a meta-falsifier: working-directory dependence, an absent declared artifact, a present undeclared artifact, a perturbation that changes nothing, a case that DELETES rather than modifies, a case that moves an artifact it did not declare, a case whose expected diagnostic is not the one produced, a paired probe whose frozen side has been silently repaired, and — the one a battery of forgeries cannot see — an UNPERTURBED case tree that does not pass the checker. Eight require the harness to SAY SO; the ninth requires it to say nothing when nothing is wrong. Deliberately BOUNDED: this encodes the known failure species and does not recurse into tests of tests.",
+    "evidence": "harness_selftest.sh, 9/9. The motivating record is six consecutive rounds in which the instrument rather than the engine was wrong: the unset $SCRATCH, the hand-typed 44/44, the hard-coded \"1.0.2\" version forgery, the probe line printing 'directly assignable' while testing typeof, the false '9D-4 confined' from a witness that never entered its path, a non-vacuity law registered one round before its harness implemented it, a one-sided diff that called a deleting case vacuous, round 15's two CWD-relative reads — one of which scanned the empty string and reported success — and round 17's contaminated baseline, where every negative case since round 14 had run against a checker already reporting four unrelated failures. The self-test caught three defects in its own first draft: a header split that captured the run_case DEFINITION rather than its first invocation, an M-8 repair that did not neutralise the witness it was meant to neutralise, and an M-1 that asserted a PASSING verdict where its subject was an IDENTICAL one."
    },
    {
     "id": "maintenance.ownership-total",
@@ -1658,5 +1666,10 @@
   "acceptance is a METHOD on the authority — the issuance table and the live World reader are closed over, so there is no argument a caller can supply to switch either off.",
   "new law derivation.footprint-freshness@1: containment is historical, freshness is temporal, both are required, freshness keys on the footprint and never on a global vclock.",
   "acceptance no longer returns `committable`, and the draft's doing so was wrong: one call cannot establish committability because the World can move between it returning and the caller applying. It returns validated + fresh_at_check, and the commit composition belongs to the World."
+ ],
+ "changelog_from_1_18_0": [
+  "new law evidence.harness-selftest@1 and harness_selftest.sh, 9/9: the apparatus failure species that have actually occurred here now have meta-falsifiers of their own.",
+  "M-9 is the species a battery of forgeries structurally cannot see — an unperturbed case tree that already fails the checker. Round 17 found it by accident after four years of cases finding their diagnostics among noise since round 14.",
+  "bounded on purpose: nine enumerated shapes, no recursion into tests of tests."
  ]
 }
