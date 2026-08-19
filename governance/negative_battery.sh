@@ -58,6 +58,33 @@ t  = set(re.findall(r\"open\\(['\\\"]([^'\\\"]+)['\\\"]\\s*,\\s*['\\\"]w\", py))
 t |= set(re.findall(r\"os\\.remove\\(['\\\"]([^'\\\"]+)\", py))
 print(','.join(sorted(t)))" "$1"; }
 
+# law:evidence.clean-baseline@1 — the phase this runner did not have.
+# A perturbation-based result is admissible only if the IDENTICAL verifier,
+# fixture, environment and artifact set satisfy their DECLARED baseline before
+# the perturbation is applied. This runner's declared baseline is: grid_check
+# exits 0 on the unperturbed fixture. Between round 14 and round 17 it did not,
+# and every case found its diagnostic among four unrelated failures — nothing
+# was falsely green, but no case was isolated-cause evidence either.
+#
+# The baseline is established ONCE, because every case builds its fixture from
+# the same source by the same recipe. That is verified rather than assumed: each
+# case compares its own pre-perturbation digest against the baselined tree, so a
+# fixture that drifts is a FIXTURE DRIFT failure rather than a silent difference.
+BASELINE_DIGEST=""
+establish_baseline () {
+  local d=$SCRATCH/__baseline
+  rm -rf "$d" && mkdir -p "$d"
+  for f in $CASE_INPUTS; do cp "$BASE/$f" "$d/"; done
+  local out; out=$(cd "$d" && node grid_check.mjs 2>&1); local code=$?
+  if [ $code -ne 0 ]; then
+    echo "FAIL  BASELINE (the unperturbed fixture does not pass; no case below is isolated-cause evidence)"
+    echo "$out" | grep -E "^ -" | head -6 | sed "s/^/        /"
+    FAILED=1; return 1
+  fi
+  BASELINE_DIGEST=$(file_digests "$d")
+  echo "BASELINE  grid_check exits 0 on the unperturbed fixture ($(echo "$BASELINE_DIGEST" | wc -l) artifacts)"
+}
+
 run_case () {  # name, expected-grep, setup-script(python)
   local name="$1" want="$2" py="$3"
   local d=$SCRATCH/$name
@@ -68,9 +95,14 @@ run_case () {  # name, expected-grep, setup-script(python)
   # roster still counts it. Six apparatus failures across four rounds would each
   # have been caught here; the hard-coded "1.0.2" replacement is the exact shape.
   local pre; pre=$(file_digests "$d")
+  # PHASE 1 of law:evidence.clean-baseline@1 — this case's fixture must BE the
+  # one that was baselined, not merely one built by the same recipe
+  CASES=$((CASES+1))
+  if [ -n "$BASELINE_DIGEST" ] && [ "$pre" != "$BASELINE_DIGEST" ]; then
+    echo "FAIL  $name (FIXTURE DRIFT — this case's tree differs from the baselined one)"; FAILED=1; return
+  fi
   ( cd "$d" && python3 -c "$py" )
   local post; post=$(file_digests "$d")
-  CASES=$((CASES+1))
   local touched; touched=$(changed_files "$pre" "$post")
   if [ -z "$touched" ]; then
     echo "FAIL  $name (VACUOUS — the forgery changed no artifact; nothing was tested)"; FAILED=1; return
@@ -89,6 +121,7 @@ run_case () {  # name, expected-grep, setup-script(python)
 }
 FAILED=0
 CASES=0; CAUGHT=0
+establish_baseline || exit 1
 
 RESEAL='
 import json, hashlib
@@ -173,10 +206,18 @@ run_case_engine() {  # like run_case but the verifier is the WORLD ENGINE mode
   rm -rf "$d" && mkdir -p "$d" || { echo "FAIL  $name (scratch unusable: $d)"; CASES=$((CASES+1)); FAILED=1; return; }
   for f in $CASE_INPUTS; do cp "$BASE/$f" "$d/"; done
   local pre; pre=$(file_digests "$d")
+  # PHASE 1 of law:evidence.clean-baseline@1 — this case's fixture must BE the
+  # one that was baselined, not merely one built by the same recipe
+  CASES=$((CASES+1))
+  if [ -n "$BASELINE_DIGEST" ] && [ "$pre" != "$BASELINE_DIGEST" ]; then
+    echo "FAIL  $name (FIXTURE DRIFT — this case's tree differs from the baselined one)"; FAILED=1; return
+  fi
   ( cd "$d" && python3 -c "$py" )
   local post; post=$(file_digests "$d")
   local touched; touched=$(changed_files "$pre" "$post")
-  CASES=$((CASES+1))
+  # the counter lives in the baseline phase now; incrementing here too made the
+  # engine case count twice and the printed total read 101 where it was 100.
+  # Caught because the number moved when nothing about the case set had.
   if [ -z "$touched" ]; then
     echo "FAIL  $name (VACUOUS — the forgery changed no artifact; nothing was tested)"; FAILED=1; return
   fi
@@ -800,6 +841,30 @@ import json
 m = json.load(open('artifacts.json'))
 del m['derivation_boundary']['two_envelopes']
 json.dump(m, open('artifacts.json','w'), indent=1)"
+
+
+# ── round 20: the clean baseline ────────────────────────────────────────────
+
+run_case clean-baseline-law-deleted "law evidence.clean-baseline@1 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if e['id'] != 'evidence.clean-baseline']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case baseline-becomes-silence "no longer says the baseline is DECLARED" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'evidence.clean-baseline':
+        e['statement'] = e['statement'].replace('DECLARED, not silent', 'silent')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case baseline-families-dropped "clean_baseline missing its phase list" "
+import json
+g = json.load(open('invariant-grid.json'))
+del g['clean_baseline']['declared_baselines']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 
 echo; [ $FAILED -eq 0 ] && echo "NEGATIVE BATTERY: $CASES/$CASES forgeries caught" || echo "NEGATIVE BATTERY: FAILURES PRESENT ($CAUGHT/$CASES caught)"

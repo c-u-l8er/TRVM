@@ -192,7 +192,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -746,6 +746,29 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         "baseline is the one failure a battery of forgeries structurally cannot see");
       ok((man4.tools ?? []).includes("harness_selftest.sh"),
         "artifacts.json does not declare harness_selftest.sh (v1.19)");
+      // ── v1.21: a perturbation result needs a declared clean baseline ───
+      const cb = entries.find((x) => x.id === "evidence.clean-baseline");
+      ok(!!cb && cb.canonical === true && cb.status === "REGRESSION-LOCKED",
+        "law evidence.clean-baseline@1 missing, non-canonical, or not REGRESSION-LOCKED");
+      ok(!!cb && /DECLARED, not silent/.test(cb.statement ?? ""),
+        "evidence.clean-baseline@1 no longer says the baseline is DECLARED rather than silence — " +
+        "'the instrument must print nothing' is the wrong generalisation and would fail every " +
+        "positive gate that legitimately prints its result");
+      ok(!!g.clean_baseline?.declared_baselines && Array.isArray(g.clean_baseline?.phases),
+        "grid clean_baseline missing its phase list or its per-family declared baselines (v1.21)");
+      ok(/^establish_baseline$/.test((g.clean_baseline?.phases ?? [])[0] ?? ""),
+        "grid clean_baseline.phases must begin with establish_baseline");
+      {
+        const nb = existsSync(A("negative_battery.sh")) ? readFileSync(A("negative_battery.sh"), "utf8") : "";
+        ok(nb.includes("establish_baseline ()") && /establish_baseline \|\| exit 1/.test(nb),
+          "negative_battery.sh does not establish and enforce its baseline — between rounds 14 and 17 " +
+          "every case found its diagnostic among four unrelated failures, which is not isolated-cause " +
+          "evidence even though nothing was falsely green");
+        ok(/FIXTURE DRIFT/.test(nb),
+          "negative_battery.sh does not verify that each case's fixture IS the baselined one — " +
+          "establishing a baseline once and assuming every later tree matches it is the assumption " +
+          "this law exists to remove");
+      }
     }
     {
       const man3 = existsSync(A("artifacts.json")) ? JSON.parse(readFileSync(A("artifacts.json"), "utf8")) : {};
