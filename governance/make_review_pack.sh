@@ -135,8 +135,10 @@ else
   then run "cross-plane bridge" governance node bridge/bridge_check.mjs
   else skip "cross-plane bridge" "ic32_canon.c did not compile here"; fi
   if gcc -O2 -o governance/bridge/ic32_film governance/bridge/ic32_film.c 2>/dev/null
-  then run "native semantic film" governance node bridge/film_check.mjs
-  else skip "native semantic film" "ic32_film.c did not compile here"; fi
+  then run "native semantic film"   governance node bridge/film_check.mjs
+       run "lowering refinement"    governance node lowering_check.mjs
+  else skip "native semantic film" "ic32_film.c did not compile here"
+       skip "lowering refinement"  "ic32_film.c did not compile here"; fi
 fi
 
 say ""
