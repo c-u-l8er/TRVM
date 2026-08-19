@@ -485,25 +485,27 @@ const mkReq = (over = {}) => {
 
   // THE REGISTRATION API IS GONE. Not deprecated, not hardened — absent.
   R("no-caller-supplied-provenance",
-    typeof auth.registerExecutor === "undefined"
+    typeof auth.registerExecutor === "undefined" && typeof auth.nameArtifact === "undefined"
       && !("registerExecutor" in DerivationAuthority.prototype)
+      && !("nameArtifact" in DerivationAuthority.prototype)
       && DerivationAuthority.prototype.accept.length === 3
-      && typeof auth.execute === "function" && typeof auth.nameArtifact === "function",
-    `registerExecutor is absent and accept takes ${DerivationAuthority.prototype.accept.length} ` +
-    `parameters, so there is no argument in which a caller may hand acceptance a proof. What replaced ` +
-    `it is execute() — the authority hashes, launches, sends and receives — and nameArtifact(), which ` +
-    `is a digest→name POLICY and makes no claim that anything ran`);
+      && DerivationAuthority.prototype.execute.length === 2,
+    `registerExecutor and nameArtifact are both absent, accept takes ` +
+    `${DerivationAuthority.prototype.accept.length} parameters and execute takes ` +
+    `${DerivationAuthority.prototype.execute.length} (registry, req). There is no argument in which a ` +
+    `caller may hand acceptance a proof (P-2) and none in which it may hand execution an action (P-3)`);
 
-  // the naming policy refuses malformed input in BOTH directions, because a
-  // digest that is not a digest would make the artifact identity a label again
-  const nm = (d, f) => { try { auth.nameArtifact(d, f); return "ACCEPTED"; } catch (e) { return e.message; } };
-  R("naming-policy-well-formed",
-    nm("not-a-digest", C) === "artifact-digest-malformed"
-      && nm("a".repeat(64), "c") === "implementation-family-id-malformed"
-      && nm("a".repeat(64), C) === "ACCEPTED",
-    `a family name is not a digest and a digest is not a family name: ${nm("not-a-digest", C)} / ` +
-    `${nm("b".repeat(64), "c")}. WHAT bytes a native executable's digest should cover — the ELF, and ` +
-    `every shared object the loader binds — is DECLARED OPEN; that an execution be OBSERVED is not`);
+  // and the execution host is a CONSTRUCTOR-TIME dependency, not a setter
+  const noHost = await auth.execute(reg, req);
+  const duck = (() => { try { new DerivationAuthority(live, { run: () => {} }); return "ACCEPTED"; }
+    catch (e) { return e.message; } })();
+  R("host-is-constructed-not-set",
+    !noHost.ok && noHost.reason === "authority-has-no-execution-host"
+      && duck === "authority-host-must-be-an-ObservedExecutionHost",
+    `an authority built without a host cannot execute (${noHost.reason}) and one built with an object ` +
+    `merely SHAPED like a host is refused at construction (${duck}). The catalog is fixed before this ` +
+    `object exists, so there is no window in which its identity policy can move — and duck-typing the ` +
+    `host is how a caller would supply the launcher again`);
 
   R("acceptance-success-shape-narrow",
     unobserved.trace_conforms === undefined && unobserved.committable === undefined

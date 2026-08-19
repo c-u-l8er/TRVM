@@ -56,12 +56,14 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
   ProgramRegistry, DerivationAuthority, deriveLocally, validateForeignResult,
-  JS_IMPLEMENTATION_ID, digestArtifactFiles,
+  JS_IMPLEMENTATION_ID,
 } from "./derive_protocol.mjs";
-import { jsWorkerLauncher } from "./derive_launcher.mjs";
+import { ObservedExecutionHost, digestArtifactFiles } from "./observed_execution_host.mjs";
+import { JS_WORKER_ENTRY, defaultDeriveCatalog } from "./derive_launcher.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const JS_DIGEST = digestArtifactFiles([join(HERE, "derive_worker.mjs"), join(HERE, "derive_protocol.mjs")]);
+const JS_DIGEST = digestArtifactFiles(JS_WORKER_ENTRY.artifact_closure);
+const mkHost = () => new ObservedExecutionHost(defaultDeriveCatalog(JS_IMPLEMENTATION_ID));
 
 const results = [];
 const R = (id, held, note) => { results.push({ id, held }); console.log(
@@ -71,7 +73,7 @@ const P = { op: "add", a: { op: "read", resource: "fb" }, b: { op: "input", name
 const mkWorld = () => ({ res: { fb: { value: 5, version: 1 } },
   read(r) { return { ...this.res[r] }; }, scope(q) { return "scope:" + q; } });
 const reg = new ProgramRegistry(); const PID = reg.bind(P);
-const C_ID = "impl-c-derive-v0.8.0";
+const C_ID = "impl-c-derive-v0.9.0";
 
 /* ── v0.6.0's derivation and acceptance, VERBATIM in their essentials ─────
    deriveLocally took the identity as a parameter; accept compared the request's
@@ -130,13 +132,12 @@ function v6Accept(registry, req, res) {
    this request, takes these bytes, and keys the observation over the whole
    execution event. There is no handle to hold and none to forge. */
 {
-  const world = mkWorld(); const auth = new DerivationAuthority(world);
+  const world = mkWorld(); const auth = new DerivationAuthority(world, mkHost());
   const mk = (opts, id) => auth.authorize({ intent_id: id, program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } }, opts).request;
-  auth.nameArtifact(JS_DIGEST, JS_IMPLEMENTATION_ID);
 
   const honestReq = mk({}, "h1");
-  const run = await auth.execute(honestReq, jsWorkerLauncher([P]));
+  const run = await auth.execute(reg, honestReq);
   const honest = run.result;
   const observed = auth.accept(reg, honestReq, honest);
   R("provenance-needs-observation",
@@ -153,8 +154,8 @@ function v6Accept(registry, req, res) {
   R("claim-vs-observation",
     contradicted.ok && contradicted.implementation_provenance === "unavailable"
       && !("implementation_id" in contradicted)
-      && auth.observationOf(honestReq, honest) !== null
-      && auth.observationOf(honestReq, forged) === null,
+      && auth.observationOf(reg, honestReq, honest) !== null
+      && auth.observationOf(reg, honestReq, forged) === null,
     `relabelling does not get COMPARED against the observation, it MISSES it: the key covers the whole ` +
     `result, so the forged bytes name an execution event that never happened and acceptance drops to ` +
     `${contradicted.implementation_provenance} with no implementation_id at all. The C label survives ` +
@@ -163,30 +164,31 @@ function v6Accept(registry, req, res) {
 
   const cReq = mk({ expected_implementation_id: C_ID }, "h2");
   const noObs = auth.accept(reg, cReq, { ...honest, request_id: cReq.request_id });
-  const cRun = await auth.execute(mk({ expected_implementation_id: C_ID }, "h3"), jsWorkerLauncher([P]));
+  const cRun = await auth.execute(reg, mk({ expected_implementation_id: C_ID }, "h3"));
   R("unavailable-is-not-verified",
     !noObs.ok && noObs.reason === "implementation-provenance-unavailable"
-      && !cRun.ok && /implementation-mismatch: want .*, this is impl-js/.test(cRun.reason),
-    `a C requirement with no observation -> ${noObs.reason}; and attempting to satisfy one by launching ` +
-    `the JS worker fails at the executor -> ${cRun.reason}. "Unavailable" is the honest answer where ` +
-    `v0.6.0 said "C verified"`);
+      && !cRun.ok && /^executor-not-in-catalog: impl-c-derive-v0\.9\.0/.test(cRun.reason),
+    `a C requirement with no observation -> ${noObs.reason}; and attempting to satisfy one dies at the ` +
+    `CATALOG (${cRun.reason}) before anything is launched. At v0.8.0 it died one step later, at the JS ` +
+    `worker refusing a requirement it could not meet — a real improvement, because the catalog answers ` +
+    `"is there such an executor at all" without starting a process to ask. "Unavailable" is the honest ` +
+    `answer where v0.6.0 said "C verified"`);
 
   const noSuchHandle = auth.accept(reg, honestReq, honest, { token: Symbol(C_ID) });
   R("no-handle-to-forge",
     noSuchHandle.ok && noSuchHandle.implementation_id === JS_IMPLEMENTATION_ID
       && DerivationAuthority.prototype.accept.length === 3,
-    `a fourth argument is now INERT — accept takes ${DerivationAuthority.prototype.accept.length} ` +
+    `a fourth argument is INERT — accept takes ${DerivationAuthority.prototype.accept.length} ` +
     `parameters and ignores anything past them, returning the observation it already holds ` +
-    `(${noSuchHandle.implementation_id}). v0.7.0 refused a forged handle; v0.8.0 has no handle`);
+    `(${noSuchHandle.implementation_id}). v0.7.0 refused a forged handle; there is no handle to forge`);
 }
 
 /* ── and the success shape no longer invites weighing booleans ────────────── */
 {
-  const world = mkWorld(); const auth = new DerivationAuthority(world);
-  auth.nameArtifact(JS_DIGEST, JS_IMPLEMENTATION_ID);
+  const world = mkWorld(); const auth = new DerivationAuthority(world, mkHost());
   const { request: req } = auth.authorize({ intent_id: "s1", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
-  const res = (await auth.execute(req, jsWorkerLauncher([P]))).result;
+  const res = (await auth.execute(reg, req)).result;
   const acc = auth.accept(reg, req, res);
   const v = validateForeignResult(reg, req, res);
   R("success-shape-is-narrow",

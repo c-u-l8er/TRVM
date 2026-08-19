@@ -1,4 +1,4 @@
-/* derive_worker.mjs — v0.7.0 — the far side of the realm boundary.
+/* derive_worker.mjs — v0.9.0 — the far side of the realm boundary.
    Holds NO parent reference of any kind: it receives canonical data on a
    message port, resolves the program from its OWN registry by id, evaluates
    against the grant snapshot the request carries, and posts back canonical
@@ -19,6 +19,12 @@
       its identity; the caller may only state a REQUIREMENT, which this worker
       refuses when it cannot satisfy it. A field the caller sets and nobody
       checks is decoration, and the film identity split needs provenance.
+
+   3. It must not be reachable except through the host's catalog. At v0.8.0 the
+      caller built a launcher, chose which programs the far side would hold, and
+      handed the authority a spawn() beside the file list it hashed. The
+      workerData image now comes from the AUTHORITY's own ProgramRegistry, and
+      the entrypoint from an immutable catalog entry (P-3).
 
    Scope, unchanged and still not claimed: this is object confinement. A worker
    holding `let counter = 0` leaks no parent authority and still fails to make

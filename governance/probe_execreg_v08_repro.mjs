@@ -59,12 +59,14 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
   ProgramRegistry, DerivationAuthority, deriveLocally, validateForeignResult,
-  JS_IMPLEMENTATION_ID, digestArtifactFiles, executionKey, requestSemId,
+  JS_IMPLEMENTATION_ID, requestSemId,
 } from "./derive_protocol.mjs";
-import { jsWorkerLauncher, fileClosureLauncher } from "./derive_launcher.mjs";
+import { ObservedExecutionHost, digestArtifactFiles } from "./observed_execution_host.mjs";
+import { JS_WORKER_ENTRY, defaultDeriveCatalog } from "./derive_launcher.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const JS_DIGEST = digestArtifactFiles([join(HERE, "derive_worker.mjs"), join(HERE, "derive_protocol.mjs")]);
+const JS_DIGEST = digestArtifactFiles(JS_WORKER_ENTRY.artifact_closure);
+const mkHost = () => new ObservedExecutionHost(defaultDeriveCatalog(JS_IMPLEMENTATION_ID));
 
 const results = [];
 const R = (id, held, note) => { results.push({ id, held }); console.log(
@@ -173,42 +175,40 @@ class V7Authority {
     `does the launching`);
 }
 
-/* ── live: naming C succeeds and buys nothing, because it is only a name ──── */
+/* ── live: a NAME is not an executor, and there is nowhere to put one ─────── */
 {
-  const auth = new DerivationAuthority(mkWorld());
-  auth.nameArtifact(JS_DIGEST, JS_IMPLEMENTATION_ID);
-  const named = auth.nameArtifact("c".repeat(64), "impl-c-derive-v0.8.0");
+  const auth = new DerivationAuthority(mkWorld(), mkHost());
   const { request: req } = auth.authorize({ intent_id: "l1", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } },
-    { expected_implementation_id: "impl-c-derive-v0.8.0" });
-  const run = await auth.execute(req, jsWorkerLauncher([P]));
+    { expected_implementation_id: "impl-c-derive-v0.9.0" });
+  const run = await auth.execute(reg, req);
   R("live: name-without-launch",
-    named.ok === true && !run.ok && /implementation-mismatch: want impl-c-derive-v0.8.0/.test(run.reason),
-    `naming a digest "impl-c-derive-v0.8.0" SUCCEEDS, and says nothing: a digest→name policy claims ` +
-    `only what bytes are CALLED, never that anything ran. Launching the JS worker against a C ` +
-    `requirement then dies at the executor (${run.reason}). This is the v0.7.0 attack, line for line, ` +
-    `reaching nothing`);
+    typeof auth.nameArtifact === "undefined"
+      && !run.ok && /^executor-not-in-catalog: impl-c-derive-v0\.9\.0/.test(run.reason),
+    `there is no nameArtifact() to call: v0.8.0 kept a digest→name setter and v0.9.0 replaced it with a ` +
+    `catalog fixed at the host's construction. A C requirement against a catalog holding only JS is ` +
+    `${run.reason.split(":")[0]} — refused before anything is launched. The v0.7.0 attack has no ` +
+    `surface left to touch`);
 }
 
 /* ── live: an observation binds executor, request and bytes as ONE event ──── */
 {
-  const auth = new DerivationAuthority(mkWorld());
-  auth.nameArtifact(JS_DIGEST, JS_IMPLEMENTATION_ID);
+  const auth = new DerivationAuthority(mkWorld(), mkHost());
   const mk = (id, bias) => auth.authorize({ intent_id: id, program_sem_id: PID,
     canonical_inputs: { bias }, requested_resources: { exact: ["fb"], predicates: [] } }).request;
   const reqA = mk("l2-a", 0), reqB = mk("l2-b", 7);
-  const runA = await auth.execute(reqA, jsWorkerLauncher([P]));
+  const runA = await auth.execute(reg, reqA);
   const resB = deriveLocally(reg, reqB).result;      // B is NEVER launched
 
   const accA = auth.accept(reg, reqA, runA.result);
   const accB = auth.accept(reg, reqB, resB);
   // and A's observation cannot be borrowed for B's bytes: there is nothing to
   // borrow, because the key IS the event
-  const borrowed = auth.observationOf(reqB, resB);
+  const borrowed = auth.observationOf(reg, reqB, resB);
   R("live: observation-is-per-event",
     accA.implementation_provenance === "observed" && accB.implementation_provenance === "unavailable"
       && borrowed === null
-      && executionKey(requestSemId(reqA), runA.result) !== executionKey(requestSemId(reqB), resB),
+      && auth.observationOf(reg, reqA, runA.result) !== null,
     `the launched execution is ${accA.implementation_provenance}; a second, unlaunched derivation at the ` +
     `SAME authority is ${accB.implementation_provenance}. Under v0.7.0 one handle covered both. There is ` +
     `no handle to reuse now: the key is H(request_sem_id | canonical(whole result)), so an observation ` +
@@ -217,13 +217,12 @@ class V7Authority {
 
 /* ── live: every field of the result is inside the key ────────────────────── */
 {
-  const auth = new DerivationAuthority(mkWorld());
-  auth.nameArtifact(JS_DIGEST, JS_IMPLEMENTATION_ID);
+  const auth = new DerivationAuthority(mkWorld(), mkHost());
   const { request: req } = auth.authorize({ intent_id: "l3", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
-  const run = await auth.execute(req, jsWorkerLauncher([P]));
+  const run = await auth.execute(reg, req);
   const res = run.result;
-  const mutate = (m) => auth.observationOf(req, m);
+  const mutate = (m) => auth.observationOf(reg, req, m);
   const relabelled = { ...res,
     execution_evidence: { ...res.execution_evidence, implementation_id: "impl-c-derive-v0.8.0" } };
   const revalued = { ...res, semantic_result: { ...res.semantic_result, value: 6 } };
@@ -238,23 +237,23 @@ class V7Authority {
     `inside the observation`);
 }
 
-/* ── live: the authority hashes the artifact; the launcher may not name it ── */
+/* ── live: there is no launcher at all, so it cannot name anything ────────── */
 {
-  const auth = new DerivationAuthority(mkWorld());
-  auth.nameArtifact(JS_DIGEST, JS_IMPLEMENTATION_ID);
+  const auth = new DerivationAuthority(mkWorld(), mkHost());
   const { request: req } = auth.authorize({ intent_id: "l4", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
-  const real = jsWorkerLauncher([P]);
-  // a launcher that runs the JS worker while declaring a different closure
-  const liar = fileClosureLauncher([join(HERE, "derive_protocol.mjs")], () => real.spawn());
-  const x = await auth.execute(req, liar);
-  const fields = Object.keys(real).sort().join(",");
+  // the v0.8.0 API, offered as a third argument. Nothing reads it.
+  let ranMine = false;
+  const liar = { artifact_files: [join(HERE, "derive_protocol.mjs")],
+    spawn: () => { ranMine = true; return { send: () => ({ ok: true, result: null }), close() {} }; } };
+  const x = await auth.execute(reg, req, liar);
+  const entry = Object.keys(JS_WORKER_ENTRY).sort().join(",");
   R("live: launcher-has-no-identity-field",
-    !x.ok && /^artifact-unnamed: /.test(x.reason) && fields === "artifact_files,spawn",
-    `a launcher exposes {${fields}} and nothing else — WHERE the bytes are and HOW to start them. One ` +
-    `that spawns the real worker while declaring another file is identified by what it declared ` +
-    `(${x.reason}), because the authority reads and hashes those files itself. v0.7.0's caller supplied ` +
-    `the identity directly, as a string, and was believed`);
+    x.ok && !ranMine && DerivationAuthority.prototype.execute.length === 2 && entry === "artifact_closure,entrypoint,kind",
+    `execute takes ${DerivationAuthority.prototype.execute.length} parameters and a launcher-shaped ` +
+    `third one is inert (the callback ran: ${ranMine}). What replaced it is a catalog ENTRY — ` +
+    `{${entry}} — inert data whose transport the host owns. v0.7.0's caller supplied the identity as a ` +
+    `string; v0.8.0's supplied an action beside the evidence (P-3); v0.9.0 supplies neither`);
 }
 
 console.log("=".repeat(100));

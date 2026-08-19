@@ -1,4 +1,4 @@
-/* derive_realm_battery.mjs — the crossing itself, v0.8.0.
+/* derive_realm_battery.mjs — the crossing itself, v0.9.0.
    The claim under test is narrow and stated as such: OBJECT authority does not
    cross, the derivation realm reads only what it was granted, and — from v0.8.0
    — an implementation identity is an EXECUTION EVENT THE AUTHORITY DROVE rather
@@ -11,9 +11,10 @@ import { dirname, join } from "node:path";
 import {
   ProgramRegistry, programSemId, canonicalBytes, validateForeignResult,
   resolveGrants, grantId, semanticProjection, JS_IMPLEMENTATION_ID,
-  DerivationAuthority, digestArtifactFiles, executionKey, requestSemId,
+  DerivationAuthority, requestSemId, deriveLocally,
 } from "./derive_protocol.mjs";
-import { jsWorkerLauncher, fileClosureLauncher } from "./derive_launcher.mjs";
+import { ObservedExecutionHost, digestArtifactFiles } from "./observed_execution_host.mjs";
+import { JS_WORKER_ENTRY, defaultDeriveCatalog } from "./derive_launcher.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const P = { op: "add", a: { op: "read", resource: "fb" }, b: { op: "input", name: "bias" } };
@@ -165,158 +166,186 @@ R("crossing-derives", honest.ok && honest.result.semantic_result.value === 5
     `crossing the authority did not drive is not an execution it observed`);
 }
 
-// ── v0.8.0: THE AUTHORITY LAUNCHES ────────────────────────────────────────
+// ── v0.9.0: THE AUTHORITY LAUNCHES, AND CANNOT BE HANDED A LAUNCHER ───────
 const mkWorld = () => ({ res: { fb: { value: 5, version: 1 } },
   read(r) { return { ...this.res[r] }; }, scope(q) { return "scope:" + q; } });
-const JS_DIGEST = digestArtifactFiles([join(HERE, "derive_worker.mjs"), join(HERE, "derive_protocol.mjs")]);
+const JS_DIGEST = digestArtifactFiles(JS_WORKER_ENTRY.artifact_closure);
+const mkAuth = (catalog = defaultDeriveCatalog(JS_IMPLEMENTATION_ID)) =>
+  new DerivationAuthority(mkWorld(), new ObservedExecutionHost(catalog));
 
 // 11. an execution the authority drove, and the three identities it separates
 let observedRun = null;
 {
-  const auth = new DerivationAuthority(mkWorld());
-  auth.nameArtifact(JS_DIGEST, JS_IMPLEMENTATION_ID);
+  const auth = mkAuth();
   const a = auth.authorize({ intent_id: "i-obs", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } },
     { expected_implementation_id: JS_IMPLEMENTATION_ID });
-  const x = await auth.execute(a.request, jsWorkerLauncher([P]));
+  const x = await auth.execute(reg, a.request);
   const acc = x.ok ? auth.accept(reg, a.request, x.result) : { ok: false };
   observedRun = { auth, req: a.request, res: x.result };
   R("authority-launched-execution",
     x.ok && acc.ok && acc.implementation_provenance === "observed"
       && acc.implementation_id === JS_IMPLEMENTATION_ID
       && acc.executable_artifact_id === JS_DIGEST
-      && acc.executor_session_id === x.executor_session_id,
-    `the authority hashed the artifact closure (${JS_DIGEST.slice(0, 12)}…), resolved its name from its ` +
-    `OWN policy, spawned it, sent the request and took the result — and acceptance reports three ` +
-    `identities: family ${acc.implementation_id}, artifact ${String(acc.executable_artifact_id).slice(0, 12)}…, ` +
-    `session ${String(acc.executor_session_id).slice(0, 12)}…`);
+      && Array.isArray(acc.executor_sessions) && acc.executor_sessions.length === 1,
+    `the host hashed the catalogued artifact closure (${JS_DIGEST.slice(0, 12)}…), launched the ` +
+    `entrypoint that closure contains, sent the request and took the result — and acceptance reports ` +
+    `family ${acc.implementation_id}, artifact ${String(acc.executable_artifact_id).slice(0, 12)}…, and ` +
+    `${acc.executor_sessions?.length} recorded session. Sessions are a LIST because the key is over ` +
+    `bytes: two launches producing identical output share it, and v0.8.0 overwrote one with the other ` +
+    `while reporting a single id as if it named this copy's launch`);
 }
 
-// 12. P-2 ITSELF: naming C and never launching C buys nothing (F-7 shape)
+// 12. P-3 ITSELF: there is no field in which to supply an action
 {
-  const auth = new DerivationAuthority(mkWorld());
-  auth.nameArtifact(JS_DIGEST, JS_IMPLEMENTATION_ID);
-  // the caller names a C family against a digest of its own choosing — the
-  // policy accepts the NAMING, because a naming is not an observation
-  const FAKE_C_DIGEST = "c".repeat(64);
-  let named = null;
-  try { named = auth.nameArtifact(FAKE_C_DIGEST, "impl-c-derive-v0.8.0"); } catch (e) { named = e.message; }
-  const a = auth.authorize({ intent_id: "i-p2", program_sem_id: PID,
+  const auth = mkAuth();
+  const a = auth.authorize({ intent_id: "i-p3", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } },
-    { expected_implementation_id: "impl-c-derive-v0.8.0" });
-  // JS runs. Nothing C-shaped is anywhere near this.
-  const x = await auth.execute(a.request, jsWorkerLauncher([P]));
-  R("naming-c-without-launching-c",
-    named?.ok === true && !x.ok && /implementation-mismatch: want impl-c-derive-v0.8.0/.test(x.reason ?? ""),
-    `naming a digest "impl-c-derive-v0.8.0" SUCCEEDS — a naming policy is not an observation and does ` +
-    `not pretend to be — and the run still dies: ${x.reason}. Under v0.7.0 the equivalent three lines ` +
-    `(registerExecutor("impl-c-derive-v0.8.0"), run JS, accept with the handle) returned ok:true with ` +
-    `implementation_provenance "observed"`);
+    { expected_implementation_id: JS_IMPLEMENTATION_ID });
+  // the v0.8.0 attack, offered verbatim: declare the real closure, supply an
+  // unrelated spawn. Both extra arguments are simply not read.
+  let ranMine = false;
+  const liar = { artifact_files: JS_WORKER_ENTRY.artifact_closure,
+    spawn: () => { ranMine = true; return { send: () => ({ ok: true, result: null }), close() {} }; } };
+  const x = await auth.execute(reg, a.request, liar);
+  const acc = x.ok ? auth.accept(reg, a.request, x.result) : { ok: false };
+  R("no-launcher-parameter",
+    x.ok && !ranMine && acc.ok && acc.implementation_id === JS_IMPLEMENTATION_ID
+      && DerivationAuthority.prototype.execute.length === 2,
+    `execute takes ${DerivationAuthority.prototype.execute.length} parameters (registry, req); a third ` +
+    `argument carrying artifact_files beside a spawn() is inert — the callback never ran (${ranMine}) ` +
+    `and the real worker did. Under v0.8.0 that object WAS the API, and its two fields were unrelated: ` +
+    `the authority hashed X and invoked Y`);
 }
 
-// 13. relabelling an OBSERVED result after the fact (F-7, at acceptance)
+// 13. the catalog refuses an entrypoint outside the closure it hashes
+{
+  const outside = { [JS_IMPLEMENTATION_ID]: { kind: "node-worker",
+    entrypoint: join(HERE, "derive_worker.mjs"),
+    artifact_closure: [join(HERE, "derive_battery.mjs")] } };
+  const bad = (() => { try { new ObservedExecutionHost(outside); return "ACCEPTED"; }
+    catch (e) { return e.message; } })();
+  const aliased = (() => { try { new ObservedExecutionHost({
+      "impl-a-v1": JS_WORKER_ENTRY, "impl-b-v1": JS_WORKER_ENTRY }); return "ACCEPTED"; }
+    catch (e) { return e.message; } })();
+  const extra = (() => { try { new ObservedExecutionHost({ [JS_IMPLEMENTATION_ID]:
+      { ...JS_WORKER_ENTRY, spawn: () => {} } }); return "ACCEPTED"; }
+    catch (e) { return e.message; } })();
+  R("catalog-entry-well-formed",
+    /^catalog-entrypoint-outside-closure: /.test(bad) && /^catalog-closure-aliased: /.test(aliased)
+      && /^catalog-entry-extra-field: /.test(extra),
+    `an entrypoint outside its own hashed closure is refused (${bad.split(":")[0]}) — that is P-3 with ` +
+    `the descriptor moved indoors, and moving it indoors is not a repair. Two families over one closure ` +
+    `is refused (${aliased.split(":")[0]}), and a catalog entry carrying an extra field is refused ` +
+    `(${extra}) — which is where a spawn() would have to reappear`);
+}
+
+// 14. relabelling an OBSERVED result after the fact
 {
   const { auth, req, res } = observedRun;
   const asIfC = { ...res,
-    execution_evidence: { ...res.execution_evidence, implementation_id: "impl-c-derive-v0.8.0" } };
+    execution_evidence: { ...res.execution_evidence, implementation_id: "impl-c-derive-v0.9.0" } };
   const acc = auth.accept(reg, req, asIfC);
   const v = validateForeignResult(reg, req, asIfC);
   R("relabel-after-observation",
     !acc.ok && acc.reason === "implementation-provenance-unavailable"
-      && v.ok && v.implementation_claimed === "impl-c-derive-v0.8.0"
-      && auth.observationOf(req, asIfC) === null && auth.observationOf(req, res) !== null,
+      && v.ok && v.implementation_claimed === "impl-c-derive-v0.9.0"
+      && auth.observationOf(reg, req, asIfC) === null && auth.observationOf(reg, req, res) !== null,
     `an OBSERVED result with one byte of its label changed is ${acc.reason}: the observation is keyed ` +
     `over the whole execution event, so the relabelled bytes are not in the table at all. Note the ` +
     `split — the validator still says the semantics agree (implementation_claimed ` +
     `${v.implementation_claimed}); it is provenance that is absent, and they are different verdicts`);
 }
 
-// 14. a genuine observation cannot be re-pointed at other bytes (F-6)
+// 15. a genuine observation cannot be re-pointed at other bytes
 {
   const { auth, req, res } = observedRun;
-  const inflated = { ...res,
-    semantic_result: { ...res.semantic_result, value: 1005 } };
+  const inflated = { ...res, semantic_result: { ...res.semantic_result, value: 1005 } };
   const accInflated = auth.accept(reg, req, inflated);
-  // and the SAME honest result under a DIFFERENT request finds nothing either
-  const auth2 = new DerivationAuthority(mkWorld());
-  auth2.nameArtifact(JS_DIGEST, JS_IMPLEMENTATION_ID);
+  const auth2 = mkAuth();
   const b = auth2.authorize({ intent_id: "i-other", program_sem_id: PID,
     canonical_inputs: { bias: 1 }, requested_resources: { exact: ["fb"], predicates: [] } });
-  const crossAuth = auth2.observationOf(b.request, res);
   R("observation-binds-request-and-bytes",
-    !accInflated.ok && accInflated.reason === "foreign-result-divergence" && crossAuth === null
-      && executionKey(requestSemId(req), res) !== executionKey(requestSemId(b.request), res),
+    !accInflated.ok && accInflated.reason === "foreign-result-divergence"
+      && auth2.observationOf(reg, b.request, res) === null
+      && auth.observationOf(reg, b.request, res) === null,
     `changing the value breaks re-derivation first (${accInflated.reason}) and would have missed the ` +
-    `observation anyway; and a second authority holds no observation for the same bytes, because the ` +
-    `key is over request AND result and the table is private to the authority that drove the run`);
+    `observation anyway; the same bytes under a DIFFERENT request find nothing even at the authority ` +
+    `that ran them, because the key is over input AND output; and a second authority holds no ` +
+    `observation at all, because each has its own host`);
 }
 
-// 15. an artifact the authority has no name for does not run
+// 16. an authority with no host cannot execute, and cannot pretend it did
 {
-  const auth = new DerivationAuthority(mkWorld());          // no nameArtifact call at all
-  const a = auth.authorize({ intent_id: "i-unnamed", program_sem_id: PID,
+  const bare = new DerivationAuthority(mkWorld());
+  const a = bare.authorize({ intent_id: "i-nohost", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
-  const x = await auth.execute(a.request, jsWorkerLauncher([P]));
-  // and a launcher declaring a DIFFERENT closure reaches a different identity
-  const other = digestArtifactFiles([join(HERE, "derive_worker.mjs")]);
-  R("unnamed-artifact-refused",
-    !x.ok && /^artifact-unnamed: /.test(x.reason) && other !== JS_DIGEST,
-    `${x.reason} — the authority resolves the name from the bytes it hashed, so an unnamed artifact is ` +
-    `refused before it is spawned. Declaring a narrower closure (worker only, ${other.slice(0, 12)}…) is ` +
-    `a DIFFERENT identity from the worker-plus-protocol closure (${JS_DIGEST.slice(0, 12)}…): what the ` +
-    `executor depends on is part of what it is`);
+  const x = await bare.execute(reg, a.request);
+  const local = deriveLocally(reg, a.request);
+  const acc = bare.accept(reg, a.request, local.result);
+  const badHost = (() => { try { new DerivationAuthority(mkWorld(), { run: () => {} }); return "ACCEPTED"; }
+    catch (e) { return e.message; } })();
+  R("no-host-no-provenance",
+    !x.ok && x.reason === "authority-has-no-execution-host"
+      && acc.ok && acc.implementation_provenance === "unavailable"
+      && badHost === "authority-host-must-be-an-ObservedExecutionHost",
+    `${x.reason}; and in-process derivation at the same authority accepts with provenance ` +
+    `${acc.implementation_provenance}. An object merely SHAPED like a host is refused at construction ` +
+    `(${badHost}) — duck-typing the host is how a caller would supply the launcher again`);
 }
 
-// 16. the launcher supplies mechanism and no identity
+// 17. a request naming an uncatalogued family does not run
 {
-  const auth = new DerivationAuthority(mkWorld());
-  auth.nameArtifact(JS_DIGEST, JS_IMPLEMENTATION_ID);
-  const a = auth.authorize({ intent_id: "i-mech", program_sem_id: PID,
+  const auth = mkAuth();
+  const a = auth.authorize({ intent_id: "i-uncat", program_sem_id: PID,
+    canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } },
+    { expected_implementation_id: "impl-c-derive-v0.9.0" });
+  const x = await auth.execute(reg, a.request);
+  const two = new ObservedExecutionHost({ [JS_IMPLEMENTATION_ID]: JS_WORKER_ENTRY,
+    "impl-js-derive-shadow": { ...JS_WORKER_ENTRY,
+      artifact_closure: [join(HERE, "derive_worker.mjs"), join(HERE, "derive_protocol.mjs")] } });
+  const amb = new DerivationAuthority(mkWorld(), two);
+  const b = amb.authorize({ intent_id: "i-amb", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
-  // a launcher that spawns the JS worker while POINTING its declaration at C's
-  // source. The authority hashes what the declaration names, so the two cannot
-  // be separated: naming other files means being identified as other files.
-  const realLauncher = jsWorkerLauncher([P]);
-  const liar = fileClosureLauncher([join(HERE, "derive_realm_battery.mjs")], () => realLauncher.spawn());
-  const x = await auth.execute(a.request, liar);
-  const malformed = await auth.execute(a.request, { artifact_files: ["x"], spawn: null });
-  const missing = await auth.execute(a.request, fileClosureLauncher([join(HERE, "no-such-file.mjs")],
-    () => realLauncher.spawn()));
-  R("launcher-declares-no-identity",
-    !x.ok && /^artifact-unnamed: /.test(x.reason) && !malformed.ok && malformed.reason === "launcher-malformed"
-      && !missing.ok && /^artifact-unreadable: /.test(missing.reason),
-    `a launcher that spawns the real worker while declaring someone else's files is identified by what ` +
-    `it declared (${x.reason}) — there is no field in which it may simply state a name. A malformed ` +
-    `launcher is ${malformed.reason}; an unreadable one is refused before any spawn`);
+  const y = await amb.execute(reg, b.request);
+  R("uncatalogued-family-refused",
+    !x.ok && /^executor-not-in-catalog: impl-c-derive-v0\.9\.0/.test(x.reason)
+      && !y.ok && /^execute-implementation-ambiguous: /.test(y.reason),
+    `${x.reason} — a C requirement against a catalog that holds only JS is refused before anything is ` +
+    `launched. And with two catalogued families a request naming NONE is ${y.reason.split(":")[0]} ` +
+    `rather than silently defaulting: picking one for the caller would be the authority choosing the ` +
+    `provenance`);
 }
 
-// 17. the naming policy is injective and cannot be rewritten mid-run
+// 18. the far side's program image is the AUTHORITY's, not a caller's
 {
-  const auth = new DerivationAuthority(mkWorld());
-  auth.nameArtifact(JS_DIGEST, JS_IMPLEMENTATION_ID);
-  const rebind = (() => { try { auth.nameArtifact(JS_DIGEST, "impl-c-derive-v0.8.0"); return null; }
-    catch (e) { return e.message; } })();
-  const realias = (() => { try { auth.nameArtifact("a".repeat(64), JS_IMPLEMENTATION_ID); return null; }
-    catch (e) { return e.message; } })();
-  const idem = (() => { try { return auth.nameArtifact(JS_DIGEST, JS_IMPLEMENTATION_ID).ok; }
-    catch { return false; } })();
-  R("naming-policy-injective",
-    /^artifact-already-named: /.test(rebind ?? "") && /^family-already-bound: /.test(realias ?? "") && idem === true,
-    `renaming an already-named digest is refused (${rebind}) and pointing an already-bound family at ` +
-    `other bytes is refused (${realias}); restating the same pair is idempotent. A policy a caller can ` +
-    `rewrite mid-run is a policy a caller chooses`);
+  const auth = mkAuth();
+  const empty = new ProgramRegistry();          // holds nothing
+  const a = auth.authorize({ intent_id: "i-img", program_sem_id: PID,
+    canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
+  const x = await auth.execute(empty, a.request);
+  const good = await auth.execute(reg, a.request);
+  R("worker-image-is-the-registry's",
+    !x.ok && x.reason === "program-unknown" && good.ok && good.result.semantic_result.value === 5
+      && reg.image().length === 1,
+    `executing against an EMPTY registry gives ${x.reason} on the far side, and against the real one ` +
+    `gives ${good.ok && good.result.semantic_result.value}. At v0.8.0 the caller chose which programs ` +
+    `the worker would hold, by passing them to the launcher it also built; the image is ` +
+    `registry.image() now, and the authority already had a registry`);
 }
 
-// 18. registerExecutor is GONE, not deprecated
+// 19. registerExecutor and nameArtifact are both GONE
 {
-  const auth = new DerivationAuthority(mkWorld());
-  const gone = typeof auth.registerExecutor === "undefined"
-    && !("registerExecutor" in DerivationAuthority.prototype);
-  const arity = DerivationAuthority.prototype.accept.length;
-  R("registration-api-deleted", gone && arity === 3,
-    `registerExecutor is absent from the instance and the prototype, and accept takes ${arity} ` +
-    `parameters (registry, req, res) — no provenance argument survives for a caller to fill. Round 17 ` +
-    `removed caller-supplied proof from issuance; v0.7.0 reintroduced it one level up at acceptance`);
+  const auth = mkAuth();
+  R("registration-api-deleted",
+    typeof auth.registerExecutor === "undefined" && typeof auth.nameArtifact === "undefined"
+      && !("registerExecutor" in DerivationAuthority.prototype)
+      && !("nameArtifact" in DerivationAuthority.prototype)
+      && DerivationAuthority.prototype.accept.length === 3,
+    `registerExecutor and nameArtifact are both absent from the instance and the prototype, and accept ` +
+    `takes ${DerivationAuthority.prototype.accept.length} parameters. The catalog IS the naming policy ` +
+    `and it is immutable at construction — an authority whose identity policy can move during its ` +
+    `lifetime makes its own historical observations hard to read`);
 }
 
 await w.terminate();
@@ -324,8 +353,8 @@ console.log("═".repeat(96));
 console.log(fail
   ? `DERIVE-REALM: FAIL — ${ran} cases ran, at least one failed`
   : `DERIVE-REALM: PASS — ${ran}/${ran}. Object authority does not cross the boundary, the realm reads ` +
-    `only its grant, and an implementation identity is now an EXECUTION EVENT THE AUTHORITY DROVE: it ` +
-    `hashes the artifact closure, resolves the name from its own policy, launches, and keys the ` +
-    `observation over the whole request-and-result. Determinism, host confinement and TOCTOU-free ` +
-    `artifact identity are SEPARATE scopes and are not claimed here.`);
+    `only its grant, and an implementation identity is an EXECUTION EVENT THE AUTHORITY DROVE — where ` +
+    `both the entrypoint and the transport are consequences of one immutable catalog entry, so there is ` +
+    `no field left in which a caller may supply an action beside the evidence. Determinism, host ` +
+    `confinement and TOCTOU-free artifact identity are SEPARATE scopes and are not claimed here.`);
 process.exit(fail ? 1 : 0);

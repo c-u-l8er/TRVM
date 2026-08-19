@@ -942,9 +942,9 @@ json.dump(g, open('invariant-grid.json','w'), indent=1)"
 # ── round 23: executor existence is not execution provenance ────────────────
 run_case registration-api-restored "registerExecutor must be DELETED" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('  nameArtifact(executable_artifact_id, implementation_family_id) {',
+src = src.replace('  async execute(registry, req) {',
   '  registerExecutor(id) { return Object.freeze({ token: Symbol(id) }); }\n'
-  '  nameArtifact(executable_artifact_id, implementation_family_id) {')
+  '  async execute(registry, req) {')
 open('derive_protocol.mjs','w').write(src)"
 
 run_case acceptance-takes-a-proof-again "must be a METHOD on the authority taking EXACTLY" "
@@ -952,22 +952,22 @@ src = open('derive_protocol.mjs').read()
 src = src.replace('accept(registry, req, res) {', 'accept(registry, req, res, executor = null) {')
 open('derive_protocol.mjs','w').write(src)"
 
-run_case launcher-supplies-the-bytes "must read and hash the artifact ITSELF" "
+run_case authority-hashes-on-its-own "artifact hashing must live in the host" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('digestArtifactFiles(launcher.artifact_files)', 'launcher.readArtifact()')
+src = src.replace('const invocation = {', 'const _d = digestArtifactFiles([]); const invocation = {')
 open('derive_protocol.mjs','w').write(src)"
 
 run_case observation-key-projected "keyed over the WHOLE execution event" "
-src = open('derive_protocol.mjs').read()
-src = src.replace('canonicalBytes(res));', 'canonicalBytes(semanticProjection(res)));')
-open('derive_protocol.mjs','w').write(src)"
+src = open('observed_execution_host.mjs').read()
+src = src.replace('canonicalBytes(output)', 'String(output.ok)')
+open('observed_execution_host.mjs','w').write(src)"
 
-run_case second-observation-writer "EXACTLY ONE writer" "
-src = open('derive_protocol.mjs').read()
-src = src.replace('  observationOf(req, res) {',
-  '  vouch(req, res, o) { this.#observed.set(executionKey(requestSemId(req), res), o); }\n'
-  '  observationOf(req, res) {')
-open('derive_protocol.mjs','w').write(src)"
+run_case second-observation-writer "exactly one writer" "
+src = open('observed_execution_host.mjs').read()
+src = src.replace('  observationOf(domain, invocation, output) {',
+  '  vouch(k, o) { this.#observed.set(k, [o]); }\n'
+  '  observationOf(domain, invocation, output) {')
+open('observed_execution_host.mjs','w').write(src)"
 
 run_case provenance-law-v3-deleted "implementation-provenance@3 missing" "
 import json
@@ -1067,6 +1067,74 @@ import json
 m = json.load(open('artifacts.json'))
 m['gating_probes'] = [p for p in m['gating_probes'] if p != 'probe_execreg_v08_repro.mjs']
 json.dump(m, open('artifacts.json','w'), indent=2)"
+
+
+# ── round 24: a launch descriptor may not carry an action ───────────────────
+run_case execute-takes-a-launcher-again "execute must take EXACTLY" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('async execute(registry, req) {', 'async execute(registry, req, launcher) {')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case naming-setter-restored "nameArtifact must be gone from the authority" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('  async execute(registry, req) {',
+  '  nameArtifact(d, f) { return { ok: true }; }\n  async execute(registry, req) {')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case host-module-deleted "observed_execution_host.mjs absent" "
+import os
+os.remove('observed_execution_host.mjs')"
+
+run_case entrypoint-escapes-its-closure "entrypoint is not inside the closure it hashes" "
+src = open('observed_execution_host.mjs').read()
+src = src.replace('catalog-entrypoint-outside-closure', 'catalog-entrypoint-noted')
+open('observed_execution_host.mjs','w').write(src)"
+
+run_case catalog-accepts-extra-fields "carrying any field beyond" "
+src = open('observed_execution_host.mjs').read()
+src = src.replace('catalog-entry-extra-field', 'catalog-entry-extra-ok')
+open('observed_execution_host.mjs','w').write(src)"
+
+run_case invocation-may-be-a-callable "must canonicalise the invocation" "
+src = open('observed_execution_host.mjs').read()
+src = src.replace('canonicalBytes(invocation)', 'JSON.stringify(invocation)')
+open('observed_execution_host.mjs','w').write(src)"
+
+run_case sessions-collapse-to-one "must report executor_sessionS" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('executor_sessions: observed.executor_sessions',
+                  'executor_session_id: observed.executor_sessions[0]')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case authority-keeps-its-own-table "authority must hold NO observation table" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('  #issued = new Map();', '  #issued = new Map();\n  #observed = new Map();')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case provenance-law-v4-deleted "implementation-provenance@4 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if not (e['id'] == 'derivation.implementation-provenance' and e['revision'] == 4)]
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case launch-descriptor-rule-dropped "no longer carries the launch-descriptor rule" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.implementation-provenance' and e['revision'] == 4:
+        e['statement'] = e['statement'].replace(
+            'a launch descriptor may not carry both the evidence and an independent executable action',
+            'the authority hashes what it launches')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case v3-history-made-current "implementation-provenance@3 must stay on the record as history" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.implementation-provenance' and e['revision'] == 3:
+        e['canonical'] = True
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 
 echo; [ $FAILED -eq 0 ] && echo "NEGATIVE BATTERY: $CASES/$CASES forgeries caught" || echo "NEGATIVE BATTERY: FAILURES PRESENT ($CAUGHT/$CASES caught)"

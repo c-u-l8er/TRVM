@@ -462,3 +462,72 @@ The fixture is `apply_id`, corpus vector 3, `ref_interactions = 1`: its whole re
 **The seam list, eight rounds long.** grant vs footprint · syntax vs semantics · grant identity vs issuance · semantics vs execution trace · perturbation vs baseline · subject status vs runner status · execution claim vs observed executor · and now **executor existence vs execution event**. Every one a place where two things that felt like one thing were not.
 
 **What changed about the shape of the work.** Rounds 15–22 were all governance: the calculus stood still while the boundary between kinds of evidence moved. This round the boundary moved *and* the execution plane crossed it — the C runtime is now a producer of evidence in the governed language rather than a subject the governance plane writes about. That is a threshold, and it is one frame wide. **Next**, in order: the C-side checker, so a JS film is accepted by C and the direction reverses; then the dup rules and the `d:`/`v:` loci, which is where the canonical locus stops being a tree path; then multi-frame films and the corpus. `film-dup-cell-present` is the marker for exactly how far this got.
+
+## Round 24 — a launch descriptor may not carry both the evidence and an action
+
+**123. The authority hashed one thing and executed another, and the round-23 gate could not see it.** v0.8.0's repair was real as far as it went: the authority read the artifact's bytes itself instead of believing a name. Then it called a function the same caller had supplied beside the declaration.
+
+```
+{
+  artifact_files: X,   ← the EVIDENCE, which the authority hashes
+  spawn: Y             ← an INDEPENDENT caller-controlled ACTION
+}
+```
+
+Two fields of one object, mechanically unrelated. **P-3**, frozen in `probe_execlaunch_v09_repro.mjs`: declare the genuine `derive_worker.mjs` + `derive_protocol.mjs` closure, name that digest `impl-c-derive-v0.8.0`, and hand `execute()` a `spawn()` that evaluates the request in-process and changes only the returned label —
+
+```
+→ { ok: true, validated: true, fresh_at_check: true,
+    implementation_provenance: "observed",
+    implementation_id: "impl-c-derive-v0.8.0",
+    executable_artifact_id: <digest of the REAL JS closure> }
+```
+
+with no C anywhere and no worker either. The hash was honest and answered a question nobody had asked. So
+
+```
+authority read bytes X  →  authority launched X      DID NOT FOLLOW
+authority read bytes X  →  authority invoked callback Y      is what held
+```
+
+**124. And it existed in the film plane too, where it says something sharper.** **P-3F** supplies the *real* `ic32_film` binary as `artifact_files` — so the digest is genuinely C's and the family name is genuinely C's — and a `run()` returning a film C produced earlier. No C process executes during the observation and `film_provenance` is still `"observed"`. The probe runs this rather than describing it. It separates two truths that this project has spent nine rounds learning to keep apart: **the film is semantically valid — `replaySemFilm` proves it — and the claimed execution provenance is false.**
+
+**125. The pattern across four revisions is the point, and it is why the repair is structural.**
+
+```
+@1  the caller picks the LABEL                       deriveLocally(…, id)
+@2  the caller picks the NAME registration reports   registerExecutor(name)
+@3  the caller picks the ACTION beside the evidence  {artifact_files, spawn}
+```
+
+Each revision closed one supplier and left the next. Any field a caller controls on the launch path becomes the provenance. So the caller supplies **nothing** on that path:
+
+> **Artifact observation does not establish execution provenance unless the mechanism invoked is mechanically DERIVED FROM the artifact observed. A launch descriptor may not carry both the evidence and an independent executable action.**
+
+`law:derivation.implementation-provenance@3` is superseded by `@4`, and `@3` stays on the record — it was right about the half it named.
+
+**126. `ObservedExecutionHost`, and the fence moves rather than the wall.** Constructed with an **immutable executor catalog**: family → `{kind, entrypoint, artifact_closure}`, deep-frozen, injective, refusing an entrypoint that is **not inside the closure it hashes** (that is P-3 with the descriptor moved indoors) and refusing **any** entry field beyond those three (which is where a `spawn()` would have to reappear). The transport per `kind` is written in the host. `execute(registry, req)` names a family and nothing else; the invocation is **data**, canonicalised, and `canonicalBytes` refuses a function outright — so the mechanical reason an action cannot ride along is the same rule the message domain has enforced since v0.1.0. `nameArtifact` is gone with the rest: the catalog *is* the naming policy and it is fixed before the authority exists.
+
+Round 23 built this mechanism **twice** — once in `DerivationAuthority`, once in `film_check`'s `FilmAuthority` — and reproduced P-3 in both. Duplicating the **semantic** boundary was right and stays (`film_planes`: the calculus film and the derivation relation are different transition systems, and merging them lets a session finish the second and write that the first is done). Duplicating the **mechanism** was the defect. So both authorities now share the host, which holds catalog, hashing, launching, transport, sessions and the one observation table — and **no TRVM semantics at all**. It cannot re-derive a result, replay a film, or say what either means.
+
+**127. Two smaller corrections that came with it.** The far side's program image is now `registry.image()` — the authority's own registry — where v0.8.0 let the caller choose which programs the worker would hold by passing them to the launcher it also built. And acceptance reports `executor_sessionS`, **plural**: the key is over BYTES, so two launches producing byte-identical output share it, and v0.8.0 both overwrote the earlier record *and* reported one id as though it named the launch that produced the copy in hand. It never did. What is true is "these recorded sessions are known to have produced these request/result bytes".
+
+**128. F-7 is renamed rather than made literal.** It was never "JS relabelled as C" — there is no JS film emitter, and manufacturing an implementation solely to manufacture an adversary would be building the wrong thing. It is **F-7a, replay-preserving mutation**: editing the frame's declared-**non-authoritative** index `i` on a genuinely observed film, which still **replays** and still **loses provenance**. The theorem it proves is worth having on its own — provenance is over the observed bytes including the fields replay deliberately ignores — and it is now stated as that rather than as a substitute for something else. Film provenance is also keyed over the **whole emission** now, not the film alone: provenance is over everything the executor emitted, never over a subset a caller chose to present.
+
+**129. Three answered questions, recorded because the answers are rulings and not defaults.** In-process `deriveLocally` keeps `implementation_provenance: "unavailable"` — the authority and the reference evaluator sharing a process is a topology, not independent execution provenance, and manufacturing an observation there would dissolve the distinction the last three rounds were spent establishing. Observations stay **reusable**: consuming them would conflate evidence validation with commit authorization, which is the `committable` category error again; if one-shot effects need anti-replay later, that rule belongs in the transaction layer. And the naming policy's **factoring** was right — taxonomy and observation are different operations — while its **mutability** was not, so it is frozen at construction, and freezing it was never the P-3 repair.
+
+**130. A third hand-maintained file list, found the same way as the first two.** M-8 built its tree from three hand-typed filenames, so the moment `derive_protocol.mjs` imported the new host module the meta-case broke on a missing file. It uses the declared case-input tree now. That is three rounds running in which a list kept in two places drifted: the probe gating set (round 23), the subdir artifacts (round 23), and this.
+
+**131. Gate.** grid **v1.25.0** — 67 entries / 353 citations (transcribed at a moment; the gate derives it, and writing this section moved it from 352 — the same drift round 23 recorded, and the reason nothing executable carries a typed count) · `derive_protocol.mjs` **0.9.0** · `observed_execution_host.mjs` **0.1.0** · kernel PASS · World 0.12.0 PASS · `--check-receipt` PASS · negative battery **143/143** with eleven new forgeries · bridge **48/48** · native semantic film **14/14** · derive **45/45 in-process, 20/20 across a realm** · probes 2/2+2/2, 4/4+5/5, 5/5, 3/3+4/4, 1/1+4/4, 1/1+6/6, 2/2+5/5, **2/2+5/5** · harness **9/9** · runner contract **3/3**. `scheduler_certificate.json` byte-identical — nineteenth consecutive round.
+
+**The seam list, nine rounds long.** grant vs footprint · syntax vs semantics · grant identity vs issuance · semantics vs execution trace · perturbation vs baseline · subject status vs runner status · execution claim vs observed executor · executor existence vs execution event · and now **the artifact observed vs the mechanism invoked**.
+
+**Where this leaves the two theorems.** Round 23's **native semantic-film theorem stands** — it was never what P-3 touched, and the frame still replays. Round 23's **execution-provenance theorem was falsified** by P-3/P-3F and is re-established here on a mechanism with no caller-supplied surface left. Reporting them separately is the honest classification and is more informative than a verdict on "the round".
+
+**Next**, and it is a phase change rather than another hardening loop: the **lowering spike**, whose chain the grid has had declared since round 18 —
+
+```
+program_sem_id  →(lowering)→  target_term_sem_id  →(native ic32)→  target_nf_sem_id  →(decode)→  outcome_sem_id
+```
+
+with source/target outcome equality as the refinement obligation. The missing middle is no longer missing: native ic32 can originate a semantic film the independent kernel replays. Lower `add(const 2, const 3)` through the real governed runtime.

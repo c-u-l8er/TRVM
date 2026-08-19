@@ -174,7 +174,7 @@ gov-harness:
 # The replacement for the falsified arbitrary-closure derivation API: program
 # as data, canonical request/result, and a real worker crossing where structured
 # cloning refuses callables outright.
-gov-derive:
+gov-derive: $(GOV)/bridge/ic32_film
 	@echo "==== [governance] serialized derivation boundary ===="
 	@cd $(GOV) && out=$$($(NODE) derive_battery.mjs) && printf "%s\n" "$$out" | tail -1
 	@cd $(GOV) && out=$$($(NODE) derive_realm_battery.mjs) && printf "%s\n" "$$out" | tail -1
@@ -191,6 +191,7 @@ gov-derive:
 	@cd $(GOV) && out=$$($(NODE) probe_traceforge_v06_repro.mjs) && printf "%s\n" "$$out" | tail -1
 	@cd $(GOV) && out=$$($(NODE) probe_execclaim_v07_repro.mjs) && printf "%s\n" "$$out" | tail -1
 	@cd $(GOV) && out=$$($(NODE) probe_execreg_v08_repro.mjs) && printf "%s\n" "$$out" | tail -1
+	@cd $(GOV) && out=$$($(NODE) probe_execlaunch_v09_repro.mjs) && printf "%s\n" "$$out" | tail -1
 
 ## --- identity/memory result ------------------------------------------------
 research:

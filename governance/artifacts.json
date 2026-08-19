@@ -16,7 +16,8 @@
     "artifacts.json",
     "derive_protocol.mjs",
     "derive_worker.mjs",
-    "derive_launcher.mjs"
+    "derive_launcher.mjs",
+    "observed_execution_host.mjs"
   ],
   "ledgers_pattern": "^round-\\d+-ledger\\.md$",
   "tools": [
@@ -49,7 +50,8 @@
     "probe_issuebind_v05_repro.mjs": "ROUND 17 — issuance authenticated the grant rather than the request, an options bag let a caller write authority content, and acceptance took both of its proofs from its caller. Frozen against the draft, CONFINED against live; PAIRED, and it gates",
     "probe_traceforge_v06_repro.mjs": "ROUND 19 — read_trace was outside the semantic projection and therefore unchecked: a reversed trace validated and was accepted. Frozen against v0.5.0, CONFINED against live; PAIRED, and it gates",
     "probe_execclaim_v07_repro.mjs": "ROUND 22 — the law said impersonation was closed while deriveLocally took the implementation identity as a caller parameter: JS impersonated C through acceptance. Frozen against v0.6.0, CONFINED against live; PAIRED, and it gates",
-    "probe_execreg_v08_repro.mjs": "P-2: registerExecutor was an assertion dressed as an observation — it launched nothing — and accept(…, executor) put a proof back in the caller's hands, which is the round-17 shape one level up. Paired: 2 breach frozen, 5 confined live."
+    "probe_execreg_v08_repro.mjs": "P-2: registerExecutor was an assertion dressed as an observation — it launched nothing — and accept(…, executor) put a proof back in the caller's hands, which is the round-17 shape one level up. Paired: 2 breach frozen, 5 confined live.",
+    "probe_execlaunch_v09_repro.mjs": "P-3/P-3F: the authority hashed one thing and executed another. artifact_files (evidence) and spawn() (action) were independent fields of one caller-supplied object, so declaring the genuine closure while spawning something else produced provenance 'observed' for an implementation that never ran — in both the derivation and film planes. Paired: 2 breach frozen, 5 confined live."
   },
   "subdirs": {
     "bridge": "cross-plane C bridge: ic32_canon.c + bridge_check.mjs (canonical BYTES, 48/48) and ic32_film.c + film_check.mjs (round 23: a semantic-film FRAME the native runtime originates). ic32_film.c #includes ic32_canon.c under IC32_CANON_NO_MAIN so the canonicalizer under the film is the same code the bridge gate replays, not a copy of it.",
@@ -101,7 +103,7 @@
       "why": "round 19's two envelopes were one short. A conforming trace does not prove C executed anything, and neither does a string, and neither would a digest of the executable carried inside the same untrusted result."
     }
   },
-  "status": "v0.8.0 — protocol proven in-process and across a worker the AUTHORITY launches; provenance is an observed execution event rather than a registered name; NOT yet the production derivation path",
+  "status": "v0.9.0 — provenance is an execution the AUTHORITY drove through an immutable executor catalog: no caller supplies a name (P-2) and none supplies an action (P-3). NOT yet the production derivation path",
   "subdir_case_inputs": [
     "bridge/ic32_canon.c",
     "bridge/bridge_check.mjs",
@@ -116,7 +118,8 @@
     "probe_issuebind_v05_repro.mjs",
     "probe_traceforge_v06_repro.mjs",
     "probe_execclaim_v07_repro.mjs",
-    "probe_execreg_v08_repro.mjs"
+    "probe_execreg_v08_repro.mjs",
+    "probe_execlaunch_v09_repro.mjs"
   ],
   "gating_probes_note": "The PAIRED probes, and the only ones that gate: each must still BREACH against its verbatim frozen copy and be CONFINED against live, so it fails if a future edit repairs the frozen side instead of the live one. Every other probe_*_repro.mjs freezes a boundary that is DECLARED OPEN and exits NONZERO BY DESIGN — running those as gates makes a review pack report four failures for witnesses that are behaving correctly. Round 23 did exactly that, by replacing a hand-typed list in verify.sh with a glob; the list lives here now and grid_check checks the Makefile against it, so the two cannot drift and neither is a glob."
 }

@@ -56,7 +56,7 @@ import { dirname, join, resolve } from "node:path";
 import {
   replaySemFilm, FloatRt, DescFloatRt, semFilmIdOf, frameId31, PLANE_POOL_FREE,
 } from "../trvm_law_kernel.mjs";
-import { digestArtifactFiles } from "../derive_protocol.mjs";
+import { ObservedExecutionHost, digestArtifactFiles } from "../observed_execution_host.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = process.env.TRVM_GOV_ROOT ?? resolve(HERE, "..");
@@ -74,70 +74,71 @@ if (!existsSync(BIN)) {
   process.exit(1);
 }
 
-/* ── the host side, and it supplies MECHANISM AND NO IDENTITY ─────────────
-   The same shape as derive_launcher.mjs: WHERE the bytes are, and HOW to run
-   them. It does not get a field in which to say what it is. */
-const ic32FilmLauncher = Object.freeze({
-  artifact_files: Object.freeze([BIN]),
-  run(term) { return execFileSync(BIN, [term], { maxBuffer: 1 << 26 }).toString(); },
-});
+/* ── the film authority. It holds the SEMANTICS and no mechanism. ─────────
+   Round 23 built the observing-host machinery twice — once here, once in
+   DerivationAuthority — and reproduced P-3 in both: an `artifact_files`
+   declaration beside a `run()` the caller supplied, with nothing binding them.
+   Supply the real C binary and a run() that returns a previously valid film,
+   and provenance came back "observed" with the genuine C digest while no C
+   process had run (P-3F).
 
-/* ── the film authority. Its observation table has exactly one writer. ───── */
-const canon = (v) => {
-  if (v === null) return "null";
-  if (Array.isArray(v)) return "[" + v.map(canon).join(",") + "]";
-  if (typeof v === "object") return "{" + Object.keys(v).sort()
-    .map((k) => JSON.stringify(k) + ":" + canon(v[k])).join(",") + "}";
-  return JSON.stringify(v);
-};
-const filmExecutionKey = (term, film) =>
-  "fk-" + createHash("sha256").update("TRVM-FILM-OBSERVED-v1|" + term + "|" + canon(film)).digest("hex");
+   Duplicating the SEMANTIC boundary was right and stays: the calculus film and
+   the derivation relation are different transition systems (film_planes), and
+   merging them lets a session finish the second and write that the first is
+   done. Duplicating the MECHANISM was the defect. So the fence moved: this
+   class holds what a film MEANS, and ObservedExecutionHost — shared, immutable
+   catalog, no TRVM semantics at all — holds hashing, launching and observing. */
+const FILM_DOMAIN = "TRVM-FILM-EXEC-v1";
 
 class FilmAuthority {
-  #observed = new Map();
-  #names = new Map();
-  #sessions = 0;
-  nameArtifact(digest, family) {
-    if (!/^[0-9a-f]{64}$/.test(digest)) throw new Error("artifact-digest-malformed");
-    const bound = this.#names.get(digest);
-    if (bound !== undefined && bound !== family) throw new Error("artifact-already-named");
-    this.#names.set(digest, family);
-    return { ok: true };
+  #host;
+  constructor(host) {
+    if (!(host instanceof ObservedExecutionHost)) throw new Error("film-authority-requires-a-host");
+    this.#host = host;
+    Object.freeze(this);
   }
-  /** THE AUTHORITY runs the emitter: hash first, spawn second. */
-  emit(term, launcher) {
-    let executable_artifact_id;
-    try { executable_artifact_id = digestArtifactFiles(launcher.artifact_files); }
-    catch (e) { return { ok: false, reason: "artifact-unreadable: " + e.message }; }
-    const implementation_family_id = this.#names.get(executable_artifact_id);
-    if (implementation_family_id === undefined)
-      return { ok: false, reason: "artifact-unnamed: " + executable_artifact_id.slice(0, 12) + "…" };
-    const executor_session_id = "fs-" + createHash("sha256")
-      .update(executable_artifact_id + "|" + term + "|" + this.#sessions++).digest("hex").slice(0, 24);
-    let out;
-    try { out = JSON.parse(launcher.run(term)); }
-    catch (e) { return { ok: false, reason: "emitter-failed: " + String(e.message).split("\n")[0] }; }
-    if (!out.ok) return { ok: false, reason: out.reason };
-    this.#observed.set(filmExecutionKey(term, out.film), Object.freeze({
-      implementation_family_id, executable_artifact_id, executor_session_id }));
-    return { ok: true, ...out, executor_session_id };
+  /** No launcher, no run(). The family names a catalog entry and the host owns
+   *  both the entrypoint and the transport. */
+  async emit(term, family) {
+    const r = await this.#host.run(family, FILM_DOMAIN, { argv: [term] });
+    if (!r.ok) return { ok: false, reason: r.reason };
+    if (!r.output?.ok) return { ok: false, reason: r.output?.reason ?? "emitter-returned-nothing" };
+    return { ok: true, emission: r.output, film: r.output.film,
+      executor_session_id: r.executor_session_id, executable_artifact_id: r.executable_artifact_id };
   }
   /** ACCEPTANCE TAKES NO PROVENANCE ARGUMENT. Replay first — a film that does
    *  not replay is not evidence whoever produced it — then the observation,
-   *  looked up under the whole execution event. */
-  accept(term, film, RtClass = FloatRt) {
-    const r = replaySemFilm(term, film, RtClass);
+   *  looked up under the whole execution event.
+   *
+   *  The two verdicts are reported SEPARATELY and on purpose. A film can be
+   *  semantically perfect and its claimed provenance false; that is the whole
+   *  distinction this project has been building, and collapsing them into one
+   *  boolean would lose it. */
+  accept(term, emission, RtClass = FloatRt) {
+    // PROVENANCE IS OVER EVERYTHING THE EXECUTOR EMITTED, not over a subset a
+    // caller chose to present. So acceptance takes the emission and reads the
+    // film out of it, rather than taking a film and hoping it came from one.
+    const r = replaySemFilm(term, emission?.film, RtClass);
     if (!r.ok) return { ok: false, reason: r.reason, at: r.at };
-    const obs = this.#observed.get(filmExecutionKey(term, film));
+    const obs = this.#host.observationOf(FILM_DOMAIN, { argv: [term] }, emission);
     return obs
       ? { ok: true, replayed: true, film_provenance: "observed",
           implementation_id: obs.implementation_family_id,
           executable_artifact_id: obs.executable_artifact_id,
-          executor_session_id: obs.executor_session_id }
+          executor_sessions: obs.executor_sessions }
       : { ok: true, replayed: true, film_provenance: "unavailable" };
   }
-  observationOf(term, film) { const o = this.#observed.get(filmExecutionKey(term, film)); return o ? { ...o } : null; }
+  observationOf(term, emission) {
+    return this.#host.observationOf(FILM_DOMAIN, { argv: [term] }, emission);
+  }
 }
+
+const FILM_ENTRY = Object.freeze({
+  kind: "native-exec",
+  entrypoint: BIN,
+  artifact_closure: Object.freeze([BIN]),
+});
+const mkHost = () => new ObservedExecutionHost({ [C_FAMILY]: FILM_ENTRY });
 
 /* ── the frozen fixture ───────────────────────────────────────────────────
    apply_id, vector 3 of the conformance corpus: ref_interactions = 1, so its
@@ -149,16 +150,17 @@ class FilmAuthority {
 const TERM = "(λx.λt.(t x) λy.y)";
 const BIN_DIGEST = digestArtifactFiles([BIN]);
 
-const auth = new FilmAuthority();
-auth.nameArtifact(BIN_DIGEST, C_FAMILY);
-const emitted = auth.emit(TERM, ic32FilmLauncher);
+const auth = new FilmAuthority(mkHost());
+const emitted = await auth.emit(TERM, C_FAMILY);
 if (!emitted.ok) { console.log("FILM-CHECK: FAIL — emitter refused: " + emitted.reason); process.exit(1); }
-const FILM = emitted.film;
+const EMISSION = emitted.emission;
+const FILM = EMISSION.film;
+const reEmit = (film) => ({ ...EMISSION, film });
 const F0 = FILM.frames[0];
 
 /* ── V-1: THE VERTICAL WITNESS ───────────────────────────────────────────── */
 {
-  const a = auth.accept(TERM, FILM, FloatRt);
+  const a = auth.accept(TERM, EMISSION, FloatRt);
   R("native-frame-accepted",
     a.ok && a.film_provenance === "observed" && a.implementation_id === C_FAMILY
       && a.executable_artifact_id === BIN_DIGEST,
@@ -244,42 +246,74 @@ forge("F-5 transition from another state",
     `still fail on the calculus`);
 }
 
-/* ── F-6 / F-7: THE PROVENANCE FORGERIES ─────────────────────────────────── */
+/* ── F-6 / F-7 / P-3F: THE PROVENANCE FORGERIES ──────────────────────────── */
 {
   // F-6: a genuine C film paired with an observation of something else. There
   // is nothing to pair: the observation is keyed over the whole event.
-  const other = new FilmAuthority();
-  other.nameArtifact(BIN_DIGEST, C_FAMILY);
-  const otherRun = other.emit("(λx.x Q)", ic32FilmLauncher);
-  const borrowed = other.accept(TERM, FILM);
+  const other = new FilmAuthority(mkHost());
+  const otherRun = await other.emit("(λx.x Q)", C_FAMILY);
+  const borrowed = other.accept(TERM, EMISSION);
   R("F-6 observation-cannot-be-repointed",
     otherRun.ok && borrowed.ok && borrowed.film_provenance === "unavailable"
-      && !("implementation_id" in borrowed) && other.observationOf(TERM, FILM) === null,
+      && !("implementation_id" in borrowed) && other.observationOf(TERM, EMISSION) === null,
     `an authority holding a REAL C observation for another term reports ${borrowed.film_provenance} for ` +
     `this film, with no implementation_id. Under a handle-shaped design ("this executor exists, and here ` +
     `it is") the two would have been interchangeable — which is P-2, in the film plane`);
 
-  // F-7: relabel. The film is C's, byte for byte, and one field is edited.
-  const jsAuth = new FilmAuthority();
-  jsAuth.nameArtifact(BIN_DIGEST, C_FAMILY);
-  const run = jsAuth.emit(TERM, ic32FilmLauncher);
+  // F-7a: a replay-preserving mutation. NOT "JS relabelled as C" — there is no
+  // JS film emitter, and manufacturing an implementation solely to manufacture
+  // an adversary would be building the wrong thing. What this proves is
+  // narrower and worth having: provenance is over the observed film BYTES,
+  // including fields replay deliberately treats as non-authoritative.
+  const jsAuth = new FilmAuthority(mkHost());
+  const run = await jsAuth.emit(TERM, C_FAMILY);
   const edited = { ...run.film, terminal: { ...run.film.terminal, planes: [...run.film.terminal.planes] } };
   edited.frames = [{ ...run.film.frames[0], i: 1 }];   // one non-authoritative field
-  const acc = jsAuth.accept(TERM, edited);
-  R("F-7 relabel-loses-the-observation",
-    acc.ok && acc.film_provenance === "unavailable" && jsAuth.observationOf(TERM, run.film) !== null,
-    `changing even the frame's DECLARED-NON-AUTHORITATIVE index i drops provenance to ` +
-    `${acc.film_provenance}, while the untouched film keeps its observation. The film still REPLAYS — ` +
-    `i is metadata replay counts for itself — and that is the point: replay and provenance are ` +
-    `different verdicts, and the second is over the bytes as they were observed`);
+  const acc = jsAuth.accept(TERM, { ...run.emission, film: edited });
+  R("F-7a replay-preserving mutation",
+    acc.ok && acc.replayed === true && acc.film_provenance === "unavailable"
+      && jsAuth.observationOf(TERM, run.emission) !== null,
+    `changing the frame's DECLARED-NON-AUTHORITATIVE index i drops provenance to ` +
+    `${acc.film_provenance} while the film still REPLAYS (replayed ${acc.replayed}) and the untouched ` +
+    `film keeps its observation. Replay and provenance are different verdicts, and the second is over ` +
+    `the bytes as they were observed`);
 
-  // and an artifact the authority has no name for does not run at all
-  const unnamed = new FilmAuthority();
-  const x = unnamed.emit(TERM, ic32FilmLauncher);
-  R("unnamed-emitter-refused", !x.ok && /^artifact-unnamed: /.test(x.reason),
-    `${x.reason} — hash first, spawn second. The strongest honest reading of that order is "the host ` +
-    `observed artifact X immediately before requesting execution of path P"; it is NOT a proof that the ` +
-    `OS executed those bytes, and it is not attestation. Declared open`);
+  // P-3F: the film-plane half of P-3. Declare the REAL C binary — genuine
+  // digest, genuine family — and supply a run() that returns a film C did not
+  // produce this time. Under v0.8.0 this returned film_provenance "observed"
+  // with the real C artifact id and no C process having run.
+  let ranC = false;
+  const smuggled = {
+    artifact_files: [BIN],
+    run() { ranC = true; return JSON.stringify(EMISSION); },
+  };
+  const p3f = new FilmAuthority(mkHost());
+  // there is no argument that accepts it. The catalog names the entrypoint and
+  // the host owns the transport, so the closest a caller can get is a family
+  // name — and a name is not an action.
+  const viaExtraArg = await p3f.emit(TERM, C_FAMILY, smuggled);
+  const uncatalogued = await p3f.emit(TERM, "impl-c-smuggled-v0.1.0");
+  const accP3F = viaExtraArg.ok ? p3f.accept(TERM, viaExtraArg.emission) : { ok: false };
+  R("P-3F no-run-function-to-supply",
+    !ranC && viaExtraArg.ok && accP3F.film_provenance === "observed"
+      && accP3F.executable_artifact_id === BIN_DIGEST
+      && !uncatalogued.ok && /^executor-not-in-catalog: /.test(uncatalogued.reason)
+      && FilmAuthority.prototype.emit.length === 2,
+    `a third argument carrying artifact_files beside a run() is inert: the callback never fired ` +
+    `(${ranC}), the real binary did, and the observation carries ITS digest. emit takes ` +
+    `${FilmAuthority.prototype.emit.length} parameters (term, family), and a family the catalog does ` +
+    `not hold is ${uncatalogued.reason.split(":")[0]} — a name is not an action. At v0.8.0 this same ` +
+    `object WAS the API and returned film_provenance "observed" for a C binary that never ran`);
+
+  // and a host whose catalog does not name this binary cannot run it
+  const otherBin = new ObservedExecutionHost({ "impl-x-v1": { kind: "native-exec",
+    entrypoint: join(HERE, "ic32_canon"), artifact_closure: [join(HERE, "ic32_canon")] } });
+  const wrongCat = await new FilmAuthority(otherBin).emit(TERM, C_FAMILY);
+  R("uncatalogued-emitter-refused", !wrongCat.ok && /^executor-not-in-catalog: /.test(wrongCat.reason),
+    `${wrongCat.reason} — hash first, launch second, and BOTH from the same catalog entry. The ` +
+    `strongest honest reading of that order is "the host observed artifact X immediately before ` +
+    `requesting execution of path P"; it is NOT a proof that the OS executed those bytes, and it is ` +
+    `not attestation. Declared open`);
 }
 
 /* ── the emitter's own preconditions are refusals, not silence ───────────── */

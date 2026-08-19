@@ -153,8 +153,12 @@ PY
 # just as happily when the frozen copy is quietly replaced with the repaired
 # one, at which point it documents nothing and still prints a number.
 {
-  d="$SCRATCH/m8"; rm -rf "$d"; mkdir -p "$d"
-  cp "$BASE/derive_protocol.mjs" "$BASE/derive_worker.mjs" "$BASE/probe_derivegrant_v02_repro.mjs" "$d/"
+  # The tree is the DECLARED case-input tree, not a hand-typed three-file copy.
+  # Round 24 moved launching into observed_execution_host.mjs, derive_protocol
+  # began importing it, and this meta-case broke on a missing module — because
+  # its list was maintained by hand. A fourth hand-maintained copy of "which
+  # files does this need" is a fourth place for it to drift.
+  d=$(mkcase m8)
   # repair the FROZEN copy — the witness now has nothing to witness
   python3 - "$d" <<'PY'
 import sys

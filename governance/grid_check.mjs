@@ -192,7 +192,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -748,31 +748,75 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
          /implementation-provenance-unavailable/.test(dsrc),
         "the authority must observe what the host launched and compare the claim against it — a " +
         "conforming trace does not prove C executed anything, and neither does a string");
+      // ── v1.25: the authority hashed one thing and executed another ────
+      // P-3. The two halves of a launch descriptor were independent fields of
+      // one caller-supplied object; hashing X and invoking Y is not observation.
+      const hostSrc = existsSync(A("observed_execution_host.mjs"))
+        ? readFileSync(A("observed_execution_host.mjs"), "utf8") : "";
+      const hostNoc = hostSrc.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+      ok(hostSrc !== "", "observed_execution_host.mjs absent — launching must live in ONE place that " +
+        "holds no TRVM semantics, or the mechanism gets rebuilt per plane and P-3 is rebuilt with it");
+      ok(/async execute\(registry, req\) \{/.test(dnoc),
+        "execute must take EXACTLY (registry, req). v0.8.0's `launcher` argument carried artifact_files " +
+        "beside spawn(), two mechanically unrelated fields, so the authority hashed X and invoked Y " +
+        "(P-3, probe_execlaunch_v09_repro.mjs)");
+      ok(!/nameArtifact/.test(dnoc),
+        "nameArtifact must be gone from the authority — the catalog IS the naming policy and it is " +
+        "fixed at the host's construction. An authority whose identity policy moves during its " +
+        "lifetime makes its own historical observations hard to read");
+      ok(/catalog-entrypoint-outside-closure/.test(hostNoc),
+        "the host must refuse a catalog entry whose entrypoint is not inside the closure it hashes — " +
+        "that is P-3 with the descriptor moved indoors, which is not a repair");
+      ok(/catalog-entry-extra-field/.test(hostNoc),
+        "the host must refuse a catalog entry carrying any field beyond {kind, entrypoint, " +
+        "artifact_closure} — an extra field is exactly where a spawn() would reappear");
+      ok(/canonicalBytes\(invocation\)/.test(hostNoc),
+        "the host must canonicalise the invocation, which refuses a function outright. That is the " +
+        "mechanical reason an action cannot ride along with a declaration, rather than a convention");
+      ok((hostNoc.match(/this\.#observed\.set\(/g) ?? []).length === 1 &&
+         /list\.push\(Object\.freeze/.test(hostNoc),
+        "the host's observation table must have exactly one writer, and must keep ALL sessions per " +
+        "key: the key is over BYTES, so two launches producing identical output share it. v0.8.0 " +
+        "overwrote and then reported one executor_session_id as if it named this copy's launch");
+      ok(/executor_sessions: observed\.executor_sessions/.test(dnoc),
+        "acceptance must report executor_sessionS. Reporting one id overclaims uniqueness the key " +
+        "cannot support");
+      {
+        const ip4 = entries.find((x) => x.id === "derivation.implementation-provenance" && x.revision === 4);
+        ok(!!ip4 && ip4.canonical === true,
+          "law derivation.implementation-provenance@4 missing or non-canonical (v1.25)");
+        ok(!!ip4 && /may not carry both the evidence and an independent executable action/.test(ip4.statement ?? ""),
+          "derivation.implementation-provenance@4 no longer carries the launch-descriptor rule — that " +
+          "sentence is the whole round");
+        ok(!!ip4 && /not hardware-attested/i.test(ip4.statement ?? ""),
+          "@4 must keep the conservative reading of hash-then-launch. 'The host observed artifact X " +
+          "immediately before requesting execution of path P' is not 'the OS executed those bytes'");
+        const ip3b = entries.find((x) => x.id === "derivation.implementation-provenance" && x.revision === 3);
+        ok(!!ip3b && ip3b.canonical === false && /superseded/i.test(ip3b.revision_note ?? ""),
+          "derivation.implementation-provenance@3 must stay on the record as history — it said the " +
+          "authority reads the artifact itself, and that was true and not sufficient");
+      }
       // ── v1.24: executor existence is not execution provenance ─────────
       ok(!/registerExecutor/.test(dnoc),
         "registerExecutor must be DELETED, not deprecated — it took a name, launched nothing, observed " +
         "nothing, and returned a handle whose private Symbol proved only that this authority minted it " +
         "(P-2, probe_execreg_v08_repro.mjs)");
-      ok(/async execute\(req, launcher\) \{/.test(dsrc) && /nameArtifact\(executable_artifact_id, implementation_family_id\)/.test(dsrc),
-        "the AUTHORITY must be the thing that runs an executor — execute(req, launcher) — and the " +
-        "digest→name direction must be a separate naming POLICY that claims nothing about execution");
-      ok(/digestArtifactFiles\(launcher\.artifact_files\)/.test(dsrc) &&
-         !/launcher\.(readArtifact|implementation_family_id|implementation_id)/.test(dsrc),
-        "the authority must read and hash the artifact ITSELF from paths the launcher names. A launcher " +
-        "that hands over the bytes, or that names its own family, can present C's identity and spawn " +
-        "JS — which is P-2 with an extra step");
-      ok(/export function executionKey\(request_sem_id, res\)/.test(dsrc) &&
-         /canonicalBytes\(res\)/.test(dsrc.slice(dsrc.indexOf("export function executionKey"))),
-        "the observation must be keyed over the WHOLE execution event — H(request_sem_id | " +
-        "canonical(res)) — so relabelling a result moves the key rather than being compared against it");
-      ok(/#observed = new Map\(\)/.test(dsrc) && /this\.#observed\.set\(key,/.test(dsrc) &&
-         (dsrc.match(/this\.#observed\.set\(/g) ?? []).length === 1,
-        "the observation table must have EXACTLY ONE writer, and it must be execute() — a second writer " +
-        "is a second way to become provenanced without having been launched");
+      // v1.25 moved the launching machinery into ObservedExecutionHost, so the
+      // v1.24 assertions about it are asserted THERE, above. What stays here is
+      // the property that outlives the move: the authority must not hold a
+      // second way to become provenanced.
+      ok(/digestArtifactFiles/.test(hostNoc) && !/digestArtifactFiles\(/.test(dnoc),
+        "artifact hashing must live in the host and be reachable from the authority only THROUGH it — " +
+        "an authority that can hash on its own has a second path to an observation");
+      ok(/executionKey\(domain, inputCanonical, output\)/.test(hostNoc) &&
+         /canonicalBytes\(output\)/.test(hostNoc),
+        "the observation must be keyed over the WHOLE execution event — H(domain | input | " +
+        "canonical(output)) — so relabelling moves the key rather than being compared against it");
+      ok(!/#observed/.test(dnoc),
+        "the authority must hold NO observation table of its own; there is exactly one, in the host");
       {
         const ip3 = entries.find((x) => x.id === "derivation.implementation-provenance" && x.revision === 3);
-        ok(!!ip3 && ip3.canonical === true,
-          "law derivation.implementation-provenance@3 missing or non-canonical (v1.24)");
+        ok(!!ip3, "law derivation.implementation-provenance@3 missing (v1.24)");
         ok(!!ip3 && /EXECUTOR EXISTENCE IS NOT EXECUTION PROVENANCE/.test(ip3.statement ?? ""),
           "derivation.implementation-provenance@3 no longer opens with 'executor existence is not " +
           "execution provenance' — that sentence is the whole round");
@@ -782,7 +826,7 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "not 'the OS executed those bytes', and turning the first into the second is exactly the " +
           "overclaim @1 and @2 were each superseded for");
         const ip2b = entries.find((x) => x.id === "derivation.implementation-provenance" && x.revision === 2);
-        ok(!!ip2b && ip2b.canonical === false && /superseded/i.test(ip2b.revision_note ?? ""),
+        ok(!!ip2b && ip2b.canonical === false && /SUPERSEDED/i.test(ip2b.revision_note ?? ""),
           "derivation.implementation-provenance@2 must stay on the record as history — it claimed the " +
           "host observed what it launched while registration launched nothing");
       }
