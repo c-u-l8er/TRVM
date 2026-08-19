@@ -1,4 +1,8 @@
-/* grid_check.mjs v2.20 — GRID-CONSISTENCY-2 (law:grid.consistency@2).
+/* grid_check.mjs v2.21 — GRID-CONSISTENCY-2 (law:grid.consistency@2).
+   v2.21 (round 15): the derivation-boundary source locks, and TWO reads that
+   round 14 said had been root-anchored and had not been — the citation scan
+   and the banned-phrase tripwire. See the notes at each site; the second
+   passed vacuously rather than failing.
    v1 (round 3): grep blacklist + structural spot-checks. v2 (round 4): LAW
    REGISTRY as the citation authority — every 'law:<id>@<rev>' in every
    shipped artifact must resolve; non-canonical citations only in
@@ -120,10 +124,16 @@ const ledgers = readdirSync(ROOT).filter((f) => /^round-\d+-ledger\.md$/.test(f)
 const latestLedger = ledgers[ledgers.length - 1];
 const ARTIFACTS = ["refinement_receipt.json", "trvm_world.mjs", "world_warrant_receipt.json", "trvm_law_kernel.mjs", "kappa_witnesses.mjs",
   "scheduler_certificate.json", "golden_prehash_vectors.json", ...ledgers];
+// v2.21: these resolved against the CWD, not against ROOT. Round 14 recorded
+// that ambient discovery had been replaced across grid_check; the ROOT was
+// introduced and A() was applied to most reads, but the citation scan — the
+// primary evidence loop, 334 citations — was still reading whatever sat beside
+// the process. It failed loudly from the wrong directory, so it was invisible
+// while every invocation happened to be `cd governance && node grid_check.mjs`.
 for (const f of ARTIFACTS) {
-  if (!existsSync(f)) { fails.push(`artifact missing: ${f}`); continue; }
+  if (!existsSync(A(f))) { fails.push(`artifact missing: ${f}`); continue; }
   const frozen = /^round-\d+-ledger\.md$/.test(f) && f !== latestLedger;
-  readFileSync(f, "utf8").split("\n").forEach((line, i) =>
+  readFileSync(A(f), "utf8").split("\n").forEach((line, i) =>
     citeCheck(f, i + 1, line, frozen));
 }
 ok(citations > 0, "no law citations found anywhere — the registry is load-bearing only if cited");
@@ -170,13 +180,19 @@ const gridCanonical = (() => {
 })();
 for (const b of BANNED)
   ok(!gridCanonical.includes(b), `grid canonical sections contain banned phrase: ${b}`);
+// v2.21: this one was worse than CWD-relative — an absent file scanned the
+// EMPTY STRING and every banned-phrase check passed vacuously. From any
+// directory but governance/ the tripwire reported clean while measuring
+// nothing, which is the silent-pass class this record has prosecuted since
+// round 9. Absent is now a failure, and the read is anchored at ROOT.
 for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
-  const txt = existsSync(f) ? readFileSync(f, "utf8") : "";
+  if (!existsSync(A(f))) { ok(false, `banned-phrase scan: ${f} absent, so nothing was scanned`); continue; }
+  const txt = readFileSync(A(f), "utf8");
   for (const b of BANNED) ok(!txt.includes(b), `${f} contains banned phrase: ${b}`);
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -190,9 +206,11 @@ ok(Array.isArray(g[clKey]) && g[clKey].length > 0, `latest changelog ${clKey} mi
   const declared = [
     ["trvm_law_kernel.mjs", /const KERNEL_VERSION = "([^"]+)";/],
     ["trvm_world.mjs", /const WORLD_VERSION = "([^"]+)";/],
+    ["derive_protocol.mjs", /const PROTOCOL_VERSION = "([^"]+)";/],
   ];
   for (const [file, rx] of declared) {
     ok(av[file] != null, `artifact_versions missing ${file}`);
+    if (!existsSync(A(file))) { ok(false, `artifact_versions declares ${file}, which is absent`); continue; }
     const s = readFileSync(A(file), "utf8");
     const m = s.match(rx);
     ok(!!m, `${file} does not declare its version constant`);
@@ -596,6 +614,56 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
     ok(!!man2.derivation_boundary && !!man2.derivation_boundary.not_claimed,
       "artifacts.json derivation_boundary missing, or missing its not_claimed scope note (v1.15) — " +
       "the serialized boundary closes OBJECT confinement only, and the record must keep saying so");
+    ok(!!man2.derivation_boundary?.two_evidence_objects && !!man2.derivation_boundary?.granting_model,
+      "artifacts.json derivation_boundary missing two_evidence_objects or granting_model (v1.16) — " +
+      "the grant/footprint distinction and the snapshot-vs-RPC decision are what round 15 corrected");
+  }
+  // ── the serialized derivation boundary at v0.2.0 (v1.16) ────────────────
+  // Both v0.1.0 defects were reachable through ONE LINE of the worker each, and
+  // both are the kind that reads as harmless: a convenient place to put the read
+  // table, and a field passed through from the request. Locked at the source.
+  {
+    const dsrc = existsSync(A("derive_protocol.mjs")) ? readFileSync(A("derive_protocol.mjs"), "utf8") : "";
+    const wsrcD = existsSync(A("derive_worker.mjs")) ? readFileSync(A("derive_worker.mjs"), "utf8") : "";
+    ok(dsrc.length > 0 && wsrcD.length > 0, "derive_protocol.mjs or derive_worker.mjs absent (v1.16)");
+    // comments stripped first: these files DOCUMENT the defect they must not
+    // contain, and a scan that cannot tell the code from the account of the code
+    // fires on its own record. Scoped to this check rather than made general —
+    // a naive strip is wrong on a string carrying "//", and neither file has one.
+    const codeOnly = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+    ok(!/canonical_inputs\.__reads|canonical_inputs\["__reads"\]/.test(codeOnly(dsrc) + codeOnly(wsrcD)),
+      "the derivation boundary sources the read table from canonical_inputs again (W-1) — the language " +
+      "has {op:'input', name:…}, so anything reachable as an input is reachable with NO tracked read, " +
+      "which is what made the v0.1.0 read footprint bypassable");
+    ok(wsrcD.includes("evaluate(ast, req.read_grants, req.canonical_inputs)"),
+      "derive_worker.mjs does not evaluate against req.read_grants — reads must come from the authority's " +
+      "grant snapshot and from nowhere else");
+    ok(wsrcD.includes("implementation_id: JS_IMPLEMENTATION_ID") && !/implementation_id:\s*req\./.test(wsrcD),
+      "derive_worker.mjs must ASSERT its own implementation_id and must not echo the request's (W-2) — " +
+      "a field the caller sets and no executor checks is decoration, not provenance");
+    for (const s of ["export function grantId", "export function footprintWithinGrant",
+      "export const SEMANTIC_RESULT_FIELDS", "footprint-ungranted-read", "request-grant-id-mismatch",
+      "implementation-mismatch: want"])
+      ok(dsrc.includes(s), `derive_protocol.mjs missing v0.2.0 construct "${s}"`);
+    ok(/SEMANTIC_RESULT_FIELDS = RESULT_FIELDS\.filter\(\(f\) => f !== "implementation_id"\)/.test(dsrc),
+      "derive_protocol.mjs must exclude implementation_id from the semantic projection — including it " +
+      "would make cross-implementation validation fail by construction, which is the whole reason the " +
+      "film identity split exists");
+    ok(!!g.derivation_language && g.derivation_language.not_built != null,
+      "grid derivation_language missing (v1.16) — small total core plus named semantic primitives is a " +
+      "RULING made before the expressiveness round, and it must not quietly become a general language");
+    ok(!!g.film_planes?.ruling,
+      "grid film_planes missing (v1.16) — the ic32 interaction-net film and the derivation evidence " +
+      "relation are two transition systems, and cross-replay of one may not be reported as the other");
+    const gf = entries.find((x) => x.id === "derivation.grant-footprint-separation");
+    ok(!!gf && gf.canonical === true,
+      "law derivation.grant-footprint-separation@1 missing or non-canonical — collapsing the grant into " +
+      "the footprint breaks freshness, and the record has already made that mistake once");
+    const ip = entries.find((x) => x.id === "derivation.implementation-provenance");
+    ok(!!ip && /DECLARED OPEN/.test(ip.statement ?? ""),
+      "law derivation.implementation-provenance@1 missing, or no longer declares its open half — " +
+      "implementation_id is a constant, so IMPERSONATION is closed and PROVENANCE is not, and that " +
+      "limit may not fall off the record");
   }
   ok(!!g.film_identity_forward_declaration,
     "grid film_identity_forward_declaration missing (v1.12) — the program_sem_id/implementation_id split must be decided before the film round, not during it");

@@ -13,17 +13,18 @@
   "trvm_world.mjs",
   "world_warrant_receipt.json",
   "maintenance_receipt.json",
-  "artifacts.json"
+  "artifacts.json",
+  "derive_protocol.mjs",
+  "derive_worker.mjs"
  ],
  "ledgers_pattern": "^round-\\d+-ledger\\.md$",
  "tools": [
   "negative_battery.sh",
   "extract_prehash.mjs",
-  "derive_protocol.mjs",
   "derive_battery.mjs",
-  "derive_worker.mjs",
   "derive_realm_battery.mjs"
  ],
+ "case_input_note": "derive_protocol.mjs and derive_worker.mjs moved from tools to case_inputs at v1.16: their SOURCE now carries invariants grid_check asserts (no __reads path, reads from read_grants, executor-asserted implementation_id), so they must be present in every scratch case for those assertions to run. The batteries stay tools — they are runners, not artifacts under test.",
  "probes_pattern": "^probe_.*\\.mjs$",
  "probe_roles": {
   "probe_semid.mjs": "round 6 — semantic state identity",
@@ -37,7 +38,8 @@
   "probe_coordinator_alias_9d1_repro.mjs": "9D.1 — reachable aliases",
   "probe_realm_9d2_repro.mjs": "9D.2 — nested values, and the shared realm",
   "probe_ownfailopen_9d3_repro.mjs": "9D.3 — ownership failed open",
-  "probe_closureenv_repro.mjs": "9D.4 — the authority that was never an object; DECLARED, not repaired"
+  "probe_closureenv_repro.mjs": "9D.4 — the authority that was never an object; DECLARED, not repaired",
+  "probe_derivegrant_v02_repro.mjs": "DERIVE-v0.2 — the bypassable read footprint and the unverified implementation_id, frozen against v0.1.0 and CONFINED against live; the only PAIRED probe, and it gates"
  },
  "subdirs": {
   "bridge": "cross-plane C canonical-bytes bridge (ic32_canon.c, bridge_check.mjs)",
@@ -47,14 +49,21 @@
   "v04_verbatim": "round-4 verbatim sources, historical"
  },
  "derivation_boundary": {
-  "status": "v0.1.0 — protocol proven in-process and across a worker; NOT yet the production derivation path",
+  "status": "v0.2.0 — protocol proven in-process and across a worker; NOT yet the production derivation path",
   "files": {
-   "derive_protocol.mjs": "program-as-data, canonical request/result schemas, program registry whose key is the program's hash",
-   "derive_battery.mjs": "10 falsifiers, in-process",
-   "derive_worker.mjs": "the far side; holds no parent reference and resolves programs from its own registry",
-   "derive_realm_battery.mjs": "5 falsifiers across a real worker boundary"
+   "derive_protocol.mjs": "program-as-data, canonical request/result schemas, program registry whose key is the program's hash, authority grants separated from the observed read footprint",
+   "derive_battery.mjs": "21 falsifiers, in-process",
+   "derive_worker.mjs": "the far side; holds no parent reference, resolves programs from its own registry, reads only its grant snapshot, and asserts its own implementation_id",
+   "derive_realm_battery.mjs": "9 falsifiers across a real worker boundary",
+   "probe_derivegrant_v02_repro.mjs": "the two v0.1.0 defects, frozen — and the same witnesses run against live, which is what makes it a gate rather than a document"
   },
-  "claimed": "OBJECT authority does not cross: structured cloning refuses callables (DataCloneError), the worker resolves program_sem_id against its own registry, reads are an authority operation the parent performs, and a returned result is re-derived by the authority before it is evidence.",
-  "not_claimed": "determinism of a long-lived evaluator; host confinement; that any existing measureFn has been ported. Three separate scopes, named separately in realm_roadmap."
+  "two_evidence_objects": {
+   "read_grants + grant_id": "the AUTHORITY GRANT — what the authority made available. A capability record, deliberately allowed to be broader than what is read, because under data-dependent traversal the authority cannot know the needed subset in advance. grant_id = H(canonical read_grants) binds the snapshot so it cannot be edited in flight.",
+   "read_footprint": "the OBSERVED DEPENDENCY RECORD — what the program actually consumed through a tracked read or scope. Freshness, invalidation, replay and support analysis key on THIS. Defining it as the grant would over-invalidate every derivation whose grant was wider than its reads, which under snapshot granting is all of them.",
+   "why_separate": "v0.1.0's prose said the footprint was 'the authority's record of what it read on the derivation's behalf'. That was two errors at once: it described a collapse that would break freshness, and the mechanism did not even implement the collapse — the worker sourced its read table from canonical_inputs, and {op:'input', name:'__reads'} returned the whole table with zero tracked reads."
+  },
+  "granting_model": "SNAPSHOT (model A): the authority resolves a bounded canonical world slice once, and both the executor and the re-deriving authority evaluate against those same bytes. Chosen over read-RPC (model B) because it is deterministic, films cleanly, and does not turn every primitive evaluation into a cross-realm round trip. The cost is least-authority: the grant may reveal more than the program reads. Confidentiality against the derivation realm is the trigger to revisit, and it is named here rather than discovered later.",
+  "claimed": "OBJECT authority does not cross: structured cloning refuses callables (DataCloneError), the worker resolves program_sem_id against its own registry, it can read only the grant snapshot the authority resolved, the returned footprint is validated as a SUBSET of that grant on the authority's own evidence before any re-derivation, the executor asserts implementation_id and the caller may only state a requirement against it, and a returned result is re-derived by the authority — on the semantic projection, so a conforming foreign implementation can agree — before it is evidence.",
+  "not_claimed": "determinism of a long-lived evaluator; host confinement; that any existing measureFn has been ported; and that implementation_id is bound to executable BYTES — it is a declared constant, so impersonation is closed and provenance is not. A modified JS worker still emits impl-js-derive-v0.2.0. Four separate scopes, named separately in realm_roadmap and derivation_language."
  }
 }

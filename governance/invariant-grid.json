@@ -1,6 +1,6 @@
 {
  "record": "invariant-grid",
- "version": "1.15.0",
+ "version": "1.16.0",
  "date": "2026-08-18",
  "v1_criteria": {
   "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
@@ -617,7 +617,7 @@
  },
  "law_registry": {
   "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
-  "grid_version": "1.15.0",
+  "grid_version": "1.16.0",
   "entries": [
    {
     "id": "kappa.monotonicity.unrestricted",
@@ -1055,9 +1055,36 @@
     "id": "derivation.serialized-boundary",
     "revision": 1,
     "status": "PROPERTY-TESTED",
-    "canonical": true,
+    "canonical": false,
     "statement": "A derivation crosses an authority boundary as DATA or not at all. The program is a canonical AST and program_sem_id is H(canonical program), so it cannot be a caller-selected label and cannot be rebound — the id IS the program's hash, and the same program has the same id under every conforming implementation while implementation_id carries executable provenance separately. The message domain is TRVM's canonical value domain, never 'structuredClone succeeded': Function, Map, Set, Date, class instances and transferable handles are refused, because those are capabilities rather than data. Reads are an AUTHORITY operation performed on the authoritative side and passed as explicit grants, so the derivation realm holds no world reference and needs none. A result produced on the far side is a CLAIM; it becomes evidence only when the authority re-derives it and the canonical bytes agree.",
-    "evidence": "derive_battery.mjs 10/10 in-process and derive_realm_battery.mjs 5/5 across a real worker_threads boundary. The decisive one is empirical: posting a request carrying a closure throws DataCloneError, so the 9D.4 lexical-cell attack — which no Object.freeze, deepFreeze, canonicalBytes, #private field or GuardedStore could reach — has NO TRANSPORT. The confinement is performed by the boundary rather than by object discipline, which is why replacing the API was the right response to law:derivation.environment-confinement@1 rather than hardening it further. SCOPE, stated rather than implied: this closes derivation-object-confinement only. Determinism of a long-lived evaluator (a worker holding `let counter = 0` leaks no parent authority and still fails to make program_sem_id denote a stable function) and host confinement (Date.now, Math.random, filesystem, network) are separate scopes, unclaimed here."
+    "evidence": "derive_battery.mjs 10/10 in-process and derive_realm_battery.mjs 5/5 across a real worker_threads boundary. The decisive one is empirical: posting a request carrying a closure throws DataCloneError, so the 9D.4 lexical-cell attack — which no Object.freeze, deepFreeze, canonicalBytes, #private field or GuardedStore could reach — has NO TRANSPORT. The confinement is performed by the boundary rather than by object discipline, which is why replacing the API was the right response to law:derivation.environment-confinement@1 rather than hardening it further. SCOPE, stated rather than implied: this closes derivation-object-confinement only. Determinism of a long-lived evaluator (a worker holding `let counter = 0` leaks no parent authority and still fails to make program_sem_id denote a stable function) and host confinement (Date.now, Math.random, filesystem, network) are separate scopes, unclaimed here.",
+    "superseded_by": "derivation.serialized-boundary@2",
+    "revision_note": "kept as history, and it is the honest record of an overclaim. Two sentences of this statement were not supported by the mechanism: 'reads are an AUTHORITY operation performed on the authoritative side and passed as explicit grants' described a worker that actually sourced its read table from canonical_inputs, where {op:'input', name:'__reads'} retrieved the whole table with zero tracked reads; and implementation_id was a caller-asserted field that no executor verified and no result carried. Both reproduced (probe_derivegrant_v02_repro.mjs, W-1 and W-2). Revision 2 states what the v0.2.0 mechanism does."
+   },
+   {
+    "id": "derivation.serialized-boundary",
+    "revision": 2,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "supersedes": "derivation.serialized-boundary@1",
+    "statement": "A derivation crosses an authority boundary as DATA or not at all. The program is a canonical AST and program_sem_id is H(canonical program), so it cannot be a caller-selected label and cannot be rebound — the id IS the program's hash, and the same program has the same id under every conforming implementation. The message domain is TRVM's canonical value domain, never 'structuredClone succeeded': Function, Map, Set, Date, class instances and transferable handles are refused, because those are capabilities rather than data. The derivation realm holds no world reference and reads ONLY the grant snapshot the authority resolved for it, addressed through read/scope — never through input, which addresses canonical_inputs alone. A result produced on the far side is a CLAIM; it becomes evidence only when the authority validates its footprint against the grant it issued and re-derives the SEMANTIC PROJECTION of the result — every field but implementation_id — to the same canonical bytes.",
+    "evidence": "derive_battery.mjs 21/21 in-process and derive_realm_battery.mjs 9/9 across a real worker_threads boundary. The decisive one is still empirical: posting a request carrying a closure throws DataCloneError, so the 9D.4 lexical-cell attack — which no Object.freeze, deepFreeze, canonicalBytes, #private field or GuardedStore could reach — has NO TRANSPORT. v0.2.0 additionally removes the last callable from the derivation path: evaluate() builds its reader from canonical grant data instead of taking a reader parameter, and a pair of reader callables in the grant position is refused as data (grants-schema: [read,scope]). SCOPE, stated rather than implied: this closes derivation-object-confinement only. Determinism of a long-lived evaluator and host confinement (Date.now, Math.random, filesystem, network) are separate scopes, unclaimed here."
+   },
+   {
+    "id": "derivation.grant-footprint-separation",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "The authority grant and the read footprint are TWO evidence objects and may not be collapsed into one. The grant (read_grants, named by grant_id = H(canonical read_grants)) is a CAPABILITY record: what the authority made available, resolved on the authoritative side, deliberately permitted to be broader than what is read because under data-dependent traversal the needed subset is not knowable in advance. The footprint is the DEPENDENCY record: what the program actually consumed through a tracked read or scope, recorded by the evaluator on access. Freshness, invalidation, replay and support analysis key on the footprint alone — defining it as the grant would over-invalidate every derivation whose grant was wider than its reads, which under snapshot granting is all of them. The authority validates the footprint as a SUBSET of the grant, at the granted versions and scope digests, on its own evidence and BEFORE any re-derivation.",
+    "evidence": "derive_battery.mjs: grant-not-reachable-as-input, footprint-is-the-access-subset (a 3-resource grant against a 1-entry footprint), grant-id-binds-the-snapshot (a swapped snapshot under the original grant_id is refused request-grant-id-mismatch), footprint-validated-independently (footprint-ungranted-read / footprint-version-mismatch, both fired on an otherwise honest result), witness-matches-footprint. derive_realm_battery.mjs repeats the input-reachability and forged-footprint cases across a real worker. The v0.1.0 defect is frozen as W-1 in probe_derivegrant_v02_repro.mjs and must keep reproducing there. GRANTING MODEL, decided rather than defaulted: snapshot (A) not read-RPC (B) — deterministic, films cleanly, no cross-realm round trip per primitive. Its cost is least-authority, since the grant may reveal more than the program reads; confidentiality against the derivation realm is the stated trigger to revisit."
+   },
+   {
+    "id": "derivation.implementation-provenance",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "Execution identity is ASSERTED BY THE EXECUTOR and may only be REQUIRED by the caller. DeriveResult carries implementation_id, emitted by the evaluator that ran; DeriveRequest carries at most expected_implementation_id, which an executor that cannot satisfy it refuses by name. A caller therefore cannot cause a result to claim an implementation that did not produce it. The field is excluded from the semantic projection that cross-implementation validation compares, which is what lets a C result and a JS result of the same program_sem_id agree while their provenance stays distinguishable — the film_identity_forward_declaration split, made operative. DECLARED OPEN: implementation_id is a declared constant, not a digest of executable bytes, so this closes IMPERSONATION and does not yet establish PROVENANCE — a modified JS worker still emits impl-js-derive-v0.2.0. Binding it to a source/binary digest is the next revision and is named here rather than implied.",
+    "evidence": "derive_battery.mjs: implementation-id-asserted, implementation-requirement-refused, implementation-id-well-formed, semantic-projection-is-portable (a result stamped impl-c-derive-v0.2.0 validates and its provenance is reported rather than compared away), implementation-requirement-checked-on-result. derive_realm_battery.mjs: executor-asserts-implementation across the worker boundary, and cross-implementation-shape — which is the SHAPE a real C implementation plugs into and explicitly not a claim that one exists. The v0.1.0 defect is frozen as W-2: a request asserting impl-c-pretend-v9 was executed by the JS evaluator and returned success, with no implementation_id in the result at all."
    }
   ]
  },
@@ -1347,7 +1374,8 @@
  },
  "artifact_versions": {
   "trvm_law_kernel.mjs": "1.1.0",
-  "trvm_world.mjs": "0.12.0"
+  "trvm_world.mjs": "0.12.0",
+  "derive_protocol.mjs": "0.2.0"
  },
  "world": {
   "artifact": "trvm_world.mjs v0.3.0 — a separate executable; the calculus kernel is FROZEN at v1.0.2 and has no world by design",
@@ -1494,16 +1522,21 @@
   "order": [
    "freeze the lexical-cell witness (done)",
    "record same-realm closure ownership as a declared boundary failure, not a patch target (done)",
-   "artifact-root resolver + manifest-driven falsifiers + the open instrument-nonvacuity clauses",
-   "DeriveRequest/DeriveResult canonical schemas",
-   "immutable program_sem_id binding",
-   "move one derivation across a worker boundary with no callable crossing",
-   "that same program as the first C<->JS film / cross-replay witness",
+   "artifact-root resolver + manifest-driven falsifiers + the open instrument-nonvacuity clauses (done, round 14)",
+   "DeriveRequest/DeriveResult canonical schemas (done, round 14)",
+   "immutable program_sem_id binding (done, round 14)",
+   "move one derivation across a worker boundary with no callable crossing (done, round 14)",
+   "separate the authority grant from the observed read footprint; make implementation_id executor-asserted (done, round 15)",
+   "native ic32 semantic-film emission against the existing §10/§10.5 contract, starting with C — NOT gated on the derivation language, see film_planes",
+   "cross-replay: ic32 C film -> JS kernel, JS film -> C checker",
+   "the first named semantic primitive (component reachability), per derivation_language",
+   "bind implementation_id to executable bytes rather than a declared constant",
    "root release identity",
    "physical governance subdivision",
    "Zig/Mojo/WASM",
    "worker object confinement strengthened to host/process confinement"
-  ]
+  ],
+  "sequencing_correction": "The previous order read 'that same program as the first C<->JS film / cross-replay witness', which conflated the two transition systems now separated in film_planes. Cross-replay of the DERIVATION AST is a different theorem from cross-replay of the ic32 REWRITE RELATION, and the pack-v3 film gap is the latter. The film round proceeds on the existing conformance contract and does not wait for the derivation language to grow."
  },
  "changelog_from_1_12_0": [
   "the stated decision rule fired. A fourth ownership variant — a lexical cell shared by two closures, with no mutable object anywhere — cannot be reached by Object.freeze, deepFreeze, structuredClone, canonicalBytes, #private, GuardedStore or the pass-entry snapshot. Same-realm arbitrary-closure ownership is now a DECLARED BOUNDARY FAILURE rather than a patch target.",
@@ -1531,5 +1564,49 @@
   "reads are performed by the AUTHORITY and passed as explicit grants, so the derivation realm holds no world reference. An ungranted read is refused by name on the far side.",
   "new law derivation.serialized-boundary@1, scoped explicitly to object confinement; determinism and host confinement are named as separate unclaimed scopes.",
   "empirical result worth recording plainly: postMessage of a request carrying a closure throws DataCloneError. The attack that defeated every object-discipline repair cannot be expressed at the boundary at all."
+ ],
+ "derivation_language": {
+  "decided": "before the expressiveness round, not during it — the same discipline as film_identity_forward_declaration",
+  "core": [
+   "const",
+   "read",
+   "scope",
+   "cite",
+   "input",
+   "add",
+   "sub",
+   "mul",
+   "len"
+  ],
+  "ruling": "SMALL TOTAL CORE plus NAMED SEMANTIC PRIMITIVES. The core stays small and total. Complex behaviour arrives as {op:'prim', primitive_sem_id, args}, never as if/while/function/closure/recursion/eval. The reason is the one this whole line of work has been establishing: a general programming language at the derivation boundary re-admits the unbounded capability container that law:derivation.environment-confinement@1 was falsified by, in a form that serializes.",
+  "primitive_identity": "primitive_sem_id must be content-bound, not a name. H(primitive language/version + canonical input/output contract + semantic specification identity + conformance-vector identity). 'componentReachability' as a bare string would be exactly the caller-selected label the program_sem_id design refuses. program_sem_id contains primitive_sem_id; each implementation of the primitive carries refinement evidence beneath it.",
+  "first_primitive": "component reachability, and it is chosen because it is materially harder than arithmetic: graph traversal, data-dependent reads, support, adjacency footprints and the phantom-scope case all appear in it at once. It also has a total semantic definition over a finite canonical grant snapshot — general recursion is not required to express it, which is the property that keeps the core total.",
+  "data_dependent_reads": "traversal discovers what to read as it goes (read adj:a -> discover b -> read edge:a|b -> ...), which is precisely why the grant may be broader than the footprint. Under the snapshot model the authority hands over a bounded world slice and the evaluator logs the subset consumed. This is the concrete case law:derivation.grant-footprint-separation@1 exists for.",
+  "not_built": "no prim op exists at v0.2.0. This is a ruling, not an implementation."
+ },
+ "film_planes": {
+  "why_this_section_exists": "Two different transition systems have started to be discussed in the same words, and the failure mode is specific: finishing C<->JS cross-replay on the tiny derivation AST and then writing 'cross-implementation semantic films complete' while native ic32 still emits none.",
+  "trvm_calculus_film": {
+   "relation": "semantic pre-state -> (rule + canonical locus) -> semantic post-state",
+   "subject": "the ic32 interaction-net rewrite relation, in C / Zig / Mojo / WASM",
+   "contract": "docs/spec/conformance §10 / §10.5; SEMSTATE-CANONICAL-v1",
+   "status": "canonical bytes agree C<->JS at 48/48 (bridge_check). NO native runtime emits films yet.",
+   "this_is_the_pack_v3_gap": "handoff milestones 5, 9, 10, 11 — canonical serialization, films, cross-replay, refinement receipts"
+  },
+  "derivation_evidence": {
+   "relation": "DeriveRequest -> evaluate program -> DeriveResult",
+   "subject": "the derivation AST protocol of derive_protocol.mjs",
+   "contract": "law:derivation.serialized-boundary@2 + law:derivation.grant-footprint-separation@1",
+   "status": "JS executor only; the cross-implementation SHAPE is tested, no second implementation exists"
+  },
+  "ruling": "The native ic32 semantic-film round is NOT gated on the derivation language, and porting the derivation AST to C would be a SECOND cross-implementation theorem rather than a discharge of the first. They converge only if derivation programs are eventually LOWERED into TRVM terms — DeriveProgram AST -> canonical lowering -> interaction-net term -> ic32 -> semantic film — which would make one execution substrate out of two runtimes and is the reason not to build so much dedicated derivation-interpreter machinery that the option closes. Not adopted this round; recorded so it stays reachable."
+ },
+ "changelog_from_1_15_0": [
+  "derivation.serialized-boundary@1 SUPERSEDED by @2. Two sentences of @1 were not supported by the mechanism, both reproduced by external review and frozen as probe_derivegrant_v02_repro.mjs: the read footprint was bypassable via {op:'input', name:'__reads'}, and implementation_id was a caller-asserted field nothing verified.",
+  "new law derivation.grant-footprint-separation@1: the authority grant and the observed footprint are two evidence objects; the grant may be broader; freshness keys on the footprint; the authority validates the footprint as a subset of the grant on its own evidence, before re-deriving.",
+  "new law derivation.implementation-provenance@1: the executor asserts implementation_id and the caller may only require it. Excluded from the semantic projection, so cross-implementation validation can agree on semantics while provenance stays distinguishable. Byte-binding declared open.",
+  "derive_protocol.mjs 0.2.0 joins artifact_versions: read_grants/grant_id, footprintWithinGrant, semanticProjection, and an evaluator that builds its reader from canonical grant data instead of taking a reader callable.",
+  "derivation_language ruled: small total core plus named semantic primitives with content-bound primitive_sem_id — never if/while/closure/eval. Component reachability is the first primitive. Declared, not built.",
+  "film_planes separates the ic32 interaction-net film from the derivation evidence relation, so cross-replay of the tiny derivation AST cannot be reported as the pack-v3 semantic-film gap being closed. The native film round is not gated on the derivation language."
  ]
 }

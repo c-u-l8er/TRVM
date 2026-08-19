@@ -149,6 +149,13 @@ gov-derive:
 	@echo "==== [governance] serialized derivation boundary ===="
 	@cd $(GOV) && $(NODE) derive_battery.mjs | tail -1
 	@cd $(GOV) && $(NODE) derive_realm_battery.mjs | tail -1
+# The only PAIRED probe in the tree, and the only one that gates. Its siblings
+# freeze a boundary that is DECLARED open, so they report a breach and that is
+# the record. These two defects are repaired, so the probe runs each witness
+# against the frozen v0.1.0 copy — where it must still reproduce, or the witness
+# has gone vacuous and stopped measuring — and against live, where it must be
+# confined. law:evidence.instrument-nonvacuity@1 applied to a repro.
+	@cd $(GOV) && $(NODE) probe_derivegrant_v02_repro.mjs | tail -1
 
 ## --- identity/memory result ------------------------------------------------
 research:

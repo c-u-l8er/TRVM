@@ -570,5 +570,65 @@ g = json.load(open('invariant-grid.json'))
 del g['artifact_roots']
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
+# ── round 15: the two DERIVE-v0.1.0 defects, and the record of them ──────────
+# Both defects were one line of the worker each and both read as harmless — a
+# convenient place for the read table, and a field passed through from the
+# request. Each forgery below restores one of them, or removes the record that
+# says why they were wrong.
+
+run_case derive-reads-via-inputs "sources the read table from canonical_inputs again" "
+src = open('derive_worker.mjs').read()
+src = src.replace('const out = evaluate(ast, req.read_grants, req.canonical_inputs);',
+                  'const reads = req.canonical_inputs.__reads ?? {};\n    const out = evaluate(ast, reads, req.canonical_inputs);')
+open('derive_worker.mjs','w').write(src)"
+
+run_case derive-impl-echoed "must ASSERT its own implementation_id" "
+src = open('derive_worker.mjs').read()
+src = src.replace('implementation_id: JS_IMPLEMENTATION_ID,', 'implementation_id: req.expected_implementation_id,')
+open('derive_worker.mjs','w').write(src)"
+
+run_case derive-semantic-projection-widened "exclude implementation_id from the semantic projection" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('RESULT_FIELDS.filter((f) => f !== \"implementation_id\")', 'RESULT_FIELDS.slice()')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case derive-footprint-check-removed "missing v0.2.0 construct" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('export function footprintWithinGrant', 'function footprintWithinGrant')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case derive-grant-law-deleted "grant-footprint-separation@1 missing or non-canonical" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if e['id'] != 'derivation.grant-footprint-separation']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case derive-provenance-open-half-dropped "no longer declares its open half" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.implementation-provenance':
+        e['statement'] = e['statement'].split('DECLARED OPEN')[0]
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case derivation-language-ruling-dropped "derivation_language missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+del g['derivation_language']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case film-planes-dropped "film_planes missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+del g['film_planes']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case derive-boundary-record-collapsed "two_evidence_objects or granting_model" "
+import json
+m = json.load(open('artifacts.json'))
+del m['derivation_boundary']['two_evidence_objects']
+json.dump(m, open('artifacts.json','w'), indent=1)"
+
 echo; [ $FAILED -eq 0 ] && echo "NEGATIVE BATTERY: $CASES/$CASES forgeries caught" || echo "NEGATIVE BATTERY: FAILURES PRESENT ($CAUGHT/$CASES caught)"
 exit $FAILED
