@@ -8,6 +8,7 @@ import {
   deriveLocally, validateForeignResult, evaluate, resolveGrants, grantId,
   footprintWithinGrant, semanticProjection, JS_IMPLEMENTATION_ID,
   CORE_SPEC, CORE_SEM_ID, validateProgram, SEMANTIC_RESULT_FIELDS,
+  validateFootprintFresh, DerivationAuthority, checkIntent, requestSemId,
 } from "./derive_protocol.mjs";
 import { createHash } from "node:crypto";
 
@@ -333,11 +334,105 @@ const mkReq = (over = {}) => {
     `true of the domain and unstated. A C implementation would otherwise have decided it by accident`);
 }
 
+
+// ── 13. freshness is a DIFFERENT question from containment ──────────────
+{
+  const live = { res: { fb: { value: 5, version: 1 }, other: { value: 0, version: 1 } },
+    read(r) { return { ...this.res[r] }; }, scope(q) { return "scope:" + q; } };
+  const auth = new DerivationAuthority(live);
+  const { request: req } = auth.authorize({ intent_id: "f1", program_sem_id: PID,
+    canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
+  const res = deriveLocally(reg, req).result;
+  const before = auth.accept(reg, req, res);
+  live.res.fb = { value: 9, version: 2 };                 // the World moves
+  const containment = footprintWithinGrant(res.read_footprint, req.read_grants);
+  const rederive = validateForeignResult(reg, req, res);
+  const after = auth.accept(reg, req, res);
+  R("freshness-is-not-containment",
+    before.ok && containment.ok && rederive.ok
+      && !after.ok && after.reason === "stale-read: fb granted@1 live@2",
+    `after fb moves 1→2: footprintWithinGrant ${containment.ok ? "PASS" : containment.reason}, ` +
+    `re-derivation ${rederive.ok ? "PASS" : rederive.reason} — both CORRECT about the snapshot — and ` +
+    `acceptance ${after.reason}. Containment is historical, freshness is temporal, and a protocol that ` +
+    `stops at re-derivation commits a value the World has already contradicted`);
+  live.res.fb = { value: 5, version: 1 };
+  live.res.other = { value: 999, version: 2 };            // a write nothing read
+  const unrelated = auth.accept(reg, req, res);
+  R("unrelated-write-does-not-invalidate", unrelated.ok && unrelated.fresh_at_check === true,
+    `other@1→2 moved and acceptance still passes — freshness keys on the FOOTPRINT, never on a global ` +
+    `vclock. A vclock rule would invalidate every derivation on every unrelated write, undoing the ` +
+    `grant/footprint separation from the other side`);
+  R("acceptance-does-not-claim-committable",
+    unrelated.committable === undefined && unrelated.validated === true && unrelated.fresh_at_check === true,
+    `accept() returns {validated, fresh_at_check} and NOT committable. One call cannot make a result ` +
+    `committable: the World can move between this returning and the caller applying. The composition ` +
+    `that commits belongs to the World — lock, accept, prepared apply, receipt, unlock — and no lock ` +
+    `capability is exported to reach it`);
+}
+
+// ── 14. issuance binds the WHOLE request, and cannot be handed to a caller ─
+{
+  const live = { res: { fb: { value: 5, version: 1 } }, read(r) { return { ...this.res[r] }; },
+    scope(q) { return "scope:" + q; } };
+  const auth = new DerivationAuthority(live);
+  const intent = { intent_id: "i1", program_sem_id: PID, canonical_inputs: { bias: 0 },
+    requested_resources: { exact: ["fb"], predicates: [] } };
+  const a = auth.authorize(intent);
+  const res = deriveLocally(reg, a.request).result;
+  const mine = auth.accept(reg, a.request, res);
+  const theirs = new DerivationAuthority(live).accept(reg, a.request, res);
+  // the defect: same request_id, same grant_id, different inputs
+  const swapped = { ...a.request, canonical_inputs: { bias: 1000 } };
+  const swappedRes = deriveLocally(reg, swapped).result;
+  const swapAcc = auth.accept(reg, swapped, swappedRes);
+  R("issuance-binds-the-whole-request",
+    a.ok && mine.ok && !theirs.ok && theirs.reason === "grant-not-issued-by-this-authority"
+      && swappedRes.value === 1005 && !swapAcc.ok && swapAcc.reason === "request-not-as-issued",
+    `the issuing authority accepts; a different instance refuses (${theirs.reason}); and an input swap ` +
+    `under an UNTOUCHED request_id and grant_id — which derives to ${swappedRes.value} — is refused ` +
+    `(${swapAcc.reason}). The draft bound request_id → grant_id and answered "was this issued?" about a ` +
+    `GRANT while the thing being accepted was a REQUEST`);
+  R("request-sem-id-recomputes",
+    requestSemId(a.request) === requestSemId(JSON.parse(canonicalBytes(a.request)))
+      && requestSemId(a.request) !== requestSemId(swapped),
+    `request_sem_id = H(canonical request) recomputes over an owned copy and differs for the swapped ` +
+    `request — which is the whole mechanism`);
+  const bagged = auth.authorize(intent, { canonical_inputs: { bias: 1000 } });
+  const impl = auth.authorize({ ...intent, intent_id: "i2" }, { expected_implementation_id: "impl-c-derive-v0.5.0" });
+  R("authorize-options-whitelisted",
+    !bagged.ok && bagged.reason === "authorize-options-unknown: [canonical_inputs]"
+      && impl.ok && impl.request.expected_implementation_id === "impl-c-derive-v0.5.0",
+    `${bagged.reason} — the draft spread \`...over\` after every authority-decided field, so a caller ` +
+    `could overwrite canonical_inputs on an authority-ISSUED request. Exactly one field may be requested`);
+  let froze = false;
+  try { a.request.canonical_inputs.bias = 1000; } catch { froze = true; }
+  R("issued-request-is-owned-and-frozen", froze && a.request.canonical_inputs.bias === 0,
+    `the issued request is owned through canonicalBytes and deep-frozen; mutating it throws. Defence in ` +
+    `depth — the BINDING is what refuses a modified request; this stops accidental modification inside ` +
+    `the authority's own process`);
+  const badIntents = [
+    ["extra field", { ...intent, sneak: 1 }, /intent-schema/],
+    ["missing field", { intent_id: "x", program_sem_id: PID }, /intent-schema/],
+    ["resources not lists", { ...intent, requested_resources: { exact: "fb", predicates: [] } }, /intent-requested-exact-not-a-string-list/],
+    ["capability in inputs", { ...intent, canonical_inputs: { f: () => 1 } }, /not-canonical/],
+  ];
+  R("intent-schema-closed", badIntents.every(([, i, rx]) => { const c = checkIntent(i); return !c.ok && rx.test(c.reason); }),
+    badIntents.map(([l, i]) => `${l}:${checkIntent(i).ok ? "ADMITTED" : "refused"}`).join(" ") +
+    ` — the untrusted half of the two-phase protocol is validated as strictly as the authority's half`);
+  let noReader = "ACCEPTED";
+  try { new DerivationAuthority({}); } catch (e) { noReader = e.message; }
+  R("authority-requires-a-world", noReader === "authority-requires-a-world-reader",
+    `${noReader} — an authority without a World cannot answer the temporal question, and one that ` +
+    `silently could not would report fresh by never looking`);
+}
+
 console.log("═".repeat(96));
 console.log(fail
   ? `DERIVE-BATTERY: FAIL — ${rows.filter((r) => !r.ok).length}/${rows.length}`
   : `DERIVE-BATTERY: PASS — ${rows.length}/${rows.length}. The program is data and its id commits the ` +
     `frozen core's semantics, not just its syntax; the grant is what the authority made available and ` +
     `the footprint is what the program consumed — a canonical dependency SET whose access order is a ` +
-    `separate trace, outside semantics; and the executor asserts its own identity.`);
+    `separate trace, outside semantics; the executor asserts its own identity; containment is ` +
+    `historical and freshness is temporal; and issuance binds the whole request to the authority that ` +
+    `cut it, which no caller can supply on its behalf.`);
 process.exit(fail ? 1 : 0);

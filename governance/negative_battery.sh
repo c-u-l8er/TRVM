@@ -17,10 +17,17 @@ SCRATCH="${SCRATCH:-/tmp/neg5}"
 # Both runners use the same list: run_case_engine previously omitted
 # maintenance_receipt.json for no stated reason, which is exactly the kind of
 # silent divergence between two copies of a list that this replaces.
+# case_inputs AND tools: grid_check requires every DECLARED artifact to exist,
+# so a case tree carrying only case_inputs made the checker report four
+# unrelated failures before any forgery was applied. Every case then found its
+# expected diagnostic among noise, and an unperturbed tree did not pass — which
+# is a contaminated instrument, not a passing one. Since round 14. Found by
+# adding a case whose expected pattern did not match and reading what else was
+# in the output.
 CASE_INPUTS=$(python3 -c "
 import json,re,os
 m=json.load(open('$BASE/artifacts.json'))
-fs=list(m['case_inputs'])
+fs=list(m['case_inputs']) + list(m.get('tools', []))
 fs+=sorted(f for f in os.listdir('$BASE') if re.match(m['ledgers_pattern'],f))
 print(' '.join(fs))")
 # law:evidence.instrument-nonvacuity@1 — the mechanised half.
@@ -680,6 +687,60 @@ run_case core-record-collapsed "frozen_core or footprint_is_a_set" "
 import json
 m = json.load(open('artifacts.json'))
 del m['derivation_boundary']['footprint_is_a_set']
+json.dump(m, open('artifacts.json','w'), indent=1)"
+
+
+# ── round 17: the derivation authority ──────────────────────────────────────
+
+run_case issuance-binds-the-grant-again "issuance must bind request_sem_id" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('this.#issued.set(request_id, requestSemId(req));',
+                  'this.#issued.set(request_id, body.grant_id);')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case acceptance-made-a-free-function "acceptance must be a METHOD" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('export class DerivationAuthority', 'export function acceptForeignResult(){}\nexport class DerivationAuthority')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case acceptance-claims-committable "must not return .committable" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('return { ok: true, validated: true, fresh_at_check: true, implementation_id: res.implementation_id };',
+                  'return { ok: true, validated: true, fresh_at_check: true, committable: true, implementation_id: res.implementation_id };')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case authorize-options-reopened "must whitelist its options" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('AUTHORIZE_OPTIONS = [\"expected_implementation_id\"]', 'AUTHORIZE_OPTIONS = [\"expected_implementation_id\", \"canonical_inputs\"]')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case freshness-vclock-restored "never on a global vclock" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.footprint-freshness':
+        e['statement'] = e['statement'].replace('never on a global vclock', 'on the world vclock')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case committability-claim-restored "no longer states that acceptance does not establish" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.footprint-freshness':
+        e['statement'] = e['statement'].replace('ACCEPTANCE DOES NOT ESTABLISH COMMITTABILITY', 'ACCEPTANCE ESTABLISHES COMMITTABILITY')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case issuance-law-deleted "law derivation.grant-issuance@1 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if e['id'] != 'derivation.grant-issuance']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case acceptance-record-dropped "acceptance_is_not_commitment" "
+import json
+m = json.load(open('artifacts.json'))
+del m['derivation_boundary']['acceptance_is_not_commitment']
 json.dump(m, open('artifacts.json','w'), indent=1)"
 
 

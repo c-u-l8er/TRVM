@@ -192,7 +192,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -675,6 +675,48 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
       ok(!!cs && /DEPENDENCY SET/.test(cs.statement ?? "") && /NOT semantic identity/.test(cs.statement ?? ""),
         "derivation.core-semantics@1 no longer states the footprint is a dependency SET whose order is " +
         "not semantic identity — declaring the order semantic makes two correct implementations diverge");
+    }
+    // ── v1.18: the derivation authority ─────────────────────────────────
+    {
+      for (const s2 of ["export function validateFootprintFresh", "export function requestSemId",
+        "export class DerivationAuthority", "export function checkIntent"])
+        ok(dsrc.includes(s2), `derive_protocol.mjs missing v0.5.0 construct "${s2}"`);
+      ok(/this\.#issued\.set\(request_id, requestSemId\(req\)\)/.test(dsrc),
+        "issuance must bind request_sem_id, not grant_id — binding the grant answers 'was this issued?' " +
+        "about a GRANT while the thing being accepted is a REQUEST, and an input swap under an " +
+        "untouched request_id passes (probe_issuebind_v05_repro.mjs I-1)");
+      ok(/accept\(registry, req, res\) \{/.test(dsrc) && !/export function acceptForeignResult/.test(dsrc),
+        "acceptance must be a METHOD on the authority and not a free function — one taking `issuer` and " +
+        "`liveReader` as parameters lets the caller supply both proofs of its own authority (I-3)");
+      ok(!/committable/.test(dsrc.replace(/\/\*[\s\S]*?\*\//g, "")),
+        "acceptance must not return `committable` — one call cannot establish committability, because " +
+        "the World can move between it returning and the caller applying");
+      ok(/AUTHORIZE_OPTIONS = \["expected_implementation_id"\]/.test(dsrc) &&
+         /authorize-options-unknown/.test(dsrc),
+        "authorize() must whitelist its options — the draft spread `...over` after every authority-decided " +
+        "field, so a caller could write authority content onto an authority-ISSUED request (I-2)");
+      for (const [id, want] of [["derivation.footprint-freshness", "PROPERTY-TESTED"],
+        ["derivation.grant-issuance", "PROPERTY-TESTED"]]) {
+        const e = entries.find((x) => x.id === id);
+        ok(!!e && e.canonical === true && e.status === want,
+          `law ${id}@1 missing, non-canonical, or not ${want}`);
+      }
+      const fr = entries.find((x) => x.id === "derivation.footprint-freshness");
+      ok(!!fr && /never on a global vclock/.test(fr.statement ?? ""),
+        "derivation.footprint-freshness@1 no longer says freshness keys on the footprint and never on " +
+        "a global vclock — a vclock rule invalidates every derivation on every unrelated write");
+      ok(!!fr && /DOES NOT ESTABLISH COMMITTABILITY/.test(fr.statement ?? ""),
+        "derivation.footprint-freshness@1 no longer states that acceptance does not establish " +
+        "committability — a freshness check that returns before the commit is a TOCTOU window");
+      const gi = entries.find((x) => x.id === "derivation.grant-issuance");
+      ok(!!gi && /THE WHOLE REQUEST/.test(gi.statement ?? "") && /takes no proof from/.test(gi.statement ?? ""),
+        "derivation.grant-issuance@1 no longer states that issuance binds the whole request and that " +
+        "acceptance takes no proof from its caller");
+      const man4 = existsSync(A("artifacts.json")) ? JSON.parse(readFileSync(A("artifacts.json"), "utf8")) : {};
+      ok(!!man4.derivation_boundary?.acceptance_is_not_commitment,
+        "artifacts.json derivation_boundary missing acceptance_is_not_commitment (v1.18)");
+    }
+    {
       const man3 = existsSync(A("artifacts.json")) ? JSON.parse(readFileSync(A("artifacts.json"), "utf8")) : {};
       ok(!!man3.derivation_boundary?.footprint_is_a_set && !!man3.derivation_boundary?.frozen_core,
         "artifacts.json derivation_boundary missing frozen_core or footprint_is_a_set (v1.17)");

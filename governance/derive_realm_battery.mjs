@@ -10,6 +10,7 @@ import { dirname, join } from "node:path";
 import {
   ProgramRegistry, programSemId, canonicalBytes, validateForeignResult,
   resolveGrants, grantId, semanticProjection, JS_IMPLEMENTATION_ID,
+  DerivationAuthority,
 } from "./derive_protocol.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -125,6 +126,25 @@ R("crossing-derives", honest.ok && honest.result.value === 5
     `the same result stamped by a C executor validates and its provenance is RECORDED rather than ` +
     `compared away. This is the shape a real C implementation plugs into — it is not a claim that one ` +
     `exists, and this battery does not have one`);
+}
+
+// 10. intent → authority → realm → acceptance, and the World moving underneath
+{
+  const live = { res: { fb: { value: 5, version: 1 } }, read(r) { return { ...this.res[r] }; },
+    scope(q) { return "scope:" + q; } };
+  const auth = new DerivationAuthority(live);
+  const a = auth.authorize({ intent_id: "i-realm", program_sem_id: PID,
+    canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
+  const crossed = await ask(a.request);
+  const accepted = auth.accept(reg, a.request, crossed.result);
+  live.res.fb = { value: 9, version: 2 };                 // the World moves after the crossing
+  const stale = auth.accept(reg, a.request, crossed.result);
+  R("intent-to-acceptance", a.ok && crossed.ok && crossed.result.value === 5
+      && accepted.ok && accepted.fresh_at_check === true
+      && !stale.ok && stale.reason === "stale-read: fb granted@1 live@2",
+    `a caller's INTENT is authorized into a request by the authority, crosses to a realm holding no ` +
+    `world, returns a claim, and is accepted (fresh_at_check ${accepted.fresh_at_check}) — then the ` +
+    `same claim is refused once fb moves 1→2 (${stale.reason}). The worker never learns the World exists`);
 }
 
 await w.terminate();

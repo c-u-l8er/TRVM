@@ -157,6 +157,8 @@ gov-derive:
 # confined. law:evidence.instrument-nonvacuity@1 applied to a repro.
 	@cd $(GOV) && $(NODE) probe_derivegrant_v02_repro.mjs | tail -1
 	@cd $(GOV) && $(NODE) probe_coresem_v03_repro.mjs | tail -1
+	@cd $(GOV) && $(NODE) probe_stalegrant_v03_repro.mjs | tail -1
+	@cd $(GOV) && $(NODE) probe_issuebind_v05_repro.mjs | tail -1
 
 ## --- identity/memory result ------------------------------------------------
 research:

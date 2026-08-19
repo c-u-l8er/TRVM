@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   derive_protocol.mjs — v0.4.0 — the serialized derivation boundary
+   derive_protocol.mjs — v0.5.0 — the serialized derivation boundary
 
    law:derivation.environment-confinement@1 is FALSIFIED under the arbitrary-
    closure measureFn API, and the record says closure comes from REPLACING the
@@ -76,7 +76,7 @@
 import { createHash } from "node:crypto";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const PROTOCOL_VERSION = "0.4.0";
+export const PROTOCOL_VERSION = "0.5.0";
 
 /* ── the canonical value domain, shared with the World ────────────────────
    Deliberately a copy of the World's rule rather than an import: this module
@@ -474,7 +474,7 @@ export function footprintWithinGrant(fp, read_grants) {
    reader callable, which was the closure-authority shape this whole line of
    work exists to remove — in-process only, but the same species. Now the
    evaluator receives nothing but canonical data. */
-export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.4.0";
+export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.5.0";
 
 function readerFromGrants(read_grants) {
   return {
@@ -610,3 +610,182 @@ export function validateForeignResult(registry, req, res) {
     ? { ok: true, implementation_id: res.implementation_id }
     : { ok: false, reason: "foreign-result-divergence" };
 }
+
+/* ── FRESHNESS: a different question from containment ─────────────────────
+   footprintWithinGrant answers a HISTORICAL question — was every claimed read
+   inside the snapshot this derivation received? validateFootprintFresh answers
+   a TEMPORAL one — are those dependencies still current NOW, at the moment of
+   acceptance? Both can be satisfied about a World that has moved: executor and
+   authority agree perfectly about an old snapshot, so re-derivation can never
+   detect staleness. That witness is frozen in probe_stalegrant_v03_repro.mjs.
+
+   It keys on the FOOTPRINT, never on a global vclock. An unrelated write must
+   not invalidate a derivation that did not depend on it — that is the whole
+   reason the footprint is the dependency record and the grant is not, and a
+   vclock rule would undo the separation from the other side. */
+export function validateFootprintFresh(liveReader, footprint) {
+  for (const [r, ver] of footprint.exact ?? []) {
+    let cur;
+    try { cur = liveReader.read(r); }
+    catch (e) { return { ok: false, reason: "stale-read-unreadable: " + r + " (" + e.message + ")" }; }
+    if (cur?.version !== ver)
+      return { ok: false, reason: "stale-read: " + r + " granted@" + ver + " live@" + cur?.version };
+  }
+  for (const [q, d] of footprint.predicates ?? []) {
+    let cur;
+    try { cur = liveReader.scope(q); }
+    catch (e) { return { ok: false, reason: "stale-scope-unreadable: " + q + " (" + e.message + ")" }; }
+    if (canonicalBytes(cur) !== canonicalBytes(d))
+      return { ok: false, reason: "stale-scope: " + q };
+  }
+  return { ok: true };
+}
+
+/* ── ISSUANCE: what an authority-issued request actually authenticates ────
+   grant_id is a hash of the grant, and a hash authenticates content to itself.
+   The first draft of this layer recorded `request_id -> grant_id` and derived
+   request_id from (intent_id, grant_id) — so "was this issued?" was answered
+   about a GRANT while the thing being accepted was a REQUEST. Swapping
+   canonical_inputs under an untouched request_id passed. Frozen as I-1..I-3 in
+   probe_issuebind_v05_repro.mjs.
+
+   Three changes, none of them cryptographic:
+
+   1. ISSUANCE BINDS THE WHOLE REQUEST. request_sem_id = H(canonical request),
+      recorded at issue and recomputed at acceptance. Any change to any field is
+      a different request rather than the same request with different content.
+   2. THE OPTIONS BAG IS GONE. It spread `...over` after every authority-decided
+      field. A caller may now REQUEST exactly one thing —
+      expected_implementation_id — which is a requirement on the executor, not
+      authority content.
+   3. ACCEPTANCE IS A METHOD, NOT A FUNCTION WITH PARAMETERS. The issuance table
+      and the live reader are closed over. A free function taking `issuer` and
+      `liveReader` as arguments — with issuer defaulting to null — let the
+      caller supply both proofs of its own authority, and a fake reader replayed
+      a stale grant into an acceptance.
+
+   A signature or MAC is added when — and only when — the grant crosses a real
+   trust boundary, is persisted and replayed later, is delegated between
+   authorities, or must be proved to an independent verifier. Adding one today
+   would authenticate the authority to itself. */
+const INTENT_REQUIRED = ["intent_id", "program_sem_id", "canonical_inputs", "requested_resources"];
+const AUTHORIZE_OPTIONS = ["expected_implementation_id"];
+
+export function checkIntent(intent) {
+  if (intent === null || typeof intent !== "object" || Array.isArray(intent))
+    return { ok: false, reason: "intent-not-an-object" };
+  const keys = Object.keys(intent).sort();
+  if (canonicalBytes(keys) !== canonicalBytes([...INTENT_REQUIRED].sort()))
+    return { ok: false, reason: "intent-schema: [" + keys.join(",") + "]" };
+  try { canonicalBytes(intent); }
+  catch (e) { return { ok: false, reason: "intent-" + e.message }; }
+  if (typeof intent.program_sem_id !== "string" || !intent.program_sem_id.startsWith("psem-"))
+    return { ok: false, reason: "intent-program-id-malformed" };
+  if (typeof intent.intent_id !== "string" || intent.intent_id.length === 0)
+    return { ok: false, reason: "intent-id-malformed" };
+  const rr = intent.requested_resources;
+  if (rr === null || typeof rr !== "object" || Array.isArray(rr))
+    return { ok: false, reason: "intent-requested-resources-not-an-object" };
+  const rk = Object.keys(rr).sort();
+  if (canonicalBytes(rk) !== canonicalBytes(["exact", "predicates"]))
+    return { ok: false, reason: "intent-requested-resources-schema: [" + rk.join(",") + "]" };
+  for (const kind of ["exact", "predicates"])
+    if (!Array.isArray(rr[kind]) || rr[kind].some((x) => typeof x !== "string"))
+      return { ok: false, reason: "intent-requested-" + kind + "-not-a-string-list" };
+  if (intent.canonical_inputs === null || typeof intent.canonical_inputs !== "object" ||
+      Array.isArray(intent.canonical_inputs))
+    return { ok: false, reason: "intent-inputs-not-an-object" };
+  return { ok: true };
+}
+
+/** The identity of a request AS A WHOLE. This is what issuance records and what
+ *  acceptance recomputes, which is the entire content of the I-1 repair. */
+export function requestSemId(req) {
+  return "rsem-" + H("TRVM-REQUEST-SEM-v1|" + canonicalBytes(req));
+}
+
+/** THE AUTHORITY. It holds the World reader and the issuance table, it is the
+ *  only constructor of a DeriveRequest, and acceptance is one of its methods so
+ *  that neither proof can arrive as an argument. */
+export class DerivationAuthority {
+  #issued = new Map();
+  #reader;
+  constructor(reader) {
+    if (!reader || typeof reader.read !== "function" || typeof reader.scope !== "function")
+      throw new Error("authority-requires-a-world-reader");
+    this.#reader = reader;
+    Object.freeze(this);
+  }
+
+  /** intent in — authority-issued, owned, frozen request out */
+  authorize(intent, options = {}) {
+    const c = checkIntent(intent);
+    if (!c.ok) return { ok: false, reason: c.reason };
+    const unknown = Object.keys(options).filter((k) => !AUTHORIZE_OPTIONS.includes(k)).sort();
+    if (unknown.length)
+      return { ok: false, reason: "authorize-options-unknown: [" + unknown.join(",") + "]" };
+    if ("expected_implementation_id" in options && typeof options.expected_implementation_id !== "string")
+      return { ok: false, reason: "authorize-expected-implementation-malformed" };
+    let g;
+    try { g = resolveGrants(this.#reader, intent.requested_resources); }
+    catch (e) { return { ok: false, reason: e.message }; }
+    const body = {
+      program_sem_id: intent.program_sem_id,
+      canonical_inputs: intent.canonical_inputs,
+      read_grants: g.read_grants,
+      grant_id: g.grant_id,
+      ...("expected_implementation_id" in options
+        ? { expected_implementation_id: options.expected_implementation_id } : {}),
+    };
+    const request_id = "req-" + H("TRVM-REQUEST-v1|" + intent.intent_id + "|" + canonicalBytes(body));
+    // owned and severed through canonicalBytes — the same rule the World uses,
+    // not a second clone algorithm — then deep-frozen
+    const req = deepFreeze(JSON.parse(canonicalBytes({ request_id, ...body })));
+    const rc = checkRequest(req);
+    if (!rc.ok) return { ok: false, reason: rc.reason };
+    this.#issued.set(request_id, requestSemId(req));
+    return { ok: true, request: req };
+  }
+
+  /** Was THIS request — every field of it — issued by THIS authority? */
+  wasIssued(req) {
+    const stored = this.#issued.get(req?.request_id);
+    if (stored === undefined) return { ok: false, reason: "grant-not-issued-by-this-authority" };
+    let mine;
+    try { mine = requestSemId(req); }
+    catch (e) { return { ok: false, reason: "request-not-canonical: " + e.message }; }
+    return stored === mine ? { ok: true } : { ok: false, reason: "request-not-as-issued" };
+  }
+
+  /** ACCEPTANCE — everything a result must clear before an authority may act on
+   *  it, in one call, in an order where each stage fails on its own evidence:
+   *
+   *    1. issuance   this request, whole, is one THIS authority issued
+   *    2. validation schema, footprint-within-grant, re-derivation
+   *    3. freshness  the footprint's dependencies are still live NOW
+   *
+   *  IT DOES NOT RETURN `committable`, and the earlier draft's doing so was
+   *  wrong. One call cannot make a result committable, because the World can
+   *  move between this returning and the caller applying. What it establishes
+   *  is `validated` and `fresh_at_check` — an observation at a moment. The
+   *  composition that actually commits belongs to the World/Maintainer:
+   *
+   *      acquire the authoritative lock
+   *        accept()            <- this
+   *        prepared apply      <- deterministic, no hostile callback between
+   *        seal the receipt
+   *      release
+   *
+   *  No lock capability is exported to reach that: rounds 9B-9C are the record
+   *  of what happens when transaction authority gets passed around. */
+  accept(registry, req, res) {
+    const iss = this.wasIssued(req);
+    if (!iss.ok) return { ok: false, reason: iss.reason };
+    const v = validateForeignResult(registry, req, res);
+    if (!v.ok) return v;
+    const f = validateFootprintFresh(this.#reader, res.read_footprint);
+    if (!f.ok) return { ok: false, reason: f.reason };
+    return { ok: true, validated: true, fresh_at_check: true, implementation_id: res.implementation_id };
+  }
+}
+Object.freeze(DerivationAuthority.prototype);

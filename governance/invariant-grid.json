@@ -1,6 +1,6 @@
 {
  "record": "invariant-grid",
- "version": "1.17.0",
+ "version": "1.18.0",
  "date": "2026-08-18",
  "v1_criteria": {
   "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
@@ -617,7 +617,7 @@
  },
  "law_registry": {
   "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
-  "grid_version": "1.17.0",
+  "grid_version": "1.18.0",
   "entries": [
    {
     "id": "kappa.monotonicity.unrestricted",
@@ -1090,6 +1090,22 @@
     "evidence": "probe_coresem_v03_repro.mjs — C-1 (add was JavaScript '+'), C-2 ({op:'exec', cmd:'rm -rf /'} was issued an id), C-3 (const-without-value, add-without-b and add-with-an-extra-field all issued ids), C-4 (the footprint was an ordered sequence, so a right-to-left implementation returned different canonical bytes for a program it computed identically) — 4/4 reproduce against the frozen v0.2.0 copy, 5/5 confined live. derive_battery.mjs: core-id-is-content-bound, program-id-commits-the-core, grammar-refuses-before-id (6 malformed programs), arithmetic-typed-and-total, footprint-is-a-canonical-set, trace-is-outside-the-semantic-projection, footprint-set-is-checked-not-normalized, overflow-refused-on-every-operator, coercion-refused-on-every-operator, signed-zero-identified. BREAKING BY DESIGN: every v0.2.0 program id is retired, done now precisely because no second implementation exists to be broken by it."
    },
    {
+    "id": "derivation.footprint-freshness",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "Containment and freshness are different questions and a protocol needs both. footprintWithinGrant asks a HISTORICAL question — was every claimed read inside the snapshot this derivation received? validateFootprintFresh asks a TEMPORAL one — are those dependencies still current at the moment of acceptance? Both can be satisfied about a World that has moved, so re-derivation against the grant can never detect staleness: executor and authority agree perfectly about an old snapshot. Freshness keys on the FOOTPRINT and never on a global vclock — an unrelated write must not invalidate a derivation that did not depend on it, or the grant/footprint separation is undone from the other side. Exact reads compare versions; scope predicates compare digests, which is the World's phantom-scope case reaching the derivation boundary. ACCEPTANCE DOES NOT ESTABLISH COMMITTABILITY. One call cannot: the World can move between it returning and the caller applying. It establishes `validated` and `fresh_at_check` — an observation at a moment — and the composition that commits belongs to the World: acquire the authoritative lock, accept, deterministic prepared apply with no hostile callback in between, seal the receipt, release. No lock capability is exported to reach that, because rounds 9B-9C are the record of what happens when transaction authority gets passed around.",
+    "evidence": "probe_stalegrant_v03_repro.mjs: grant cut at fb@1=5, derived, World moved to fb@2=9 — checkResult PASS, footprintWithinGrant PASS, validateForeignResult PASS, all three CORRECT, and acceptance refuses 'stale-read: fb granted@1 live@2'. Plus the negative half (unrelated-write-ignored) and the scope half (stale-scope: kind:node, a node joining a query with no exact read moving). derive_battery.mjs: freshness-is-not-containment, unrelated-write-does-not-invalidate, acceptance-does-not-claim-committable. derive_realm_battery.mjs: intent-to-acceptance across a real worker."
+   },
+   {
+    "id": "derivation.grant-issuance",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "An authority-issued request authenticates THE WHOLE REQUEST, and acceptance takes no proof from its caller. grant_id is a hash of the grant and a hash authenticates content to itself, so it proves integrity and says nothing about issuance; binding request_id to grant_id answers 'was this issued?' about a GRANT while the thing being accepted is a REQUEST. Issuance therefore records request_id -> request_sem_id = H(canonical request), recomputed at acceptance, so any change to any field is a different request rather than the same request with different content. The authority is the only constructor of a DeriveRequest; a caller submits a DeriveIntent and may REQUEST exactly one thing, expected_implementation_id, which is a requirement on the executor rather than authority content — an open options bag spread after the authority's own fields is a caller writing authority content. Acceptance is a METHOD on the authority, closing over its issuance table and its live World reader: a free function taking those as parameters, with the issuer defaulting to absent, lets the caller supply both proofs of its own authority. The issued request is owned through canonicalBytes and deep-frozen as defence in depth, not as the boundary — the binding is the boundary. A signature or MAC is added when, and only when, the grant crosses a real trust boundary, is persisted and replayed later, is delegated between authorities, or must be proved to an independent verifier.",
+    "evidence": "probe_issuebind_v05_repro.mjs, 3/3 reproduced against the frozen draft and 4/4 confined live. I-1: swapping canonical_inputs under an untouched request_id and grant_id passed wasIssued, derived 1005 where an honest request derives 5, and was accepted as committable. I-2: authorize(intent, {canonical_inputs:{bias:1000}}) produced an AUTHORITY-ISSUED request evaluating to 1005. I-3: acceptance with the issuer argument OMITTED accepted a wholly self-made request, and a fake liveReader replaying the granted version turned a stale-read refusal back into an acceptance. derive_battery.mjs: issuance-binds-the-whole-request, request-sem-id-recomputes, authorize-options-whitelisted, issued-request-is-owned-and-frozen, intent-schema-closed, authority-requires-a-world."
+   },
+   {
     "id": "derivation.grant-footprint-separation",
     "revision": 1,
     "status": "PROPERTY-TESTED",
@@ -1394,7 +1410,7 @@
  "artifact_versions": {
   "trvm_law_kernel.mjs": "1.1.0",
   "trvm_world.mjs": "0.12.0",
-  "derive_protocol.mjs": "0.4.0"
+  "derive_protocol.mjs": "0.5.0"
  },
  "world": {
   "artifact": "trvm_world.mjs v0.3.0 — a separate executable; the calculus kernel is FROZEN at v1.0.2 and has no world by design",
@@ -1635,5 +1651,12 @@
   "arithmetic typed and total across add/sub/mul, each separately witnessed; -0 is identified with +0 in the canonical numeric quotient, stated because it was already true of the domain and unstated.",
   "read_footprint is a canonical DEPENDENCY SET and access order moved to read_trace, outside the semantic projection. Declaring the order semantic — the obvious first repair — would have made two correct implementations diverge over a field neither considers semantic.",
   "serialized-boundary@2 superseded by @3."
+ ],
+ "changelog_from_1_17_0": [
+  "new law derivation.grant-issuance@1. The draft authority bound request_id -> grant_id, so swapping canonical_inputs under an untouched request_id was accepted; an options bag spread after the authority's own fields let a caller write authority content; and acceptance took the issuer and the live reader as parameters, with the issuer defaulting to absent. All three reproduced and are frozen as I-1..I-3.",
+  "issuance now binds request_sem_id = H(canonical request), recomputed at acceptance. The authority is the only constructor of a request, exactly one option may be requested, and the issued request is owned and frozen.",
+  "acceptance is a METHOD on the authority — the issuance table and the live World reader are closed over, so there is no argument a caller can supply to switch either off.",
+  "new law derivation.footprint-freshness@1: containment is historical, freshness is temporal, both are required, freshness keys on the footprint and never on a global vclock.",
+  "acceptance no longer returns `committable`, and the draft's doing so was wrong: one call cannot establish committability because the World can move between it returning and the caller applying. It returns validated + fresh_at_check, and the commit composition belongs to the World."
  ]
 }
