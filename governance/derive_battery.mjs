@@ -356,7 +356,7 @@ const mkReq = (over = {}) => {
   const res = deriveLocally(reg, req).result;
   const before = auth.accept(reg, req, res);
   live.res.fb = { value: 9, version: 2 };                 // the World moves
-  const containment = footprintWithinGrant(res.read_footprint, req.read_grants);
+  const containment = footprintWithinGrant(res.semantic_result.read_footprint, req.read_grants);
   const rederive = validateForeignResult(reg, req, res);
   const after = auth.accept(reg, req, res);
   R("freshness-is-not-containment",
@@ -398,9 +398,9 @@ const mkReq = (over = {}) => {
   const swapAcc = auth.accept(reg, swapped, swappedRes);
   R("issuance-binds-the-whole-request",
     a.ok && mine.ok && !theirs.ok && theirs.reason === "grant-not-issued-by-this-authority"
-      && swappedRes.value === 1005 && !swapAcc.ok && swapAcc.reason === "request-not-as-issued",
+      && swappedRes.semantic_result.value === 1005 && !swapAcc.ok && swapAcc.reason === "request-not-as-issued",
     `the issuing authority accepts; a different instance refuses (${theirs.reason}); and an input swap ` +
-    `under an UNTOUCHED request_id and grant_id — which derives to ${swappedRes.value} — is refused ` +
+    `under an UNTOUCHED request_id and grant_id — which derives to ${swappedRes.semantic_result.value} — is refused ` +
     `(${swapAcc.reason}). The draft bound request_id → grant_id and answered "was this issued?" about a ` +
     `GRANT while the thing being accepted was a REQUEST`);
   R("request-sem-id-recomputes",

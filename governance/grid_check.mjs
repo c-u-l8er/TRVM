@@ -192,7 +192,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -758,6 +758,16 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         "grid clean_baseline missing its phase list or its per-family declared baselines (v1.21)");
       ok(/^establish_baseline$/.test((g.clean_baseline?.phases ?? [])[0] ?? ""),
         "grid clean_baseline.phases must begin with establish_baseline");
+      ok(!!g.clean_baseline?.gate_must_be_able_to_fail && /A GATE MUST BE ABLE TO FAIL/.test(cb?.statement ?? ""),
+        "evidence.clean-baseline@1 no longer carries its runner half (v1.22) — `cmd | tail -1` takes " +
+        "the PIPE's exit status, so a gate whose subject crashed prints a stack trace and reports success");
+      {
+        const mk = existsSync(join(ROOT, "..", "Makefile"))
+          ? readFileSync(join(ROOT, "..", "Makefile"), "utf8") : "";
+        if (mk) ok(!/^\t@cd \$\(GOV\) && (?!out=).*\| tail -/m.test(mk),
+          "a governance recipe still pipes its subject straight into tail — the recipe then fails on " +
+          "TAIL's status and a crashing gate reports success");
+      }
       {
         const nb = existsSync(A("negative_battery.sh")) ? readFileSync(A("negative_battery.sh"), "utf8") : "";
         ok(nb.includes("establish_baseline ()") && /establish_baseline \|\| exit 1/.test(nb),

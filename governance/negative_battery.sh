@@ -867,5 +867,14 @@ del g['clean_baseline']['declared_baselines']
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 
+run_case gate-can-swallow-failure "no longer carries its runner half" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'evidence.clean-baseline':
+        e['statement'] = e['statement'].replace('AND A GATE MUST BE ABLE TO FAIL', 'AND A GATE REPORTS')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+
 echo; [ $FAILED -eq 0 ] && echo "NEGATIVE BATTERY: $CASES/$CASES forgeries caught" || echo "NEGATIVE BATTERY: FAILURES PRESENT ($CAUGHT/$CASES caught)"
 exit $FAILED

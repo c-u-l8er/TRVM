@@ -1,6 +1,6 @@
 {
  "record": "invariant-grid",
- "version": "1.21.0",
+ "version": "1.22.0",
  "date": "2026-08-18",
  "v1_criteria": {
   "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
@@ -617,7 +617,7 @@
  },
  "law_registry": {
   "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
-  "grid_version": "1.21.0",
+  "grid_version": "1.22.0",
   "entries": [
    {
     "id": "kappa.monotonicity.unrestricted",
@@ -1048,7 +1048,7 @@
     "revision": 1,
     "status": "REGRESSION-LOCKED",
     "canonical": true,
-    "statement": "A perturbation-based result is admissible only if the IDENTICAL verifier, fixture, environment and artifact set satisfy their DECLARED baseline before the perturbation is applied. The word is DECLARED, not silent: each falsifier family names what its own clean state looks like. The negative battery's baseline is grid_check exiting 0 on the unperturbed fixture; the C bridge's is 48/48 byte equality; the kernel's is the canonical certificate and gates matching; a World attack probe's is the honest fixture satisfying the World invariants it is about to attack. Every perturbation harness implements five phases in order: establish_baseline, perturb, assert_perturbation (non-vacuity and target-match), run_subject, assert_specific_diagnostic. POSITIVE gates — kernel, World, bridge — need no additional 'must report nothing' test, because they ARE baseline observations. What needs this invariant is any claim of the form 'I changed X and therefore X caused this failure', which is exactly what a negative case asserts. Between round 14 and round 17 the negative battery's baseline was red and no case was isolated-cause evidence; nothing was falsely green, and that is a different and weaker property than the one the roster was reporting.",
+    "statement": "A perturbation-based result is admissible only if the IDENTICAL verifier, fixture, environment and artifact set satisfy their DECLARED baseline before the perturbation is applied. The word is DECLARED, not silent: each falsifier family names what its own clean state looks like. The negative battery's baseline is grid_check exiting 0 on the unperturbed fixture; the C bridge's is 48/48 byte equality; the kernel's is the canonical certificate and gates matching; a World attack probe's is the honest fixture satisfying the World invariants it is about to attack. Every perturbation harness implements five phases in order: establish_baseline, perturb, assert_perturbation (non-vacuity and target-match), run_subject, assert_specific_diagnostic. POSITIVE gates — kernel, World, bridge — need no additional 'must report nothing' test, because they ARE baseline observations. What needs this invariant is any claim of the form 'I changed X and therefore X caused this failure', which is exactly what a negative case asserts. Between round 14 and round 17 the negative battery's baseline was red and no case was isolated-cause evidence; nothing was falsely green, and that is a different and weaker property than the one the roster was reporting. AND A GATE MUST BE ABLE TO FAIL. A runner that pipes its subject into another command takes the exit status of the PIPE, not of the subject, so a gate whose subject CRASHED prints a stack trace's last line and reports success. Every governance recipe therefore captures its subject's output and status before printing, and the failure is verified in both directions: an unresolvable import and a failing assertion must each fail the target.",
     "evidence": "negative_battery.sh: establish_baseline() runs grid_check on the unperturbed fixture and refuses the whole run if it does not exit 0, printing that no case below is isolated-cause evidence. The baseline is established once because every case builds its fixture by the same recipe from the same source — and that is VERIFIED rather than assumed: each case compares its own pre-perturbation digest against the baselined tree and fails FIXTURE DRIFT otherwise. harness_selftest.sh M-9 keeps the species in the bounded nine. Paired probes satisfy the convention by construction, since their live half IS the baseline and must be confined for the probe to pass. DECLARED OPEN: the one-directional 9D probes (maintainer, coordinator_alias, realm, ownfailopen, closureenv) assert a breach without first asserting that the honest fixture holds the invariants they attack; their baselines are not yet established in code."
    },
    {
@@ -1711,7 +1711,8 @@
    "trvm_world.mjs": "warrant machinery holds and the receipt recomputes — a POSITIVE gate; needs nothing added"
   },
   "why_not_more_meta_cases": "the harness self-test stays BOUNDED at the nine historically observed species. This law is the general principle promoted out of M-9 and applied as a PRECONDITION of every falsifier family, rather than as more meta-cases. Turning nine into fifteen would be the infinite regress the self-test was written to avoid.",
-  "historical_note": "pre-round-18 negative results are ANNOTATED, not rewritten. Those batteries did find their requested diagnostics, so they were not false-green; but the verifier was already red, so they were not isolated-cause evidence either. The contamination stays in the record as evidence about the development process. See round-11-ledger.md §77."
+  "historical_note": "pre-round-18 negative results are ANNOTATED, not rewritten. Those batteries did find their requested diagnostics, so they were not false-green; but the verifier was already red, so they were not isolated-cause evidence either. The contamination stays in the record as evidence about the development process. See round-11-ledger.md §77.",
+  "gate_must_be_able_to_fail": "`cmd | tail -1` takes tail's exit status. The derive battery ran BROKEN for a full round after the round-19 envelope split — printing a stack trace's last line where its verdict should have been — and make governance stayed green. Every gov- recipe now uses out=$(cmd) && printf ... so the subject's own status is what the recipe fails on. Verified by injecting an unresolvable import (crash) and a false assertion (exit 1): both fail the target. Discovered while assembling a review bundle, not by the gate."
  },
  "changelog_from_1_20_0": [
   "new law evidence.clean-baseline@1, promoted out of M-9: a perturbation-based result is admissible only if the identical verifier, fixture, environment and artifact set satisfy their DECLARED baseline first.",
@@ -1719,5 +1720,10 @@
   "the harness self-test stays bounded at nine. The general principle is a precondition of every falsifier family rather than more meta-cases.",
   "declared open and named: the one-directional 9D probes do not yet establish their baselines in code.",
   "positive gates are themselves baseline observations and need nothing added — the invariant is for claims of the form 'I changed X, therefore X caused this'."
+ ],
+ "changelog_from_1_21_0": [
+  "evidence.clean-baseline@1 gains its runner half: a gate must be able to fail. `cmd | tail -1` takes the PIPE's exit status, so a crashing subject reported success — the derive battery ran broken for a full round after the envelope split and make governance stayed green.",
+  "all 13 governance recipe lines capture output and status before printing; verified to fail on both an unresolvable import and a false assertion.",
+  "the first crash test written for this was itself vacuous — a throw appended AFTER process.exit, which never runs. Recorded because it is the same species the harness self-test exists for."
  ]
 }

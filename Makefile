@@ -103,12 +103,18 @@ swarm:
 # proves. They meet at the canonical corpus (same 24 vectors, same committed
 # hash) and, since round 10, at canonical semantic bytes. A runtime change that
 # moved semantics would now fail here rather than pass quietly.
+# EVERY LINE BELOW CAPTURES BEFORE IT PRINTS. `cmd | tail -1` takes the exit
+# status of TAIL, not of cmd, so a gate that CRASHED printed a stack trace's
+# last line and the target stayed green -- which is how the derive battery ran
+# broken for a full round after the envelope split. A gate that cannot fail is a
+# display. law:evidence.clean-baseline@1 is about the fixture; this is the same
+# disease in the runner.
 governance: gov-kernel gov-grid gov-world gov-negative gov-bridge gov-derive gov-harness
 	@echo "  evidence plane green"
 
 gov-kernel:
 	@echo "==== [governance] law kernel — conformance + the periodic-law grid ===="
-	@cd $(GOV) && TRVM_VECTORS=$(VECTORS) $(NODE) trvm_law_kernel.mjs | tail -2
+	@cd $(GOV) && out=$$(TRVM_VECTORS=$(VECTORS) $(NODE) trvm_law_kernel.mjs) && printf "%s\n" "$$out" | tail -2
 
 gov-grid:
 	@echo "==== [governance] invariant grid — registry, citations, engine-free receipts ===="
@@ -116,12 +122,12 @@ gov-grid:
 
 gov-world:
 	@echo "==== [governance] World — warrants, maintenance, confinement ===="
-	@cd $(GOV) && $(NODE) trvm_world.mjs | tail -1
+	@cd $(GOV) && out=$$($(NODE) trvm_world.mjs) && printf "%s\n" "$$out" | tail -1
 	@cd $(GOV) && $(NODE) trvm_world.mjs --check-receipt
 
 gov-negative:
 	@echo "==== [governance] negative battery — every forgery must be caught ===="
-	@cd $(GOV) && ./negative_battery.sh | tail -1
+	@cd $(GOV) && out=$$(./negative_battery.sh) && printf "%s\n" "$$out" | tail -1
 
 gov-bridge: $(GOV)/bridge/ic32_canon
 	@echo "==== [governance] cross-plane bridge — C canonical bytes vs the JS oracle ===="
@@ -140,7 +146,7 @@ $(GOV)/bridge/ic32_canon: $(GOV)/bridge/ic32_canon.c runtime/c/ic32.c
 # development gate; this is the emission gate.
 gov-strict:
 	@echo "==== [governance] STRICT corpus identity — release / pack-cut gate ===="
-	@cd $(GOV) && TRVM_STRICT_CORPUS=1 TRVM_VECTORS=$(VECTORS) $(NODE) trvm_law_kernel.mjs | tail -1
+	@cd $(GOV) && out=$$(TRVM_STRICT_CORPUS=1 TRVM_VECTORS=$(VECTORS) $(NODE) trvm_law_kernel.mjs) && printf "%s\n" "$$out" | tail -1
 
 # law:evidence.harness-selftest@1 — six consecutive rounds found the defect in
 # the INSTRUMENT rather than the engine, so the known failure species get a gate
@@ -148,26 +154,26 @@ gov-strict:
 # into tests of tests.
 gov-harness:
 	@echo "==== [governance] harness self-test — the apparatus is measured too ===="
-	@cd $(GOV) && ./harness_selftest.sh | tail -1
+	@cd $(GOV) && out=$$(./harness_selftest.sh) && printf "%s\n" "$$out" | tail -1
 
 # The replacement for the falsified arbitrary-closure derivation API: program
 # as data, canonical request/result, and a real worker crossing where structured
 # cloning refuses callables outright.
 gov-derive:
 	@echo "==== [governance] serialized derivation boundary ===="
-	@cd $(GOV) && $(NODE) derive_battery.mjs | tail -1
-	@cd $(GOV) && $(NODE) derive_realm_battery.mjs | tail -1
+	@cd $(GOV) && out=$$($(NODE) derive_battery.mjs) && printf "%s\n" "$$out" | tail -1
+	@cd $(GOV) && out=$$($(NODE) derive_realm_battery.mjs) && printf "%s\n" "$$out" | tail -1
 # The only PAIRED probe in the tree, and the only one that gates. Its siblings
 # freeze a boundary that is DECLARED open, so they report a breach and that is
 # the record. These two defects are repaired, so the probe runs each witness
 # against the frozen v0.1.0 copy — where it must still reproduce, or the witness
 # has gone vacuous and stopped measuring — and against live, where it must be
 # confined. law:evidence.instrument-nonvacuity@1 applied to a repro.
-	@cd $(GOV) && $(NODE) probe_derivegrant_v02_repro.mjs | tail -1
-	@cd $(GOV) && $(NODE) probe_coresem_v03_repro.mjs | tail -1
-	@cd $(GOV) && $(NODE) probe_stalegrant_v03_repro.mjs | tail -1
-	@cd $(GOV) && $(NODE) probe_issuebind_v05_repro.mjs | tail -1
-	@cd $(GOV) && $(NODE) probe_traceforge_v06_repro.mjs | tail -1
+	@cd $(GOV) && out=$$($(NODE) probe_derivegrant_v02_repro.mjs) && printf "%s\n" "$$out" | tail -1
+	@cd $(GOV) && out=$$($(NODE) probe_coresem_v03_repro.mjs) && printf "%s\n" "$$out" | tail -1
+	@cd $(GOV) && out=$$($(NODE) probe_stalegrant_v03_repro.mjs) && printf "%s\n" "$$out" | tail -1
+	@cd $(GOV) && out=$$($(NODE) probe_issuebind_v05_repro.mjs) && printf "%s\n" "$$out" | tail -1
+	@cd $(GOV) && out=$$($(NODE) probe_traceforge_v06_repro.mjs) && printf "%s\n" "$$out" | tail -1
 
 ## --- identity/memory result ------------------------------------------------
 research:

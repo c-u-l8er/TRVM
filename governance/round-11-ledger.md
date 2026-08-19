@@ -311,3 +311,24 @@ Five phases, in order: `establish_baseline` · `perturb` · `assert_perturbation
 **94. And this round's own edit inflated a counter by one.** The phase insertion matched in both runners — `run_case` and `run_case_engine` — so the engine case incremented `CASES` twice and the printed total read **101** where the case set was 100. Caught because the number moved when nothing about the case set had, which is the only reason a derived total is worth having: the round-10 repair that made these counters derived rather than hand-typed is what made this visible at all.
 
 **95. Gate.** grid **v1.21.0** — 63 entries / 344 citations · kernel PASS · World 0.12.0 PASS · `--check-receipt` PASS · negative battery **103/103**, with a declared baseline established and every fixture proved to inherit it · bridge 48/48 · derive **41/41 · 10/10** · probes **2/2+2/2**, **4/4+5/5**, **5/5**, **3/3+4/4**, **1/1+4/4** · harness **9/9**. `scheduler_certificate.json` byte-identical — fifteenth consecutive round without the calculus moving.
+
+
+---
+
+## Round 21 — the gate could not fail
+
+**96. The derive battery ran BROKEN for a full round and `make governance` stayed green.** The round-19 envelope split moved `read_footprint` inside `semantic_result`, and one call site in `derive_battery.mjs` was missed. The battery crashed on it — `TypeError: Cannot read properties of undefined (reading 'exact')` — and the gate reported success for round 19 and round 20, because every governance recipe was written
+
+```make
+@cd $(GOV) && $(NODE) derive_battery.mjs | tail -1
+```
+
+and **`cmd | tail -1` takes the exit status of `tail`**. A crashing subject printed a stack trace's last line where its verdict should have been, and the pipeline exited 0. Found while assembling a review bundle — by reading a line of output, not by the gate.
+
+**97. A gate that cannot fail is a display.** All thirteen governance recipe lines now capture the subject's output *and* status before printing (`out=$(cmd) && printf …`), so the recipe fails on the subject's own status. Verified in both directions rather than asserted: an **unresolvable import** (a crash) and a **false assertion** (exit 1) each fail the target, and the restored file passes. `law:evidence.clean-baseline@1` gains this as its runner half — the baseline clause is about the *fixture*, and this is the same disease in the *runner*.
+
+**98. And the first crash test written for it was vacuous.** Appending `throw new Error("deliberate crash")` to the end of the battery proved nothing: the file ends in `process.exit(fail ? 1 : 0)`, so the throw is unreachable. The test reported the gate as passing a crash it never experienced. That is the ninth species — a falsifier that does not perturb what it claims to — committed while building the fix for a tenth, and it is recorded rather than quietly corrected because the alternative is a record that only contains the mistakes I noticed in time.
+
+**99. Gate.** grid **v1.22.0** — 63 entries / 346 citations · negative battery **104/104** · derive **40/40 · 10/10** · probes **2/2+2/2**, **4/4+5/5**, **5/5**, **3/3+4/4**, **1/1+4/4** · harness **9/9** · bridge 48/48 · kernel PASS · World 0.12.0 PASS. `scheduler_certificate.json` byte-identical — sixteenth consecutive round.
+
+**The uncomfortable summary of rounds 15 through 21.** Seven consecutive rounds, and in six of them the defect was in the evidence apparatus rather than in the thing it measures: a footprint that could be produced without a read, an identity that bound a spelling, an issuance that authenticated the wrong object, a trace excluded from comparison and therefore from checking, a fixture that was already red, and a gate that could not fail. The calculus has not moved in sixteen rounds. What keeps moving is the machinery that claims to be watching it.
