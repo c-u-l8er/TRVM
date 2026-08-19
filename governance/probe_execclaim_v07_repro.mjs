@@ -63,7 +63,7 @@ import { JS_WORKER_ENTRY, defaultDeriveCatalog } from "./derive_launcher.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const JS_DIGEST = digestArtifactFiles(JS_WORKER_ENTRY.artifact_closure);
-const mkHost = () => new ObservedExecutionHost(defaultDeriveCatalog(JS_IMPLEMENTATION_ID));
+const CATALOG = defaultDeriveCatalog(JS_IMPLEMENTATION_ID);
 
 const results = [];
 const R = (id, held, note) => { results.push({ id, held }); console.log(
@@ -132,7 +132,7 @@ function v6Accept(registry, req, res) {
    this request, takes these bytes, and keys the observation over the whole
    execution event. There is no handle to hold and none to forge. */
 {
-  const world = mkWorld(); const auth = new DerivationAuthority(world, [P], mkHost());
+  const world = mkWorld(); const auth = new DerivationAuthority(world, [P], CATALOG);
   const mk = (opts, id) => auth.authorize({ intent_id: id, program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } }, opts).request;
 
@@ -185,7 +185,7 @@ function v6Accept(registry, req, res) {
 
 /* ── and the success shape no longer invites weighing booleans ────────────── */
 {
-  const world = mkWorld(); const auth = new DerivationAuthority(world, [P], mkHost());
+  const world = mkWorld(); const auth = new DerivationAuthority(world, [P], CATALOG);
   const { request: req } = auth.authorize({ intent_id: "s1", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
   const res = (await auth.execute(req)).result;

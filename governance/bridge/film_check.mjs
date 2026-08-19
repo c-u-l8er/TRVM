@@ -92,9 +92,13 @@ const FILM_DOMAIN = "TRVM-FILM-EXEC-v1";
 
 class FilmAuthority {
   #host;
-  constructor(host) {
-    if (!(host instanceof ObservedExecutionHost)) throw new Error("film-authority-requires-a-host");
-    this.#host = host;
+  /** CATALOG DATA, and the host is BUILT. Taking a ready-made host behind an
+   *  `instanceof` guard is P-5: a two-method subclass satisfies it while
+   *  overriding both run() and observationOf(), so nothing executes and
+   *  provenance comes back "observed" anyway. `new` here binds the imported
+   *  class, which no caller can substitute. */
+  constructor(executorCatalog) {
+    this.#host = new ObservedExecutionHost(executorCatalog);
     Object.freeze(this);
   }
   /** No launcher, no run(). The family names a catalog entry and the host owns
@@ -138,7 +142,7 @@ const FILM_ENTRY = Object.freeze({
   entrypoint: BIN,
   artifact_closure: Object.freeze([BIN]),
 });
-const mkHost = () => new ObservedExecutionHost({ [C_FAMILY]: FILM_ENTRY });
+const FILM_CATALOG = Object.freeze({ [C_FAMILY]: FILM_ENTRY });
 
 /* ── the frozen fixture ───────────────────────────────────────────────────
    apply_id, vector 3 of the conformance corpus: ref_interactions = 1, so its
@@ -150,7 +154,7 @@ const mkHost = () => new ObservedExecutionHost({ [C_FAMILY]: FILM_ENTRY });
 const TERM = "(λx.λt.(t x) λy.y)";
 const BIN_DIGEST = digestArtifactFiles([BIN]);
 
-const auth = new FilmAuthority(mkHost());
+const auth = new FilmAuthority(FILM_CATALOG);
 const emitted = await auth.emit(TERM, C_FAMILY);
 if (!emitted.ok) { console.log("FILM-CHECK: FAIL — emitter refused: " + emitted.reason); process.exit(1); }
 const EMISSION = emitted.emission;
@@ -250,7 +254,7 @@ forge("F-5 transition from another state",
 {
   // F-6: a genuine C film paired with an observation of something else. There
   // is nothing to pair: the observation is keyed over the whole event.
-  const other = new FilmAuthority(mkHost());
+  const other = new FilmAuthority(FILM_CATALOG);
   const otherRun = await other.emit("(λx.x Q)", C_FAMILY);
   const borrowed = other.accept(TERM, EMISSION);
   R("F-6 observation-cannot-be-repointed",
@@ -265,7 +269,7 @@ forge("F-5 transition from another state",
   // an adversary would be building the wrong thing. What this proves is
   // narrower and worth having: provenance is over the observed film BYTES,
   // including fields replay deliberately treats as non-authoritative.
-  const jsAuth = new FilmAuthority(mkHost());
+  const jsAuth = new FilmAuthority(FILM_CATALOG);
   const run = await jsAuth.emit(TERM, C_FAMILY);
   const edited = { ...run.film, terminal: { ...run.film.terminal, planes: [...run.film.terminal.planes] } };
   edited.frames = [{ ...run.film.frames[0], i: 1 }];   // one non-authoritative field
@@ -287,7 +291,7 @@ forge("F-5 transition from another state",
     artifact_files: [BIN],
     run() { ranC = true; return JSON.stringify(EMISSION); },
   };
-  const p3f = new FilmAuthority(mkHost());
+  const p3f = new FilmAuthority(FILM_CATALOG);
   // there is no argument that accepts it. The catalog names the entrypoint and
   // the host owns the transport, so the closest a caller can get is a family
   // name — and a name is not an action.
@@ -306,9 +310,9 @@ forge("F-5 transition from another state",
     `object WAS the API and returned film_provenance "observed" for a C binary that never ran`);
 
   // and a host whose catalog does not name this binary cannot run it
-  const otherBin = new ObservedExecutionHost({ "impl-x-v1": { kind: "native-exec",
-    entrypoint: join(HERE, "ic32_canon"), artifact_closure: [join(HERE, "ic32_canon")] } });
-  const wrongCat = await new FilmAuthority(otherBin).emit(TERM, C_FAMILY);
+  const wrongCat = await new FilmAuthority({ "impl-x-v1": { kind: "native-exec",
+    entrypoint: join(HERE, "ic32_canon"), artifact_closure: [join(HERE, "ic32_canon")] } })
+    .emit(TERM, C_FAMILY);
   R("uncatalogued-emitter-refused", !wrongCat.ok && /^executor-not-in-catalog: /.test(wrongCat.reason),
     `${wrongCat.reason} — hash first, launch second, and BOTH from the same catalog entry. The ` +
     `strongest honest reading of that order is "the host observed artifact X immediately before ` +

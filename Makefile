@@ -202,6 +202,7 @@ gov-derive: $(GOV)/bridge/ic32_film
 	@cd $(GOV) && out=$$($(NODE) probe_execreg_v08_repro.mjs) && printf "%s\n" "$$out" | tail -1
 	@cd $(GOV) && out=$$($(NODE) probe_execlaunch_v09_repro.mjs) && printf "%s\n" "$$out" | tail -1
 	@cd $(GOV) && out=$$($(NODE) probe_semoracle_v10_repro.mjs) && printf "%s\n" "$$out" | tail -1
+	@cd $(GOV) && out=$$($(NODE) probe_hostown_v11_repro.mjs) && printf "%s\n" "$$out" | tail -1
 
 ## --- identity/memory result ------------------------------------------------
 research:

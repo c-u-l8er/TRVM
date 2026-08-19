@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   derive_protocol.mjs — v0.10.0 — the serialized derivation boundary
+   derive_protocol.mjs — v0.11.0 — the serialized derivation boundary
 
    law:derivation.environment-confinement@1 is FALSIFIED under the arbitrary-
    closure measureFn API, and the record says closure comes from REPLACING the
@@ -67,7 +67,27 @@
    trigger to move to B or a hybrid, and it is named in the grid rather than
    discovered later.
 
-   WHAT v0.10.0 CHANGES: ACCEPTANCE TOOK ITS SEMANTIC ORACLE FROM THE CLAIMANT
+   WHAT v0.11.0 CHANGES: AN instanceof GUARD IS SATISFIED BY A SUBCLASS
+   ────────────────────────────────────────────────────────────────────
+   v0.10.0 built its own semantic registry from data — and one argument later
+   still ACCEPTED a ready-made ObservedExecutionHost behind an `instanceof`
+   guard. A two-method subclass passes it: override run() to throw, override
+   observationOf() to return whatever provenance you like, and acceptance
+   reports `observed` for an implementation that never ran. Frozen as P-5 in
+   probe_hostown_v11_repro.mjs.
+
+       @1 LABEL · @2 NAME · @3 ACTION · @4 SEMANTIC ORACLE · @5 the
+       EXECUTION-AUTHORITY OBJECT ITSELF
+
+   `instanceof` asks what a thing is DESCENDED FROM; the question is WHO BUILT
+   IT. A tighter predicate would be the same mistake with a longer expression —
+   `Object.getPrototypeOf(host) === ObservedExecutionHost.prototype` excludes
+   the subclass and admits a Proxy. So the third constructor argument is an
+   EXECUTOR CATALOG, which is data, and the authority calls
+   `new ObservedExecutionHost(catalog)` itself against this module's own class
+   binding, which no caller can substitute.
+
+   WHAT v0.10.0 CHANGED: ACCEPTANCE TOOK ITS SEMANTIC ORACLE FROM THE CLAIMANT
    ───────────────────────────────────────────────────────────────────────────
    By v0.9.0 the authority owned issuance, the World reader, execution
    observations and freshness. It did not own the thing that says what a
@@ -184,7 +204,7 @@ import { ObservedExecutionHost, digestArtifactFiles } from "./observed_execution
 export { digestArtifactFiles };
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const PROTOCOL_VERSION = "0.10.0";
+export const PROTOCOL_VERSION = "0.11.0";
 
 /* ── the canonical value domain, shared with the World ────────────────────
    Deliberately a copy of the World's rule rather than an import: this module
@@ -636,7 +656,7 @@ export function footprintWithinGrant(fp, read_grants) {
    reader callable, which was the closure-authority shape this whole line of
    work exists to remove — in-process only, but the same species. Now the
    evaluator receives nothing but canonical data. */
-export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.10.0";
+export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.11.0";
 
 function readerFromGrants(read_grants) {
   return {
@@ -914,15 +934,18 @@ export class DerivationAuthority {
    *  authority ends up owning its semantic oracle rather than sharing an object
    *  with whoever built it. Passing a ready-made registry would satisfy any type
    *  check and leave the ownership exactly where P-4 found it. */
-  constructor(reader, programImage = [], host = null) {
+  constructor(reader, programImage = [], executorCatalog = null) {
     if (!reader || typeof reader.read !== "function" || typeof reader.scope !== "function")
       throw new Error("authority-requires-a-world-reader");
     if (!Array.isArray(programImage))
       throw new Error("authority-program-image-must-be-a-list");
-    if (host !== null && !(host instanceof ObservedExecutionHost))
-      throw new Error("authority-host-must-be-an-ObservedExecutionHost");
     this.#reader = reader;
-    this.#host = host;
+    // THE HOST IS BUILT, NOT ACCEPTED. v0.10.0 took one behind an instanceof
+    // guard, which a two-method subclass satisfies while overriding both the
+    // execution and the observation (P-5). `new` here binds this module's own
+    // class, so there is nothing for a caller to substitute and no method for
+    // it to shadow.
+    this.#host = executorCatalog === null ? null : new ObservedExecutionHost(executorCatalog);
     for (const ast of programImage) this.#registry.bind(ast);
     Object.freeze(this);
   }

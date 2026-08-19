@@ -192,7 +192,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -718,11 +718,45 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         "v0.9.0's FIRST parameter was a `registry` — the mapping from semantic identity to semantic " +
         "program, supplied by the claimant (P-4, probe_semoracle_v10_repro.mjs)");
       // ── v1.26: acceptance takes no semantic oracle either ─────────────
-      ok(/constructor\(reader, programImage = \[\], host = null\)/.test(dnoc) &&
+      ok(/constructor\(reader, programImage = \[\], executorCatalog = null\)/.test(dnoc) &&
          /for \(const ast of programImage\) this\.#registry\.bind\(ast\)/.test(dnoc),
         "the authority must BUILD its registry at construction from canonical program DATA. Accepting " +
         "a ready-made ProgramRegistry satisfies any type check and leaves ownership exactly where P-4 " +
         "found it — a Proxy, or a real registry the caller populated differently, both pass instanceof");
+      // ── v1.28: an instanceof guard is satisfied by a subclass ─────────
+      ok(/new ObservedExecutionHost\(executorCatalog\)/.test(dnoc) &&
+         !/instanceof ObservedExecutionHost/.test(dnoc),
+        "the authority must BUILD its execution host from CATALOG DATA, not accept one. v0.10.0 " +
+        "guarded with `host instanceof ObservedExecutionHost`, which a two-method subclass satisfies " +
+        "while overriding run() and observationOf() — nothing executes and provenance still reads " +
+        "'observed' (P-5, probe_hostown_v11_repro.mjs)");
+      ok(!/getPrototypeOf\(\s*host/.test(dnoc),
+        "and NOT with a tighter type check. Object.getPrototypeOf(host) === ObservedExecutionHost." +
+        "prototype excludes the subclass and admits a Proxy; it asks what the object IS DESCENDED " +
+        "FROM when the question is WHO BUILT IT");
+      {
+        const filmSrc2 = existsSync(A("bridge/film_check.mjs"))
+          ? readFileSync(A("bridge/film_check.mjs"), "utf8") : "";
+        ok(/constructor\(executorCatalog\)/.test(filmSrc2) &&
+           /this\.#host = new ObservedExecutionHost\(executorCatalog\)/.test(filmSrc2),
+          "FilmAuthority must build its host from catalog data too — P-5 is a property of the " +
+          "PARAMETER, so it reappears in every authority that has one");
+        const ip6 = entries.find((x) => x.id === "derivation.host-ownership" && x.revision === 1);
+        ok(!!ip6 && ip6.canonical === true && ip6.status === "PROPERTY-TESTED",
+          "law derivation.host-ownership@1 missing, non-canonical, or not PROPERTY-TESTED (v1.28)");
+        ok(!!ip6 && /WHO BUILT IT/.test(ip6.statement ?? ""),
+          "derivation.host-ownership@1 must say that the question is who built the object rather than " +
+          "what it descends from — a law reading 'check the type harder' invites the wrong repair");
+      }
+      // ── v1.28: the record must not contradict the registry ────────────
+      ok(!/^DECLARED, not built/.test(g.lowering_spike?.status ?? ""),
+        "grid lowering_spike.status still says the spike is not built while the three lowering laws " +
+        "above it are PROPERTY-TESTED. A machine-readable state contradicting the registry in the same " +
+        "file is the round-21 prose-versus-record class, and it survived the round that built it");
+      ok((g.lowering_spike?.execution_grade ?? "").includes("OBSERVED") &&
+         (g.lowering_spike?.film_grade ?? "").includes("OPEN"),
+        "grid lowering_spike must carry the two execution grades separately — an execution the host " +
+        "observed and one the kernel replayed are different claims");
       ok(/#registry = new ProgramRegistry\(\)/.test(dnoc) &&
          /validateForeignResult\(this\.#registry, req, res\)/.test(dnoc),
         "acceptance must re-derive through the authority's OWN registry. Re-derivation was never the " +

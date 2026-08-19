@@ -1145,8 +1145,8 @@ open('derive_protocol.mjs','w').write(src)"
 
 run_case registry-accepted-not-built "must BUILD its registry at construction" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('constructor(reader, programImage = [], host = null) {',
-                  'constructor(reader, programImage, host = null) {')
+src = src.replace('constructor(reader, programImage = [], executorCatalog = null) {',
+                  'constructor(reader, programImage, executorCatalog = null) {')
 open('derive_protocol.mjs','w').write(src)"
 
 run_case oracle-comes-from-outside "must re-derive through the authority" "
@@ -1246,6 +1246,47 @@ run_case identities-may-collapse "must assert the six identities differ" "
 src = open('lowering_check.mjs').read()
 src = src.replace('six-identities-stay-distinct', 'six-identities-listed')
 open('lowering_check.mjs','w').write(src)"
+
+
+# ── round 26: an instanceof guard is satisfied by a subclass ────────────────
+run_case host-accepted-not-built "must BUILD its execution host from CATALOG DATA" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('this.#host = executorCatalog === null ? null : new ObservedExecutionHost(executorCatalog);',
+  'this.#host = executorCatalog instanceof ObservedExecutionHost ? executorCatalog : null;')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case ownership-becomes-a-prototype-check "NOT with a tighter type check" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('this.#reader = reader;',
+  'if (executorCatalog && Object.getPrototypeOf( host ) === null) {}\n    this.#reader = reader;', 1)
+open('derive_protocol.mjs','w').write(src)"
+
+run_case host-ownership-law-deleted "law derivation.host-ownership@1 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if e['id'] != 'derivation.host-ownership']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case ownership-question-restated "must say that the question is who built the object" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.host-ownership':
+        e['statement'] = e['statement'].replace('WHO BUILT IT', 'what it descends from')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case spike-status-reverted "still says the spike is not built" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['lowering_spike']['status'] = 'DECLARED, not built.'
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case execution-grades-merged-in-record "must carry the two execution grades separately" "
+import json
+g = json.load(open('invariant-grid.json'))
+del g['lowering_spike']['film_grade']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 
 echo; [ $FAILED -eq 0 ] && echo "NEGATIVE BATTERY: $CASES/$CASES forgeries caught" || echo "NEGATIVE BATTERY: FAILURES PRESENT ($CAUGHT/$CASES caught)"

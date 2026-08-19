@@ -502,11 +502,11 @@ const mkReq = (over = {}) => {
     catch (e) { return e.message; } })();
   R("host-is-constructed-not-set",
     !noHost.ok && noHost.reason === "authority-has-no-execution-host"
-      && duck === "authority-host-must-be-an-ObservedExecutionHost",
-    `an authority built without a host cannot execute (${noHost.reason}) and one built with an object ` +
-    `merely SHAPED like a host is refused at construction (${duck}). The catalog is fixed before this ` +
-    `object exists, so there is no window in which its identity policy can move — and duck-typing the ` +
-    `host is how a caller would supply the launcher again`);
+      && /^host-catalog-|^catalog-/.test(duck),
+    `an authority built without a host cannot execute (${noHost.reason}) and the third argument is ` +
+    `CATALOG DATA, so an object shaped like a host is ${duck}. The authority BUILDS its host: v0.10.0 ` +
+    `accepted one behind an instanceof guard, which a two-method subclass satisfies while overriding ` +
+    `both the execution and the observation (P-5)`);
 
   R("acceptance-success-shape-narrow",
     unobserved.trace_conforms === undefined && unobserved.committable === undefined

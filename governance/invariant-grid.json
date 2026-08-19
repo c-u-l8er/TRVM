@@ -1,6 +1,6 @@
 {
  "record": "invariant-grid",
- "version": "1.27.0",
+ "version": "1.28.0",
  "date": "2026-08-18",
  "v1_criteria": {
   "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
@@ -617,7 +617,7 @@
  },
  "law_registry": {
   "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
-  "grid_version": "1.27.0",
+  "grid_version": "1.28.0",
   "entries": [
    {
     "id": "kappa.monotonicity.unrestricted",
@@ -1217,6 +1217,14 @@
     "canonical": true,
     "statement": "SOURCE AND TARGET AGREE ON THE OUTCOME: source_outcome_sem_id == target_outcome_sem_id, where the target side is reached by canonical lowering, native ic32 execution, and structural decoding. TWO GRADES OF EVIDENCE FOR THE EXECUTION LEG, and only the first is claimed here. OBSERVED: the ObservedExecutionHost hashed a catalogued binary and then ran it, so the normal form is an execution event the host drove (derivation.implementation-provenance@4). FILM-EVIDENCED: the transition sequence itself is replayed by the independent kernel (film.native-emission@1). The second is DECLARED OPEN for any fixture that carries a dup cell, which is every lowered addition — Church addition uses its function argument twice and ic32's net is linear — because ic32_film v0.1.0 handles the dup-free one-step fragment and refuses the rest BY NAME. Closing it is the six DUP-* rules, the d: and v: loci, and multi-frame films. Reporting the two grades separately is the point: an execution the host observed and an execution the kernel replayed are different claims. THIS IS THE THEOREM; canonical-lowering@1 and target-decoding@1 exist to make it DIAGNOSABLE, because a bare equality failure cannot say which of three relations broke. Six identities stay distinct and none may be collapsed into another: program_sem_id, lowering_sem_id, target_term_sem_id, target_nf_sem_id, decode_sem_id, outcome_sem_id. Collapsing any pair turns a refinement statement into a renaming, which is the failure mode this whole chain is built to avoid.",
     "evidence": "lowering_check.mjs 9/9, the first end-to-end witness: add(const 2, const 3) with inputs={} lowers to one canonical ic32 term whose identity the kernel and ic32_canon agree on; the host launches the catalogued binary and observes the canonical normal form L0(L1(A(N0,A(N0,A(N0,A(N0,A(N0,N1))))))); that decodes structurally to {status:'value', value:5}; and its outcome id EQUALS the source evaluator's, whose result was itself accepted by an authority owning every oracle it consulted (derivation.acceptance-authority@1). six-identities-stay-distinct asserts all six values differ. native-film-absent-by-refusal asserts the film emitter REFUSES this exact fixture with film-dup-cell-present — the gap is measured at the fixture the refinement runs on rather than described in the abstract."
+   },
+   {
+    "id": "derivation.host-ownership",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "AN AUTHORITY-BEARING OBJECT MAY NOT BE SUPPLIED TO THE AUTHORITY THAT WILL TRUST IT. An `instanceof` guard is satisfied by a subclass: two overridden methods — run() that never runs and observationOf() that answers whatever it likes — pass `host instanceof ObservedExecutionHost` while bypassing the catalog, the digest, hash-then-launch and the observation table, all of which remain perfectly correct and perfectly unconsulted. Acceptance then reports implementation_provenance 'observed' for an implementation that never ran. THE QUESTION IS NOT WHAT THE OBJECT IS DESCENDED FROM. THE QUESTION IS WHO BUILT IT. So the repair is not a tighter predicate — Object.getPrototypeOf(host) === ObservedExecutionHost.prototype excludes the subclass and admits a Proxy, and would be derivation.acceptance-authority@1's mistake with a longer expression. The authority takes an EXECUTOR CATALOG, which is data, and constructs the host itself against its module's own class binding, which no caller can substitute. Every authority with such a parameter does the same, because this is a property of the PARAMETER and not of any one class. This is the fifth rung of one ladder: @1 the implementation LABEL, @2 the registration NAME, @3 the ACTION beside the artifact evidence, @4 the SEMANTIC ORACLE at acceptance, @5 the EXECUTION-AUTHORITY OBJECT itself. Each rung sat in the parameter that had stopped being examined because it was 'obviously infrastructure'. What a caller supplies is an INTENT, a RESULT TO VALIDATE, and — at construction only — the DATA every oracle is built from.",
+    "evidence": "probe_hostown_v11_repro.mjs, paired and gating: 2/2 reproduce against a frozen v0.10.0 guard — P-5, where a two-method subclass yields ok/validated/fresh_at_check with provenance 'observed', implementation_id impl-c-fake-v1 and executable_artifact_id 'fake-artifact' while run() would throw if it were called; and P-5b, which shows the tighter prototype check would have excluded the subclass and still admitted a Proxy over a genuine host. 4/4 confined live: the host is built from catalog data, both an EvilHost and a GENUINE ObservedExecutionHost are refused in the catalog position because neither is a catalog, editing the caller's catalog object after construction reaches nothing, the authority exposes zero own properties and is frozen with the host behind a #private field, and the five rungs are asserted as a set. derive_realm_battery.mjs 20/20, derive_battery.mjs 45/45, bridge/film_check.mjs 14/14 with FilmAuthority taking catalog data for the same reason."
    }
   ]
  },
@@ -1507,7 +1515,7 @@
  "artifact_versions": {
   "trvm_law_kernel.mjs": "1.1.0",
   "trvm_world.mjs": "0.12.0",
-  "derive_protocol.mjs": "0.10.0",
+  "derive_protocol.mjs": "0.11.0",
   "observed_execution_host.mjs": "0.1.0",
   "lowering.mjs": "0.1.0"
  },
@@ -1805,7 +1813,7 @@
   "lowering_spike RESTORED after being lost in the round-16 split, with TRVM-TERM-CANON-v1, the three properties, the decision rule, and the fourth identity (outcome_sem_id under TRVM-DERIVE-OUTCOME-v1, because refusal is also semantics). The round-16/17/18 review brief claimed this section was recorded while the extract shipped beside it read null."
  ],
  "lowering_spike": {
-  "status": "DECLARED, not built.",
+  "status": "EXECUTED-PARTIAL. Pure fragment const/add only · execution grade OBSERVED · film grade OPEN for dup-carrying lowered programs · inputs model UNDECIDED. Was 'DECLARED, not built.' and stayed that way through the round that built it — the same prose-versus-record drift the record_correction below is about, one section later and in the same file. The three laws derivation.canonical-lowering@1, derivation.target-decoding@1 and derivation.lowering-refinement@1 are PROPERTY-TESTED in the registry above; a machine-readable state saying 'not built' beside them is exactly the contradiction grid_check exists to catch, and it did not, so it does now.",
   "record_correction": "This section was LOST between drafts. The combined round-16 draft carried it; when that draft was split into rounds 16/17/18 the grid was rebuilt from the round-15 base and this section was not re-added. The round-16/17/18 review brief nonetheless stated that TRVM-TERM-CANON-v1 was 'recorded in lowering_spike', while the machine-readable extract shipped alongside it contained lowering_spike: null. The brief was wrong and the extract was right. Restored here, in round 21, together with the fourth identity the review then supplied.",
   "scope": "the PURE fragment only — const and add first, then input/sub/mul/len. NOT read/scope/cite: authority-sensitive operations carry footprint semantics that would muddy the question the spike exists to answer. If add(const 2, const 3) already gives an ugly lowering, that is valuable information before a compiler is built around the idea.",
   "target_encoding": {
@@ -1828,7 +1836,12 @@
    "outcome_encoding": "outcome_sem_id MUST NOT hash a human-readable reason string. Rendering 'program-type: add of non-number' is DIAGNOSTICS; hashing it would recreate round 16's 'the identity bound a spelling' defect one layer up, where semantic identity would depend on English punctuation and two conforming implementations could differ by a comma. TRVM-DERIVE-OUTCOME-v1 encodes an outcome STRUCTURALLY: {status:'value', value} or {status:'refused', code, locus} where `code` is a canonical refusal code from the frozen core's refusal vocabulary and `locus` carries whatever detail is actually semantic (the offending op and path), never a rendered sentence."
   },
   "layer_separation": "lowering proves source program -> target term; the FILM proves target term -> target normal form transitions; DECODING proves target normal form -> target outcome; the refinement receipt proves source outcome == target outcome. The film must not be asked to prove source-language equivalence — its job is to witness the target machine's execution.",
-  "decision_rule": "if the spike is clean, lowering into ic32 is preferred over a second dedicated C interpreter beside it — one execution substrate rather than two. If the mapping is awkward, it is NOT adopted. The point of a spike is that it can fail."
+  "decision_rule": "if the spike is clean, lowering into ic32 is preferred over a second dedicated C interpreter beside it — one execution substrate rather than two. If the mapping is awkward, it is NOT adopted. The point of a spike is that it can fail.",
+  "declared_in_round": 21,
+  "executed_in_round": 25,
+  "execution_grade": "OBSERVED — the ObservedExecutionHost hashed a catalogued binary and ran it",
+  "film_grade": "OPEN. Every lowered addition carries a dup cell because Church addition uses its function argument twice and ic32's net is linear, and ic32_film v0.1.0 is the dup-free one-step fragment. lowering_check.mjs ASSERTS the emitter's film-dup-cell-present on the refinement fixture. Closing it: DUP-LAM, DUP-SUP=, DUP-SUP!, DUP-ERA, DUP-VAR, DUP-APP, the d:/v: loci, multi-frame.",
+  "inputs_model": "UNDECIDED — parameterized vs instantiated, ruled BEFORE the input op, not during it"
  },
  "changelog_from_1_22_0": [
   "derivation.implementation-provenance@1 SUPERSEDED by @2, and @1 is kept as the record of a FALSE claim shipped for seven rounds: it said impersonation was closed while deriveLocally took the implementation identity as a caller-supplied parameter. Reproduced as P-1.",
@@ -1860,5 +1873,11 @@
  "changelog_from_1_25_0": [
   "law:derivation.acceptance-authority@1 added — acceptance took its semantic oracle from the claimant (P-4).",
   "derive_protocol.mjs 0.9.0 -> 0.10.0: the authority BUILDS its own ProgramRegistry; execute(req) and accept(req, res) take no registry."
+ ],
+ "changelog_from_1_27_0": [
+  "law:derivation.host-ownership@1 added — an instanceof guard is satisfied by a subclass (P-5). The authority and the FilmAuthority both take an executor CATALOG and build the host themselves.",
+  "derive_protocol.mjs 0.10.0 -> 0.11.0.",
+  "grid lowering_spike.status corrected from 'DECLARED, not built.' to EXECUTED-PARTIAL with separate execution_grade and film_grade — it contradicted three PROPERTY-TESTED laws in the same file, and grid_check now refuses that contradiction.",
+  "gating_probes gains probe_hostown_v11_repro.mjs."
  ]
 }

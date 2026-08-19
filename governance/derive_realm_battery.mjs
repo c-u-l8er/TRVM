@@ -171,7 +171,7 @@ const mkWorld = () => ({ res: { fb: { value: 5, version: 1 } },
   read(r) { return { ...this.res[r] }; }, scope(q) { return "scope:" + q; } });
 const JS_DIGEST = digestArtifactFiles(JS_WORKER_ENTRY.artifact_closure);
 const mkAuth = (catalog = defaultDeriveCatalog(JS_IMPLEMENTATION_ID)) =>
-  new DerivationAuthority(mkWorld(), [P], new ObservedExecutionHost(catalog));
+  new DerivationAuthority(mkWorld(), [P], catalog);
 
 // 11. an execution the authority drove, and the three identities it separates
 let observedRun = null;
@@ -285,13 +285,17 @@ let observedRun = null;
   const acc = bare.accept(a.request, local.result);
   const badHost = (() => { try { new DerivationAuthority(mkWorld(), [P], { run: () => {} }); return "ACCEPTED"; }
     catch (e) { return e.message; } })();
+  const realHost = (() => { try {
+    new DerivationAuthority(mkWorld(), [P], new ObservedExecutionHost(defaultDeriveCatalog(JS_IMPLEMENTATION_ID)));
+    return "ACCEPTED"; } catch (e) { return e.message; } })();
   R("no-host-no-provenance",
     !x.ok && x.reason === "authority-has-no-execution-host"
       && acc.ok && acc.implementation_provenance === "unavailable"
-      && badHost === "authority-host-must-be-an-ObservedExecutionHost",
+      && /^catalog-|^host-catalog-/.test(badHost) && /^host-catalog-/.test(realHost),
     `${x.reason}; and in-process derivation at the same authority accepts with provenance ` +
-    `${acc.implementation_provenance}. An object merely SHAPED like a host is refused at construction ` +
-    `(${badHost}) — duck-typing the host is how a caller would supply the launcher again`);
+    `${acc.implementation_provenance}. The third argument is CATALOG DATA: an object shaped like a host ` +
+    `is ${badHost}, and so is a GENUINE ObservedExecutionHost (${realHost}) — because an instanceof ` +
+    `guard is satisfied by a two-method subclass, and the question is who BUILT the host (P-5)`);
 }
 
 // 17. a request naming an uncatalogued family does not run
@@ -301,10 +305,10 @@ let observedRun = null;
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } },
     { expected_implementation_id: "impl-c-derive-v0.10.0" });
   const x = await auth.execute(a.request);
-  const two = new ObservedExecutionHost({ [JS_IMPLEMENTATION_ID]: JS_WORKER_ENTRY,
+  const TWO_CATALOG = { [JS_IMPLEMENTATION_ID]: JS_WORKER_ENTRY,
     "impl-js-derive-shadow": { ...JS_WORKER_ENTRY,
-      artifact_closure: [join(HERE, "derive_worker.mjs"), join(HERE, "derive_protocol.mjs")] } });
-  const amb = new DerivationAuthority(mkWorld(), [P], two);
+      artifact_closure: [join(HERE, "derive_worker.mjs"), join(HERE, "derive_protocol.mjs")] } };
+  const amb = new DerivationAuthority(mkWorld(), [P], TWO_CATALOG);
   const b = amb.authorize({ intent_id: "i-amb", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
   const y = await amb.execute(b.request);
@@ -324,8 +328,7 @@ let observedRun = null;
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
   const ran = await auth.execute(a.request);
   // an authority constructed knowing NOTHING cannot even issue for this program
-  const blind = new DerivationAuthority(mkWorld(), [],
-    new ObservedExecutionHost(defaultDeriveCatalog(JS_IMPLEMENTATION_ID)));
+  const blind = new DerivationAuthority(mkWorld(), [], defaultDeriveCatalog(JS_IMPLEMENTATION_ID));
   const b = blind.authorize({ intent_id: "i-blind", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
   const x = await blind.execute(b.request);

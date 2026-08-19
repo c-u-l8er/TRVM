@@ -66,7 +66,7 @@ import { JS_WORKER_ENTRY, defaultDeriveCatalog } from "./derive_launcher.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const JS_DIGEST = digestArtifactFiles(JS_WORKER_ENTRY.artifact_closure);
-const mkHost = () => new ObservedExecutionHost(defaultDeriveCatalog(JS_IMPLEMENTATION_ID));
+const CATALOG = defaultDeriveCatalog(JS_IMPLEMENTATION_ID);
 
 const results = [];
 const R = (id, held, note) => { results.push({ id, held }); console.log(
@@ -177,7 +177,7 @@ class V7Authority {
 
 /* ── live: a NAME is not an executor, and there is nowhere to put one ─────── */
 {
-  const auth = new DerivationAuthority(mkWorld(), [P], mkHost());
+  const auth = new DerivationAuthority(mkWorld(), [P], CATALOG);
   const { request: req } = auth.authorize({ intent_id: "l1", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } },
     { expected_implementation_id: "impl-c-derive-v0.9.0" });
@@ -193,7 +193,7 @@ class V7Authority {
 
 /* ── live: an observation binds executor, request and bytes as ONE event ──── */
 {
-  const auth = new DerivationAuthority(mkWorld(), [P], mkHost());
+  const auth = new DerivationAuthority(mkWorld(), [P], CATALOG);
   const mk = (id, bias) => auth.authorize({ intent_id: id, program_sem_id: PID,
     canonical_inputs: { bias }, requested_resources: { exact: ["fb"], predicates: [] } }).request;
   const reqA = mk("l2-a", 0), reqB = mk("l2-b", 7);
@@ -217,7 +217,7 @@ class V7Authority {
 
 /* ── live: every field of the result is inside the key ────────────────────── */
 {
-  const auth = new DerivationAuthority(mkWorld(), [P], mkHost());
+  const auth = new DerivationAuthority(mkWorld(), [P], CATALOG);
   const { request: req } = auth.authorize({ intent_id: "l3", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
   const run = await auth.execute(req);
@@ -239,7 +239,7 @@ class V7Authority {
 
 /* ── live: there is no launcher at all, so it cannot name anything ────────── */
 {
-  const auth = new DerivationAuthority(mkWorld(), [P], mkHost());
+  const auth = new DerivationAuthority(mkWorld(), [P], CATALOG);
   const { request: req } = auth.authorize({ intent_id: "l4", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
   // the v0.8.0 API, offered as a third argument. Nothing reads it.

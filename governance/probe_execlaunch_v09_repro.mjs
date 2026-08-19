@@ -73,6 +73,7 @@ import { execFileSync } from "node:child_process";
 const TERM_1STEP = "(\u03bbx.\u03bbt.(t x) \u03bby.y)";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+const CATALOG = defaultDeriveCatalog(JS_IMPLEMENTATION_ID);
 const results = [];
 const R = (id, held, note) => { results.push({ id, held }); console.log(
   `${held ? "CONFINED" : "BREACH  "}  ${id.padEnd(30)} ${note}`); };
@@ -218,8 +219,7 @@ class V8FilmAuthority {
 
 /* ── live: there is no launcher parameter, on either path ─────────────────── */
 {
-  const host = new ObservedExecutionHost(defaultDeriveCatalog(JS_IMPLEMENTATION_ID));
-  const auth = new DerivationAuthority(mkWorld(), [P], host);
+  const auth = new DerivationAuthority(mkWorld(), [P], CATALOG);
   const { request: req } = auth.authorize({ intent_id: "l1", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
   let ranMine = false;
@@ -289,8 +289,7 @@ class V8FilmAuthority {
 
 /* ── live: an observation names EVERY session that produced these bytes ──── */
 {
-  const host = new ObservedExecutionHost(defaultDeriveCatalog(JS_IMPLEMENTATION_ID));
-  const auth = new DerivationAuthority(mkWorld(), [P], host);
+  const auth = new DerivationAuthority(mkWorld(), [P], CATALOG);
   const { request: req } = auth.authorize({ intent_id: "l5", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
   const a = await auth.execute(req);
