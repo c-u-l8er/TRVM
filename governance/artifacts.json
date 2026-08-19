@@ -24,7 +24,8 @@
   "derive_battery.mjs",
   "derive_realm_battery.mjs",
   "harness_selftest.sh",
-  "runner_contract.sh"
+  "runner_contract.sh",
+  "make_review_pack.sh"
  ],
  "case_input_note": "derive_protocol.mjs and derive_worker.mjs moved from tools to case_inputs at v1.16: their SOURCE now carries invariants grid_check asserts (no __reads path, reads from read_grants, executor-asserted implementation_id), so they must be present in every scratch case for those assertions to run. The batteries stay tools — they are runners, not artifacts under test.",
  "probes_pattern": "^probe_.*\\.mjs$",

@@ -757,6 +757,10 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         ok(!!ip1 && /record of a FALSE claim/i.test(ip1.revision_note ?? ""),
           "derivation.implementation-provenance@1 must stay on the record AS a false claim — it said " +
           "impersonation was closed and shipped that for seven rounds");
+        ok(!!g.clean_baseline?.review_pack && existsSync(A("make_review_pack.sh")),
+          "grid clean_baseline.review_pack missing, or make_review_pack.sh absent (v1.23) — a review " +
+          "pack of captured output is a transcript, and round 21's shipped one contained a make error " +
+          "under a README asserting 105/105, with a manifest that verified perfectly");
         ok(!!g.clean_baseline?.runner_contract,
           "grid clean_baseline.runner_contract missing (v1.23) — the runner half is executable now");
         const rc = existsSync(A("runner_contract.sh")) ? readFileSync(A("runner_contract.sh"), "utf8") : "";
