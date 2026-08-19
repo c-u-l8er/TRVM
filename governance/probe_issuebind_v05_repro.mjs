@@ -113,11 +113,11 @@ const intent = { intent_id: "i-1", program_sem_id: PID, canonical_inputs: { bias
     `request content it never issued, because issuance was keyed on the GRANT`);
 }
 {
-  const world = mkWorld(); const auth = new DerivationAuthority(world);
+  const world = mkWorld(); const auth = new DerivationAuthority(world, [P]);
   const { request: req } = auth.authorize(intent);
   const forged = { ...req, canonical_inputs: { bias: 1000 } };
   const res = deriveLocally(reg, forged).result;
-  const acc = auth.accept(reg, forged, res);
+  const acc = auth.accept(forged, res);
   R("I-1 live", !acc.ok && acc.reason === "request-not-as-issued",
     `the same swap is refused: ${acc.reason}. Issuance records request_id -> ` +
     `requestSemId = H(canonical request), recomputed at acceptance, so any change to any field is a ` +
@@ -136,7 +136,7 @@ const intent = { intent_id: "i-1", program_sem_id: PID, canonical_inputs: { bias
     `field the authority had just decided`);
 }
 {
-  const world = mkWorld(); const auth = new DerivationAuthority(world);
+  const world = mkWorld(); const auth = new DerivationAuthority(world, [P]);
   const bad = auth.authorize(intent, { canonical_inputs: { bias: 1000 } });
   const okImpl = auth.authorize(intent, { expected_implementation_id: "impl-c-derive-v0.5.0" });
   R("I-2 live", !bad.ok && /authorize-options-unknown/.test(bad.reason)
@@ -167,17 +167,17 @@ const intent = { intent_id: "i-1", program_sem_id: PID, canonical_inputs: { bias
     `supplied both proofs of authority`);
 }
 {
-  const world = mkWorld(); const auth = new DerivationAuthority(world);
+  const world = mkWorld(); const auth = new DerivationAuthority(world, [P]);
   const g = { exact: { fb: { value: 5, version: 1 } }, predicates: {} };
   const self = { request_id: "req-self-made", program_sem_id: PID, canonical_inputs: { bias: 1000 },
     read_grants: g, grant_id: grantId(g) };
   const res = deriveLocally(reg, self).result;
-  const selfMade = auth.accept(reg, self, res);
+  const selfMade = auth.accept(self, res);
   const { request: honest } = auth.authorize(intent);
   const hres = deriveLocally(reg, honest).result;
-  const before = auth.accept(reg, honest, hres);
+  const before = auth.accept(honest, hres);
   world.write("fb", 9);
-  const after = auth.accept(reg, honest, hres);
+  const after = auth.accept(honest, hres);
   R("I-3 live", !selfMade.ok && selfMade.reason === "grant-not-issued-by-this-authority"
       && before.ok && before.fresh_at_check === true && before.committable === undefined
       && !after.ok && /^stale-read: fb granted@1 live@2/.test(after.reason),
@@ -189,11 +189,11 @@ const intent = { intent_id: "i-1", program_sem_id: PID, canonical_inputs: { bias
 
 /* ── and the request the authority hands back is owned and frozen ─────────── */
 {
-  const world = mkWorld(); const auth = new DerivationAuthority(world);
+  const world = mkWorld(); const auth = new DerivationAuthority(world, [P]);
   const { request } = auth.authorize(intent);
   let froze = false;
   try { request.canonical_inputs.bias = 1000; } catch { froze = true; }
-  const acc = auth.accept(reg, request, deriveLocally(reg, request).result);
+  const acc = auth.accept(request, deriveLocally(reg, request).result);
   R("issued-request-is-owned", froze && request.canonical_inputs.bias === 0 && acc.ok
       && requestSemId(request) === requestSemId(JSON.parse(canonicalBytes(request))),
     `mutating the issued request throws and it still reads bias ${request.canonical_inputs.bias}. ` +

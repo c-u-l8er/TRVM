@@ -85,7 +85,7 @@ function v5Validate(registry, req, res) {
 
 /* ── T-1 against the frozen v0.5.0 validation ─────────────────────────────── */
 {
-  const world = mkWorld(); const auth = new DerivationAuthority(world);
+  const world = mkWorld(); const auth = new DerivationAuthority(world, [P]);
   const { request: req } = auth.authorize(intent);
   const honest = v5Flatten(deriveLocally(reg, req).result);
   const forged = { ...honest, read_trace: { exact: [...honest.read_trace.exact].reverse(), predicates: [] } };
@@ -100,13 +100,13 @@ function v5Validate(registry, req, res) {
 
 /* ── the same forgery against live ────────────────────────────────────────── */
 {
-  const world = mkWorld(); const auth = new DerivationAuthority(world);
+  const world = mkWorld(); const auth = new DerivationAuthority(world, [P]);
   const { request: req } = auth.authorize(intent);
   const honest = deriveLocally(reg, req).result;
   const forged = { ...honest, execution_evidence: { ...honest.execution_evidence,
     read_trace: { exact: [...honest.execution_evidence.read_trace.exact].reverse(), predicates: [] } } };
   const v = validateForeignResult(reg, req, forged);
-  const acc = auth.accept(reg, req, forged);
+  const acc = auth.accept(req, forged);
   R("T-1 live", !v.ok && v.reason === "trace-nonconforming: exact"
       && v.semantic_agreement === true && v.trace_conforms === false
       && !acc.ok && acc.reason === "trace-nonconforming: exact",
@@ -117,10 +117,10 @@ function v5Validate(registry, req, res) {
 
 /* ── the honest result still passes, and reports both verdicts ────────────── */
 {
-  const world = mkWorld(); const auth = new DerivationAuthority(world);
+  const world = mkWorld(); const auth = new DerivationAuthority(world, [P]);
   const { request: req } = auth.authorize(intent);
   const honest = deriveLocally(reg, req).result;
-  const acc = auth.accept(reg, req, honest);
+  const acc = auth.accept(req, honest);
   const v = validateForeignResult(reg, req, honest);
   R("honest-still-accepted", acc.ok && acc.validated === true && acc.committable === undefined
       && acc.trace_conforms === undefined && v.trace_conforms === true,
@@ -133,7 +133,7 @@ function v5Validate(registry, req, res) {
 
 /* ── and the shape now says which fields carry which trust status ─────────── */
 {
-  const world = mkWorld(); const auth = new DerivationAuthority(world);
+  const world = mkWorld(); const auth = new DerivationAuthority(world, [P]);
   const { request: req } = auth.authorize(intent);
   const honest = deriveLocally(reg, req).result;
   R("envelopes-are-explicit",

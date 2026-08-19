@@ -143,13 +143,13 @@ R("crossing-derives", honest.ok && honest.result.semantic_result.value === 5
 {
   const live = { res: { fb: { value: 5, version: 1 } }, read(r) { return { ...this.res[r] }; },
     scope(q) { return "scope:" + q; } };
-  const auth = new DerivationAuthority(live);
+  const auth = new DerivationAuthority(live, [P]);
   const a = auth.authorize({ intent_id: "i-realm", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
   const crossed = await ask(a.request);
-  const accepted = auth.accept(reg, a.request, crossed.result);
+  const accepted = auth.accept(a.request, crossed.result);
   live.res.fb = { value: 9, version: 2 };                 // the World moves after the crossing
-  const stale = auth.accept(reg, a.request, crossed.result);
+  const stale = auth.accept(a.request, crossed.result);
   R("intent-to-acceptance", a.ok && crossed.ok && crossed.result.semantic_result.value === 5
       && accepted.ok && accepted.fresh_at_check === true
       && !stale.ok && stale.reason === "stale-read: fb granted@1 live@2",
@@ -171,7 +171,7 @@ const mkWorld = () => ({ res: { fb: { value: 5, version: 1 } },
   read(r) { return { ...this.res[r] }; }, scope(q) { return "scope:" + q; } });
 const JS_DIGEST = digestArtifactFiles(JS_WORKER_ENTRY.artifact_closure);
 const mkAuth = (catalog = defaultDeriveCatalog(JS_IMPLEMENTATION_ID)) =>
-  new DerivationAuthority(mkWorld(), new ObservedExecutionHost(catalog));
+  new DerivationAuthority(mkWorld(), [P], new ObservedExecutionHost(catalog));
 
 // 11. an execution the authority drove, and the three identities it separates
 let observedRun = null;
@@ -180,8 +180,8 @@ let observedRun = null;
   const a = auth.authorize({ intent_id: "i-obs", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } },
     { expected_implementation_id: JS_IMPLEMENTATION_ID });
-  const x = await auth.execute(reg, a.request);
-  const acc = x.ok ? auth.accept(reg, a.request, x.result) : { ok: false };
+  const x = await auth.execute(a.request);
+  const acc = x.ok ? auth.accept(a.request, x.result) : { ok: false };
   observedRun = { auth, req: a.request, res: x.result };
   R("authority-launched-execution",
     x.ok && acc.ok && acc.implementation_provenance === "observed"
@@ -207,12 +207,12 @@ let observedRun = null;
   let ranMine = false;
   const liar = { artifact_files: JS_WORKER_ENTRY.artifact_closure,
     spawn: () => { ranMine = true; return { send: () => ({ ok: true, result: null }), close() {} }; } };
-  const x = await auth.execute(reg, a.request, liar);
-  const acc = x.ok ? auth.accept(reg, a.request, x.result) : { ok: false };
+  const x = await auth.execute(a.request, liar);
+  const acc = x.ok ? auth.accept(a.request, x.result) : { ok: false };
   R("no-launcher-parameter",
     x.ok && !ranMine && acc.ok && acc.implementation_id === JS_IMPLEMENTATION_ID
-      && DerivationAuthority.prototype.execute.length === 2,
-    `execute takes ${DerivationAuthority.prototype.execute.length} parameters (registry, req); a third ` +
+      && DerivationAuthority.prototype.execute.length === 1,
+    `execute takes ${DerivationAuthority.prototype.execute.length} parameter (req); a second ` +
     `argument carrying artifact_files beside a spawn() is inert — the callback never ran (${ranMine}) ` +
     `and the real worker did. Under v0.8.0 that object WAS the API, and its two fields were unrelated: ` +
     `the authority hashed X and invoked Y`);
@@ -244,13 +244,13 @@ let observedRun = null;
 {
   const { auth, req, res } = observedRun;
   const asIfC = { ...res,
-    execution_evidence: { ...res.execution_evidence, implementation_id: "impl-c-derive-v0.9.0" } };
-  const acc = auth.accept(reg, req, asIfC);
+    execution_evidence: { ...res.execution_evidence, implementation_id: "impl-c-derive-v0.10.0" } };
+  const acc = auth.accept(req, asIfC);
   const v = validateForeignResult(reg, req, asIfC);
   R("relabel-after-observation",
     !acc.ok && acc.reason === "implementation-provenance-unavailable"
-      && v.ok && v.implementation_claimed === "impl-c-derive-v0.9.0"
-      && auth.observationOf(reg, req, asIfC) === null && auth.observationOf(reg, req, res) !== null,
+      && v.ok && v.implementation_claimed === "impl-c-derive-v0.10.0"
+      && auth.observationOf(req, asIfC) === null && auth.observationOf(req, res) !== null,
     `an OBSERVED result with one byte of its label changed is ${acc.reason}: the observation is keyed ` +
     `over the whole execution event, so the relabelled bytes are not in the table at all. Note the ` +
     `split — the validator still says the semantics agree (implementation_claimed ` +
@@ -261,14 +261,14 @@ let observedRun = null;
 {
   const { auth, req, res } = observedRun;
   const inflated = { ...res, semantic_result: { ...res.semantic_result, value: 1005 } };
-  const accInflated = auth.accept(reg, req, inflated);
+  const accInflated = auth.accept(req, inflated);
   const auth2 = mkAuth();
   const b = auth2.authorize({ intent_id: "i-other", program_sem_id: PID,
     canonical_inputs: { bias: 1 }, requested_resources: { exact: ["fb"], predicates: [] } });
   R("observation-binds-request-and-bytes",
     !accInflated.ok && accInflated.reason === "foreign-result-divergence"
-      && auth2.observationOf(reg, b.request, res) === null
-      && auth.observationOf(reg, b.request, res) === null,
+      && auth2.observationOf(b.request, res) === null
+      && auth.observationOf(b.request, res) === null,
     `changing the value breaks re-derivation first (${accInflated.reason}) and would have missed the ` +
     `observation anyway; the same bytes under a DIFFERENT request find nothing even at the authority ` +
     `that ran them, because the key is over input AND output; and a second authority holds no ` +
@@ -277,13 +277,13 @@ let observedRun = null;
 
 // 16. an authority with no host cannot execute, and cannot pretend it did
 {
-  const bare = new DerivationAuthority(mkWorld());
+  const bare = new DerivationAuthority(mkWorld(), [P]);
   const a = bare.authorize({ intent_id: "i-nohost", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
-  const x = await bare.execute(reg, a.request);
+  const x = await bare.execute(a.request);
   const local = deriveLocally(reg, a.request);
-  const acc = bare.accept(reg, a.request, local.result);
-  const badHost = (() => { try { new DerivationAuthority(mkWorld(), { run: () => {} }); return "ACCEPTED"; }
+  const acc = bare.accept(a.request, local.result);
+  const badHost = (() => { try { new DerivationAuthority(mkWorld(), [P], { run: () => {} }); return "ACCEPTED"; }
     catch (e) { return e.message; } })();
   R("no-host-no-provenance",
     !x.ok && x.reason === "authority-has-no-execution-host"
@@ -299,17 +299,17 @@ let observedRun = null;
   const auth = mkAuth();
   const a = auth.authorize({ intent_id: "i-uncat", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } },
-    { expected_implementation_id: "impl-c-derive-v0.9.0" });
-  const x = await auth.execute(reg, a.request);
+    { expected_implementation_id: "impl-c-derive-v0.10.0" });
+  const x = await auth.execute(a.request);
   const two = new ObservedExecutionHost({ [JS_IMPLEMENTATION_ID]: JS_WORKER_ENTRY,
     "impl-js-derive-shadow": { ...JS_WORKER_ENTRY,
       artifact_closure: [join(HERE, "derive_worker.mjs"), join(HERE, "derive_protocol.mjs")] } });
-  const amb = new DerivationAuthority(mkWorld(), two);
+  const amb = new DerivationAuthority(mkWorld(), [P], two);
   const b = amb.authorize({ intent_id: "i-amb", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
-  const y = await amb.execute(reg, b.request);
+  const y = await amb.execute(b.request);
   R("uncatalogued-family-refused",
-    !x.ok && /^executor-not-in-catalog: impl-c-derive-v0\.9\.0/.test(x.reason)
+    !x.ok && /^executor-not-in-catalog: impl-c-derive-v0\.10\.0/.test(x.reason)
       && !y.ok && /^execute-implementation-ambiguous: /.test(y.reason),
     `${x.reason} — a C requirement against a catalog that holds only JS is refused before anything is ` +
     `launched. And with two catalogued families a request naming NONE is ${y.reason.split(":")[0]} ` +
@@ -317,35 +317,42 @@ let observedRun = null;
     `provenance`);
 }
 
-// 18. the far side's program image is the AUTHORITY's, not a caller's
+// 18. the far side's program image is the AUTHORITY's, and so is the oracle
 {
   const auth = mkAuth();
-  const empty = new ProgramRegistry();          // holds nothing
   const a = auth.authorize({ intent_id: "i-img", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
-  const x = await auth.execute(empty, a.request);
-  const good = await auth.execute(reg, a.request);
-  R("worker-image-is-the-registry's",
-    !x.ok && x.reason === "program-unknown" && good.ok && good.result.semantic_result.value === 5
-      && reg.image().length === 1,
-    `executing against an EMPTY registry gives ${x.reason} on the far side, and against the real one ` +
-    `gives ${good.ok && good.result.semantic_result.value}. At v0.8.0 the caller chose which programs ` +
-    `the worker would hold, by passing them to the launcher it also built; the image is ` +
-    `registry.image() now, and the authority already had a registry`);
+  const ran = await auth.execute(a.request);
+  // an authority constructed knowing NOTHING cannot even issue for this program
+  const blind = new DerivationAuthority(mkWorld(), [],
+    new ObservedExecutionHost(defaultDeriveCatalog(JS_IMPLEMENTATION_ID)));
+  const b = blind.authorize({ intent_id: "i-blind", program_sem_id: PID,
+    canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
+  const x = await blind.execute(b.request);
+  R("worker-image-is-the-authority's",
+    ran.ok && ran.result.semantic_result.value === 5 && !x.ok && x.reason === "program-unknown"
+      && auth.programIds().length === 1 && blind.programIds().length === 0,
+    `the far side answers ${ran.ok && ran.result.semantic_result.value} for an authority that holds the ` +
+    `program, and ${x.reason} for one constructed holding none. At v0.8.0 the caller chose which ` +
+    `programs the worker would hold by passing them to the launcher it also built; at v0.9.0 it chose ` +
+    `by passing a registry to execute(); now the image is the authority's own and there is no parameter`);
 }
 
-// 19. registerExecutor and nameArtifact are both GONE
+// 19. every supplier the ladder found is gone from the same object
 {
   const auth = mkAuth();
-  R("registration-api-deleted",
+  R("supplier-ladder-is-empty",
     typeof auth.registerExecutor === "undefined" && typeof auth.nameArtifact === "undefined"
       && !("registerExecutor" in DerivationAuthority.prototype)
       && !("nameArtifact" in DerivationAuthority.prototype)
-      && DerivationAuthority.prototype.accept.length === 3,
-    `registerExecutor and nameArtifact are both absent from the instance and the prototype, and accept ` +
-    `takes ${DerivationAuthority.prototype.accept.length} parameters. The catalog IS the naming policy ` +
-    `and it is immutable at construction — an authority whose identity policy can move during its ` +
-    `lifetime makes its own historical observations hard to read`);
+      && DerivationAuthority.prototype.accept.length === 2
+      && DerivationAuthority.prototype.execute.length === 1,
+    `registerExecutor and nameArtifact are absent, accept takes ` +
+    `${DerivationAuthority.prototype.accept.length} parameters and execute takes ` +
+    `${DerivationAuthority.prototype.execute.length}. Four rungs, one shape: the implementation LABEL, ` +
+    `the registration NAME, the ACTION beside the evidence, and the SEMANTIC ORACLE at acceptance. ` +
+    `Every oracle this authority consults — World reader, program registry, execution host — is fixed ` +
+    `at construction, and a caller supplies an INTENT and a RESULT TO VALIDATE`);
 }
 
 await w.terminate();

@@ -58,7 +58,7 @@ const world = {
 
 const P = { op: "add", a: { op: "read", resource: "fb" }, b: { op: "input", name: "bias" } };
 const reg = new ProgramRegistry(); const PID = reg.bind(P);
-const authority = new DerivationAuthority(world);
+const authority = new DerivationAuthority(world, [P]);
 
 const intent = { intent_id: "i-1", program_sem_id: PID, canonical_inputs: { bias: 0 },
   requested_resources: { exact: ["fb"], predicates: [] } };
@@ -85,7 +85,7 @@ console.log(`World moved: fb is now @${world.res.fb.version}=${world.res.fb.valu
   R("live freshness", !f.ok && /^stale-read: fb granted@1 live@2/.test(f.reason),
     `${f.reason} — the temporal question, asked against the LIVE world and keyed on the footprint`);
 
-  const acc = authority.accept(reg, req, res);
+  const acc = authority.accept(req, res);
   R("acceptance refuses", !acc.ok && /^stale-read: fb/.test(acc.reason),
     `${acc.reason} — issuance, validation and freshness in ONE call on the AUTHORITY, which closes over ` +
     `its own reader and issuance table so neither proof can arrive as an argument`);
@@ -95,7 +95,7 @@ console.log(`World moved: fb is now @${world.res.fb.version}=${world.res.fb.valu
 {
   world.res.fb = { value: 5, version: 1 };          // restore the granted state
   world.write("other", 999);                        // a write the derivation never read
-  const acc = authority.accept(reg, req, res);
+  const acc = authority.accept(req, res);
   R("unrelated-write-ignored", acc.ok && acc.fresh_at_check === true && acc.committable === undefined,
     `other@${world.res.other.version} moved and acceptance still passes (fresh_at_check ${acc.fresh_at_check}, ` +
     `and NO committable field — one call cannot make a result committable, only observed fresh) — ` +
@@ -107,12 +107,12 @@ console.log(`World moved: fb is now @${world.res.fb.version}=${world.res.fb.valu
 {
   const S = { op: "len", a: { op: "scope", query: "kind:node" } };
   const reg2 = new ProgramRegistry(); const SID = reg2.bind(S);
-  const auth2 = new DerivationAuthority(world);
+  const auth2 = new DerivationAuthority(world, [S]);
   const { request: r2 } = auth2.authorize({ intent_id: "i-2", program_sem_id: SID,
     canonical_inputs: {}, requested_resources: { exact: [], predicates: ["kind:node"] } });
   const s2 = deriveLocally(reg2, r2).result;
   world.scopes["kind:node"] = ["a", "b", "c"];       // the phantom: a node joins
-  const acc = auth2.accept(reg2, r2, s2);
+  const acc = auth2.accept(r2, s2);
   R("scope-digest-staleness", !acc.ok && acc.reason === "stale-scope: kind:node",
     `${acc.reason} — value ${s2.semantic_result.value} was derived over 2 nodes and the query now answers 3, with no ` +
     `exact read having moved. This is the World's phantom-scope case (law:warrant.phantom-scope@1) ` +
@@ -122,8 +122,8 @@ console.log(`World moved: fb is now @${world.res.fb.version}=${world.res.fb.valu
 /* ── issuance: grant_id proves integrity, not authority ───────────────────── */
 {
   const forged = { ...req, request_id: "req-self-made" };
-  const acc = new DerivationAuthority(world).accept(reg, req, res);
-  const accForged = authority.accept(reg, forged, { ...res, request_id: "req-self-made" });
+  const acc = new DerivationAuthority(world, [P]).accept(req, res);
+  const accForged = authority.accept(forged, { ...res, request_id: "req-self-made" });
   R("grant-id-is-not-issuance", !acc.ok && acc.reason === "grant-not-issued-by-this-authority"
       && !accForged.ok && accForged.reason === "grant-not-issued-by-this-authority",
     `a DIFFERENT authority instance refuses the same well-formed request (${acc.reason}), and a ` +

@@ -942,14 +942,14 @@ json.dump(g, open('invariant-grid.json','w'), indent=1)"
 # ── round 23: executor existence is not execution provenance ────────────────
 run_case registration-api-restored "registerExecutor must be DELETED" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('  async execute(registry, req) {',
+src = src.replace('  async execute(req) {',
   '  registerExecutor(id) { return Object.freeze({ token: Symbol(id) }); }\n'
   '  async execute(registry, req) {')
 open('derive_protocol.mjs','w').write(src)"
 
 run_case acceptance-takes-a-proof-again "must be a METHOD on the authority taking EXACTLY" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('accept(registry, req, res) {', 'accept(registry, req, res, executor = null) {')
+src = src.replace('accept(req, res) {', 'accept(req, res, executor = null) {')
 open('derive_protocol.mjs','w').write(src)"
 
 run_case authority-hashes-on-its-own "artifact hashing must live in the host" "
@@ -1070,14 +1070,14 @@ json.dump(m, open('artifacts.json','w'), indent=2)"
 
 
 # ── round 24: a launch descriptor may not carry an action ───────────────────
-run_case execute-takes-a-launcher-again "execute must take EXACTLY" "
+run_case execute-takes-a-launcher-again "execute must take no" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('async execute(registry, req) {', 'async execute(registry, req, launcher) {')
+src = src.replace('async execute(req) {', 'async execute(req, launcher) {')
 open('derive_protocol.mjs','w').write(src)"
 
 run_case naming-setter-restored "nameArtifact must be gone from the authority" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('  async execute(registry, req) {',
+src = src.replace('  async execute(req) {',
   '  nameArtifact(d, f) { return { ok: true }; }\n  async execute(registry, req) {')
 open('derive_protocol.mjs','w').write(src)"
 
@@ -1134,6 +1134,53 @@ g = json.load(open('invariant-grid.json'))
 for e in g['law_registry']['entries']:
     if e['id'] == 'derivation.implementation-provenance' and e['revision'] == 3:
         e['canonical'] = True
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+
+# ── round 25: acceptance takes no semantic oracle either ────────────────────
+run_case acceptance-takes-a-registry "taking EXACTLY" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('  accept(req, res) {', '  accept(registry, req, res) {')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case registry-accepted-not-built "must BUILD its registry at construction" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('constructor(reader, programImage = [], host = null) {',
+                  'constructor(reader, programImage, host = null) {')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case oracle-comes-from-outside "must re-derive through the authority" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('validateForeignResult(this.#registry, req, res)',
+                  'validateForeignResult(arguments[2] ?? this.#registry, req, res)')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case worker-image-from-a-parameter "program image must be the AUTHORITY" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('programs: this.#registry.image()', 'programs: []')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case acceptance-law-deleted "law derivation.acceptance-authority@1 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if e['id'] != 'derivation.acceptance-authority']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case ownership-becomes-a-typecheck "must say why a type check does not close it" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.acceptance-authority':
+        e['statement'] = e['statement'].replace('instanceof', 'a suitable')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case supplier-list-left-open "must name what a caller may still supply" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.acceptance-authority':
+        e['statement'] = e['statement'].replace('an INTENT and a RESULT TO ', 'whatever remains to ')
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 

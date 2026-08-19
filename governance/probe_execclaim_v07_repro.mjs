@@ -13,7 +13,7 @@
 
             authorize(intent, {expected_implementation_id: "impl-c-derive-…"})
             deriveLocally(reg, req, "impl-c-derive-…")   ← the JS evaluator runs
-            authority.accept(reg, req, res)
+            authority.accept(req, res)
 
               → { ok: true, validated: true, fresh_at_check: true,
                   trace_conforms: true,
@@ -73,7 +73,7 @@ const P = { op: "add", a: { op: "read", resource: "fb" }, b: { op: "input", name
 const mkWorld = () => ({ res: { fb: { value: 5, version: 1 } },
   read(r) { return { ...this.res[r] }; }, scope(q) { return "scope:" + q; } });
 const reg = new ProgramRegistry(); const PID = reg.bind(P);
-const C_ID = "impl-c-derive-v0.9.0";
+const C_ID = "impl-c-derive-v0.10.0";
 
 /* ── v0.6.0's derivation and acceptance, VERBATIM in their essentials ─────
    deriveLocally took the identity as a parameter; accept compared the request's
@@ -99,7 +99,7 @@ function v6Accept(registry, req, res) {
 
 /* ── P-1 against the frozen v0.6.0 acceptance ─────────────────────────────── */
 {
-  const world = mkWorld(); const auth = new DerivationAuthority(world);
+  const world = mkWorld(); const auth = new DerivationAuthority(world, [P]);
   const { request: req } = auth.authorize({ intent_id: "p1", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } },
     { expected_implementation_id: C_ID });
@@ -114,7 +114,7 @@ function v6Accept(registry, req, res) {
 
 /* ── live: the caller cannot select an identity at all ────────────────────── */
 {
-  const world = mkWorld(); const auth = new DerivationAuthority(world);
+  const world = mkWorld(); const auth = new DerivationAuthority(world, [P]);
   const { request: req } = auth.authorize({ intent_id: "p2", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } },
     { expected_implementation_id: C_ID });
@@ -132,14 +132,14 @@ function v6Accept(registry, req, res) {
    this request, takes these bytes, and keys the observation over the whole
    execution event. There is no handle to hold and none to forge. */
 {
-  const world = mkWorld(); const auth = new DerivationAuthority(world, mkHost());
+  const world = mkWorld(); const auth = new DerivationAuthority(world, [P], mkHost());
   const mk = (opts, id) => auth.authorize({ intent_id: id, program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } }, opts).request;
 
   const honestReq = mk({}, "h1");
-  const run = await auth.execute(reg, honestReq);
+  const run = await auth.execute(honestReq);
   const honest = run.result;
-  const observed = auth.accept(reg, honestReq, honest);
+  const observed = auth.accept(honestReq, honest);
   R("provenance-needs-observation",
     run.ok && observed.ok && observed.implementation_provenance === "observed"
       && observed.implementation_id === JS_IMPLEMENTATION_ID
@@ -150,12 +150,12 @@ function v6Accept(registry, req, res) {
 
   // the SAME result, one label changed, at the SAME authority that observed it
   const forged = { ...honest, execution_evidence: { ...honest.execution_evidence, implementation_id: C_ID } };
-  const contradicted = auth.accept(reg, honestReq, forged);
+  const contradicted = auth.accept(honestReq, forged);
   R("claim-vs-observation",
     contradicted.ok && contradicted.implementation_provenance === "unavailable"
       && !("implementation_id" in contradicted)
-      && auth.observationOf(reg, honestReq, honest) !== null
-      && auth.observationOf(reg, honestReq, forged) === null,
+      && auth.observationOf(honestReq, honest) !== null
+      && auth.observationOf(honestReq, forged) === null,
     `relabelling does not get COMPARED against the observation, it MISSES it: the key covers the whole ` +
     `result, so the forged bytes name an execution event that never happened and acceptance drops to ` +
     `${contradicted.implementation_provenance} with no implementation_id at all. The C label survives ` +
@@ -163,33 +163,33 @@ function v6Accept(registry, req, res) {
     `while the handle it compared against was honest`);
 
   const cReq = mk({ expected_implementation_id: C_ID }, "h2");
-  const noObs = auth.accept(reg, cReq, { ...honest, request_id: cReq.request_id });
-  const cRun = await auth.execute(reg, mk({ expected_implementation_id: C_ID }, "h3"));
+  const noObs = auth.accept(cReq, { ...honest, request_id: cReq.request_id });
+  const cRun = await auth.execute(mk({ expected_implementation_id: C_ID }, "h3"));
   R("unavailable-is-not-verified",
     !noObs.ok && noObs.reason === "implementation-provenance-unavailable"
-      && !cRun.ok && /^executor-not-in-catalog: impl-c-derive-v0\.9\.0/.test(cRun.reason),
+      && !cRun.ok && /^executor-not-in-catalog: impl-c-derive-v0\.10\.0/.test(cRun.reason),
     `a C requirement with no observation -> ${noObs.reason}; and attempting to satisfy one dies at the ` +
     `CATALOG (${cRun.reason}) before anything is launched. At v0.8.0 it died one step later, at the JS ` +
     `worker refusing a requirement it could not meet — a real improvement, because the catalog answers ` +
     `"is there such an executor at all" without starting a process to ask. "Unavailable" is the honest ` +
     `answer where v0.6.0 said "C verified"`);
 
-  const noSuchHandle = auth.accept(reg, honestReq, honest, { token: Symbol(C_ID) });
+  const noSuchHandle = auth.accept(honestReq, honest, { token: Symbol(C_ID) });
   R("no-handle-to-forge",
     noSuchHandle.ok && noSuchHandle.implementation_id === JS_IMPLEMENTATION_ID
-      && DerivationAuthority.prototype.accept.length === 3,
-    `a fourth argument is INERT — accept takes ${DerivationAuthority.prototype.accept.length} ` +
+      && DerivationAuthority.prototype.accept.length === 2,
+    `an extra argument is INERT — accept takes ${DerivationAuthority.prototype.accept.length} ` +
     `parameters and ignores anything past them, returning the observation it already holds ` +
     `(${noSuchHandle.implementation_id}). v0.7.0 refused a forged handle; there is no handle to forge`);
 }
 
 /* ── and the success shape no longer invites weighing booleans ────────────── */
 {
-  const world = mkWorld(); const auth = new DerivationAuthority(world, mkHost());
+  const world = mkWorld(); const auth = new DerivationAuthority(world, [P], mkHost());
   const { request: req } = auth.authorize({ intent_id: "s1", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
-  const res = (await auth.execute(reg, req)).result;
-  const acc = auth.accept(reg, req, res);
+  const res = (await auth.execute(req)).result;
+  const acc = auth.accept(req, res);
   const v = validateForeignResult(reg, req, res);
   R("success-shape-is-narrow",
     acc.trace_conforms === undefined && acc.committable === undefined

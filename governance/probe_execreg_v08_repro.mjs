@@ -18,7 +18,7 @@
 
             the JS evaluator produces the result
             the result is relabelled as C
-            authority.accept(reg, req, res, thatHandle)
+            authority.accept(req, res, thatHandle)
 
               → { ok: true, validated: true, fresh_at_check: true,
                   implementation_provenance: "observed",
@@ -114,7 +114,7 @@ class V7Authority {
 
 /* ── P-2 against the frozen v0.7.0: name C, run JS, be told C ─────────────── */
 {
-  const auth = new DerivationAuthority(mkWorld());
+  const auth = new DerivationAuthority(mkWorld(), [P]);
   const v7 = new V7Authority();
   const { request: req } = auth.authorize({ intent_id: "p2a", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } },
@@ -139,7 +139,7 @@ class V7Authority {
 
 /* ── P-2b against the frozen v0.7.0: a real handle, unrelated bytes ───────── */
 {
-  const auth = new DerivationAuthority(mkWorld());
+  const auth = new DerivationAuthority(mkWorld(), [P]);
   const v7 = new V7Authority();
   const { request: reqA } = auth.authorize({ intent_id: "p2b-1", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
@@ -163,11 +163,11 @@ class V7Authority {
 
 /* ── live: there is no registration API at all ────────────────────────────── */
 {
-  const auth = new DerivationAuthority(mkWorld());
+  const auth = new DerivationAuthority(mkWorld(), [P]);
   R("live: registration deleted",
     typeof auth.registerExecutor === "undefined"
       && !("registerExecutor" in DerivationAuthority.prototype)
-      && DerivationAuthority.prototype.accept.length === 3
+      && DerivationAuthority.prototype.accept.length === 2
       && typeof auth.execute === "function",
     `registerExecutor is absent from the instance and the prototype, and accept takes ` +
     `${DerivationAuthority.prototype.accept.length} parameters — the executor argument is gone, so a ` +
@@ -177,11 +177,11 @@ class V7Authority {
 
 /* ── live: a NAME is not an executor, and there is nowhere to put one ─────── */
 {
-  const auth = new DerivationAuthority(mkWorld(), mkHost());
+  const auth = new DerivationAuthority(mkWorld(), [P], mkHost());
   const { request: req } = auth.authorize({ intent_id: "l1", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } },
     { expected_implementation_id: "impl-c-derive-v0.9.0" });
-  const run = await auth.execute(reg, req);
+  const run = await auth.execute(req);
   R("live: name-without-launch",
     typeof auth.nameArtifact === "undefined"
       && !run.ok && /^executor-not-in-catalog: impl-c-derive-v0\.9\.0/.test(run.reason),
@@ -193,22 +193,22 @@ class V7Authority {
 
 /* ── live: an observation binds executor, request and bytes as ONE event ──── */
 {
-  const auth = new DerivationAuthority(mkWorld(), mkHost());
+  const auth = new DerivationAuthority(mkWorld(), [P], mkHost());
   const mk = (id, bias) => auth.authorize({ intent_id: id, program_sem_id: PID,
     canonical_inputs: { bias }, requested_resources: { exact: ["fb"], predicates: [] } }).request;
   const reqA = mk("l2-a", 0), reqB = mk("l2-b", 7);
-  const runA = await auth.execute(reg, reqA);
+  const runA = await auth.execute(reqA);
   const resB = deriveLocally(reg, reqB).result;      // B is NEVER launched
 
-  const accA = auth.accept(reg, reqA, runA.result);
-  const accB = auth.accept(reg, reqB, resB);
+  const accA = auth.accept(reqA, runA.result);
+  const accB = auth.accept(reqB, resB);
   // and A's observation cannot be borrowed for B's bytes: there is nothing to
   // borrow, because the key IS the event
-  const borrowed = auth.observationOf(reg, reqB, resB);
+  const borrowed = auth.observationOf(reqB, resB);
   R("live: observation-is-per-event",
     accA.implementation_provenance === "observed" && accB.implementation_provenance === "unavailable"
       && borrowed === null
-      && auth.observationOf(reg, reqA, runA.result) !== null,
+      && auth.observationOf(reqA, runA.result) !== null,
     `the launched execution is ${accA.implementation_provenance}; a second, unlaunched derivation at the ` +
     `SAME authority is ${accB.implementation_provenance}. Under v0.7.0 one handle covered both. There is ` +
     `no handle to reuse now: the key is H(request_sem_id | canonical(whole result)), so an observation ` +
@@ -217,12 +217,12 @@ class V7Authority {
 
 /* ── live: every field of the result is inside the key ────────────────────── */
 {
-  const auth = new DerivationAuthority(mkWorld(), mkHost());
+  const auth = new DerivationAuthority(mkWorld(), [P], mkHost());
   const { request: req } = auth.authorize({ intent_id: "l3", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
-  const run = await auth.execute(reg, req);
+  const run = await auth.execute(req);
   const res = run.result;
-  const mutate = (m) => auth.observationOf(reg, req, m);
+  const mutate = (m) => auth.observationOf(req, m);
   const relabelled = { ...res,
     execution_evidence: { ...res.execution_evidence, implementation_id: "impl-c-derive-v0.8.0" } };
   const revalued = { ...res, semantic_result: { ...res.semantic_result, value: 6 } };
@@ -239,19 +239,19 @@ class V7Authority {
 
 /* ── live: there is no launcher at all, so it cannot name anything ────────── */
 {
-  const auth = new DerivationAuthority(mkWorld(), mkHost());
+  const auth = new DerivationAuthority(mkWorld(), [P], mkHost());
   const { request: req } = auth.authorize({ intent_id: "l4", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
   // the v0.8.0 API, offered as a third argument. Nothing reads it.
   let ranMine = false;
   const liar = { artifact_files: [join(HERE, "derive_protocol.mjs")],
     spawn: () => { ranMine = true; return { send: () => ({ ok: true, result: null }), close() {} }; } };
-  const x = await auth.execute(reg, req, liar);
+  const x = await auth.execute(req, liar);
   const entry = Object.keys(JS_WORKER_ENTRY).sort().join(",");
   R("live: launcher-has-no-identity-field",
-    x.ok && !ranMine && DerivationAuthority.prototype.execute.length === 2 && entry === "artifact_closure,entrypoint,kind",
-    `execute takes ${DerivationAuthority.prototype.execute.length} parameters and a launcher-shaped ` +
-    `third one is inert (the callback ran: ${ranMine}). What replaced it is a catalog ENTRY — ` +
+    x.ok && !ranMine && DerivationAuthority.prototype.execute.length === 1 && entry === "artifact_closure,entrypoint,kind",
+    `execute takes ${DerivationAuthority.prototype.execute.length} parameter and a launcher-shaped ` +
+    `second one is inert (the callback ran: ${ranMine}). What replaced it is a catalog ENTRY — ` +
     `{${entry}} — inert data whose transport the host owns. v0.7.0's caller supplied the identity as a ` +
     `string; v0.8.0's supplied an action beside the evidence (P-3); v0.9.0 supplies neither`);
 }

@@ -531,3 +531,82 @@ program_sem_id  →(lowering)→  target_term_sem_id  →(native ic32)→  targe
 ```
 
 with source/target outcome equality as the refinement obligation. The missing middle is no longer missing: native ic32 can originate a semantic film the independent kernel replays. Lower `add(const 2, const 3)` through the real governed runtime.
+
+## Round 25 — acceptance took its semantic oracle from the claimant
+
+**132. The last supplier was the one nobody had looked at, because it was the first parameter.** By v0.9.0 the authority owned issuance, the World reader, execution observations, the execution host and freshness. It did not own the thing that says what a `program_sem_id` **means**.
+
+```
+accept(registry, req, res)
+       ^^^^^^^^
+       supplied by the caller, every time
+```
+
+**P-4**, frozen in `probe_semoracle_v10_repro.mjs`: issue an ordinary request for `{op:"const", value:5}`, then hand acceptance
+
+```js
+{ verify: () => ({ ok: true }),           // blesses the ISSUED id
+  get:    () => ({ op:"const", value:999 }) }
+```
+
+and 999 is accepted under the issued id — `{ ok: true, validated: true, fresh_at_check: true }` — while the identical result against the real registry is `foreign-result-divergence`. **Re-derivation was working perfectly.** It re-derived against the program the *claimant* nominated, agreed with itself, and reported agreement. The entire difference between the two lines is who supplied the oracle.
+
+Provenance being `"unavailable"` does not save it: a request stating no `expected_implementation_id` is *allowed* to accept a semantically validated result with no observed execution. That is the in-process path and it is correct on its own terms.
+
+**133. Four rungs, one shape.**
+
+```
+@1  the caller supplied the implementation LABEL     deriveLocally(…, id)
+@2  the caller supplied the registration NAME        registerExecutor(name)
+@3  the caller supplied the ACTION beside the        {artifact_files, spawn}
+    artifact evidence
+@4  the caller supplied the SEMANTIC ORACLE          accept(registry, …)
+    used at acceptance
+```
+
+Round 24's generalisation was *any field a caller controls on the launch path becomes the provenance*. P-4 is its exact twin on the semantic side: **an authority cannot validate a semantic claim using a program resolver supplied by the claimant.** Acceptance takes no proof from its caller, **including the mapping from semantic identity to semantic program**.
+
+**134. `instanceof` would not have closed it, and a law that read as "check the type" would have invited the wrong repair.** **P-4b** is the case that says so: the oracle is a *genuine* `ProgramRegistry` instance, holding a different program. No Proxy, no hostile object, and the type check passes. The question was never the type. It is **ownership** — and the registry is now BUILT at the authority's construction from canonical program **data**, severed through `canonicalBytes` by `ProgramRegistry.bind`, which the authority calls itself. Accepting a ready-made registry would have satisfied any check and left the ownership exactly where P-4 found it.
+
+**135. `bindProgram` stays, and needs no second rule.** Teaching a long-lived authority a new program is an explicit authority operation, and it is safe for the reason the id exists at all: the id **is** the program's hash, so `const(999)` gets its own and cannot become `const(5)`'s. Growing the registry cannot repoint an issued id. That is round 16's ruling paying a dividend nine rounds later.
+
+**136. Which leaves the object with a boundary rather than a parameter list.**
+
+```
+DerivationAuthority
+├── issued requests
+├── semantic program registry          ← P-4
+├── authoritative World reader         ← round 17
+└── ObservedExecutionHost              ← P-3, with its immutable catalog
+```
+
+and a caller supplies exactly two things: **an INTENT, and a RESULT TO VALIDATE.** Every oracle the authority consults is constructor-time. The live case that matters is not any one of them but the set: `the-supplier-ladder-is-empty` asserts all four at once, because a ladder is only closed if the list is finite and someone has written the list down.
+
+**137. Gate.** grid **v1.26.0** — **71** entries / 361 citations (68 enforced plus the three lowering laws registered OPEN and unbuilt; transcribed at a moment, and the gate derives it) · `derive_protocol.mjs` **0.10.0** · kernel PASS · World 0.12.0 PASS · `--check-receipt` PASS · negative battery **150/150** with seven new forgeries · bridge **48/48** · native semantic film **14/14** · derive **45/45 in-process, 20/20 across a realm** · probes 2/2+2/2, 4/4+5/5, 5/5, 3/3+4/4, 1/1+4/4, 1/1+6/6, 2/2+5/5, 2/2+5/5, **2/2+5/5** · harness **9/9** · runner contract **3/3**. `scheduler_certificate.json` byte-identical — twentieth consecutive round, across four rounds that rebuilt the authority's entire parameter surface without touching the calculus once.
+
+**The seam list, ten rounds long.** grant vs footprint · syntax vs semantics · grant identity vs issuance · semantics vs execution trace · perturbation vs baseline · subject status vs runner status · execution claim vs observed executor · executor existence vs execution event · the artifact observed vs the mechanism invoked · and now **re-derivation vs the oracle it re-derives against**.
+
+**Next: the lowering spike, and its shape is ruled before it is built.** Three logically independent relations, which can each fail while the others hold, so they get three obligations and three identities rather than one:
+
+```
+program_sem_id  ──lowering_sem_id──▶  target_term_sem_id
+                                            │
+                                     native semantic film
+                                            ▼
+                                      target_nf_sem_id
+                                            │
+                                      decode_sem_id
+                                            ▼
+                                   target_outcome_sem_id
+source evaluator ─────────────────▶ source_outcome_sem_id
+
+REFINEMENT:  source_outcome_sem_id == target_outcome_sem_id
+```
+
+`law:derivation.canonical-lowering@1` (one source program under one lowering semantics determines one canonical target term), `law:derivation.target-decoding@1` (one canonical normal form under one decoder determines one structural outcome, or a structural decode refusal), and `law:derivation.lowering-refinement@1`, which composes them and is the theorem actually wanted. The first two exist to make the third **diagnosable**.
+
+**And the lowering does NOT get a film.** A film is evidence for a *transition system*; lowering is a relation `DeriveProgram → TargetTerm`. Filming it would invent a sequence of internal compiler steps and make implementation strategy semantic — the same mistake the read-order ruling refused in round 12. The instrument is **re-lowering and comparing canonical target bytes**. A film becomes appropriate only if the lowering engine itself ever becomes a governed transition system whose intermediate steps matter.
+
+`lowering_id` also splits in two before it is written, because one id must not silently answer two questions: `lowering_sem_id` identifies the lowering *semantics* (source core id, target encoding id, canonical specification, conformance-vector identity), and a `LoweringReceipt {program_sem_id, lowering_sem_id, target_term_sem_id}` records what happened when *this* program was lowered.
+
+**One identity decision deferred on purpose, and named so it is not discovered.** `add(const 2, const 3)` has `inputs = {}`, so the first witness does not decide **parameterized** lowering (`program_sem_id → target term with input ports`, inputs arriving at execution, `target_term_sem_id` a function of the program alone) versus **instantiated** lowering (`program_sem_id + canonical_inputs → closed target term`, where the identity must say so). Both are coherent; they are different systems. That decision comes **before** the `input` op, not during it — an unstated variable inside `target_term_sem_id` is precisely the hidden-identity bug class round 16 exists to prevent.

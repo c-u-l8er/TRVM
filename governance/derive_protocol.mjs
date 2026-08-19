@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   derive_protocol.mjs — v0.9.0 — the serialized derivation boundary
+   derive_protocol.mjs — v0.10.0 — the serialized derivation boundary
 
    law:derivation.environment-confinement@1 is FALSIFIED under the arbitrary-
    closure measureFn API, and the record says closure comes from REPLACING the
@@ -67,8 +67,41 @@
    trigger to move to B or a hybrid, and it is named in the grid rather than
    discovered later.
 
-   WHAT v0.9.0 CHANGES: THE AUTHORITY HASHED ONE THING AND EXECUTED ANOTHER
-   ────────────────────────────────────────────────────────────────────────
+   WHAT v0.10.0 CHANGES: ACCEPTANCE TOOK ITS SEMANTIC ORACLE FROM THE CLAIMANT
+   ───────────────────────────────────────────────────────────────────────────
+   By v0.9.0 the authority owned issuance, the World reader, execution
+   observations and freshness. It did not own the thing that says what a
+   `program_sem_id` MEANS — `accept(registry, req, res)` took that, every time,
+   from whoever was presenting the result. Issue a request for `const(5)`, hand
+   acceptance `{verify: () => ({ok:true}), get: () => ({op:"const",value:999})}`,
+   and 999 is accepted under the issued id. Re-derivation was working perfectly:
+   it re-derived against the program the CLAIMANT nominated and agreed with
+   itself. Frozen as P-4 in probe_semoracle_v10_repro.mjs.
+
+       An authority cannot validate a semantic claim using a program resolver
+       supplied by the claimant. Acceptance takes no proof from its caller,
+       INCLUDING the mapping from semantic identity to semantic program.
+
+   The supplier ladder, four rungs and one shape:
+
+       @1  the caller supplied the implementation LABEL
+       @2  the caller supplied the registration NAME
+       @3  the caller supplied the ACTION beside the artifact evidence
+       @4  the caller supplied the SEMANTIC ORACLE used at acceptance
+
+   An `instanceof ProgramRegistry` check would not have closed it: a Proxy, or a
+   real registry the caller populated differently, satisfies the type and leaves
+   the ownership wrong. So the registry is built at CONSTRUCTION from canonical
+   program data — severed through canonicalBytes by ProgramRegistry.bind, which
+   the authority calls itself — and no registry parameter crosses `execute` or
+   `accept` again. `bindProgram` stays as an explicit authority operation and
+   needs no second rule: ids are content-bound, so teaching the authority
+   `const(999)` gives it a NEW id and cannot repoint `const(5)`'s.
+
+   What a caller supplies is now an INTENT and a RESULT TO VALIDATE.
+
+   WHAT v0.9.0 CHANGED: THE AUTHORITY HASHED ONE THING AND EXECUTED ANOTHER
+   ───────────────────────────────────────────────────────────────────────
    v0.8.0 made the authority read and hash the artifact itself instead of
    believing a name, and then called a function the same caller had supplied
    beside the declaration:
@@ -151,7 +184,7 @@ import { ObservedExecutionHost, digestArtifactFiles } from "./observed_execution
 export { digestArtifactFiles };
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const PROTOCOL_VERSION = "0.9.0";
+export const PROTOCOL_VERSION = "0.10.0";
 
 /* ── the canonical value domain, shared with the World ────────────────────
    Deliberately a copy of the World's rule rather than an import: this module
@@ -356,6 +389,7 @@ export class ProgramRegistry {
    *  which meant the far side's registry was the caller's choice; the authority
    *  holds one already and there was never a reason to ask. */
   image() { return [...this.#byId.values()]; }
+  ids() { return [...this.#byId.keys()].sort(); }
   /** the check that makes the id load-bearing rather than decorative */
   verify(id) {
     const ast = this.#byId.get(id);
@@ -602,7 +636,7 @@ export function footprintWithinGrant(fp, read_grants) {
    reader callable, which was the closure-authority shape this whole line of
    work exists to remove — in-process only, but the same species. Now the
    evaluator receives nothing but canonical data. */
-export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.9.0";
+export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.10.0";
 
 function readerFromGrants(read_grants) {
   return {
@@ -868,23 +902,38 @@ export const DERIVE_EXEC_DOMAIN = "TRVM-DERIVE-EXEC-v1";
  *  that neither proof can arrive as an argument. */
 export class DerivationAuthority {
   #issued = new Map();
+  #registry = new ProgramRegistry();
   #host;
   #reader;
-  /** The host is a CONSTRUCTOR-TIME dependency, and so therefore is its
-   *  catalog. There is no nameArtifact() any more: the catalog IS the naming
-   *  policy, it is immutable, and it is fixed before this object exists. An
-   *  authority whose identity policy could change during its lifetime makes its
-   *  own historical observations hard to read, and none of the alternatives
-   *  were better than simply not having the setter. */
-  constructor(reader, host = null) {
+  /** EVERY ORACLE THIS AUTHORITY CONSULTS IS FIXED HERE.
+   *
+   *  The World reader (round 17), the semantic registry (P-4) and the execution
+   *  host with its immutable catalog (P-3) are all constructor-time. The
+   *  registry is BUILT rather than accepted: `programImage` is canonical program
+   *  DATA, and ProgramRegistry.bind severs it through canonicalBytes, so the
+   *  authority ends up owning its semantic oracle rather than sharing an object
+   *  with whoever built it. Passing a ready-made registry would satisfy any type
+   *  check and leave the ownership exactly where P-4 found it. */
+  constructor(reader, programImage = [], host = null) {
     if (!reader || typeof reader.read !== "function" || typeof reader.scope !== "function")
       throw new Error("authority-requires-a-world-reader");
+    if (!Array.isArray(programImage))
+      throw new Error("authority-program-image-must-be-a-list");
     if (host !== null && !(host instanceof ObservedExecutionHost))
       throw new Error("authority-host-must-be-an-ObservedExecutionHost");
     this.#reader = reader;
     this.#host = host;
+    for (const ast of programImage) this.#registry.bind(ast);
     Object.freeze(this);
   }
+
+  /** Teaching the authority a new program is an explicit AUTHORITY operation,
+   *  and it is safe for the reason the id exists at all: the id IS the
+   *  program's hash, so `const(999)` gets its own and cannot become `const(5)`.
+   *  Growing the registry therefore needs no second rule. */
+  bindProgram(ast) { return this.#registry.bind(ast); }
+  programIds() { return this.#registry.ids(); }
+  programOf(id) { return this.#registry.get(id); }
 
   /** intent in — authority-issued, owned, frozen request out */
   authorize(intent, options = {}) {
@@ -931,7 +980,7 @@ export class DerivationAuthority {
    *  What crosses is data: `{init, message}`, refused outright if it carries a
    *  callable, which is the mechanical reason an action cannot ride along with
    *  a declaration any more. */
-  async execute(registry, req) {
+  async execute(req) {
     if (!this.#host) return { ok: false, reason: "authority-has-no-execution-host" };
     const iss = this.wasIssued(req);
     if (!iss.ok) return { ok: false, reason: iss.reason };
@@ -943,7 +992,7 @@ export class DerivationAuthority {
           fams.join(",") + "] and the request names none" };
       family = fams[0];
     }
-    const invocation = { init: { programs: registry.image() }, message: req };
+    const invocation = { init: { programs: this.#registry.image() }, message: req };
     const r = await this.#host.run(family, DERIVE_EXEC_DOMAIN, invocation);
     if (!r.ok) return { ok: false, reason: r.reason };
     if (!r.output?.ok) return { ok: false, reason: r.output?.reason ?? "execution-returned-nothing" };
@@ -953,10 +1002,10 @@ export class DerivationAuthority {
   }
 
   /** Read-only view, for batteries and diagnostics. Returns a COPY. */
-  observationOf(registry, req, res) {
+  observationOf(req, res) {
     if (!this.#host) return null;
     return this.#host.observationOf(DERIVE_EXEC_DOMAIN,
-      { init: { programs: registry.image() }, message: req },
+      { init: { programs: this.#registry.image() }, message: req },
       { ok: true, result: res });
   }
 
@@ -999,10 +1048,14 @@ export class DerivationAuthority {
    *
    *  No lock capability is exported to reach that: rounds 9B-9C are the record
    *  of what happens when transaction authority gets passed around. */
-  accept(registry, req, res) {
+  accept(req, res) {
     const iss = this.wasIssued(req);
     if (!iss.ok) return { ok: false, reason: iss.reason };
-    const v = validateForeignResult(registry, req, res);
+    // THE ORACLE IS THIS AUTHORITY'S OWN. v0.9.0 took it as the first parameter,
+    // so re-derivation ran against the program the CLAIMANT nominated and
+    // agreed with itself (P-4). Nothing about re-derivation was wrong; what was
+    // wrong was who chose the program it re-derived.
+    const v = validateForeignResult(this.#registry, req, res);
     if (!v.ok) return v;
 
     // ── PROVENANCE, against an execution event this authority drove ───────
@@ -1011,7 +1064,7 @@ export class DerivationAuthority {
     // be "attached" to other bytes because nothing is attached to anything.
     // The table lives in the HOST, which is the only thing that launches, so
     // there is no second place an observation could come from.
-    const observed = this.observationOf(registry, req, res) ?? undefined;
+    const observed = this.observationOf(req, res) ?? undefined;
     if ("expected_implementation_id" in req) {
       if (observed === undefined)
         return { ok: false, reason: "implementation-provenance-unavailable" };

@@ -192,7 +192,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -711,11 +711,40 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         "issuance must bind request_sem_id, not grant_id — binding the grant answers 'was this issued?' " +
         "about a GRANT while the thing being accepted is a REQUEST, and an input swap under an " +
         "untouched request_id passes (probe_issuebind_v05_repro.mjs I-1)");
-      ok(/accept\(registry, req, res\) \{/.test(dsrc) && !/export function acceptForeignResult/.test(dsrc),
-        "acceptance must be a METHOD on the authority taking EXACTLY (registry, req, res) — a free " +
-        "function taking `issuer` and `liveReader` lets the caller supply both proofs of its own " +
-        "authority (I-3), and v0.7.0's fourth `executor` parameter was the same defect one level up: a " +
-        "proof supplied at acceptance time (P-2b, probe_execreg_v08_repro.mjs)");
+      ok(/accept\(req, res\) \{/.test(dsrc) && !/export function acceptForeignResult/.test(dsrc),
+        "acceptance must be a METHOD on the authority taking EXACTLY (req, res). A free function " +
+        "taking `issuer` and `liveReader` lets the caller supply both proofs of its own authority " +
+        "(I-3); v0.7.0's fourth `executor` parameter was the same defect one level up (P-2b); and " +
+        "v0.9.0's FIRST parameter was a `registry` — the mapping from semantic identity to semantic " +
+        "program, supplied by the claimant (P-4, probe_semoracle_v10_repro.mjs)");
+      // ── v1.26: acceptance takes no semantic oracle either ─────────────
+      ok(/constructor\(reader, programImage = \[\], host = null\)/.test(dnoc) &&
+         /for \(const ast of programImage\) this\.#registry\.bind\(ast\)/.test(dnoc),
+        "the authority must BUILD its registry at construction from canonical program DATA. Accepting " +
+        "a ready-made ProgramRegistry satisfies any type check and leaves ownership exactly where P-4 " +
+        "found it — a Proxy, or a real registry the caller populated differently, both pass instanceof");
+      ok(/#registry = new ProgramRegistry\(\)/.test(dnoc) &&
+         /validateForeignResult\(this\.#registry, req, res\)/.test(dnoc),
+        "acceptance must re-derive through the authority's OWN registry. Re-derivation was never the " +
+        "defect: it re-derived against the program the CLAIMANT nominated and agreed with itself");
+      ok(/async execute\(req\) \{/.test(dnoc) &&
+         /init: \{ programs: this\.#registry\.image\(\) \}/.test(dnoc),
+        "execute must take EXACTLY (req), and the far side's program image must be the AUTHORITY's " +
+        "registry — v0.9.0 let the caller pass the registry that became the worker's whole world");
+      {
+        const ip5 = entries.find((x) => x.id === "derivation.acceptance-authority" && x.revision === 1);
+        ok(!!ip5 && ip5.canonical === true && ip5.status === "PROPERTY-TESTED",
+          "law derivation.acceptance-authority@1 missing, non-canonical, or not PROPERTY-TESTED (v1.26)");
+        ok(!!ip5 && /PROGRAM RESOLVER SUPPLIED BY THE CLAIMANT/.test(ip5.statement ?? ""),
+          "derivation.acceptance-authority@1 no longer states that an authority cannot validate a " +
+          "semantic claim using a program resolver supplied by the claimant — that sentence is the round");
+        ok(!!ip5 && /instanceof/.test(ip5.statement ?? ""),
+          "derivation.acceptance-authority@1 must say why a type check does not close it. The repair " +
+          "is OWNERSHIP, and a law that reads as 'check the type' invites exactly the wrong fix");
+        ok(!!ip5 && /INTENT/.test(ip5.statement ?? "") && /RESULT/.test(ip5.statement ?? ""),
+          "derivation.acceptance-authority@1 must name what a caller may still supply — an intent and " +
+          "a result to validate — because the supplier ladder is only closed if the list is finite");
+      }
       ok(!/committable/.test(dsrc.replace(/\/\*[\s\S]*?\*\//g, "")),
         "acceptance must not return `committable` — one call cannot establish committability, because " +
         "the World can move between it returning and the caller applying");
@@ -756,10 +785,10 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
       const hostNoc = hostSrc.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
       ok(hostSrc !== "", "observed_execution_host.mjs absent — launching must live in ONE place that " +
         "holds no TRVM semantics, or the mechanism gets rebuilt per plane and P-3 is rebuilt with it");
-      ok(/async execute\(registry, req\) \{/.test(dnoc),
-        "execute must take EXACTLY (registry, req). v0.8.0's `launcher` argument carried artifact_files " +
-        "beside spawn(), two mechanically unrelated fields, so the authority hashed X and invoked Y " +
-        "(P-3, probe_execlaunch_v09_repro.mjs)");
+      ok(!/async execute\([^)]*launcher/.test(dnoc),
+        "execute must take no `launcher`. v0.8.0's carried artifact_files beside spawn(), two " +
+        "mechanically unrelated fields, so the authority hashed X and invoked Y (P-3, " +
+        "probe_execlaunch_v09_repro.mjs). Its exact parameter list is asserted at v1.26 below");
       ok(!/nameArtifact/.test(dnoc),
         "nameArtifact must be gone from the authority — the catalog IS the naming policy and it is " +
         "fixed at the host's construction. An authority whose identity policy moves during its " +

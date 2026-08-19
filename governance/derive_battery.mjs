@@ -356,15 +356,15 @@ const mkReq = (over = {}) => {
 {
   const live = { res: { fb: { value: 5, version: 1 }, other: { value: 0, version: 1 } },
     read(r) { return { ...this.res[r] }; }, scope(q) { return "scope:" + q; } };
-  const auth = new DerivationAuthority(live);
+  const auth = new DerivationAuthority(live, [P]);
   const { request: req } = auth.authorize({ intent_id: "f1", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
   const res = deriveLocally(reg, req).result;
-  const before = auth.accept(reg, req, res);
+  const before = auth.accept(req, res);
   live.res.fb = { value: 9, version: 2 };                 // the World moves
   const containment = footprintWithinGrant(res.semantic_result.read_footprint, req.read_grants);
   const rederive = validateForeignResult(reg, req, res);
-  const after = auth.accept(reg, req, res);
+  const after = auth.accept(req, res);
   R("freshness-is-not-containment",
     before.ok && containment.ok && rederive.ok
       && !after.ok && after.reason === "stale-read: fb granted@1 live@2",
@@ -374,7 +374,7 @@ const mkReq = (over = {}) => {
     `stops at re-derivation commits a value the World has already contradicted`);
   live.res.fb = { value: 5, version: 1 };
   live.res.other = { value: 999, version: 2 };            // a write nothing read
-  const unrelated = auth.accept(reg, req, res);
+  const unrelated = auth.accept(req, res);
   R("unrelated-write-does-not-invalidate", unrelated.ok && unrelated.fresh_at_check === true,
     `other@1→2 moved and acceptance still passes — freshness keys on the FOOTPRINT, never on a global ` +
     `vclock. A vclock rule would invalidate every derivation on every unrelated write, undoing the ` +
@@ -391,17 +391,17 @@ const mkReq = (over = {}) => {
 {
   const live = { res: { fb: { value: 5, version: 1 } }, read(r) { return { ...this.res[r] }; },
     scope(q) { return "scope:" + q; } };
-  const auth = new DerivationAuthority(live);
+  const auth = new DerivationAuthority(live, [P]);
   const intent = { intent_id: "i1", program_sem_id: PID, canonical_inputs: { bias: 0 },
     requested_resources: { exact: ["fb"], predicates: [] } };
   const a = auth.authorize(intent);
   const res = deriveLocally(reg, a.request).result;
-  const mine = auth.accept(reg, a.request, res);
-  const theirs = new DerivationAuthority(live).accept(reg, a.request, res);
+  const mine = auth.accept(a.request, res);
+  const theirs = new DerivationAuthority(live, [P]).accept(reg, a.request, res);
   // the defect: same request_id, same grant_id, different inputs
   const swapped = { ...a.request, canonical_inputs: { bias: 1000 } };
   const swappedRes = deriveLocally(reg, swapped).result;
-  const swapAcc = auth.accept(reg, swapped, swappedRes);
+  const swapAcc = auth.accept(swapped, swappedRes);
   R("issuance-binds-the-whole-request",
     a.ok && mine.ok && !theirs.ok && theirs.reason === "grant-not-issued-by-this-authority"
       && swappedRes.semantic_result.value === 1005 && !swapAcc.ok && swapAcc.reason === "request-not-as-issued",
@@ -448,7 +448,7 @@ const mkReq = (over = {}) => {
 {
   const live = { res: { fb: { value: 5, version: 1 } }, read(r) { return { ...this.res[r] }; },
     scope(q) { return "scope:" + q; } };
-  const auth = new DerivationAuthority(live);
+  const auth = new DerivationAuthority(live, [P]);
   const mk = (opts, id) => auth.authorize({ intent_id: id, program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } }, opts).request;
   const C = "impl-c-derive-v0.8.0";
@@ -460,7 +460,7 @@ const mkReq = (over = {}) => {
   // gap: the authority ran the evaluator in its own realm, and manufacturing an
   // observation for that would be the same category error P-2 is about. The
   // observed case lives in derive_realm_battery.mjs, where something is spawned.
-  const unobserved = auth.accept(reg, req, res);
+  const unobserved = auth.accept(req, res);
   R("in-process-has-no-provenance",
     unobserved.ok && unobserved.implementation_provenance === "unavailable"
       && unobserved.implementation_id === undefined
@@ -471,9 +471,9 @@ const mkReq = (over = {}) => {
 
   const cReq = mk({ expected_implementation_id: C }, "pv2");
   const cRes = { ...res, request_id: cReq.request_id };
-  const noObs = auth.accept(reg, cReq, cRes);
+  const noObs = auth.accept(cReq, cRes);
   const forged = withExec(res, { implementation_id: C });
-  const relabelled = auth.accept(reg, req, forged);
+  const relabelled = auth.accept(req, forged);
   R("requirement-without-observation-refused",
     !noObs.ok && noObs.reason === "implementation-provenance-unavailable"
       && relabelled.ok && relabelled.implementation_provenance === "unavailable"
@@ -488,16 +488,17 @@ const mkReq = (over = {}) => {
     typeof auth.registerExecutor === "undefined" && typeof auth.nameArtifact === "undefined"
       && !("registerExecutor" in DerivationAuthority.prototype)
       && !("nameArtifact" in DerivationAuthority.prototype)
-      && DerivationAuthority.prototype.accept.length === 3
-      && DerivationAuthority.prototype.execute.length === 2,
+      && DerivationAuthority.prototype.accept.length === 2
+      && DerivationAuthority.prototype.execute.length === 1,
     `registerExecutor and nameArtifact are both absent, accept takes ` +
-    `${DerivationAuthority.prototype.accept.length} parameters and execute takes ` +
-    `${DerivationAuthority.prototype.execute.length} (registry, req). There is no argument in which a ` +
-    `caller may hand acceptance a proof (P-2) and none in which it may hand execution an action (P-3)`);
+    `${DerivationAuthority.prototype.accept.length} parameters (req, res) and execute takes ` +
+    `${DerivationAuthority.prototype.execute.length} (req). There is no argument in which a caller may ` +
+    `hand acceptance a proof (P-2), none in which it may hand execution an action (P-3), and none in ` +
+    `which it may hand either the semantic oracle (P-4)`);
 
   // and the execution host is a CONSTRUCTOR-TIME dependency, not a setter
-  const noHost = await auth.execute(reg, req);
-  const duck = (() => { try { new DerivationAuthority(live, { run: () => {} }); return "ACCEPTED"; }
+  const noHost = await auth.execute(req);
+  const duck = (() => { try { new DerivationAuthority(live, [], { run: () => {} }); return "ACCEPTED"; }
     catch (e) { return e.message; } })();
   R("host-is-constructed-not-set",
     !noHost.ok && noHost.reason === "authority-has-no-execution-host"

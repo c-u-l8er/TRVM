@@ -1,6 +1,6 @@
 {
  "record": "invariant-grid",
- "version": "1.25.0",
+ "version": "1.26.0",
  "date": "2026-08-18",
  "v1_criteria": {
   "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
@@ -617,7 +617,7 @@
  },
  "law_registry": {
   "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
-  "grid_version": "1.25.0",
+  "grid_version": "1.26.0",
   "entries": [
    {
     "id": "kappa.monotonicity.unrestricted",
@@ -1185,6 +1185,38 @@
     "canonical": true,
     "statement": "THE EXECUTION PLANE ORIGINATES EVIDENCE, RATHER THAN THE GOVERNANCE PLANE RECONSTRUCTING IT AROUND THE EXECUTION PLANE AFTERWARDS. For a frozen one-step fixture, the native C runtime independently emits a semantic-film frame whose pre-state, enabled rule, canonical locus, post-state and terminal status are accepted by the existing TRVM-SEMFILM-v1.1 contract WITHOUT normalization or translation of meaning — the law kernel's own replaySemFilm, imported unmodified, replaying on a fresh runtime. Every field is derived by the emitter from its own execution: the redex is found by an enumeration that mirrors findAppRedexes over ic32's packed-word heap, the rule is the rule that fired, quiescence is the same enumeration run again and required to be empty, and the readback is required to be PURE (resolving the state must cost no interaction). SCOPE, checked rather than assumed: ONE frame, the DUP-FREE fragment, C→JS only. A term carrying a dup cell, a term already in normal form, and a term with more than one enabled redex are each REFUSED BY NAME rather than silently skipped. The C-side checker — films flowing the other direction — is not claimed. A film arriving from outside is an execution CLAIM exactly as a DeriveResult is, so film provenance uses the same discipline as derivation.implementation-provenance@4: the shared ObservedExecutionHost, an immutable catalog entry naming the binary, hash-then-launch, and an observation keyed over the whole emission rather than over the film alone — provenance is over everything the executor emitted, not over a subset a caller chose to present. REPLAY AND PROVENANCE ARE REPORTED SEPARATELY, because a film can be semantically perfect and its claimed provenance false; P-3F is exactly that case. THE TWO TRANSITION SYSTEMS STAY SEPARATE (film_planes): the TRVM calculus film is pre-state → (rule + locus) → post-state over the ic32 interaction-net relation, and the derivation evidence relation is DeriveRequest → evaluate → DeriveResult. What is shared is HOST INFRASTRUCTURE, not semantics.",
     "evidence": "bridge/film_check.mjs 13/13. The vertical witness: ic32_film emits APP-LAM at canonical locus 't:' for vector 3 (apply_id, ref_interactions = 1), and replaySemFilm accepts it on FloatRt and on the adversarial DescFloatRt. The frame's endpoints are the corpus vector's own initial and normal_form states, which the 48/48 bridge gate had already shown C and JS agree on byte-for-byte, so the new claim is exactly the TRANSITION between two states whose canonicalization was never in doubt. Seven forgeries, each RE-COMMITTED (frame_id and film_id recomputed) so it dies on a semantic check rather than on bookkeeping: F-1 wrong pre-state (sem-revision-mismatch), F-2 wrong post-state (sem-post-mismatch), F-3 a real rule at a wrong locus (sem-locus-not-enabled), F-4 a real redex misdescribed as a dup rule (sem-rule-mismatch), F-5 the honest film replayed against another source term (sem-revision-mismatch), F-6 a genuine C observation that cannot be re-pointed at another film, and F-7 an edit to the frame's DECLARED-NON-AUTHORITATIVE index i, which still REPLAYS and still loses provenance — replay and provenance being different verdicts. ic32_film.c #includes ic32_canon.c under IC32_CANON_NO_MAIN, so the canonicalizer beneath the film is the same code the bridge gate replays rather than a copy written for the occasion; the bridge stays 48/48 after the guard."
+   },
+   {
+    "id": "derivation.acceptance-authority",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "AN AUTHORITY CANNOT VALIDATE A SEMANTIC CLAIM USING A PROGRAM RESOLVER SUPPLIED BY THE CLAIMANT. Acceptance takes no proof from its caller — INCLUDING the mapping from semantic identity to semantic program. Re-derivation is only evidence if the authority chose what it re-derived against. The supplier ladder this closes has four rungs and one shape: @1 the caller supplied the implementation LABEL (deriveLocally's third parameter), @2 the registration NAME (registerExecutor), @3 the ACTION beside the artifact evidence (a launcher's spawn), @4 the SEMANTIC ORACLE at acceptance (accept's registry parameter). Any field a caller controls on the path to a verdict becomes the verdict. AN instanceof CHECK DOES NOT CLOSE IT, and a law that read as 'check the type' would invite exactly the wrong repair: a Proxy satisfies the type, and so does a genuine ProgramRegistry the caller populated with a different program. The repair is OWNERSHIP. The registry is BUILT at the authority's construction from canonical program DATA — ProgramRegistry.bind severs it through canonicalBytes — so the authority owns its semantic oracle rather than sharing an object with whoever built it, and no registry parameter crosses execute() or accept() again. bindProgram remains an explicit authority operation and needs no second rule, because ids are content-bound: teaching the authority const(999) gives it a new id and cannot repoint const(5)'s. So every oracle the authority consults is constructor-time — the World reader (round 17), the semantic registry (here), and the execution host with its immutable catalog (derivation.implementation-provenance@4) — and what a caller supplies is an INTENT and a RESULT TO VALIDATE.",
+    "evidence": "probe_semoracle_v10_repro.mjs, paired and gating: 2/2 reproduce against a frozen v0.9.0 acceptance — P-4, where an issued request for const(5) is accepted as 999 because the caller passed {verify: () => ({ok:true}), get: () => ({op:'const',value:999})} and the identical result is refused as foreign-result-divergence by the real registry; and P-4b, where the oracle is a GENUINE ProgramRegistry instance holding a different program, which is the case an instanceof check cannot see. 5/5 confined live: no registry parameter on execute or accept, a registry severed at construction so editing the caller's AST afterwards changes nothing, bindProgram unable to repoint an issued id, the whole four-rung surface checked as a set, and the World reader confirmed inert as a parameter too. derive_realm_battery.mjs 20/20 (case 18: an authority constructed holding no programs answers program-unknown from the far side), derive_battery.mjs 45/45."
+   },
+   {
+    "id": "derivation.canonical-lowering",
+    "revision": 1,
+    "status": "OPEN",
+    "canonical": true,
+    "statement": "ONE SOURCE PROGRAM UNDER ONE LOWERING SEMANTICS DETERMINES ONE CANONICAL TARGET TERM. lowering_sem_id identifies the lowering SEMANTICS — H over the source core_sem_id, the target term encoding id, the canonical lowering specification and the conformance-vector identity — and is a different object from a record of what happened when a particular program was lowered, which is a LoweringReceipt {program_sem_id, lowering_sem_id, target_term_sem_id}. One id must not silently answer both 'which lowering semantics is this?' and 'what did lowering do here?'. THE INSTRUMENT IS RE-LOWERING, NOT A FILM. A semantic film is evidence for a TRANSITION SYSTEM; lowering is a relation DeriveProgram -> TargetTerm. Filming it would invent a sequence of internal compiler steps and make implementation strategy semantic — the mistake the read-order ruling refused when it kept access order out of the footprint. Verification is: re-lower the program independently under lowering_sem_id, canonicalise, and require target_term_sem_id to agree. DEFERRED AND NAMED: whether lowering is PARAMETERIZED (program -> target term with input ports, inputs arriving at execution, so target_term_sem_id is a function of the program alone) or INSTANTIATED (program + canonical_inputs -> closed target term, in which case the identity must say so). The first witness uses inputs={} and does not decide it. That decision comes BEFORE the input op, because an unstated variable inside target_term_sem_id is the hidden-identity bug class round 16 exists to prevent. DECLARED AHEAD OF THE ROUND THAT BUILDS IT, and OPEN until it has a falsifier. Round 15's film_identity_forward_declaration is the precedent: a decision made in advance is inherited rather than improvised, and a law registered OPEN is a commitment that cannot be quietly re-scoped once the implementation makes one shape convenient. Nothing may cite this as evidence of anything yet.",
+    "evidence": "UNBUILT. First witness: add(const 2, const 3) with inputs={}."
+   },
+   {
+    "id": "derivation.target-decoding",
+    "revision": 1,
+    "status": "OPEN",
+    "canonical": true,
+    "statement": "ONE CANONICAL TARGET NORMAL FORM UNDER ONE DECODER DETERMINES ONE STRUCTURAL TRVM OUTCOME, OR A STRUCTURAL DECODE REFUSAL. decode_sem_id identifies the decoder, and decoding is a THIRD relation rather than the tail of lowering: a lowering can be perfect while the decoder reads the normal form wrongly, and a decoder can be perfect while lowering emitted the wrong target term. They fail independently, so they are proved independently. The outcome is STRUCTURAL — {status:'value', value} or {status:'refused', code, locus} — never a rendered reason, which would recreate round 16's 'the identity bound a spelling' one layer up. DECLARED AHEAD OF THE ROUND THAT BUILDS IT, and OPEN until it has a falsifier. Round 15's film_identity_forward_declaration is the precedent: a decision made in advance is inherited rather than improvised, and a law registered OPEN is a commitment that cannot be quietly re-scoped once the implementation makes one shape convenient. Nothing may cite this as evidence of anything yet.",
+    "evidence": "UNBUILT. Decodes the normal form of the first witness to {status:'value', value:5}."
+   },
+   {
+    "id": "derivation.lowering-refinement",
+    "revision": 1,
+    "status": "OPEN",
+    "canonical": true,
+    "statement": "SOURCE AND TARGET AGREE ON THE OUTCOME: source_outcome_sem_id == target_outcome_sem_id, where the target side is reached by canonical lowering, native ic32 execution evidenced by a semantic film, and structural decoding. THIS IS THE THEOREM; canonical-lowering@1 and target-decoding@1 exist to make it DIAGNOSABLE, because a bare equality failure cannot say which of three relations broke. Six identities stay distinct and none may be collapsed into another: program_sem_id, lowering_sem_id, target_term_sem_id, target_nf_sem_id, decode_sem_id, outcome_sem_id. Collapsing any pair turns a refinement statement into a renaming, which is the failure mode this whole chain is built to avoid. DECLARED AHEAD OF THE ROUND THAT BUILDS IT, and OPEN until it has a falsifier. Round 15's film_identity_forward_declaration is the precedent: a decision made in advance is inherited rather than improvised, and a law registered OPEN is a commitment that cannot be quietly re-scoped once the implementation makes one shape convenient. Nothing may cite this as evidence of anything yet.",
+    "evidence": "UNBUILT. Composes the two above with law:film.native-emission@1."
    }
   ]
  },
@@ -1475,7 +1507,7 @@
  "artifact_versions": {
   "trvm_law_kernel.mjs": "1.1.0",
   "trvm_world.mjs": "0.12.0",
-  "derive_protocol.mjs": "0.9.0",
+  "derive_protocol.mjs": "0.10.0",
   "observed_execution_host.mjs": "0.1.0"
  },
  "world": {
@@ -1819,5 +1851,11 @@
   "derive_protocol.mjs 0.8.0 -> 0.9.0: execute(registry, req), no launcher and no nameArtifact; the worker's program image comes from the authority's own registry.",
   "acceptance reports executor_sessions (plural) — the key is over bytes, so two launches producing identical output share it and @3 overwrote one with the other.",
   "gating_probes gains probe_execlaunch_v09_repro.mjs."
+ ],
+ "changelog_from_1_25_0": [
+  "law:derivation.acceptance-authority@1 added — acceptance took its semantic oracle from the claimant (P-4). An issued const(5) request was accepted as 999 under a caller-supplied registry.",
+  "derive_protocol.mjs 0.9.0 -> 0.10.0: new DerivationAuthority(reader, programImage, host); the authority BUILDS its own ProgramRegistry from canonical data; execute(req) and accept(req, res) take no registry; bindProgram/programIds/programOf are explicit authority operations.",
+  "gating_probes gains probe_semoracle_v10_repro.mjs.",
+  "law:derivation.canonical-lowering@1, law:derivation.target-decoding@1 and law:derivation.lowering-refinement@1 registered OPEN and unbuilt — the lowering spike's shape ruled before it is built, including that lowering gets NO film and that parameterized-vs-instantiated target identity is decided before the input op."
  ]
 }

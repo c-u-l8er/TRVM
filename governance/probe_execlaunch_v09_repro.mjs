@@ -129,7 +129,7 @@ class V8Authority {
 
 /* ── P-3 against the frozen v0.8.0 ───────────────────────────────────────── */
 {
-  const issuer = new DerivationAuthority(mkWorld());
+  const issuer = new DerivationAuthority(mkWorld(), [P]);
   const v8 = new V8Authority();
   v8.nameArtifact(digestArtifactFiles(JS_CLOSURE), C_ID);
   const { request: req } = issuer.authorize({ intent_id: "p3", program_sem_id: PID,
@@ -219,20 +219,20 @@ class V8FilmAuthority {
 /* ── live: there is no launcher parameter, on either path ─────────────────── */
 {
   const host = new ObservedExecutionHost(defaultDeriveCatalog(JS_IMPLEMENTATION_ID));
-  const auth = new DerivationAuthority(mkWorld(), host);
+  const auth = new DerivationAuthority(mkWorld(), [P], host);
   const { request: req } = auth.authorize({ intent_id: "l1", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
   let ranMine = false;
   const liar = { artifact_files: JS_CLOSURE,
     spawn: () => { ranMine = true; return { send: () => ({ ok: true, result: null }), close() {} }; } };
-  const x = await auth.execute(reg, req, liar);
-  const acc = x.ok ? auth.accept(reg, req, x.result) : { ok: false };
+  const x = await auth.execute(req, liar);
+  const acc = x.ok ? auth.accept(req, x.result) : { ok: false };
   R("live: no-launcher-parameter",
     !ranMine && x.ok && acc.ok && acc.implementation_id === JS_IMPLEMENTATION_ID
-      && DerivationAuthority.prototype.execute.length === 2
+      && DerivationAuthority.prototype.execute.length === 1
       && typeof auth.nameArtifact === "undefined",
-    `execute takes ${DerivationAuthority.prototype.execute.length} parameters (registry, req) and a ` +
-    `third carrying artifact_files beside spawn() is inert — the callback never ran (${ranMine}) and ` +
+    `execute takes ${DerivationAuthority.prototype.execute.length} parameter (req) and a ` +
+    `second carrying artifact_files beside spawn() is inert — the callback never ran (${ranMine}) and ` +
     `the catalogued worker did. nameArtifact is gone too: the catalog IS the naming policy`);
 }
 
@@ -290,12 +290,12 @@ class V8FilmAuthority {
 /* ── live: an observation names EVERY session that produced these bytes ──── */
 {
   const host = new ObservedExecutionHost(defaultDeriveCatalog(JS_IMPLEMENTATION_ID));
-  const auth = new DerivationAuthority(mkWorld(), host);
+  const auth = new DerivationAuthority(mkWorld(), [P], host);
   const { request: req } = auth.authorize({ intent_id: "l5", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
-  const a = await auth.execute(reg, req);
-  const b = await auth.execute(reg, req);        // same bytes out, second launch
-  const acc = auth.accept(reg, req, b.result);
+  const a = await auth.execute(req);
+  const b = await auth.execute(req);        // same bytes out, second launch
+  const acc = auth.accept(req, b.result);
   R("live: sessions-are-plural",
     a.ok && b.ok && a.executor_session_id !== b.executor_session_id
       && Array.isArray(acc.executor_sessions) && acc.executor_sessions.length === 2
