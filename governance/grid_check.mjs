@@ -898,10 +898,16 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         const nf = entries.find((x) => x.id === "film.native-emission" && x.revision === 1);
         ok(!!nf && nf.canonical === true && nf.status === "PROPERTY-TESTED",
           "law film.native-emission@1 missing, non-canonical, or not PROPERTY-TESTED (v1.24)");
-        ok(!!nf && /DUP-FREE fragment/.test(nf.statement ?? "") && /REFUSED BY NAME/.test(nf.statement ?? ""),
-          "film.native-emission@1 no longer states its scope as CHECKED refusals. 'One frame, the " +
-          "dup-free fragment, C→JS only' is the theorem; an emitter that silently skipped what it " +
-          "cannot do would be claiming the general case with a fixture's evidence");
+        ok(!!nf && /SCOPE, checked rather than assumed/.test(nf.statement ?? "")
+             && /REFUSED BY NAME/.test(nf.statement ?? ""),
+          "film.native-emission@1 no longer states its scope as CHECKED refusals. An emitter that " +
+          "silently skipped what it cannot do would be claiming the general case with a fixture's " +
+          "evidence — and v0.1.0's scope was stated by the WRONG predicate (dup presence rather than " +
+          "dup enabledness), which a refusal makes visible and a silence would not have");
+        ok(!!nf && /ACCIDENTALLY TRUE/.test(nf.statement ?? ""),
+          "film.native-emission@1 must keep the record of the readback check that was removed for " +
+          "being accidentally true. A check that passes because the fixture is trivial is not evidence, " +
+          "and deleting it without saying why would leave the strongest-sounding sentence unexplained");
         ok(!!nf && /replaySemFilm/.test(nf.statement ?? "") && /WITHOUT normalization or translation/.test(nf.statement ?? ""),
           "film.native-emission@1 must name the kernel's OWN replaySemFilm and say the frame is " +
           "accepted without translation — a checker written for the occasion checks the occasion");
@@ -917,10 +923,16 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "ic32_film.c must INCLUDE ic32_canon.c rather than copy it — the canonicalizer beneath the " +
           "film has to be the same code the 48/48 bridge gate replays, or the film round is proving a " +
           "canonicalizer nothing else has ever checked");
-        ok(/film-readback-was-not-pure/.test(filmSrc) && /film-not-normal-form-after-one-step/.test(filmSrc),
-          "ic32_film.c must CHECK quiescence and readback purity rather than assert them — the first " +
-          "version of it printed a binder name where a term was bound, which is a well-formed string " +
-          "asserting an identity that does not hold");
+        ok(/film-not-quiescent-at-terminal/.test(filmSrc) && /film-dup-rule-enabled/.test(filmSrc),
+          "ic32_film.c must CHECK pool-quiescence at the terminal and refuse an ENABLED dup rule by " +
+          "name. v0.1.0 refused on dup PRESENCE, which was the right refusal for the wrong reason: the " +
+          "lowered add carries dups and fires none, and the blocker was never their presence");
+        ok(/ACCIDENTALLY TRUE/.test(filmSrc),
+          "ic32_film.c must record why the readback INTERACTION-COUNT check was removed. v0.1.0 " +
+          "asserted the readback fired zero interactions and that was accidentally true on a one-step " +
+          "dup-free fixture: ic32's counter is not plane-classified, so comparing it against zero " +
+          "measures a different quantity from the kernel's plane-level claim, and it fires four on the " +
+          "lowered term whose state is nonetheless correct");
       }
       // ── v1.27: the source language reaches the governed runtime ───────
       {
@@ -951,12 +963,14 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "lowering-refinement@1 must separate OBSERVED execution from FILM-EVIDENCED execution and " +
           "claim only the first. An execution the host observed and one the kernel replayed are " +
           "different claims, and every lowered addition carries a dup cell that ic32_film v0.1.0 refuses");
-        ok(!!lr && /film-dup-cell-present|dup-free one-step/.test(lr.statement ?? ""),
-          "lowering-refinement@1 must name WHERE the film gap is. 'Later work' is not a scope");
+        ok(!!lr && /DUP-\* rule actually becomes enabled/.test(lr.statement ?? ""),
+          "lowering-refinement@1 must name exactly WHAT is still open on the execution leg. 'Later " +
+          "work' is not a scope, and neither is a gap that has moved without the statement moving");
         const lcSrc = existsSync(A("lowering_check.mjs")) ? readFileSync(A("lowering_check.mjs"), "utf8") : "";
-        ok(/native-film-absent-by-refusal/.test(lcSrc),
-          "lowering_check.mjs must ASSERT the film refusal at the fixture the refinement runs on. A gap " +
-          "described in prose and a gap measured by a case are not the same evidence");
+        ok(/execution-leg-is-film-evidenced/.test(lcSrc),
+          "lowering_check.mjs must assert the execution leg's evidence grade at the fixture the " +
+          "refinement runs on, whichever grade it is. Round 25 asserted the film REFUSAL there; round " +
+          "26 asserts the film REPLAY. What must never happen is the grade being stated only in prose");
         ok(/six-identities-stay-distinct/.test(lcSrc),
           "lowering_check.mjs must assert the six identities differ — collapsing any pair turns a " +
           "refinement statement into a renaming");

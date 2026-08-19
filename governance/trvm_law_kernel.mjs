@@ -1414,7 +1414,7 @@ export {
   // the occasion would be checking the occasion. The enumeration primitives go
   // with it so a caller can say WHY a locus did not match rather than only that
   // replay refused; they are the same functions replaySemFilm uses.
-  replaySemFilm, findFloatRedexes, semLocusOf, semFilmIdOf, frameId31,
+  replaySemFilm, findFloatRedexes, semLocusOf, semFilmIdOf, frameId31, fireFloat, newSemFilm, sealSemFilm,
   PLANE_OF, PLANE_POOL_FREE,
 };
 

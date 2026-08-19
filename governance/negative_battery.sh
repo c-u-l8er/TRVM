@@ -1008,8 +1008,7 @@ import json
 g = json.load(open('invariant-grid.json'))
 for e in g['law_registry']['entries']:
     if e['id'] == 'film.native-emission':
-        e['statement'] = e['statement'].replace('DUP-FREE fragment', 'whole corpus').replace(
-            'REFUSED BY NAME', 'handled')
+        e['statement'] = e['statement'].replace('REFUSED BY NAME', 'handled')
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 run_case film-planes-collapsed "must keep the two transition systems apart" "
@@ -1025,10 +1024,28 @@ src = open('bridge/ic32_film.c').read()
 src = src.replace('#define IC32_CANON_NO_MAIN 1', '/* copied instead */')
 open('bridge/ic32_film.c','w').write(src)"
 
-run_case film-quiescence-asserted "must CHECK quiescence and readback purity" "
+run_case film-quiescence-asserted "must CHECK pool-quiescence at the terminal" "
 src = open('bridge/ic32_film.c').read()
-src = src.replace('film-readback-was-not-pure', 'film-readback-assumed-pure')
+src = src.replace('film-not-quiescent-at-terminal', 'film-terminal-noted')
 open('bridge/ic32_film.c','w').write(src)"
+
+run_case film-dup-scope-by-presence "must CHECK pool-quiescence at the terminal" "
+src = open('bridge/ic32_film.c').read()
+src = src.replace('film-dup-rule-enabled', 'film-dup-cell-present')
+open('bridge/ic32_film.c','w').write(src)"
+
+run_case accidental-check-unrecorded "must record why the readback INTERACTION-COUNT check" "
+src = open('bridge/ic32_film.c').read()
+src = src.replace('ACCIDENTALLY TRUE', 'previously verified')
+open('bridge/ic32_film.c','w').write(src)"
+
+run_case film-law-accident-scrubbed "must keep the record of the readback check that was removed" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'film.native-emission':
+        e['statement'] = e['statement'].replace('ACCIDENTALLY TRUE', 'redundant')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 run_case film-emitter-absent "cites bridge/film_check.mjs, which is absent" "
 import os
@@ -1228,18 +1245,18 @@ for e in g['law_registry']['entries']:
                                                 'the execution is evidenced')
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
-run_case film-gap-unlocated "must name WHERE the film gap is" "
+run_case film-gap-unlocated "must name exactly WHAT is still open on the execution leg" "
 import json
 g = json.load(open('invariant-grid.json'))
 for e in g['law_registry']['entries']:
     if e['id'] == 'derivation.lowering-refinement':
-        e['statement'] = e['statement'].replace('film-dup-cell-present', 'a refusal').replace(
-            'dup-free one-step', 'a narrower')
+        e['statement'] = e['statement'].replace('DUP-* rule actually becomes enabled',
+                                                'harder case remains')
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
-run_case film-gap-not-measured "must ASSERT the film refusal at the fixture" "
+run_case film-gap-not-measured "must assert the execution leg" "
 src = open('lowering_check.mjs').read()
-src = src.replace('native-film-absent-by-refusal', 'native-film-noted')
+src = src.replace('execution-leg-is-film-evidenced', 'execution-leg-noted')
 open('lowering_check.mjs','w').write(src)"
 
 run_case identities-may-collapse "must assert the six identities differ" "

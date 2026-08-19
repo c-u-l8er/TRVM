@@ -195,6 +195,33 @@ const F0 = FILM.frames[0];
     `the TRANSITION between them, and nothing is smuggled in through the endpoints`);
 }
 
+/* ── V-4: MULTI-FRAME, and it is the fixture the refinement runs on ──────── */
+{
+  const ADD = "λm.λn.λf.λx.!&0{f0,f1}=f;((m f0) ((n f1) x))";
+  const C2 = "λf.λx.!&1{a,b}=f;(a (b x))";
+  const C3 = "λf.λx.!&2{a,t}=f;!&3{b,c}=t;(a (b (c x)))";
+  const LOWERED = `((${ADD} ${C2}) ${C3})`;
+  const m = await auth.emit(LOWERED, C_FAMILY);
+  const acc = m.ok ? auth.accept(LOWERED, m.emission) : { ok: false };
+  const b = m.ok ? replaySemFilm(LOWERED, m.film, DescFloatRt) : { ok: false };
+  const loci = m.ok ? m.film.frames.map((f) => f.locus).join(" ") : "";
+  R("multi-frame-native-film",
+    m.ok && acc.ok && b.ok && m.film.terminal.steps === 6
+      && loci === "t:fun t: t:bod.bod.fun t:bod.bod t:bod.bod.arg.arg.fun t:bod.bod.arg.arg"
+      && acc.film_provenance === "observed",
+    `the LOWERED add(const 2, const 3) — the term the refinement witness runs on — emits ` +
+    `${m.film?.terminal?.steps} chained frames at ${loci}, and the kernel's replaySemFilm accepts the ` +
+    `whole chain on both runtime classes. The term CARRIES dup cells and not one dup rule ever fires: ` +
+    `the blocker was never their presence, it was firing them, and v0.1.0 refused on the wrong ` +
+    `predicate. Provenance ${acc.film_provenance}`);
+  R("dup-cells-tolerated-rules-refused",
+    m.ok && /!&/.test(LOWERED) && m.film.frames.every((f) => f.rule === "APP-LAM"),
+    `every frame is APP-LAM even though the source term is full of !&L{…} dups — under the ` +
+    `leftmost-tree-app strategy the residual dups are simply dead by the end. A term where a DUP-* rule ` +
+    `DOES become enabled is refused by name (film-dup-rule-enabled); the six dup rules are still ` +
+    `unimplemented and the emitter says so rather than guessing`);
+}
+
 /* ── the forgeries. Each is RE-COMMITTED — frame_id and film_id recomputed —
       so it dies on a semantic check rather than on a bookkeeping hash. A
       forger who cannot also fix up the hashes is not the adversary worth
@@ -324,15 +351,14 @@ forge("F-5 transition from another state",
 {
   const tryEmit = (t) => { try { execFileSync(BIN, [t], { maxBuffer: 1 << 26 }); return "ACCEPTED"; }
     catch (e) { try { return JSON.parse(e.stdout.toString()).reason; } catch { return "CRASH"; } } };
-  const dup = tryEmit("!{a,b} = {λx.x,λy.y}; (a b)");
+  const dup = tryEmit("!{a,b} = {λx.x,λy.y}; (a b)");   // a DUP-SUP redex, enabled
   const nf = tryEmit("λx.x");
-  const many = tryEmit("((λx.x A) (λy.y B))");
   R("emitter-refuses-out-of-scope",
-    dup === "film-dup-cell-present" && nf === "film-no-redex-at-source"
-      && many === "film-source-redex-ambiguous",
-    `a dup-carrying term -> ${dup}; an already-normal term -> ${nf}; a term with two enabled redexes -> ` +
-    `${many}. v0.1.0 handles the dup-free one-step fragment and says so by refusing, rather than by ` +
-    `emitting a frame whose scope a reader has to infer`);
+    dup === "film-dup-rule-enabled" && nf === "film-no-redex-at-source",
+    `a term where a DUP rule is ENABLED -> ${dup}; an already-normal term -> ${nf}. v0.2.0 handles ` +
+    `multi-frame APP-plane films over dup-CARRYING terms and says where it stops by refusing, rather ` +
+    `than by emitting a film whose scope a reader has to infer. v0.1.0's refusal was ` +
+    `film-dup-cell-present — the right refusal for the wrong reason`);
 }
 
 console.log("═".repeat(96));
@@ -342,5 +368,6 @@ console.log(fail
     `(${F0.rule} at "${F0.locus}", ${F0.pre.slice(0, 8)}… → ${F0.post.slice(0, 8)}…) and the law ` +
     `kernel's own replaySemFilm accepted it on two runtime classes without translation. Every field ` +
     `forged individually is refused, and the film's provenance is an execution the host drove rather ` +
-    `than a label anyone may attach. SCOPE: one frame, the dup-free fragment, C→JS only.`);
+    `than a label anyone may attach. SCOPE: APP-plane rules over dup-CARRYING terms, multi-frame, C→JS only; a term where a DUP-* rule ` +
+    `becomes enabled is refused by name.`);
 process.exit(fail ? 1 : 0);

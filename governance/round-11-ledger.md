@@ -655,3 +655,49 @@ An execution the host observed and an execution the kernel replayed are differen
 **144. Gate.** grid **v1.27.0** — 71 entries / 363 citations (transcribed at a moment; the gate derives it) · `derive_protocol.mjs` 0.10.0 · `lowering.mjs` **0.1.0** · negative battery **159/159** with nine new forgeries · bridge 48/48 · native semantic film 14/14 · **lowering refinement 9/9** · derive 45/45 · realm 20/20 · nine paired probes · harness 9/9 · runner 3/3. `scheduler_certificate.json` byte-identical — **twenty-first consecutive round**, and this is the one where that number finally means something beyond hygiene: a source program was compiled, executed on a different runtime in a different language, decoded, and found to agree — and the calculus underneath did not move by a byte.
 
 **What the ladder looks like from here.** Rounds 15–25 were the supplier ladder: label, name, action, oracle. Rounds 12–24 were the evidence ladder: canonical bytes, then a transition, then who ran it. This round is the first that is neither — it is the two ladders meeting, and the thing they were both for. **Next**, in the order the gap now dictates: the six DUP-* rules and the `d:`/`v:` loci in `ic32_film`, then multi-frame films, which upgrades this same witness from observed to film-evidenced without changing the fixture; then the parameterized-vs-instantiated ruling; then `input`.
+
+## Round 26 — an instanceof guard is satisfied by a subclass, and the film gap was mis-stated
+
+**145. P-5, and it is the P-4 lesson one object later.** v0.10.0 built its own semantic registry from data and, one constructor argument on, still **accepted** a ready-made `ObservedExecutionHost` behind `host instanceof ObservedExecutionHost`. A two-method subclass passes it:
+
+```js
+class EvilHost extends ObservedExecutionHost {
+  async run() { throw new Error("must not execute"); }
+  observationOf() { return { implementation_family_id: "impl-c-fake-v1", … }; }
+}
+```
+
+Acceptance returned `ok / validated / fresh_at_check` with `implementation_provenance: "observed"`, `implementation_id: "impl-c-fake-v1"`, `executable_artifact_id: "fake-artifact"`. **Nothing executed** — `run` throws if it is called. The catalog, the digest, hash-then-launch and the observation table were all still correct and all still unconsulted, because **the object that was asked was not the object that holds them.**
+
+```
+@1 the implementation LABEL          @4 the SEMANTIC ORACLE at acceptance
+@2 the registration NAME             @5 the EXECUTION-AUTHORITY OBJECT itself
+@3 the ACTION beside the evidence
+```
+
+**146. And the repair is not a tighter predicate.** **P-5b**: `Object.getPrototypeOf(host) === ObservedExecutionHost.prototype` *would* exclude the subclass — and admits a Proxy over a genuine host that answers `observationOf` however it likes. `instanceof` asks what a thing is **descended from**; the question is **who built it**. Both authorities take an executor **catalog**, which is data, and construct the host themselves against their module's own class binding. `DerivationAuthority.length` is 1: reader is the only required argument, and the other two are the DATA the oracles are built from.
+
+**147. The grid contradicted itself in one file and the checker did not notice.** `lowering_spike.status` still read `"DECLARED, not built."` while three lowering laws above it in the same registry were `PROPERTY-TESTED`. That is the round-21 prose-versus-record class surviving the round that built the thing, and `grid_check` refuses it now — including the requirement that `execution_grade` and `film_grade` be carried **separately**.
+
+**148. Then the film gap turned out to be mis-stated, and measuring it was the whole round.** Round 25 recorded the native execution leg as **OBSERVED, not FILM-EVIDENCED**, on the strength of `ic32_film` refusing the lowered term with `film-dup-cell-present`. Before writing the six DUP rules, the kernel's **own** film for that exact term was measured:
+
+```
+6 frames, every one APP-LAM, all at TREE loci
+t:fun · t: · t:bod.bod.fun · t:bod.bod · t:bod.bod.arg.arg.fun · t:bod.bod.arg.arg
+```
+
+**Not one dup rule ever fires.** The lowered term is full of `!&L{…}` dups — Church addition duplicates its function argument and ic32's net is linear — and under the leftmost-tree-app strategy the residual dups are simply **dead** by the end. So v0.1.0's refusal was the right refusal for the wrong reason: **the blocker was never their presence, it was firing them.** The precondition moved from PRESENCE to ENABLEDNESS, which still has to be computed — the emitter classifies every live dup cell against `dupRule`'s own table to decide quiescence honestly — and `film-dup-rule-enabled` names where it actually stops.
+
+`ic32_film` **0.2.0** emits multi-frame films. The C side reproduces the kernel's six loci exactly, reaches the same `final_sem_id 37800fc6…`, and `replaySemFilm` accepts the whole chain on `FloatRt` **and** `DescFloatRt`. `law:derivation.lowering-refinement@1` goes **OBSERVED → FILM-EVIDENCED** for the first witness, without changing the fixture.
+
+**149. And one check was deleted for being accidentally true.** v0.1.0 asserted the readback fired **zero** interactions. On a one-step dup-free fixture, resolving the state costs nothing at all — so a machine counter that never moved looked like a verified property. It is not one: ic32's `interactions` is **not plane-classified**, it counts every `fire()`, `app_sup` and APP-LAM alike, while the kernel's claim is about **INTERACT-plane** rules. On the lowered term it fires **four**, resolving residual projections the kernel's reference readback resolves by chasing without counting — and the states agree perfectly. The counter was never the claim. Pool-quiescence is what is asserted now, re-checked at the terminal rather than inherited from the loop exit, and the count is **reported**.
+
+This is the sixth time an instrument has been found measuring something adjacent to what it claimed, and the first time the instrument was one this record wrote three sections earlier.
+
+**150. Two other stale predicates, same day.** The v0.1.0 checks `film-dup-cell-present` and `film-not-normal-form-after-one-step` were both scoped to a fixture rather than to a property. `step_at` also refused any path through a substituted variable — correct for one frame, and wrong from the second onward, because after an APP-LAM every path below runs through one. It chases at each level now; the equivalence between the kernel's functional spine rebuild and this in-place slot write is **not asserted**, it is checked by the post-state the kernel recomputes on replay.
+
+**151. Gate.** grid **v1.28.0** — 72 entries / 365 citations (transcribed; the gate derives it) · `derive_protocol.mjs` **0.11.0** · `ic32_film.c` **0.2.0** · negative battery **168/168** with fifteen new forgeries · bridge 48/48 · native semantic film **16/16** · lowering refinement **9/9, film-evidenced** · derive 45/45 · realm 20/20 · **ten** paired probes · harness 9/9 · runner 3/3. `scheduler_certificate.json` byte-identical — twenty-second consecutive round.
+
+**The seam list, eleven long.** …the artifact observed vs the mechanism invoked · re-derivation vs the oracle it re-derives against · and now **an object's lineage vs its provenance**.
+
+**What the measurement changed about the plan.** The next round was scoped as "six DUP rules, the `d:`/`v:` loci, multi-frame films" — three items, of which only the third was needed for the theorem in hand. Measuring first cost one afternoon and saved a round. **Next**: the parameterized-versus-instantiated inputs ruling, which must be settled before the `input` op; then a fixture where a DUP rule genuinely fires, which is what the six rules and the `d:`/`v:` loci are actually for; then `sub`/`mul` and the first named primitive.

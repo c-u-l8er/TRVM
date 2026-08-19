@@ -24,21 +24,21 @@
 
                     REFINEMENT: the two outcome ids are equal
 
-   WHAT IS NOT COVERED, AND IT IS THE ONE THING THIS ROUND CANNOT CLAIM. The
-   native execution leg is EVIDENCED BY OBSERVATION but NOT BY A FILM.
-   ic32_film handles the dup-free one-step fragment, and a lowered addition is
-   neither: it carries dup cells by construction, because Church addition uses
-   its function argument twice and ic32's net is linear. The emitter says so by
-   name — `film-dup-cell-present` — and this file asserts that refusal rather
-   than working around it, so the gap is measured at exactly the fixture the
-   refinement runs on. Closing it means DUP-LAM, DUP-SUP=, DUP-SUP!, DUP-ERA,
-   DUP-VAR and DUP-APP in the emitter, plus the `d:` and `v:` loci, plus
-   multi-frame films. That is the next piece of work and it is now concretely
-   scoped rather than named in the abstract.
+   THE EXECUTION LEG IS NOW FILM-EVIDENCED, and how that happened is worth
+   keeping. Round 25 could only claim OBSERVED: ic32_film v0.1.0 refused this
+   fixture with `film-dup-cell-present`, and this file asserted the refusal
+   rather than working around it. Measuring the KERNEL's film for the same term
+   then showed the refusal was right about the fixture and wrong about the
+   reason — the lowered term carries dup cells and, under the leftmost-tree-app
+   strategy, NOT ONE DUP RULE EVER FIRES. Six APP-LAM frames, tree loci, and the
+   residual dups dead by the end. The blocker was never their presence; it was
+   firing them. So the precondition moved from PRESENCE to ENABLEDNESS and the
+   emitter now emits multi-frame films over dup-carrying terms, refusing by name
+   (`film-dup-rule-enabled`) where a dup rule actually becomes enabled.
 
-   So the honest classification of this file is two verdicts, not one:
-       LOWERING REFINEMENT   witnessed
-       NATIVE FILM EVIDENCE  absent for this fixture, by a checked refusal
+   WHAT IS STILL NOT COVERED: the six DUP-* rules themselves, the `d:` and `v:`
+   loci, and BUDGET_EXHAUSTED terminals. A term needing any of them is refused,
+   not approximated.
 
    Run: node lowering_check.mjs   (exit 0 iff every case holds) */
 import { existsSync } from "node:fs";
@@ -48,7 +48,8 @@ import {
   ProgramRegistry, deriveLocally, DerivationAuthority, canonicalBytes,
 } from "./derive_protocol.mjs";
 import { ObservedExecutionHost } from "./observed_execution_host.mjs";
-import { parse, extrude, FloatRt, semStateId, semStateSignature } from "./trvm_law_kernel.mjs";
+import { parse, extrude, FloatRt, DescFloatRt, semStateId, semStateSignature, replaySemFilm }
+  from "./trvm_law_kernel.mjs";
 import {
   lower, loweringReceipt, decode, outcomeSemId, sourceOutcome, programSemId,
   LOWERING_SEM_ID, DECODE_SEM_ID, LOWERING_SPEC, INPUTS_MODEL,
@@ -225,27 +226,40 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
     `two shapes that carry no dup`);
 }
 
-/* ── 9. THE GAP, measured at the fixture the refinement runs on ──────────── */
+/* ── 9. THE EXECUTION LEG IS FILM-EVIDENCED ──────────────────────────────
+   Round 25 could only say OBSERVED here: ic32_film v0.1.0 refused the fixture
+   on film-dup-cell-present, and the check asserted that refusal rather than
+   working around it. Measuring the JS film for this exact term then showed the
+   blocker was mis-stated — the term CARRIES dup cells and, under the
+   leftmost-tree-app strategy, not one dup rule ever fires. So the precondition
+   moved from PRESENCE to ENABLEDNESS and the film is six APP-LAM frames. */
 {
   const f = await host.run(C_FILM, "TRVM-FILM-EXEC-v1", { argv: [low.target_term] });
-  const reason = f.ok ? (f.output?.ok ? "EMITTED" : f.output.reason) : f.reason;
-  R("native-film-absent-by-refusal", reason === "film-dup-cell-present",
-    `the film emitter REFUSES this fixture: ${reason}. Church addition uses its function argument ` +
-    `twice and ic32's net is linear, so a lowered addition carries dup cells by construction — and ` +
-    `ic32_film v0.1.0 handles the dup-free one-step fragment. So the native execution leg of this ` +
-    `chain is evidenced by OBSERVATION and not by a FILM, and this case asserts the refusal rather ` +
-    `than working around it. Closing it is DUP-LAM / DUP-SUP= / DUP-SUP! / DUP-ERA / DUP-VAR / ` +
-    `DUP-APP plus the d: and v: loci plus multi-frame films — concretely scoped now, not "later"`);
+  const film = f.ok && f.output?.ok ? f.output.film : null;
+  const rep = film ? replaySemFilm(low.target_term, film, FloatRt) : { ok: false };
+  const repB = film ? replaySemFilm(low.target_term, film, DescFloatRt) : { ok: false };
+  const obs = host.observationOf("TRVM-FILM-EXEC-v1", { argv: [low.target_term] }, f.output);
+  R("execution-leg-is-film-evidenced",
+    rep.ok === true && repB.ok === true && film.terminal.steps === 6
+      && film.frames.every((fr) => fr.rule === "APP-LAM")
+      && obs?.implementation_family_id === C_FILM,
+    `the native runtime emits ${film?.terminal?.steps} chained frames for the LOWERED term and the ` +
+    `kernel's own replaySemFilm accepts the whole chain on two runtime classes. So this leg is no ` +
+    `longer OBSERVED-only: an execution the host drove AND a transition sequence an independent ` +
+    `checker replayed are both present, and they were different claims all along. Every frame is ` +
+    `APP-LAM — the dups are carried, never fired — and a term where a DUP rule IS enabled is still ` +
+    `refused by name, which is where the six dup rules remain unbuilt`);
 }
 
 console.log("═".repeat(96));
 console.log(fail
   ? `LOWERING-CHECK: FAIL — ${ran} cases ran, at least one failed`
-  : `LOWERING-CHECK: PASS — ${ran}/${ran}. REFINEMENT WITNESSED: add(const 2, const 3) with inputs={} ` +
-    `lowers to one canonical ic32 term, the native runtime the host launched reduces it to a canonical ` +
-    `normal form, that form decodes structurally to {status:"value",value:5}, and its outcome identity ` +
-    `EQUALS the source evaluator's. Six identities stay distinct. NOT CLAIMED, by a checked refusal: ` +
-    `the native execution leg has no FILM for this fixture — a lowered addition carries dup cells and ` +
-    `ic32_film v0.1.0 is the dup-free one-step fragment. The inputs model stays UNDECIDED and \`input\` ` +
-    `is refused until it is ruled.`);
+  : `LOWERING-CHECK: PASS — ${ran}/${ran}. REFINEMENT WITNESSED, AND FILM-EVIDENCED: ` +
+    `add(const 2, const 3) with inputs={} lowers to one canonical ic32 term; the native runtime the ` +
+    `host launched emits SIX chained semantic-film frames that the law kernel's own replaySemFilm ` +
+    `accepts on two runtime classes, and reduces it to a canonical normal form; that form decodes ` +
+    `structurally to {status:"value",value:5}; and its outcome identity EQUALS the source evaluator's. ` +
+    `Six identities stay distinct. STILL NOT CLAIMED: the six DUP-* rules, the d:/v: loci and ` +
+    `BUDGET_EXHAUSTED terminals — a term needing any of them is refused by name, not approximated. ` +
+    `The inputs model stays UNDECIDED and \`input\` is refused until it is ruled.`);
 process.exit(fail ? 1 : 0);
