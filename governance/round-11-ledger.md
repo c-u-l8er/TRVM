@@ -252,3 +252,36 @@
 **84. Gate.** grid **v1.19.0** — 61 entries / 342 citations · kernel PASS · World 0.12.0 PASS · `--check-receipt` PASS · negative battery **95/95** with three new forgeries · bridge 48/48 · derive **40/40 · 10/10** · probes **2/2+2/2**, **4/4+5/5**, **5/5**, **3/3+4/4** · harness self-test **9/9**. `scheduler_certificate.json` byte-identical — thirteenth consecutive round without the calculus moving.
 
 **Where the three rounds leave it.** 16 froze what a program *means*; 17 fixed what an authority *authenticates* and what acceptance may *claim*; 18 measures the thing that measures all of it. None of the three touched the calculus. The next work is the lowering spike — the pure fragment only, with `program_sem_id`, `lowering_id` and `target_term_sem_id` kept as three identities so the result is a refinement statement rather than a renaming — and then native ic32 films, which remain **not gated** on the derivation language.
+
+---
+
+## Round 19 — outside the semantic projection had become unchecked
+
+**85. Round 16's ruling was right and left a hole nobody had named.** Access order is execution strategy and must not be semantic identity — that stands. What round 16 did not say, and what v0.5.0 therefore did not do, is that a field excluded from the *comparison* still needs a rule of its own. **T-1**, frozen in `probe_traceforge_v06_repro.mjs`: a program reading `a` then `b` traces `[["a",1],["b",1]]`; reverse **only** the trace, leave the canonical footprint and the value untouched, and against v0.5.0 —
+
+```
+validateForeignResult  → { ok: true }
+authority.accept       → { ok: true, validated: true, fresh_at_check: true }
+```
+
+`checkResult` compared the footprint to the *set* of the trace, which a reversal does not change, and `validateForeignResult` compared only the semantic projection, from which the trace was excluded. So the one field carrying execution evidence was the one field nothing looked at.
+
+**86. The flat shape was part of the defect.** `read_trace` sat as a sibling of `value`, `support` and `read_footprint`. A field inside `DeriveResult` reads as authenticated by the same machinery as its neighbours, and this one was not — the exclusion was a comment, and comments do not hold. The envelopes are now explicit, and the trust status of each field is visible in the shape:
+
+```
+semantic_result      value · witness · support · read_footprint
+                     determines portable meaning; this is what
+                     cross-implementation validation compares
+
+execution_evidence   implementation_id · read_trace
+                     conformance and provenance; excluded from the
+                     comparison and NOT excluded from checking
+```
+
+**87. NON-SEMANTIC DOES NOT MEAN UNVERIFIED.** That sentence is the whole round, and it is now the opening clause of `law:derivation.execution-evidence@1`. The core *fixes* evaluation order precisely so that refusals and traces reproduce, so a returned trace disagreeing with the authority's own re-derivation is a **conformance failure of the implementation**, not a disagreement about the program — refused as `trace-nonconforming`. And the two verdicts are reported **separately**: `semantic_agreement: true, trace_conforms: false`. *"Same meaning, different strategy"* and *"wrong answer"* are different diagnoses, and v0.5.0 could make neither because it never looked.
+
+**88. The non-vacuity detector caught two more falsifiers this round's own edits had killed.** `derive-trace-made-semantic` and `derive-semantic-projection-widened` both targeted the literal `NON_SEMANTIC_RESULT_FIELDS`, which the envelope split removed, and `acceptance-claims-committable` targeted a return statement this round rewrote. All three changed nothing and were reported `VACUOUS` rather than passing. That is the third, fourth and fifth time this session — and every one was found by the mechanism rather than by a reader.
+
+**89. Gate.** grid **v1.20.0** — 62 entries / 343 citations · `derive_protocol.mjs` **0.6.0** · kernel PASS · World 0.12.0 PASS · `--check-receipt` PASS · negative battery **100/100** with five new forgeries · bridge 48/48 · derive **41/41 in-process, 10/10 across a realm** · probes **2/2+2/2**, **4/4+5/5**, **5/5**, **3/3+4/4**, **1/1+4/4** · harness **9/9**. `scheduler_certificate.json` byte-identical — fourteenth consecutive round.
+
+**The shape of the last four rounds.** 16 froze what a program *means*. 17 fixed what an authority *authenticates* and what acceptance may *claim*. 18 measured the measurer. 19 is the one that says the quiet part: this system now has enough distinct evidence classes — semantic, execution, transaction — that each needs its own explicit trust boundary, and a field is not safe merely because it has been excluded from someone else's.

@@ -65,8 +65,8 @@ const intent = { intent_id: "i-1", program_sem_id: PID, canonical_inputs: { bias
 const { request: req } = authority.authorize(intent);
 const res = deriveLocally(reg, req).result;
 
-console.log(`grant ${req.grant_id.slice(0, 20)}… cut at fb@1=5 · derived value ${res.value} · ` +
-  `footprint ${JSON.stringify(res.read_footprint.exact)}`);
+console.log(`grant ${req.grant_id.slice(0, 20)}… cut at fb@1=5 · derived value ${res.semantic_result.value} · ` +
+  `footprint ${JSON.stringify(res.semantic_result.read_footprint.exact)}`);
 
 /* ── the World moves under the derivation ─────────────────────────────────── */
 world.write("fb", 9);
@@ -74,14 +74,14 @@ console.log(`World moved: fb is now @${world.res.fb.version}=${world.res.fb.valu
 
 {
   const a = checkResult(res, req);
-  const b = footprintWithinGrant(res.read_footprint, req.read_grants);
+  const b = footprintWithinGrant(res.semantic_result.read_footprint, req.read_grants);
   const c = validateForeignResult(reg, req, res);
   R("containment-era checks", false,
     `checkResult ${a.ok ? "PASS" : a.reason} · footprintWithinGrant ${b.ok ? "PASS" : b.reason} · ` +
     `validateForeignResult ${c.ok ? "PASS" : c.reason} — all three CORRECT, and the value 5 is now wrong ` +
     `in a World where fb is 9. Re-derivation against the same snapshot can never notice this`);
 
-  const f = validateFootprintFresh(world, res.read_footprint);
+  const f = validateFootprintFresh(world, res.semantic_result.read_footprint);
   R("live freshness", !f.ok && /^stale-read: fb granted@1 live@2/.test(f.reason),
     `${f.reason} — the temporal question, asked against the LIVE world and keyed on the footprint`);
 
@@ -114,7 +114,7 @@ console.log(`World moved: fb is now @${world.res.fb.version}=${world.res.fb.valu
   world.scopes["kind:node"] = ["a", "b", "c"];       // the phantom: a node joins
   const acc = auth2.accept(reg2, r2, s2);
   R("scope-digest-staleness", !acc.ok && acc.reason === "stale-scope: kind:node",
-    `${acc.reason} — value ${s2.value} was derived over 2 nodes and the query now answers 3, with no ` +
+    `${acc.reason} — value ${s2.semantic_result.value} was derived over 2 nodes and the query now answers 3, with no ` +
     `exact read having moved. This is the World's phantom-scope case (law:warrant.phantom-scope@1) ` +
     `reaching the derivation boundary`);
 }

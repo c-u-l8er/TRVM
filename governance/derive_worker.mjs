@@ -1,4 +1,4 @@
-/* derive_worker.mjs — v0.4.0 — the far side of the realm boundary.
+/* derive_worker.mjs — v0.6.0 — the far side of the realm boundary.
    Holds NO parent reference of any kind: it receives canonical data on a
    message port, resolves the program from its OWN registry by id, evaluates
    against the grant snapshot the request carries, and posts back canonical
@@ -48,9 +48,9 @@ parentPort.on("message", (req) => {
     // handed canonical data rather than a reader callable
     const out = evaluate(ast, req.read_grants, req.canonical_inputs);
     parentPort.postMessage({ ok: true, result: {
-      request_id: req.request_id, program_sem_id: req.program_sem_id,
-      implementation_id: JS_IMPLEMENTATION_ID, grant_id: req.grant_id,
-      value: out.value, witness: out.witness, support: out.support,
-      read_footprint: out.read_footprint, read_trace: out.read_trace } });
+      request_id: req.request_id, program_sem_id: req.program_sem_id, grant_id: req.grant_id,
+      semantic_result: { value: out.value, witness: out.witness,
+        support: out.support, read_footprint: out.read_footprint },
+      execution_evidence: { implementation_id: JS_IMPLEMENTATION_ID, read_trace: out.read_trace } } });
   } catch (e) { parentPort.postMessage({ ok: false, reason: "derivation-threw: " + e.message }); }
 });

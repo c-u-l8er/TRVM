@@ -89,7 +89,7 @@ function draftAccept(registry, req, res, liveReader, issuer = null) {   // <<< I
   const mine = deriveLocally(registry, req);
   if (!mine.ok) return mine;
   if (canonicalBytes(mine.result) !== canonicalBytes(res)) return { ok: false, reason: "foreign-result-divergence" };
-  for (const [r, ver] of res.read_footprint.exact ?? []) {
+  for (const [r, ver] of res.semantic_result.read_footprint.exact ?? []) {
     const cur = liveReader.read(r);
     if (cur?.version !== ver) return { ok: false, reason: "stale-read: " + r + " granted@" + ver + " live@" + cur?.version };
   }
@@ -109,7 +109,7 @@ const intent = { intent_id: "i-1", program_sem_id: PID, canonical_inputs: { bias
   const acc = draftAccept(reg, forged, res, world, iss);
   R("I-1 frozen-draft", !(iss.wasIssued(forged.request_id, forged.grant_id) && acc.ok),
     `bias 0 -> 1000 with request_id and grant_id untouched: wasIssued ${iss.wasIssued(forged.request_id, forged.grant_id)}, ` +
-    `value ${res.value}, accept ok=${acc.ok} committable=${acc.committable} — the authority accepted ` +
+    `value ${res.semantic_result.value}, accept ok=${acc.ok} committable=${acc.committable} — the authority accepted ` +
     `request content it never issued, because issuance was keyed on the GRANT`);
 }
 {
@@ -130,9 +130,9 @@ const intent = { intent_id: "i-1", program_sem_id: PID, canonical_inputs: { bias
   const { request } = iss.authorize(intent, { canonical_inputs: { bias: 1000 } });
   const res = deriveLocally(reg, request).result;
   const acc = draftAccept(reg, request, res, world, iss);
-  R("I-2 frozen-draft", !(acc.ok && res.value === 1005),
+  R("I-2 frozen-draft", !(acc.ok && res.semantic_result.value === 1005),
     `authorize(intent, {canonical_inputs:{bias:1000}}) produced an AUTHORITY-ISSUED request evaluating ` +
-    `to ${res.value}, accepted (committable ${acc.committable}) — \`...over\` was spread after every ` +
+    `to ${res.semantic_result.value}, accepted (committable ${acc.committable}) — \`...over\` was spread after every ` +
     `field the authority had just decided`);
 }
 {
@@ -161,7 +161,7 @@ const intent = { intent_id: "i-1", program_sem_id: PID, canonical_inputs: { bias
   const fake = draftAccept(reg, honest, hres,
     { read: () => ({ value: 5, version: 1 }), scope: (q) => "scope:" + q }, iss);
   R("I-3 frozen-draft", !(noIssuer.ok && !real.ok && fake.ok),
-    `a wholly self-made request accepted with the issuer OMITTED (ok=${noIssuer.ok}, value ${res.value}); ` +
+    `a wholly self-made request accepted with the issuer OMITTED (ok=${noIssuer.ok}, value ${res.semantic_result.value}); ` +
     `and after fb@1->fb@2 the real reader refuses (${real.reason}) while a fake reader replaying the ` +
     `grant returns committable=${fake.committable}. Acceptance was a pure function whose caller ` +
     `supplied both proofs of authority`);

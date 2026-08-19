@@ -7,10 +7,16 @@ import {
   ProgramRegistry, programSemId, canonicalBytes, checkRequest, checkResult,
   deriveLocally, validateForeignResult, evaluate, resolveGrants, grantId,
   footprintWithinGrant, semanticProjection, JS_IMPLEMENTATION_ID,
-  CORE_SPEC, CORE_SEM_ID, validateProgram, SEMANTIC_RESULT_FIELDS,
+  CORE_SPEC, CORE_SEM_ID, validateProgram, SEMANTIC_RESULT_FIELDS, EXECUTION_ENVELOPE_FIELDS,
+  validateTraceConformance,
   validateFootprintFresh, DerivationAuthority, checkIntent, requestSemId,
 } from "./derive_protocol.mjs";
 import { createHash } from "node:crypto";
+
+// forgeries must now reach INSIDE the envelope they are forging, which is
+// itself the round's point: the shape says which trust status a field carries
+const withSem = (r, o) => ({ ...r, semantic_result: { ...r.semantic_result, ...o } });
+const withExec = (r, o) => ({ ...r, execution_evidence: { ...r.execution_evidence, ...o } });
 
 const rows = [];
 let fail = false;
@@ -78,12 +84,12 @@ const mkReq = (over = {}) => {
 {
   const r = deriveLocally(reg, mkReq());
   const r2 = deriveLocally(reg, mkReq({ canonical_inputs: { bias: 1000 } }));
-  R("derivation-honest", r.ok && r.result.value === 5 && r2.ok && r2.result.value === 1005,
-    `bias 0 -> ${r.ok && r.result.value}, bias 1000 -> ${r2.ok && r2.result.value}; the bias is an ` +
+  R("derivation-honest", r.ok && r.result.semantic_result.value === 5 && r2.ok && r2.result.semantic_result.value === 1005,
+    `bias 0 -> ${r.ok && r.result.semantic_result.value}, bias 1000 -> ${r2.ok && r2.result.semantic_result.value}; the bias is an ` +
     `INPUT of the request, so it is visible in canonical_inputs instead of hiding in a lexical cell`);
-  R("footprint-recorded", r.ok && canonicalBytes(r.result.read_footprint.exact) === canonicalBytes([["fb", 1]])
-      && r.result.witness.reads === 1,
-    `read_footprint.exact = ${JSON.stringify(r.ok && r.result.read_footprint.exact)} — reads are tracked ` +
+  R("footprint-recorded", r.ok && canonicalBytes(r.result.semantic_result.read_footprint.exact) === canonicalBytes([["fb", 1]])
+      && r.result.semantic_result.witness.reads === 1,
+    `read_footprint.exact = ${JSON.stringify(r.ok && r.result.semantic_result.read_footprint.exact)} — reads are tracked ` +
     `by the evaluator on access, not declared by the caller`);
 }
 
@@ -117,9 +123,9 @@ const mkReq = (over = {}) => {
   const { read_grants, grant_id } = snapshot({ "secret:key": 42 });
   const r = deriveLocally(reg3, { request_id: "x", program_sem_id: XID,
     canonical_inputs: { __reads: "an ordinary input" }, read_grants, grant_id });
-  R("grant-not-reachable-as-input", r.ok && r.result.value === "an ordinary input"
-      && r.result.read_footprint.exact.length === 0,
-    `{op:"input",name:"__reads"} returns ${JSON.stringify(r.ok && r.result.value)} — at v0.1.0 it ` +
+  R("grant-not-reachable-as-input", r.ok && r.result.semantic_result.value === "an ordinary input"
+      && r.result.semantic_result.read_footprint.exact.length === 0,
+    `{op:"input",name:"__reads"} returns ${JSON.stringify(r.ok && r.result.semantic_result.value)} — at v0.1.0 it ` +
     `returned the entire authority grant table with witness.reads = 0. read_grants is a separate ` +
     `request field and the input op cannot address it (W-1, frozen in probe_derivegrant_v02_repro.mjs)`);
 
@@ -129,9 +135,9 @@ const mkReq = (over = {}) => {
   const r2 = deriveLocally(reg, { request_id: "w", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, read_grants: wide.read_grants, grant_id: wide.grant_id });
   R("footprint-is-the-access-subset",
-    r2.ok && Object.keys(wide.read_grants.exact).length === 3 && r2.result.read_footprint.exact.length === 1,
+    r2.ok && Object.keys(wide.read_grants.exact).length === 3 && r2.result.semantic_result.read_footprint.exact.length === 1,
     `grant covers ${Object.keys(wide.read_grants.exact).sort().join(",")} (3 resources); the footprint ` +
-    `records ${JSON.stringify(r2.result.read_footprint.exact)} (1). Defining the footprint AS the grant ` +
+    `records ${JSON.stringify(r2.result.semantic_result.read_footprint.exact)} (1). Defining the footprint AS the grant ` +
     `would invalidate this derivation whenever unused_a moved, which it does not depend on`);
 
   // grant_id binds the snapshot: naming one grant while carrying another fails
@@ -147,14 +153,18 @@ const mkReq = (over = {}) => {
   const req = mkReq();
   const honest = deriveLocally(reg, req).result;
   // over-claiming: a footprint naming a resource the authority never granted
-  const overclaim = validateForeignResult(reg, req, { ...honest,
-    witness: { ...honest.witness, reads: 2 },
-    read_footprint: { exact: [["fb", 1], ["secret:key", 1]], predicates: [] },
-    read_trace: { exact: [["fb", 1], ["secret:key", 1]], predicates: [] } });
+  const overclaim = validateForeignResult(reg, req, {
+    ...honest,
+    semantic_result: { ...honest.semantic_result,
+      witness: { ...honest.semantic_result.witness, reads: 2 },
+      read_footprint: { exact: [["fb", 1], ["secret:key", 1]], predicates: [] } },
+    execution_evidence: { ...honest.execution_evidence,
+      read_trace: { exact: [["fb", 1], ["secret:key", 1]], predicates: [] } } });
   // version forgery: the right resource at a version the grant does not carry
-  const wrongVer = validateForeignResult(reg, req, { ...honest,
-    read_footprint: { exact: [["fb", 99]], predicates: [] },
-    read_trace: { exact: [["fb", 99]], predicates: [] } });
+  const wrongVer = validateForeignResult(reg, req, {
+    ...honest,
+    semantic_result: { ...honest.semantic_result, read_footprint: { exact: [["fb", 99]], predicates: [] } },
+    execution_evidence: { ...honest.execution_evidence, read_trace: { exact: [["fb", 99]], predicates: [] } } });
   // and the subset check is INDEPENDENT of re-derivation: it fires here even
   // though the value is honest and would have re-derived equal
   const direct = footprintWithinGrant({ exact: [["nope", 1]], predicates: [] }, req.read_grants);
@@ -165,7 +175,7 @@ const mkReq = (over = {}) => {
     `over-claimed read -> ${overclaim.reason}; forged version -> ${wrongVer.reason}. Both refused ` +
     `against the SNAPSHOT rather than against the executor's word, before any re-derivation`);
   // the witness may not disagree with the footprint it accompanies
-  const inconsistent = checkResult({ ...honest, witness: { op: "add", reads: 7, scopes: 0 } }, req);
+  const inconsistent = checkResult(withSem(honest, { witness: { op: "add", reads: 7, scopes: 0 } }), req);
   R("witness-matches-footprint", !inconsistent.ok && inconsistent.reason === "result-witness-inconsistent",
     `a result claiming 7 reads with a 1-entry footprint is refused: ${inconsistent.reason}`);
 }
@@ -175,7 +185,7 @@ const mkReq = (over = {}) => {
   const req = mkReq();
   const honest = deriveLocally(reg, req).result;
   const good = validateForeignResult(reg, req, honest);
-  const lied = validateForeignResult(reg, req, { ...honest, value: 1005 });
+  const lied = validateForeignResult(reg, req, withSem(honest, { value: 1005 }));
   const wrongReq = validateForeignResult(reg, req, { ...honest, request_id: "req-2" });
   const wrongProg = validateForeignResult(reg, req, { ...honest, program_sem_id: programSemId({ op: "const", value: 1 }) });
   const wrongGrant = validateForeignResult(reg, req, { ...honest, grant_id: grantId({ exact: {}, predicates: {} }) });
@@ -193,25 +203,25 @@ const mkReq = (over = {}) => {
 {
   const req = mkReq();
   const honest = deriveLocally(reg, req).result;
-  R("implementation-id-asserted", honest.implementation_id === JS_IMPLEMENTATION_ID,
-    `the result carries ${honest.implementation_id}, emitted by the evaluator that ran. At v0.1.0 the ` +
+  R("implementation-id-asserted", honest.execution_evidence.implementation_id === JS_IMPLEMENTATION_ID,
+    `the result carries ${honest.execution_evidence.implementation_id}, emitted by the evaluator that ran. At v0.1.0 the ` +
     `REQUEST carried implementation_id, nothing checked it and the result carried none (W-2)`);
   const demand = deriveLocally(reg, { ...req, expected_implementation_id: "impl-c-pretend-v9" });
   R("implementation-requirement-refused", !demand.ok
       && demand.reason === "implementation-mismatch: want impl-c-pretend-v9, this is " + JS_IMPLEMENTATION_ID,
     `a request demanding a C executor is refused BY the JS executor (${demand.reason}) — the caller's ` +
     `field states a requirement and the executor answers it, so impersonation has no path`);
-  const malformed = checkResult({ ...honest, implementation_id: "js" }, req);
+  const malformed = checkResult(withExec(honest, { implementation_id: "js" }), req);
   R("implementation-id-well-formed", !malformed.ok && malformed.reason === "result-implementation-id-malformed",
     `a result whose implementation_id is not an impl- identity is refused: ${malformed.reason}`);
 
   // THE POINT OF THE SPLIT: a conforming foreign implementation validates, and
   // its provenance is reported rather than compared away. Comparing whole
   // results would make cross-implementation validation fail by construction.
-  const asIfC = { ...honest, implementation_id: "impl-c-derive-v0.2.0" };
+  const asIfC = withExec(honest, { implementation_id: "impl-c-derive-v0.6.0" });
   const v = validateForeignResult(reg, req, asIfC);
   const sameSemantics = canonicalBytes(semanticProjection(asIfC)) === canonicalBytes(semanticProjection(honest));
-  R("semantic-projection-is-portable", v.ok && v.implementation_id === "impl-c-derive-v0.2.0" && sameSemantics,
+  R("semantic-projection-is-portable", v.ok && v.implementation_id === "impl-c-derive-v0.6.0" && sameSemantics,
     `a result identical in semantics but produced by impl-c-derive-v0.2.0 validates, and the authority ` +
     `records WHO ran it (${v.implementation_id}). program_sem_id is equal across implementations; ` +
     `implementation_id is outside the semantic projection, which is what makes a portable film possible`);
@@ -294,15 +304,16 @@ const mkReq = (over = {}) => {
     `was visited — declaring the order semantic would make two correct implementations diverge over a ` +
     `field neither of them considers semantic`);
   R("trace-is-outside-the-semantic-projection",
-    !SEMANTIC_RESULT_FIELDS.includes("read_trace") && !SEMANTIC_RESULT_FIELDS.includes("implementation_id")
-      && SEMANTIC_RESULT_FIELDS.includes("read_footprint"),
-    `semantic projection = [${SEMANTIC_RESULT_FIELDS.join(", ")}] — the trace is kept because the film ` +
-    `plane wants access order, and excluded because semantics do not. Same reasoning that keeps ` +
-    `ref_interactions out of conformance identity`);
+    !SEMANTIC_RESULT_FIELDS.includes("execution_evidence")
+      && SEMANTIC_RESULT_FIELDS.includes("semantic_result")
+      && canonicalBytes(EXECUTION_ENVELOPE_FIELDS) === canonicalBytes(["implementation_id", "read_trace"]),
+    `semantic projection = [${SEMANTIC_RESULT_FIELDS.join(", ")}]; execution evidence = ` +
+    `[${EXECUTION_ENVELOPE_FIELDS.join(", ")}]. Excluded from the comparison and NOT excluded from ` +
+    `checking — non-semantic does not mean unverified, which is what v0.5.0 got wrong`);
   // a result carrying a sequence where the set is required is REFUSED, not normalized
   const req = mkReq();
   const honest = deriveLocally(reg, req).result;
-  const resequenced = { ...honest, read_footprint: { exact: [["fb", 1], ["fb", 1]], predicates: [] } };
+  const resequenced = withSem(honest, { read_footprint: { exact: [["fb", 1], ["fb", 1]], predicates: [] } });
   const c = checkResult(resequenced, req);
   R("footprint-set-is-checked-not-normalized",
     !c.ok && c.reason === "result-footprint-not-canonical-set: exact",

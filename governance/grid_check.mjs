@@ -192,7 +192,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -645,12 +645,33 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
       "export const SEMANTIC_RESULT_FIELDS", "footprint-ungranted-read", "request-grant-id-mismatch",
       "implementation-mismatch: want"])
       ok(dsrc.includes(s), `derive_protocol.mjs missing v0.2.0 construct "${s}"`);
-    ok(/NON_SEMANTIC_RESULT_FIELDS = \["implementation_id", "read_trace"\]/.test(dsrc) &&
-       /SEMANTIC_RESULT_FIELDS = RESULT_FIELDS\.filter\(\(f\) => !NON_SEMANTIC_RESULT_FIELDS\.includes\(f\)\)/.test(dsrc),
-      "derive_protocol.mjs must exclude implementation_id AND read_trace from the semantic projection — " +
-      "the first would make cross-implementation validation fail by construction; the second would make " +
-      "access ORDER a semantic identity, so two correct implementations visiting {a,b} in different " +
-      "orders would diverge over a field neither considers semantic");
+    ok(/SEMANTIC_RESULT_FIELDS = \["request_id", "program_sem_id", "grant_id", "semantic_result"\]/.test(dsrc) &&
+       /EXECUTION_ENVELOPE = \["implementation_id", "read_trace"\]/.test(dsrc),
+      "derive_protocol.mjs must keep implementation_id and read_trace in an execution_evidence envelope " +
+      "OUTSIDE the semantic projection — the first would make cross-implementation validation fail by " +
+      "construction; the second would make access ORDER a semantic identity, so two correct " +
+      "implementations visiting {a,b} in different orders would diverge over a field neither considers " +
+      "semantic");
+    // ── v1.20: outside the projection is not the same as unchecked ──────
+    ok(dsrc.includes("export function validateTraceConformance") &&
+       /trace-nonconforming/.test(dsrc),
+      "derive_protocol.mjs missing validateTraceConformance — v0.5.0 excluded read_trace from the " +
+      "semantic projection and then checked NOTHING about it, so a reversed trace with an untouched " +
+      "footprint and value validated and was accepted (probe_traceforge_v06_repro.mjs T-1)");
+    ok(/semantic_agreement: true, trace_conforms: false/.test(dsrc),
+      "validateForeignResult must report semantic agreement and trace conformance SEPARATELY — " +
+      "'same meaning, different strategy' and 'wrong answer' are different diagnoses");
+    {
+      const ee = entries.find((x) => x.id === "derivation.execution-evidence");
+      ok(!!ee && ee.canonical === true && ee.status === "PROPERTY-TESTED",
+        "law derivation.execution-evidence@1 missing, non-canonical, or not PROPERTY-TESTED");
+      ok(!!ee && /NON-SEMANTIC DOES NOT MEAN UNVERIFIED/.test(ee.statement ?? ""),
+        "derivation.execution-evidence@1 no longer states that non-semantic does not mean unverified — " +
+        "that sentence is the whole round");
+      const man5 = existsSync(A("artifacts.json")) ? JSON.parse(readFileSync(A("artifacts.json"), "utf8")) : {};
+      ok(!!man5.derivation_boundary?.two_envelopes,
+        "artifacts.json derivation_boundary missing two_envelopes (v1.20)");
+    }
     // ── v1.17: the frozen core ───────────────────────────────────────────
     for (const s2 of ["export const CORE_SPEC", "export const CORE_SEM_ID", "export function validateProgram"])
       ok(dsrc.includes(s2), `derive_protocol.mjs missing v0.4.0 construct "${s2}"`);

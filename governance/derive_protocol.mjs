@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   derive_protocol.mjs — v0.5.0 — the serialized derivation boundary
+   derive_protocol.mjs — v0.6.0 — the serialized derivation boundary
 
    law:derivation.environment-confinement@1 is FALSIFIED under the arbitrary-
    closure measureFn API, and the record says closure comes from REPLACING the
@@ -76,7 +76,7 @@
 import { createHash } from "node:crypto";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const PROTOCOL_VERSION = "0.5.0";
+export const PROTOCOL_VERSION = "0.6.0";
 
 /* ── the canonical value domain, shared with the World ────────────────────
    Deliberately a copy of the World's rule rather than an import: this module
@@ -355,25 +355,64 @@ export function resolveGrants(reader, want = {}) {
    between provenance and decoration. */
 const REQUEST_REQUIRED = ["request_id", "program_sem_id", "canonical_inputs", "read_grants", "grant_id"];
 const REQUEST_OPTIONAL = ["expected_implementation_id"];
-const RESULT_FIELDS = ["request_id", "program_sem_id", "implementation_id", "grant_id",
-  "value", "witness", "support", "read_footprint", "read_trace"];
-/** the portable half of a result: everything two implementations must agree on.
- *  TWO fields are deliberately OUT.
- *    implementation_id — two conforming implementations of the same program
- *      produce different executable provenance and identical semantics, and
- *      comparing whole results would make cross-implementation validation fail
- *      by construction.
- *    read_trace — access ORDER with repeats is execution strategy. Depending on
- *      {a,b} is one dependency set however it was visited, and a-then-b must not
- *      be a different semantic identity from b-then-a. The trace is kept because
- *      the film plane wants it, and kept OUT because semantics do not. */
-const NON_SEMANTIC_RESULT_FIELDS = ["implementation_id", "read_trace"];
-export const SEMANTIC_RESULT_FIELDS = RESULT_FIELDS.filter((f) => !NON_SEMANTIC_RESULT_FIELDS.includes(f));
+/* ── TWO ENVELOPES, because non-semantic did not mean unverified ──────────
+   v0.5.0 kept read_trace as a sibling of value and read_footprint, excluded it
+   from the semantic projection, and then checked nothing about it. A foreign
+   result whose trace was simply REVERSED — same footprint, same value — passed
+   validateForeignResult and was accepted. Frozen as T-1 in
+   probe_traceforge_v06_repro.mjs.
+
+   The exclusion was right and the flat shape was what made it read as
+   permission. A field inside DeriveResult looks authenticated by the same
+   machinery as its neighbours; this one was not. So the envelopes are now
+   explicit, and each carries its own rule:
+
+     SEMANTIC RESULT      value · witness · support · read_footprint
+       determines portable meaning. Two conforming implementations must agree
+       on these canonical bytes, and this is what cross-implementation
+       validation compares.
+
+     EXECUTION EVIDENCE   implementation_id · read_trace
+       conformance and provenance, NOT semantic identity. Excluded from the
+       comparison and NOT excluded from checking: the core promises
+       deterministic left-to-right evaluation, so a trace that disagrees with
+       the authority's own re-derivation is a conformance failure of the
+       implementation rather than a disagreement about the program.
+
+   NON-SEMANTIC DOES NOT MEAN UNVERIFIED. That sentence is the whole round.
+   Later, the semantic film supersedes this trace check — it witnesses the
+   target machine's execution properly — and execution_evidence is where it
+   will live. */
+const RESULT_FIELDS = ["request_id", "program_sem_id", "grant_id", "semantic_result", "execution_evidence"];
+const SEMANTIC_ENVELOPE = ["value", "witness", "support", "read_footprint"];
+const EXECUTION_ENVELOPE = ["implementation_id", "read_trace"];
+/** the portable half: the binding plus the semantic envelope, and nothing from
+ *  execution evidence. Two implementations of the same program produce
+ *  different provenance and different-but-conforming strategy metadata while
+ *  meaning the same thing. */
+export const SEMANTIC_RESULT_FIELDS = ["request_id", "program_sem_id", "grant_id", "semantic_result"];
+export const SEMANTIC_ENVELOPE_FIELDS = SEMANTIC_ENVELOPE;
+export const EXECUTION_ENVELOPE_FIELDS = EXECUTION_ENVELOPE;
 
 export function semanticProjection(res) {
   const out = {};
   for (const f of SEMANTIC_RESULT_FIELDS) out[f] = res[f];
   return out;
+}
+
+/** TRACE CONFORMANCE — the check v0.5.0 did not have.
+ *  The core fixes evaluation order (depth-first, `a` before `b`) precisely so
+ *  that refusals and traces reproduce. An implementation whose trace disagrees
+ *  with an honest re-derivation has not implemented TRVM-DERIVE-CORE-v1, even
+ *  when it computed the same value from the same dependencies — so this is a
+ *  CONFORMANCE verdict about the executor, reported separately from semantic
+ *  agreement rather than folded into it. */
+export function validateTraceConformance(localTrace, foreignTrace) {
+  for (const kind of ["exact", "predicates"]) {
+    if (canonicalBytes(foreignTrace?.[kind] ?? null) !== canonicalBytes(localTrace[kind]))
+      return { ok: false, reason: "trace-nonconforming: " + kind };
+  }
+  return { ok: true };
 }
 
 export function checkRequest(req) {
@@ -408,37 +447,46 @@ export function checkResult(res, req) {
   if (res === null || typeof res !== "object" || Array.isArray(res))
     return { ok: false, reason: "result-not-an-object" };
   const keys = Object.keys(res).sort();
-  const want = [...RESULT_FIELDS].sort();
-  if (canonicalBytes(keys) !== canonicalBytes(want))
+  if (canonicalBytes(keys) !== canonicalBytes([...RESULT_FIELDS].sort()))
     return { ok: false, reason: "result-schema: [" + keys.join(",") + "]" };
   try { canonicalBytes(res); }
   catch (e) { return { ok: false, reason: "result-" + e.message }; }
+  for (const [field, want] of [["semantic_result", SEMANTIC_ENVELOPE], ["execution_evidence", EXECUTION_ENVELOPE]]) {
+    const env = res[field];
+    if (env === null || typeof env !== "object" || Array.isArray(env))
+      return { ok: false, reason: "result-" + field + "-not-an-object" };
+    const ek = Object.keys(env).sort();
+    if (canonicalBytes(ek) !== canonicalBytes([...want].sort()))
+      return { ok: false, reason: "result-" + field + "-schema: [" + ek.join(",") + "]" };
+  }
   // a result may not claim to be about a different request, program or grant
   if (res.request_id !== req.request_id) return { ok: false, reason: "result-request-mismatch" };
   if (res.program_sem_id !== req.program_sem_id) return { ok: false, reason: "result-program-mismatch" };
   if (res.grant_id !== req.grant_id) return { ok: false, reason: "result-grant-mismatch" };
-  if (typeof res.implementation_id !== "string" || !res.implementation_id.startsWith("impl-"))
+  const impl = res.execution_evidence.implementation_id;
+  if (typeof impl !== "string" || !impl.startsWith("impl-"))
     return { ok: false, reason: "result-implementation-id-malformed" };
-  const fp = res.read_footprint;
+  const fp = res.semantic_result.read_footprint;
   if (fp === null || typeof fp !== "object" || !Array.isArray(fp.exact) || !Array.isArray(fp.predicates))
     return { ok: false, reason: "result-footprint-malformed" };
-  const tr = res.read_trace;
+  const tr = res.execution_evidence.read_trace;
   if (tr === null || typeof tr !== "object" || !Array.isArray(tr.exact) || !Array.isArray(tr.predicates))
     return { ok: false, reason: "result-trace-malformed" };
-  // the footprint must BE the canonical set: sorted, deduplicated. A result
-  // carrying a sequence where a set is required is refused rather than
+  // the footprint must BE the canonical set of the trace: sorted, deduplicated.
+  // A result carrying a sequence where a set is required is refused rather than
   // silently normalized, because normalizing on receipt would let two
   // implementations disagree about the bytes they each committed to.
   for (const kind of ["exact", "predicates"]) {
     const seen = new Map();
-    for (const p of tr[kind]) seen.set(canonicalBytes(p), p);
+    for (const pr of tr[kind]) seen.set(canonicalBytes(pr), pr);
     const want = [...seen.values()].sort((x, y) => canonicalBytes(x) < canonicalBytes(y) ? -1 : 1);
     if (canonicalBytes(fp[kind]) !== canonicalBytes(want))
       return { ok: false, reason: "result-footprint-not-canonical-set: " + kind };
   }
   // the witness must agree with the footprint it accompanies, checked before
   // any re-derivation so a lying claim is refused on its own evidence
-  if (res.witness?.reads !== fp.exact.length || res.witness?.scopes !== fp.predicates.length)
+  const w = res.semantic_result.witness;
+  if (w?.reads !== fp.exact.length || w?.scopes !== fp.predicates.length)
     return { ok: false, reason: "result-witness-inconsistent" };
   return { ok: true };
 }
@@ -474,7 +522,7 @@ export function footprintWithinGrant(fp, read_grants) {
    reader callable, which was the closure-authority shape this whole line of
    work exists to remove — in-process only, but the same species. Now the
    evaluator receives nothing but canonical data. */
-export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.5.0";
+export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.6.0";
 
 function readerFromGrants(read_grants) {
   return {
@@ -572,10 +620,12 @@ export function deriveLocally(registry, req, implementationId = JS_IMPLEMENTATIO
   const res = {
     request_id: req.request_id,
     program_sem_id: req.program_sem_id,
-    implementation_id: implementationId,
     grant_id: req.grant_id,
-    value: out.value, witness: out.witness,
-    support: out.support, read_footprint: out.read_footprint, read_trace: out.read_trace,
+    semantic_result: {
+      value: out.value, witness: out.witness,
+      support: out.support, read_footprint: out.read_footprint,
+    },
+    execution_evidence: { implementation_id: implementationId, read_trace: out.read_trace },
   };
   const rr = checkResult(res, req);
   if (!rr.ok) return { ok: false, reason: rr.reason };
@@ -594,11 +644,12 @@ export function deriveLocally(registry, req, implementationId = JS_IMPLEMENTATIO
 export function validateForeignResult(registry, req, res) {
   const rr = checkResult(res, req);
   if (!rr.ok) return { ok: false, reason: rr.reason };
-  const fw = footprintWithinGrant(res.read_footprint, req.read_grants);
+  const fw = footprintWithinGrant(res.semantic_result.read_footprint, req.read_grants);
   if (!fw.ok) return { ok: false, reason: fw.reason };
-  if ("expected_implementation_id" in req && res.implementation_id !== req.expected_implementation_id)
+  const impl = res.execution_evidence.implementation_id;
+  if ("expected_implementation_id" in req && impl !== req.expected_implementation_id)
     return { ok: false, reason: "implementation-mismatch: want " + req.expected_implementation_id +
-      ", result claims " + res.implementation_id };
+      ", result claims " + impl };
   // the local re-derivation is JS by definition, so the caller's requirement —
   // which may name a foreign executor — is dropped rather than applied to us
   const { expected_implementation_id: _requirement, ...localReq } = req;
@@ -606,9 +657,15 @@ export function validateForeignResult(registry, req, res) {
   if (!mine.ok) return { ok: false, reason: mine.reason };
   const a = canonicalBytes(semanticProjection(mine.result));
   const b = canonicalBytes(semanticProjection(res));
-  return a === b
-    ? { ok: true, implementation_id: res.implementation_id }
-    : { ok: false, reason: "foreign-result-divergence" };
+  if (a !== b) return { ok: false, reason: "foreign-result-divergence", semantic_agreement: false };
+  // SEMANTIC AGREEMENT AND TRACE CONFORMANCE ARE TWO VERDICTS. Reporting them
+  // separately is the point: "same meaning, different strategy" and "wrong
+  // answer" are different diagnoses, and v0.5.0 could make neither because it
+  // never looked at the trace at all.
+  const tc = validateTraceConformance(mine.result.execution_evidence.read_trace,
+    res.execution_evidence.read_trace);
+  if (!tc.ok) return { ok: false, reason: tc.reason, semantic_agreement: true, trace_conforms: false };
+  return { ok: true, semantic_agreement: true, trace_conforms: true, implementation_id: impl };
 }
 
 /* ── FRESHNESS: a different question from containment ─────────────────────
@@ -783,9 +840,10 @@ export class DerivationAuthority {
     if (!iss.ok) return { ok: false, reason: iss.reason };
     const v = validateForeignResult(registry, req, res);
     if (!v.ok) return v;
-    const f = validateFootprintFresh(this.#reader, res.read_footprint);
+    const f = validateFootprintFresh(this.#reader, res.semantic_result.read_footprint);
     if (!f.ok) return { ok: false, reason: f.reason };
-    return { ok: true, validated: true, fresh_at_check: true, implementation_id: res.implementation_id };
+    return { ok: true, validated: true, fresh_at_check: true, trace_conforms: v.trace_conforms,
+      implementation_id: res.execution_evidence.implementation_id };
   }
 }
 Object.freeze(DerivationAuthority.prototype);

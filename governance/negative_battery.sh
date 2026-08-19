@@ -594,10 +594,10 @@ src = open('derive_worker.mjs').read()
 src = src.replace('implementation_id: JS_IMPLEMENTATION_ID,', 'implementation_id: req.expected_implementation_id,')
 open('derive_worker.mjs','w').write(src)"
 
-run_case derive-semantic-projection-widened "must exclude implementation_id AND read_trace" "
+run_case derive-semantic-projection-widened "execution_evidence envelope OUTSIDE the semantic projection" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('NON_SEMANTIC_RESULT_FIELDS = [\"implementation_id\", \"read_trace\"]',
-                  'NON_SEMANTIC_RESULT_FIELDS = [\"read_trace\"]')
+src = src.replace('SEMANTIC_RESULT_FIELDS = [\"request_id\", \"program_sem_id\", \"grant_id\", \"semantic_result\"]',
+                  'SEMANTIC_RESULT_FIELDS = [\"request_id\", \"program_sem_id\", \"grant_id\", \"semantic_result\", \"execution_evidence\"]')
 open('derive_protocol.mjs','w').write(src)"
 
 run_case derive-footprint-check-removed "missing v0.2.0 construct" "
@@ -656,10 +656,10 @@ src = open('derive_protocol.mjs').read()
 src = src.replace('throw new Error(\"program-type: \" + op + \" of non-number\")', 'void 0')
 open('derive_protocol.mjs','w').write(src)"
 
-run_case derive-trace-made-semantic "must exclude implementation_id AND read_trace" "
+run_case derive-trace-made-semantic "execution_evidence envelope OUTSIDE the semantic projection" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('NON_SEMANTIC_RESULT_FIELDS = [\"implementation_id\", \"read_trace\"]',
-                  'NON_SEMANTIC_RESULT_FIELDS = [\"implementation_id\"]')
+src = src.replace('EXECUTION_ENVELOPE = [\"implementation_id\", \"read_trace\"]',
+                  'EXECUTION_ENVELOPE = [\"implementation_id\"]')
 open('derive_protocol.mjs','w').write(src)"
 
 run_case footprint-set-ruling-dropped "dependency SET" "
@@ -705,8 +705,8 @@ open('derive_protocol.mjs','w').write(src)"
 
 run_case acceptance-claims-committable "must not return .committable" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('return { ok: true, validated: true, fresh_at_check: true, implementation_id: res.implementation_id };',
-                  'return { ok: true, validated: true, fresh_at_check: true, committable: true, implementation_id: res.implementation_id };')
+src = src.replace('return { ok: true, validated: true, fresh_at_check: true, trace_conforms: v.trace_conforms,',
+                  'return { ok: true, validated: true, fresh_at_check: true, committable: true, trace_conforms: v.trace_conforms,')
 open('derive_protocol.mjs','w').write(src)"
 
 run_case authorize-options-reopened "must whitelist its options" "
@@ -765,6 +765,40 @@ run_case harness-selftest-undeclared "does not declare harness_selftest.sh" "
 import json
 m = json.load(open('artifacts.json'))
 m['tools'] = [t for t in m['tools'] if t != 'harness_selftest.sh']
+json.dump(m, open('artifacts.json','w'), indent=1)"
+
+
+# ── round 19: execution evidence has its own rule ───────────────────────────
+
+run_case trace-conformance-removed "missing validateTraceConformance" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('export function validateTraceConformance', 'function validateTraceConformance')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case verdicts-collapsed "report semantic agreement and trace conformance SEPARATELY" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('semantic_agreement: true, trace_conforms: false', 'trace_conforms: false')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case execution-evidence-law-deleted "law derivation.execution-evidence@1 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if e['id'] != 'derivation.execution-evidence']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case unverified-sentence-dropped "non-semantic does not mean unverified" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.execution-evidence':
+        e['statement'] = e['statement'].replace('NON-SEMANTIC DOES NOT MEAN UNVERIFIED. ', '')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case envelope-record-dropped "missing two_envelopes" "
+import json
+m = json.load(open('artifacts.json'))
+del m['derivation_boundary']['two_envelopes']
 json.dump(m, open('artifacts.json','w'), indent=1)"
 
 

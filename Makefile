@@ -167,6 +167,7 @@ gov-derive:
 	@cd $(GOV) && $(NODE) probe_coresem_v03_repro.mjs | tail -1
 	@cd $(GOV) && $(NODE) probe_stalegrant_v03_repro.mjs | tail -1
 	@cd $(GOV) && $(NODE) probe_issuebind_v05_repro.mjs | tail -1
+	@cd $(GOV) && $(NODE) probe_traceforge_v06_repro.mjs | tail -1
 
 ## --- identity/memory result ------------------------------------------------
 research:

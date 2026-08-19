@@ -253,9 +253,9 @@ const EXFIL = { op: "input", name: "__reads" };
     request_id: "w1b", program_sem_id: pid, canonical_inputs: { __reads: "not the grant table" },
     read_grants: grants, grant_id: liveGrantId(grants),
   });
-  R("W-1 live", r.ok && r.result.value === "not the grant table",
+  R("W-1 live", r.ok && r.result.semantic_result.value === "not the grant table",
     `the same program now returns only what the CALLER put in canonical_inputs ` +
-    `(${JSON.stringify(r.ok ? r.result.value : r.reason)}); read_grants is a separate field the ` +
+    `(${JSON.stringify(r.ok ? r.result.semantic_result.value : r.reason)}); read_grants is a separate field the ` +
     `input op cannot address, so the grant table is not reachable without a tracked read`);
   await w.terminate();
 }
@@ -268,9 +268,9 @@ const EXFIL = { op: "input", name: "__reads" };
     read_grants: grants, grant_id: liveGrantId(grants) };
   const honest = await ask(base);
   const impersonated = await ask({ ...base, expected_implementation_id: "impl-c-pretend-v9" });
-  R("W-2 live", honest.ok && honest.result.implementation_id === LIVE_IMPL
+  R("W-2 live", honest.ok && honest.result.execution_evidence.implementation_id === LIVE_IMPL
       && !impersonated.ok && /implementation-mismatch/.test(impersonated.reason),
-    `the executor asserts its own id (${honest.ok && honest.result.implementation_id}); a request ` +
+    `the executor asserts its own id (${honest.ok && honest.result.execution_evidence.implementation_id}); a request ` +
     `demanding "impl-c-pretend-v9" is refused by the executor itself (${impersonated.reason}) ` +
     `— the caller's field is a REQUIREMENT, the result's field is an ASSERTION`);
   await w.terminate();

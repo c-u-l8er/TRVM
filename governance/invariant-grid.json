@@ -1,6 +1,6 @@
 {
  "record": "invariant-grid",
- "version": "1.19.0",
+ "version": "1.20.0",
  "date": "2026-08-18",
  "v1_criteria": {
   "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
@@ -617,7 +617,7 @@
  },
  "law_registry": {
   "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
-  "grid_version": "1.19.0",
+  "grid_version": "1.20.0",
   "entries": [
    {
     "id": "kappa.monotonicity.unrestricted",
@@ -1098,6 +1098,14 @@
     "evidence": "probe_coresem_v03_repro.mjs — C-1 (add was JavaScript '+'), C-2 ({op:'exec', cmd:'rm -rf /'} was issued an id), C-3 (const-without-value, add-without-b and add-with-an-extra-field all issued ids), C-4 (the footprint was an ordered sequence, so a right-to-left implementation returned different canonical bytes for a program it computed identically) — 4/4 reproduce against the frozen v0.2.0 copy, 5/5 confined live. derive_battery.mjs: core-id-is-content-bound, program-id-commits-the-core, grammar-refuses-before-id (6 malformed programs), arithmetic-typed-and-total, footprint-is-a-canonical-set, trace-is-outside-the-semantic-projection, footprint-set-is-checked-not-normalized, overflow-refused-on-every-operator, coercion-refused-on-every-operator, signed-zero-identified. BREAKING BY DESIGN: every v0.2.0 program id is retired, done now precisely because no second implementation exists to be broken by it."
    },
    {
+    "id": "derivation.execution-evidence",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "NON-SEMANTIC DOES NOT MEAN UNVERIFIED. A DeriveResult carries two explicit envelopes with different trust rules. semantic_result (value, witness, support, read_footprint) determines portable meaning and is what cross-implementation validation compares. execution_evidence (implementation_id, read_trace) carries conformance and provenance: it is EXCLUDED from that comparison and NOT excluded from checking. The core fixes evaluation order — depth-first, `a` before `b` — precisely so that refusals and traces reproduce, so a returned trace that disagrees with the authority's own re-derivation is a CONFORMANCE failure of the implementation rather than a disagreement about the program, and it is refused as trace-nonconforming. The two verdicts are reported SEPARATELY — semantic_agreement and trace_conforms — because 'same meaning, different strategy' and 'wrong answer' are different diagnoses. The flat shape was part of the defect: a field sitting beside value and read_footprint reads as authenticated by the same machinery as its neighbours. Later the semantic film supersedes the trace check and lives in this same envelope.",
+    "evidence": "probe_traceforge_v06_repro.mjs — T-1: a program reading a then b, with ONLY the trace reversed and the canonical footprint and value untouched, passed validateForeignResult and was accepted with validated + fresh_at_check under v0.5.0. checkResult compared the footprint to the SET of the trace, which a reversal does not change, and the semantic projection excluded the trace — so the one field carrying execution evidence was the one field nothing looked at. 1/1 reproduces against the frozen v0.5.0 validation and 4/4 confined live. derive_battery.mjs: trace-is-outside-the-semantic-projection, plus the envelope schema checks in checkResult."
+   },
+   {
     "id": "derivation.footprint-freshness",
     "revision": 1,
     "status": "PROPERTY-TESTED",
@@ -1418,7 +1426,7 @@
  "artifact_versions": {
   "trvm_law_kernel.mjs": "1.1.0",
   "trvm_world.mjs": "0.12.0",
-  "derive_protocol.mjs": "0.5.0"
+  "derive_protocol.mjs": "0.6.0"
  },
  "world": {
   "artifact": "trvm_world.mjs v0.3.0 — a separate executable; the calculus kernel is FROZEN at v1.0.2 and has no world by design",
@@ -1671,5 +1679,11 @@
   "new law evidence.harness-selftest@1 and harness_selftest.sh, 9/9: the apparatus failure species that have actually occurred here now have meta-falsifiers of their own.",
   "M-9 is the species a battery of forgeries structurally cannot see — an unperturbed case tree that already fails the checker. Round 17 found it by accident after four years of cases finding their diagnostics among noise since round 14.",
   "bounded on purpose: nine enumerated shapes, no recursion into tests of tests."
+ ],
+ "changelog_from_1_19_0": [
+  "new law derivation.execution-evidence@1. Round 16 correctly moved read_trace out of semantic identity; v0.5.0 then checked nothing about it, and a REVERSED trace with an untouched footprint and value validated and was accepted. Frozen as T-1.",
+  "DeriveResult is now two explicit envelopes — semantic_result and execution_evidence — so the trust status of a field is visible in the shape rather than only in a comment.",
+  "validateTraceConformance compares the foreign trace against the authority's own re-derivation and refuses trace-nonconforming; semantic_agreement and trace_conforms are reported separately.",
+  "the ruling that access order is not semantic identity is UNCHANGED. What changed is that being outside the semantic projection is no longer the same as being unchecked."
  ]
 }

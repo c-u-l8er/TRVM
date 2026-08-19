@@ -1,4 +1,4 @@
-/* derive_realm_battery.mjs — the crossing itself, v0.4.0.
+/* derive_realm_battery.mjs — the crossing itself, v0.6.0.
    The claim under test is narrow and stated as such: OBJECT authority does not
    cross, the derivation realm reads only what it was granted, and the executor
    — not the caller — says which implementation ran. Determinism and host
@@ -42,17 +42,18 @@ const mkReq = (over = {}) => ({ request_id: "r1", program_sem_id: PID,
 
 // 2. an honest derivation crosses and comes back as a CLAIM, stamped by its executor
 const honest = await ask(mkReq());
-R("crossing-derives", honest.ok && honest.result.value === 5
-    && honest.result.implementation_id === JS_IMPLEMENTATION_ID && honest.result.grant_id === grant_id,
-  `worker returned value ${honest.ok && honest.result.value} for fb=5 bias=0, resolving the program from ` +
-  `its OWN registry by id and stamping the result ${honest.ok && honest.result.implementation_id} against ` +
+R("crossing-derives", honest.ok && honest.result.semantic_result.value === 5
+    && honest.result.execution_evidence.implementation_id === JS_IMPLEMENTATION_ID && honest.result.grant_id === grant_id,
+  `worker returned value ${honest.ok && honest.result.semantic_result.value} for fb=5 bias=0, resolving the program from ` +
+  `its OWN registry by id and stamping the result ${honest.ok && honest.result.execution_evidence.implementation_id} against ` +
   `grant ${grant_id.slice(0, 18)}…`);
 
 // 3. and the claim is only evidence once the authority re-derives it
 {
   const req = mkReq();
   const local = validateForeignResult(reg, req, honest.result);
-  const lied = validateForeignResult(reg, req, { ...honest.result, value: 1005 });
+  const lied = validateForeignResult(reg, req, { ...honest.result,
+    semantic_result: { ...honest.result.semantic_result, value: 1005 } });
   R("claim-revalidated-at-home", local.ok && !lied.ok && lied.reason === "foreign-result-divergence",
     `the worker's honest result reproduces locally against the same snapshot; an inflated one is ` +
     `refused (${lied.reason})`);
@@ -85,9 +86,9 @@ R("crossing-derives", honest.ok && honest.result.value === 5
   const r = await ask2({ request_id: "x", program_sem_id: XID,
     canonical_inputs: { __reads: "an ordinary input" },
     read_grants: wide.read_grants, grant_id: wide.grant_id });
-  R("grant-not-reachable-as-input", r.ok && r.result.value === "an ordinary input"
-      && r.result.read_footprint.exact.length === 0 && r.result.witness.reads === 0,
-    `the worker granted fb and secret:key returns ${JSON.stringify(r.ok && r.result.value)} for ` +
+  R("grant-not-reachable-as-input", r.ok && r.result.semantic_result.value === "an ordinary input"
+      && r.result.semantic_result.read_footprint.exact.length === 0 && r.result.semantic_result.witness.reads === 0,
+    `the worker granted fb and secret:key returns ${JSON.stringify(r.ok && r.result.semantic_result.value)} for ` +
     `{op:"input",name:"__reads"} — at v0.1.0 this returned the whole grant table across the same ` +
     `boundary, with an empty footprint and zero tracked reads`);
   await w2.terminate();
@@ -98,7 +99,7 @@ R("crossing-derives", honest.ok && honest.result.value === 5
   const r = await ask(mkReq({ expected_implementation_id: "impl-c-pretend-v9" }));
   const ok2 = await ask(mkReq({ expected_implementation_id: JS_IMPLEMENTATION_ID }));
   R("executor-asserts-implementation", !r.ok && /implementation-mismatch: want impl-c-pretend-v9/.test(r.reason)
-      && ok2.ok && ok2.result.implementation_id === JS_IMPLEMENTATION_ID,
+      && ok2.ok && ok2.result.execution_evidence.implementation_id === JS_IMPLEMENTATION_ID,
     `a request demanding a C executor is refused by the JS worker (${r.reason}); one demanding JS runs ` +
     `and returns its own id. The caller states a requirement; the executor answers it`);
 }
@@ -106,9 +107,12 @@ R("crossing-derives", honest.ok && honest.result.value === 5
 // 8. a forged footprint from the far side dies against the snapshot
 {
   const req = mkReq();
-  const forged = { ...honest.result, witness: { ...honest.result.witness, reads: 2 },
-    read_footprint: { exact: [["fb", 1], ["secret:key", 1]], predicates: [] },
-    read_trace: { exact: [["fb", 1], ["secret:key", 1]], predicates: [] } };
+  const forged = { ...honest.result,
+    semantic_result: { ...honest.result.semantic_result,
+      witness: { ...honest.result.semantic_result.witness, reads: 2 },
+      read_footprint: { exact: [["fb", 1], ["secret:key", 1]], predicates: [] } },
+    execution_evidence: { ...honest.result.execution_evidence,
+      read_trace: { exact: [["fb", 1], ["secret:key", 1]], predicates: [] } } };
   const v = validateForeignResult(reg, req, forged);
   R("foreign-footprint-refused", !v.ok && v.reason === "footprint-ungranted-read: secret:key",
     `${v.reason} — the authority checks the returned footprint against the grant it issued, on its own ` +
@@ -119,9 +123,10 @@ R("crossing-derives", honest.ok && honest.result.value === 5
 // 9. a conforming foreign implementation validates on the semantic projection
 {
   const req = mkReq();
-  const asIfC = { ...honest.result, implementation_id: "impl-c-derive-v0.4.0" };
+  const asIfC = { ...honest.result,
+    execution_evidence: { ...honest.result.execution_evidence, implementation_id: "impl-c-derive-v0.6.0" } };
   const v = validateForeignResult(reg, req, asIfC);
-  R("cross-implementation-shape", v.ok && v.implementation_id === "impl-c-derive-v0.4.0"
+  R("cross-implementation-shape", v.ok && v.implementation_id === "impl-c-derive-v0.6.0"
       && canonicalBytes(semanticProjection(asIfC)) === canonicalBytes(semanticProjection(honest.result)),
     `the same result stamped by a C executor validates and its provenance is RECORDED rather than ` +
     `compared away. This is the shape a real C implementation plugs into — it is not a claim that one ` +
@@ -139,7 +144,7 @@ R("crossing-derives", honest.ok && honest.result.value === 5
   const accepted = auth.accept(reg, a.request, crossed.result);
   live.res.fb = { value: 9, version: 2 };                 // the World moves after the crossing
   const stale = auth.accept(reg, a.request, crossed.result);
-  R("intent-to-acceptance", a.ok && crossed.ok && crossed.result.value === 5
+  R("intent-to-acceptance", a.ok && crossed.ok && crossed.result.semantic_result.value === 5
       && accepted.ok && accepted.fresh_at_check === true
       && !stale.ok && stale.reason === "stale-read: fb granted@1 live@2",
     `a caller's INTENT is authorized into a request by the authority, crosses to a realm holding no ` +

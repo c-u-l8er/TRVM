@@ -43,7 +43,8 @@
   "probe_derivegrant_v02_repro.mjs": "DERIVE-v0.2 — the bypassable read footprint and the unverified implementation_id, frozen against v0.1.0 and CONFINED against live; the only PAIRED probe, and it gates",
   "probe_coresem_v03_repro.mjs": "DERIVE-CORE-v1 — program_sem_id bound syntax and claimed semantics: add was JavaScript '+', bind() validated nothing, arity was unconstrained, and the footprint's ORDER was inside the semantic projection. Frozen against v0.2.0, CONFINED against live; PAIRED, and it gates",
   "probe_stalegrant_v03_repro.mjs": "ROUND 17 — the GAP witness: containment, re-derivation and schema all pass on a result whose World has moved. Not a regression repro; there was no freshness check at all before it",
-  "probe_issuebind_v05_repro.mjs": "ROUND 17 — issuance authenticated the grant rather than the request, an options bag let a caller write authority content, and acceptance took both of its proofs from its caller. Frozen against the draft, CONFINED against live; PAIRED, and it gates"
+  "probe_issuebind_v05_repro.mjs": "ROUND 17 — issuance authenticated the grant rather than the request, an options bag let a caller write authority content, and acceptance took both of its proofs from its caller. Frozen against the draft, CONFINED against live; PAIRED, and it gates",
+  "probe_traceforge_v06_repro.mjs": "ROUND 19 — read_trace was outside the semantic projection and therefore unchecked: a reversed trace validated and was accepted. Frozen against v0.5.0, CONFINED against live; PAIRED, and it gates"
  },
  "subdirs": {
   "bridge": "cross-plane C canonical-bytes bridge (ic32_canon.c, bridge_check.mjs)",
@@ -53,7 +54,7 @@
   "v04_verbatim": "round-4 verbatim sources, historical"
  },
  "derivation_boundary": {
-  "status": "v0.5.0 — protocol proven in-process and across a worker; NOT yet the production derivation path",
+  "status": "v0.6.0 — protocol proven in-process and across a worker; NOT yet the production derivation path",
   "files": {
    "derive_protocol.mjs": "program-as-data over a FROZEN core, canonical request/result schemas, authority grants separated from the observed read footprint, live-footprint freshness, and a DerivationAuthority that is the only constructor of a request and the only holder of acceptance",
    "derive_battery.mjs": "40 falsifiers, in-process",
@@ -62,7 +63,8 @@
    "probe_derivegrant_v02_repro.mjs": "the two v0.1.0 defects, frozen — and the same witnesses run against live, which is what makes it a gate rather than a document",
    "probe_coresem_v03_repro.mjs": "the four semantic gaps behind one program_sem_id, frozen at v0.2.0",
    "probe_stalegrant_v03_repro.mjs": "every check passing on a result the World has moved past",
-   "probe_issuebind_v05_repro.mjs": "issuance bound to the grant instead of the request, frozen"
+   "probe_issuebind_v05_repro.mjs": "issuance bound to the grant instead of the request, frozen",
+   "probe_traceforge_v06_repro.mjs": "a forged execution trace accepted as evidence, frozen"
   },
   "two_evidence_objects": {
    "read_grants + grant_id": "the AUTHORITY GRANT — what the authority made available. A capability record, deliberately allowed to be broader than what is read, because under data-dependent traversal the authority cannot know the needed subset in advance. grant_id = H(canonical read_grants) binds the snapshot so it cannot be edited in flight.",
@@ -80,6 +82,11 @@
    "freshness": "validateFootprintFresh — are those dependencies still current NOW? TEMPORAL, keyed on the footprint and never on a global vclock. All three are required; the first two can pass about a World that has moved."
   },
   "issuance": "An authority-issued request authenticates THE WHOLE REQUEST: issuance records request_id -> request_sem_id = H(canonical request), recomputed at acceptance. grant_id proves integrity only — a hash authenticates content to itself. The authority is the only constructor of a request, exactly one option (expected_implementation_id) may be requested, and acceptance is a METHOD closing over the issuance table and the live reader so no proof can arrive as an argument. A signature is added when the grant crosses a real trust boundary, is persisted and replayed, is delegated, or must be proved to an independent verifier.",
-  "acceptance_is_not_commitment": "accept() returns {validated, fresh_at_check} and NOT committable. One call cannot establish committability: the World can move between it returning and the caller applying. The composition that commits belongs to the World — acquire the authoritative lock, accept, deterministic prepared apply with no hostile callback in between, seal the receipt, release — and no lock capability is exported to reach it."
+  "acceptance_is_not_commitment": "accept() returns {validated, fresh_at_check} and NOT committable. One call cannot establish committability: the World can move between it returning and the caller applying. The composition that commits belongs to the World — acquire the authoritative lock, accept, deterministic prepared apply with no hostile callback in between, seal the receipt, release — and no lock capability is exported to reach it.",
+  "two_envelopes": {
+   "semantic_result": "value · witness · support · read_footprint. Determines portable meaning; this is what cross-implementation validation compares.",
+   "execution_evidence": "implementation_id · read_trace. Conformance and provenance. EXCLUDED from the comparison and NOT excluded from checking — the core fixes evaluation order, so a disagreeing trace is a conformance failure of the implementation. The semantic film will live here.",
+   "why": "v0.5.0 kept read_trace as a sibling of value and read_footprint, excluded it from the projection, and checked nothing about it: a reversed trace validated and was accepted. Non-semantic does not mean unverified, and a flat shape made the exclusion read as permission."
+  }
  }
 }
