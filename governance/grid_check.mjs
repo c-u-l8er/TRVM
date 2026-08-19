@@ -192,7 +192,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -887,6 +887,45 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "ic32_film.c must CHECK quiescence and readback purity rather than assert them — the first " +
           "version of it printed a binder name where a term was bound, which is a well-formed string " +
           "asserting an identity that does not hold");
+      }
+      // ── v1.27: the source language reaches the governed runtime ───────
+      {
+        const lowSrc = existsSync(A("lowering.mjs")) ? readFileSync(A("lowering.mjs"), "utf8") : "";
+        ok(lowSrc !== "", "lowering.mjs absent — three laws cite it");
+        for (const [id, want] of [["derivation.canonical-lowering", "PROPERTY-TESTED"],
+          ["derivation.target-decoding", "PROPERTY-TESTED"],
+          ["derivation.lowering-refinement", "PROPERTY-TESTED"]]) {
+          const e = entries.find((x) => x.id === id && x.revision === 1);
+          ok(!!e && e.canonical === true && e.status === want,
+            `law ${id}@1 missing, non-canonical, or not ${want} (v1.27)`);
+        }
+        const cl = entries.find((x) => x.id === "derivation.canonical-lowering");
+        ok(!!cl && /THE INSTRUMENT IS RE-LOWERING, NOT A FILM/.test(cl.statement ?? ""),
+          "canonical-lowering@1 must rule that lowering gets NO film. A film is evidence for a " +
+          "TRANSITION SYSTEM; lowering is a relation, and filming it would invent internal compiler " +
+          "steps and make implementation strategy semantic — the mistake the read-order ruling refused");
+        ok(!!cl && /PARAMETERIZED/.test(cl.statement ?? "") && /INSTANTIATED/.test(cl.statement ?? ""),
+          "canonical-lowering@1 must keep the inputs model DEFERRED AND NAMED. target_term_sem_id is a " +
+          "function of the program alone under one model and of the program AND the inputs under the " +
+          "other; deciding it while implementing `input` is how an unstated variable enters an identity");
+        ok(/INPUTS_MODEL = Object\.freeze\(\{\s*decided: false/.test(lowSrc) &&
+           /lower-inputs-undecided/.test(lowSrc),
+          "lowering.mjs must record the inputs model as UNDECIDED and REFUSE the input op by name — a " +
+          "lowering that quietly emitted something for `input` would decide the question by accident");
+        const lr = entries.find((x) => x.id === "derivation.lowering-refinement");
+        ok(!!lr && /TWO GRADES OF EVIDENCE FOR THE EXECUTION LEG/.test(lr.statement ?? ""),
+          "lowering-refinement@1 must separate OBSERVED execution from FILM-EVIDENCED execution and " +
+          "claim only the first. An execution the host observed and one the kernel replayed are " +
+          "different claims, and every lowered addition carries a dup cell that ic32_film v0.1.0 refuses");
+        ok(!!lr && /film-dup-cell-present|dup-free one-step/.test(lr.statement ?? ""),
+          "lowering-refinement@1 must name WHERE the film gap is. 'Later work' is not a scope");
+        const lcSrc = existsSync(A("lowering_check.mjs")) ? readFileSync(A("lowering_check.mjs"), "utf8") : "";
+        ok(/native-film-absent-by-refusal/.test(lcSrc),
+          "lowering_check.mjs must ASSERT the film refusal at the fixture the refinement runs on. A gap " +
+          "described in prose and a gap measured by a case are not the same evidence");
+        ok(/six-identities-stay-distinct/.test(lcSrc),
+          "lowering_check.mjs must assert the six identities differ — collapsing any pair turns a " +
+          "refinement statement into a renaming");
       }
       // ── v1.24: a skipped gate is not a green one ──────────────────────
       {

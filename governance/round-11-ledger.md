@@ -610,3 +610,48 @@ REFINEMENT:  source_outcome_sem_id == target_outcome_sem_id
 `lowering_id` also splits in two before it is written, because one id must not silently answer two questions: `lowering_sem_id` identifies the lowering *semantics* (source core id, target encoding id, canonical specification, conformance-vector identity), and a `LoweringReceipt {program_sem_id, lowering_sem_id, target_term_sem_id}` records what happened when *this* program was lowered.
 
 **One identity decision deferred on purpose, and named so it is not discovered.** `add(const 2, const 3)` has `inputs = {}`, so the first witness does not decide **parameterized** lowering (`program_sem_id → target term with input ports`, inputs arriving at execution, `target_term_sem_id` a function of the program alone) versus **instantiated** lowering (`program_sem_id + canonical_inputs → closed target term`, where the identity must say so). Both are coherent; they are different systems. That decision comes **before** the `input` op, not during it — an unstated variable inside `target_term_sem_id` is precisely the hidden-identity bug class round 16 exists to prevent.
+
+## Round 25b — the source language reaches the governed runtime
+
+**138. The refinement is witnessed, and the chain that carries it does not collapse anywhere.**
+
+```
+add(const 2, const 3)        inputs = {}
+       │  lowering_sem_id            ← re-lowered independently and compared
+       ▼
+one canonical ic32 term  ──▶ target_term_sem_id     (kernel AND ic32_canon agree)
+       │  NATIVE ic32, launched by ObservedExecutionHost from a catalog entry
+       ▼
+L0(L1(A(N0,A(N0,A(N0,A(N0,A(N0,N1)))))))  ──▶ target_nf_sem_id
+       │  decode_sem_id
+       ▼
+{status:"value", value:5}  ──▶ target_outcome_sem_id
+source evaluator ─────────▶ {status:"value", value:5} ──▶ source_outcome_sem_id
+
+                            EQUAL
+```
+
+`lowering_check.mjs` **9/9**. Six identities, six distinct values, asserted so — collapsing any pair turns a refinement statement into a **renaming**, which is the failure the chain exists to avoid.
+
+**139. Three relations, three obligations, because they fail independently.** A lowering can be perfect while the decoder misreads the normal form; a decoder can be perfect while lowering emitted the wrong term; and the runtime can execute a correct term incorrectly. `law:derivation.canonical-lowering@1` and `law:derivation.target-decoding@1` exist to make `law:derivation.lowering-refinement@1` **diagnosable** — a bare equality failure cannot say which of three broke. All three were registered **OPEN and unbuilt** in the previous section before any of them was written, which is the `film_identity_forward_declaration` discipline: a decision made in advance is inherited rather than improvised.
+
+**140. The lowering gets no film, and that is a ruling.** A film is evidence for a **transition system**; lowering is a relation `DeriveProgram → TargetTerm`. Filming it would invent a sequence of internal compiler steps and make implementation strategy semantic — the mistake the read-order ruling refused when it kept access order out of the footprint. The instrument is **re-lowering**: lower again, independently, compare `target_term_sem_id`. `add(3,2)` reaches a different one, so the check is not vacuous.
+
+`lowering_id` also split in two before either was written: `lowering_sem_id` identifies the **relation**, and a `LoweringReceipt {program_sem_id, lowering_sem_id, target_term_sem_id}` records the **application**. One id must not silently answer both "which lowering semantics is this?" and "what did lowering do here?".
+
+**141. The decoder reads the canonical SIGNATURE, not a readback.** So it reads the same bytes the 48/48 bridge has agreed on since round 12, and cannot be misled by a binder name — which is exactly how round 23's first film emitter went wrong. §5 compaction is irreversible, so a compacted signature is **refused** rather than guessed at: `decode-signature-compacted`. That bounds the decodable numerals, and the bound is stated rather than discovered.
+
+**142. THE GAP, and it is measured at the fixture the refinement runs on.** The native execution leg is evidenced by **observation** — the host hashed a catalogued binary and ran it — and **not by a film**. Every lowered addition carries a dup cell by construction, because Church addition uses its function argument twice and ic32's net is linear, and `ic32_film` v0.1.0 is the dup-free one-step fragment. `native-film-absent-by-refusal` asserts the emitter's own `film-dup-cell-present` on this exact term rather than describing the gap in prose. So the law states **two grades of evidence for the execution leg** and claims only the first:
+
+```
+OBSERVED         the host hashed a catalogued binary and then ran it
+FILM-EVIDENCED   the kernel independently replayed the transition sequence
+```
+
+An execution the host observed and an execution the kernel replayed are different claims, and this round is the first place where saying so out loud costs something. Closing it is DUP-LAM · DUP-SUP= · DUP-SUP! · DUP-ERA · DUP-VAR · DUP-APP, the `d:` and `v:` loci, and multi-frame films — **concretely scoped now**, rather than named in the abstract.
+
+**143. And the inputs model stays undecided, on purpose, with `input` refused by name.** `target_term_sem_id` is a function of the program **alone** under parameterized lowering and of the program **and its inputs** under instantiated lowering. Both are coherent; they are different systems. `lower({op:"input"})` returns `lower-inputs-undecided`, `INPUTS_MODEL.decided` is `false` and the grid checks it, because deciding this while implementing `input` is precisely how an unstated variable gets inside an identity — the bug class round 16 exists to prevent. Five out-of-fragment refusals are named and checked: `lower-inputs-undecided`, `lower-reads-undecided`, `lower-unsupported-op`, `lower-non-integer-constant`, `lower-negative`.
+
+**144. Gate.** grid **v1.27.0** — 71 entries / 363 citations (transcribed at a moment; the gate derives it) · `derive_protocol.mjs` 0.10.0 · `lowering.mjs` **0.1.0** · negative battery **159/159** with nine new forgeries · bridge 48/48 · native semantic film 14/14 · **lowering refinement 9/9** · derive 45/45 · realm 20/20 · nine paired probes · harness 9/9 · runner 3/3. `scheduler_certificate.json` byte-identical — **twenty-first consecutive round**, and this is the one where that number finally means something beyond hygiene: a source program was compiled, executed on a different runtime in a different language, decoded, and found to agree — and the calculus underneath did not move by a byte.
+
+**What the ladder looks like from here.** Rounds 15–25 were the supplier ladder: label, name, action, oracle. Rounds 12–24 were the evidence ladder: canonical bytes, then a transition, then who ran it. This round is the first that is neither — it is the two ladders meeting, and the thing they were both for. **Next**, in the order the gap now dictates: the six DUP-* rules and the `d:`/`v:` loci in `ic32_film`, then multi-frame films, which upgrades this same witness from observed to film-evidenced without changing the fixture; then the parameterized-vs-instantiated ruling; then `input`.

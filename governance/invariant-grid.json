@@ -1,6 +1,6 @@
 {
  "record": "invariant-grid",
- "version": "1.26.0",
+ "version": "1.27.0",
  "date": "2026-08-18",
  "v1_criteria": {
   "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
@@ -617,7 +617,7 @@
  },
  "law_registry": {
   "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
-  "grid_version": "1.26.0",
+  "grid_version": "1.27.0",
   "entries": [
    {
     "id": "kappa.monotonicity.unrestricted",
@@ -1197,26 +1197,26 @@
    {
     "id": "derivation.canonical-lowering",
     "revision": 1,
-    "status": "OPEN",
+    "status": "PROPERTY-TESTED",
     "canonical": true,
-    "statement": "ONE SOURCE PROGRAM UNDER ONE LOWERING SEMANTICS DETERMINES ONE CANONICAL TARGET TERM. lowering_sem_id identifies the lowering SEMANTICS — H over the source core_sem_id, the target term encoding id, the canonical lowering specification and the conformance-vector identity — and is a different object from a record of what happened when a particular program was lowered, which is a LoweringReceipt {program_sem_id, lowering_sem_id, target_term_sem_id}. One id must not silently answer both 'which lowering semantics is this?' and 'what did lowering do here?'. THE INSTRUMENT IS RE-LOWERING, NOT A FILM. A semantic film is evidence for a TRANSITION SYSTEM; lowering is a relation DeriveProgram -> TargetTerm. Filming it would invent a sequence of internal compiler steps and make implementation strategy semantic — the mistake the read-order ruling refused when it kept access order out of the footprint. Verification is: re-lower the program independently under lowering_sem_id, canonicalise, and require target_term_sem_id to agree. DEFERRED AND NAMED: whether lowering is PARAMETERIZED (program -> target term with input ports, inputs arriving at execution, so target_term_sem_id is a function of the program alone) or INSTANTIATED (program + canonical_inputs -> closed target term, in which case the identity must say so). The first witness uses inputs={} and does not decide it. That decision comes BEFORE the input op, because an unstated variable inside target_term_sem_id is the hidden-identity bug class round 16 exists to prevent. DECLARED AHEAD OF THE ROUND THAT BUILDS IT, and OPEN until it has a falsifier. Round 15's film_identity_forward_declaration is the precedent: a decision made in advance is inherited rather than improvised, and a law registered OPEN is a commitment that cannot be quietly re-scoped once the implementation makes one shape convenient. Nothing may cite this as evidence of anything yet.",
-    "evidence": "UNBUILT. First witness: add(const 2, const 3) with inputs={}."
+    "statement": "ONE SOURCE PROGRAM UNDER ONE LOWERING SEMANTICS DETERMINES ONE CANONICAL TARGET TERM. lowering_sem_id identifies the lowering SEMANTICS — H over the source core_sem_id, the target term encoding id, the canonical lowering specification and the conformance-vector identity — and is a different object from a record of what happened when a particular program was lowered, which is a LoweringReceipt {program_sem_id, lowering_sem_id, target_term_sem_id}. One id must not silently answer both 'which lowering semantics is this?' and 'what did lowering do here?'. THE INSTRUMENT IS RE-LOWERING, NOT A FILM. A semantic film is evidence for a TRANSITION SYSTEM; lowering is a relation DeriveProgram -> TargetTerm. Filming it would invent a sequence of internal compiler steps and make implementation strategy semantic — the mistake the read-order ruling refused when it kept access order out of the footprint. Verification is: re-lower the program independently under lowering_sem_id, canonicalise, and require target_term_sem_id to agree. DEFERRED AND NAMED: whether lowering is PARAMETERIZED (program -> target term with input ports, inputs arriving at execution, so target_term_sem_id is a function of the program alone) or INSTANTIATED (program + canonical_inputs -> closed target term, in which case the identity must say so). The first witness uses inputs={} and does not decide it. That decision comes BEFORE the input op, because an unstated variable inside target_term_sem_id is the hidden-identity bug class round 16 exists to prevent.",
+    "evidence": "lowering_check.mjs: lowering-is-deterministic (the same AST lowers to the same string twice, and the RELATION id is separate from the APPLICATION receipt), re-lowering-verifies (lowering again independently reaches the same target_term_sem_id, and add(3,2) reaches a different one so the id is not vacuous), out-of-fragment-refused (input, read, sub, a non-integer constant and a negative constant are each a NAMED refusal). native-execution-observed cross-checks the target term's identity against the C side: the kernel's target_term_sem_id equals ic32_canon's canonical id for the same lowered term, so both planes agree on what was fed in before either says what came out."
    },
    {
     "id": "derivation.target-decoding",
     "revision": 1,
-    "status": "OPEN",
+    "status": "PROPERTY-TESTED",
     "canonical": true,
-    "statement": "ONE CANONICAL TARGET NORMAL FORM UNDER ONE DECODER DETERMINES ONE STRUCTURAL TRVM OUTCOME, OR A STRUCTURAL DECODE REFUSAL. decode_sem_id identifies the decoder, and decoding is a THIRD relation rather than the tail of lowering: a lowering can be perfect while the decoder reads the normal form wrongly, and a decoder can be perfect while lowering emitted the wrong target term. They fail independently, so they are proved independently. The outcome is STRUCTURAL — {status:'value', value} or {status:'refused', code, locus} — never a rendered reason, which would recreate round 16's 'the identity bound a spelling' one layer up. DECLARED AHEAD OF THE ROUND THAT BUILDS IT, and OPEN until it has a falsifier. Round 15's film_identity_forward_declaration is the precedent: a decision made in advance is inherited rather than improvised, and a law registered OPEN is a commitment that cannot be quietly re-scoped once the implementation makes one shape convenient. Nothing may cite this as evidence of anything yet.",
-    "evidence": "UNBUILT. Decodes the normal form of the first witness to {status:'value', value:5}."
+    "statement": "ONE CANONICAL TARGET NORMAL FORM UNDER ONE DECODER DETERMINES ONE STRUCTURAL TRVM OUTCOME, OR A STRUCTURAL DECODE REFUSAL. decode_sem_id identifies the decoder, and decoding is a THIRD relation rather than the tail of lowering: a lowering can be perfect while the decoder reads the normal form wrongly, and a decoder can be perfect while lowering emitted the wrong target term. They fail independently, so they are proved independently. The outcome is STRUCTURAL — {status:'value', value} or {status:'refused', code, locus} — never a rendered reason, which would recreate round 16's 'the identity bound a spelling' one layer up. The decoder reads the CANONICAL SIGNATURE rather than a readback string — the same bytes the 48/48 bridge has agreed on since round 12 — so it cannot be misled by a binder name. §5 compaction is irreversible, so a compacted signature is REFUSED rather than guessed at; that bounds the decodable numerals and the bound is stated rather than discovered.",
+    "evidence": "lowering_check.mjs: decode-is-structural (L0(L1(A(N0,…A(N0,N1)…))) with five applications decodes to {status:'value', value:5}) and decoder-boundary-named (a non-numeral is decode-not-a-church-numeral, a compacted signature is decode-signature-compacted, and 0 and 1 decode — the two shapes that carry no dup). decode_sem_id is distinct from lowering_sem_id and asserted so."
    },
    {
     "id": "derivation.lowering-refinement",
     "revision": 1,
-    "status": "OPEN",
+    "status": "PROPERTY-TESTED",
     "canonical": true,
-    "statement": "SOURCE AND TARGET AGREE ON THE OUTCOME: source_outcome_sem_id == target_outcome_sem_id, where the target side is reached by canonical lowering, native ic32 execution evidenced by a semantic film, and structural decoding. THIS IS THE THEOREM; canonical-lowering@1 and target-decoding@1 exist to make it DIAGNOSABLE, because a bare equality failure cannot say which of three relations broke. Six identities stay distinct and none may be collapsed into another: program_sem_id, lowering_sem_id, target_term_sem_id, target_nf_sem_id, decode_sem_id, outcome_sem_id. Collapsing any pair turns a refinement statement into a renaming, which is the failure mode this whole chain is built to avoid. DECLARED AHEAD OF THE ROUND THAT BUILDS IT, and OPEN until it has a falsifier. Round 15's film_identity_forward_declaration is the precedent: a decision made in advance is inherited rather than improvised, and a law registered OPEN is a commitment that cannot be quietly re-scoped once the implementation makes one shape convenient. Nothing may cite this as evidence of anything yet.",
-    "evidence": "UNBUILT. Composes the two above with law:film.native-emission@1."
+    "statement": "SOURCE AND TARGET AGREE ON THE OUTCOME: source_outcome_sem_id == target_outcome_sem_id, where the target side is reached by canonical lowering, native ic32 execution, and structural decoding. TWO GRADES OF EVIDENCE FOR THE EXECUTION LEG, and only the first is claimed here. OBSERVED: the ObservedExecutionHost hashed a catalogued binary and then ran it, so the normal form is an execution event the host drove (derivation.implementation-provenance@4). FILM-EVIDENCED: the transition sequence itself is replayed by the independent kernel (film.native-emission@1). The second is DECLARED OPEN for any fixture that carries a dup cell, which is every lowered addition — Church addition uses its function argument twice and ic32's net is linear — because ic32_film v0.1.0 handles the dup-free one-step fragment and refuses the rest BY NAME. Closing it is the six DUP-* rules, the d: and v: loci, and multi-frame films. Reporting the two grades separately is the point: an execution the host observed and an execution the kernel replayed are different claims. THIS IS THE THEOREM; canonical-lowering@1 and target-decoding@1 exist to make it DIAGNOSABLE, because a bare equality failure cannot say which of three relations broke. Six identities stay distinct and none may be collapsed into another: program_sem_id, lowering_sem_id, target_term_sem_id, target_nf_sem_id, decode_sem_id, outcome_sem_id. Collapsing any pair turns a refinement statement into a renaming, which is the failure mode this whole chain is built to avoid.",
+    "evidence": "lowering_check.mjs 9/9, the first end-to-end witness: add(const 2, const 3) with inputs={} lowers to one canonical ic32 term whose identity the kernel and ic32_canon agree on; the host launches the catalogued binary and observes the canonical normal form L0(L1(A(N0,A(N0,A(N0,A(N0,A(N0,N1))))))); that decodes structurally to {status:'value', value:5}; and its outcome id EQUALS the source evaluator's, whose result was itself accepted by an authority owning every oracle it consulted (derivation.acceptance-authority@1). six-identities-stay-distinct asserts all six values differ. native-film-absent-by-refusal asserts the film emitter REFUSES this exact fixture with film-dup-cell-present — the gap is measured at the fixture the refinement runs on rather than described in the abstract."
    }
   ]
  },
@@ -1508,7 +1508,8 @@
   "trvm_law_kernel.mjs": "1.1.0",
   "trvm_world.mjs": "0.12.0",
   "derive_protocol.mjs": "0.10.0",
-  "observed_execution_host.mjs": "0.1.0"
+  "observed_execution_host.mjs": "0.1.0",
+  "lowering.mjs": "0.1.0"
  },
  "world": {
   "artifact": "trvm_world.mjs v0.3.0 — a separate executable; the calculus kernel is FROZEN at v1.0.2 and has no world by design",
@@ -1852,10 +1853,12 @@
   "acceptance reports executor_sessions (plural) — the key is over bytes, so two launches producing identical output share it and @3 overwrote one with the other.",
   "gating_probes gains probe_execlaunch_v09_repro.mjs."
  ],
+ "changelog_from_1_26_0": [
+  "law:derivation.canonical-lowering@1, law:derivation.target-decoding@1 and law:derivation.lowering-refinement@1 registered OPEN and unbuilt — the lowering spike's shape ruled before it is built, including that lowering gets NO film and that parameterized-vs-instantiated target identity is decided before the input op.",
+  "the three lowering laws move OPEN -> PROPERTY-TESTED on lowering_check.mjs 9/9. The refinement law names TWO grades of execution evidence and claims only the first: observed, not film-evidenced, because every lowered addition carries a dup cell and ic32_film v0.1.0 refuses those by name."
+ ],
  "changelog_from_1_25_0": [
-  "law:derivation.acceptance-authority@1 added — acceptance took its semantic oracle from the claimant (P-4). An issued const(5) request was accepted as 999 under a caller-supplied registry.",
-  "derive_protocol.mjs 0.9.0 -> 0.10.0: new DerivationAuthority(reader, programImage, host); the authority BUILDS its own ProgramRegistry from canonical data; execute(req) and accept(req, res) take no registry; bindProgram/programIds/programOf are explicit authority operations.",
-  "gating_probes gains probe_semoracle_v10_repro.mjs.",
-  "law:derivation.canonical-lowering@1, law:derivation.target-decoding@1 and law:derivation.lowering-refinement@1 registered OPEN and unbuilt — the lowering spike's shape ruled before it is built, including that lowering gets NO film and that parameterized-vs-instantiated target identity is decided before the input op."
+  "law:derivation.acceptance-authority@1 added — acceptance took its semantic oracle from the claimant (P-4).",
+  "derive_protocol.mjs 0.9.0 -> 0.10.0: the authority BUILDS its own ProgramRegistry; execute(req) and accept(req, res) take no registry."
  ]
 }

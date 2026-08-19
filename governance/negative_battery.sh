@@ -1184,5 +1184,69 @@ for e in g['law_registry']['entries']:
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 
+# ── round 25: the source language reaches the governed runtime ──────────────
+run_case lowering-module-deleted "lowering.mjs absent" "
+import os
+os.remove('lowering.mjs')"
+
+run_case lowering-law-downgraded "law derivation.canonical-lowering@1 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.canonical-lowering':
+        e['status'] = 'OPEN'
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case lowering-gets-a-film "must rule that lowering gets NO film" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.canonical-lowering':
+        e['statement'] = e['statement'].replace('THE INSTRUMENT IS RE-LOWERING, NOT A FILM',
+                                                'lowering emits a film per pass')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case inputs-model-decided-by-accident "must keep the inputs model DEFERRED AND NAMED" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.canonical-lowering':
+        e['statement'] = e['statement'].replace('PARAMETERIZED', 'the obvious model')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case inputs-silently-lowered "must record the inputs model as UNDECIDED" "
+src = open('lowering.mjs').read()
+src = src.replace('decided: false', 'decided: true')
+open('lowering.mjs','w').write(src)"
+
+run_case execution-grades-collapsed "must separate OBSERVED execution from FILM-EVIDENCED" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.lowering-refinement':
+        e['statement'] = e['statement'].replace('TWO GRADES OF EVIDENCE FOR THE EXECUTION LEG',
+                                                'the execution is evidenced')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case film-gap-unlocated "must name WHERE the film gap is" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.lowering-refinement':
+        e['statement'] = e['statement'].replace('film-dup-cell-present', 'a refusal').replace(
+            'dup-free one-step', 'a narrower')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case film-gap-not-measured "must ASSERT the film refusal at the fixture" "
+src = open('lowering_check.mjs').read()
+src = src.replace('native-film-absent-by-refusal', 'native-film-noted')
+open('lowering_check.mjs','w').write(src)"
+
+run_case identities-may-collapse "must assert the six identities differ" "
+src = open('lowering_check.mjs').read()
+src = src.replace('six-identities-stay-distinct', 'six-identities-listed')
+open('lowering_check.mjs','w').write(src)"
+
+
 echo; [ $FAILED -eq 0 ] && echo "NEGATIVE BATTERY: $CASES/$CASES forgeries caught" || echo "NEGATIVE BATTERY: FAILURES PRESENT ($CAUGHT/$CASES caught)"
 exit $FAILED

@@ -265,14 +265,22 @@ function runNativeExec(entry, invocation) {
   const argv = invocation.argv ?? [];
   if (!Array.isArray(argv) || !argv.every((a) => typeof a === "string"))
     return Promise.reject(new Error("native-argv-not-strings"));
+  // stdin is DATA like everything else in the invocation — it went through
+  // canonicalBytes before we got here, so it cannot be a stream, a handle, or
+  // anything else that would be a capability rather than a value.
+  const stdin = invocation.stdin;
+  if (stdin !== undefined && typeof stdin !== "string")
+    return Promise.reject(new Error("native-stdin-not-a-string"));
   return new Promise((res, rej) => {
-    execFile(entry.entrypoint, argv, { maxBuffer: 1 << 26 }, (err, stdout) => {
+    const child = execFile(entry.entrypoint, argv, { maxBuffer: 1 << 26 }, (err, stdout) => {
       // A refusing emitter prints its reason as JSON and exits nonzero. That is
       // a RESULT, not a transport failure, and collapsing the two would let a
       // refusal read as a crash.
       const text = String(stdout ?? "");
       if (err && !text.trim()) return rej(err);
+      if (invocation.raw_output === true) return res({ ok: true, stdout: text });
       try { res(JSON.parse(text)); } catch (e) { rej(new Error("native-output-not-json: " + e.message)); }
     });
+    if (stdin !== undefined) { child.stdin.end(stdin); }
   });
 }

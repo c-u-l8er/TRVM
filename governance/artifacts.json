@@ -17,7 +17,9 @@
     "derive_protocol.mjs",
     "derive_worker.mjs",
     "derive_launcher.mjs",
-    "observed_execution_host.mjs"
+    "observed_execution_host.mjs",
+    "lowering.mjs",
+    "lowering_check.mjs"
   ],
   "ledgers_pattern": "^round-\\d+-ledger\\.md$",
   "tools": [

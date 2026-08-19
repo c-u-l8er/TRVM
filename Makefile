@@ -25,7 +25,7 @@ VECTORS := ../docs/spec/conformance/vectors/normalize.json
 
 .PHONY: test conformance native native-selftest zig zig-selftest mojo mojo-selftest \
         wasm-smoke swarm research clean \
-        governance gov-kernel gov-grid gov-world gov-negative gov-bridge gov-film gov-strict gov-derive gov-harness
+        governance gov-kernel gov-grid gov-world gov-negative gov-bridge gov-film gov-lower gov-strict gov-derive gov-harness
 
 test: native zig mojo conformance native-selftest zig-selftest mojo-selftest \
       wasm-smoke swarm research governance
@@ -109,7 +109,7 @@ swarm:
 # broken for a full round after the envelope split. A gate that cannot fail is a
 # display. law:evidence.clean-baseline@1 is about the fixture; this is the same
 # disease in the runner.
-governance: gov-kernel gov-grid gov-world gov-negative gov-bridge gov-film gov-derive gov-harness
+governance: gov-kernel gov-grid gov-world gov-negative gov-bridge gov-film gov-lower gov-derive gov-harness
 	@echo "  evidence plane green"
 
 gov-kernel:
@@ -151,6 +151,15 @@ gov-film: $(GOV)/bridge/ic32_film
 
 $(GOV)/bridge/ic32_film: $(GOV)/bridge/ic32_film.c $(GOV)/bridge/ic32_canon.c runtime/c/ic32.c
 	$(CC) $(CFLAGS) -o $@ $<
+
+# Round 25. The source language reaches the governed runtime: canonical
+# lowering, native execution the host observes, structural decode, and the
+# refinement equality — three obligations, six identities, none collapsed. The
+# native leg is OBSERVED and not FILM-EVIDENCED for this fixture, and the check
+# asserts that refusal rather than working around it.
+gov-lower: $(GOV)/bridge/ic32_film $(GOV)/bridge/ic32_canon
+	@echo "==== [governance] lowering refinement — source == native target ===="
+	@cd $(GOV) && out=$$($(NODE) lowering_check.mjs) && printf "%s\n" "$$out" | tail -1
 
 # Release / pack-cut gate. CONF-2 may report NOT_APPLICABLE for a standalone
 # oracle whose corpus file is absent — equality is then UNKNOWN, not agreed. An
