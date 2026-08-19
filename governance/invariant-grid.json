@@ -1724,6 +1724,32 @@
  "changelog_from_1_21_0": [
   "evidence.clean-baseline@1 gains its runner half: a gate must be able to fail. `cmd | tail -1` takes the PIPE's exit status, so a crashing subject reported success — the derive battery ran broken for a full round after the envelope split and make governance stayed green.",
   "all 13 governance recipe lines capture output and status before printing; verified to fail on both an unresolvable import and a false assertion.",
-  "the first crash test written for this was itself vacuous — a throw appended AFTER process.exit, which never runs. Recorded because it is the same species the harness self-test exists for."
- ]
+  "the first crash test written for this was itself vacuous — a throw appended AFTER process.exit, which never runs. Recorded because it is the same species the harness self-test exists for.",
+  "lowering_spike RESTORED after being lost in the round-16 split, with TRVM-TERM-CANON-v1, the three properties, the decision rule, and the fourth identity (outcome_sem_id under TRVM-DERIVE-OUTCOME-v1, because refusal is also semantics). The round-16/17/18 review brief claimed this section was recorded while the extract shipped beside it read null."
+ ],
+ "lowering_spike": {
+  "status": "DECLARED, not built.",
+  "record_correction": "This section was LOST between drafts. The combined round-16 draft carried it; when that draft was split into rounds 16/17/18 the grid was rebuilt from the round-15 base and this section was not re-added. The round-16/17/18 review brief nonetheless stated that TRVM-TERM-CANON-v1 was 'recorded in lowering_spike', while the machine-readable extract shipped alongside it contained lowering_spike: null. The brief was wrong and the extract was right. Restored here, in round 21, together with the fourth identity the review then supplied.",
+  "scope": "the PURE fragment only — const and add first, then input/sub/mul/len. NOT read/scope/cite: authority-sensitive operations carry footprint semantics that would muddy the question the spike exists to answer. If add(const 2, const 3) already gives an ugly lowering, that is valuable information before a compiler is built around the idea.",
+  "target_encoding": {
+   "name": "TRVM-TERM-CANON-v1",
+   "what": "a canonical encoding of the TARGET TERM, before heap allocation — a different object from the runtime heap state that SEMSTATE-CANONICAL-v1 identifies.",
+   "why": "it resolves an ordering inversion. 'The same AST lowers to byte-identical target syntax' needs a target NOTATION to be byte-identical in; if that notation were the runtime-state canonicaliser, the spike would depend on the very C work the film round is supposed to deliver. Term identity and runtime-state identity are separate, so the spike does not wait for the film.",
+   "caveat": "ic32's existing textual syntax may serve IF it has a proven unique parse/format round trip and canonical variable naming. If not, do not bless pretty-printed text — use a small canonical target AST / prefix serialization."
+  },
+  "three_properties": [
+   "the same Derive AST lowers to byte-identical target-term bytes",
+   "JS evaluate(source) and ic32(normalize(target)) decode to the same outcome",
+   "the resulting ic32 execution emits and replays an ordinary TRVM transition film"
+  ],
+  "identities": {
+   "chain": "program_sem_id --lowering_id--> target_term_sem_id --native execution film--> target_nf_sem_id --decode_id--> outcome_sem_id",
+   "reference_side": "the JS derivation evaluator independently produces outcome_sem_id from program_sem_id + inputs",
+   "refinement_obligation": "source_outcome_sem_id == decoded_target_outcome_sem_id",
+   "program_sem_id_is_not_replaced": "the lowered term's id must NOT replace program_sem_id. Keeping them distinct is what makes the chain a refinement STATEMENT rather than a renaming.",
+   "why_outcome_not_value": "REFUSAL IS ALSO SEMANTICS. An outcome is {status:'value', value} or {status:'refused', reason} content-addressed under TRVM-DERIVE-OUTCOME-v1. A value-only identity cannot state that two implementations agreed about program-arith-non-finite, which is exactly the agreement the frozen core exists to make checkable."
+  },
+  "layer_separation": "lowering proves source program -> target term; the FILM proves target term -> target normal form transitions; DECODING proves target normal form -> target outcome; the refinement receipt proves source outcome == target outcome. The film must not be asked to prove source-language equivalence — its job is to witness the target machine's execution.",
+  "decision_rule": "if the spike is clean, lowering into ic32 is preferred over a second dedicated C interpreter beside it — one execution substrate rather than two. If the mapping is awkward, it is NOT adopted. The point of a spike is that it can fail."
+ }
 }

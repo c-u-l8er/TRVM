@@ -876,5 +876,12 @@ for e in g['law_registry']['entries']:
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 
+run_case lowering-spike-dropped "lowering_spike missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+del g['lowering_spike']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+
 echo; [ $FAILED -eq 0 ] && echo "NEGATIVE BATTERY: $CASES/$CASES forgeries caught" || echo "NEGATIVE BATTERY: FAILURES PRESENT ($CAUGHT/$CASES caught)"
 exit $FAILED

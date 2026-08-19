@@ -758,6 +758,11 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         "grid clean_baseline missing its phase list or its per-family declared baselines (v1.21)");
       ok(/^establish_baseline$/.test((g.clean_baseline?.phases ?? [])[0] ?? ""),
         "grid clean_baseline.phases must begin with establish_baseline");
+      ok(!!g.lowering_spike?.decision_rule && !!g.lowering_spike?.target_encoding &&
+         !!g.lowering_spike?.identities?.why_outcome_not_value,
+        "grid lowering_spike missing, or missing its target encoding / decision rule / outcome identity " +
+        "(v1.22) — this section was LOST in the round-16 split while a review brief claimed it was " +
+        "recorded, which is the exact species this checker exists to make impossible");
       ok(!!g.clean_baseline?.gate_must_be_able_to_fail && /A GATE MUST BE ABLE TO FAIL/.test(cb?.statement ?? ""),
         "evidence.clean-baseline@1 no longer carries its runner half (v1.22) — `cmd | tail -1` takes " +
         "the PIPE's exit status, so a gate whose subject crashed prints a stack trace and reports success");
