@@ -701,3 +701,53 @@ This is the sixth time an instrument has been found measuring something adjacent
 **The seam list, eleven long.** …the artifact observed vs the mechanism invoked · re-derivation vs the oracle it re-derives against · and now **an object's lineage vs its provenance**.
 
 **What the measurement changed about the plan.** The next round was scoped as "six DUP rules, the `d:`/`v:` loci, multi-frame films" — three items, of which only the third was needed for the theorem in hand. Measuring first cost one afternoon and saved a round. **Next**: the parameterized-versus-instantiated inputs ruling, which must be settled before the `input` op; then a fixture where a DUP rule genuinely fires, which is what the six rules and the `d:`/`v:` loci are actually for; then `sub`/`mul` and the first named primitive.
+
+## Round 27, pass A — sever before validating, not after
+
+**152. P-6, and it is the first rung that is not an object at all.** Round 26 finished turning every authority-bearing OBJECT into constructor DATA. It then validated that data **while the caller still owned it**, and copied it afterwards. A getter is read as many times as it is written, and the reads need not agree.
+
+```js
+const entry = {
+  kind: "node-worker",
+  get entrypoint() { reads++; return reads <= 3 ? honestWorker : maliciousWorker; },
+  artifact_closure: [honestWorker, protocol, host],
+};
+```
+
+The old constructor read `entrypoint` **four** times — `typeof`, `isAbsolute`, the entrypoint-inside-closure check, and then the frozen internal entry. The first three see the honest worker, so every validation passes *including the one round 24 added precisely to stop an entrypoint escaping its own hashed closure*. The fourth read is what gets stored:
+
+```
+internal entrypoint   /tmp/…_evil_worker.mjs      ← not in the closure
+artifact_closure      derive_worker.mjs · derive_protocol.mjs · observed_execution_host.mjs
+```
+
+The un-hashed worker really runs, and acceptance reports `implementation_provenance: "observed"` against the digest of the **honest** closure. So P-3 came back wearing data:
+
+```
+P-3   validate artifact X          execute caller action Y
+P-6   validate data describing X   copy "the same" data later   execute Y
+```
+
+**153. P-6b is the same disease on the other authority surface, and its milder outcome is not a defence.** `bind` computed `programSemId(ast)` and then `canonicalBytes(ast)` — two reads of caller-owned state — so the registry ended up **keyed by `const(5)`'s identity and holding `const(999)`**. It fails closed: `verify()` recomputes the id from what was stored and refuses with `program-id-mismatch`. But `bind()` reached the state its own comment calls impossible, `authorize()` will issue a request against that id in the meantime, and **a second mechanism catching the first is not the first working.** Frozen for that reason.
+
+**154. The rule, and it is meant to end the ladder rather than extend it.**
+
+> **Every untrusted structure that becomes authority state is canonicalised into an OWNED SNAPSHOT exactly once; validation, identity computation and storage then operate only on that snapshot. No unowned mutable object is consulted twice across a trust decision.**
+
+Not getter detection, not banning Proxies, not another predicate. Snapshot once, then do everything against the snapshot. Both surfaces now read their getter **exactly once**, asserted as a count. The executor catalog is canonical **plain data** and a `Map` is refused — this is a boundary whose whole thesis is that capabilities are not data, and admitting richer JS object forms at it buys nothing. A catalog entry carrying a function is now refused by `canonicalBytes` *before any field is examined*, which is earlier than the schema check that used to catch it.
+
+**155. Six rungs, and what the sixth one says about the other five.**
+
+```
+@1 the implementation LABEL          @4 the SEMANTIC ORACLE at acceptance
+@2 the registration NAME             @5 the AUTHORITY-BEARING OBJECT
+@3 the ACTION beside the evidence    @6 MUTABLE DATA READ TWICE
+```
+
+`canonicalBytes` has refused a capability since v0.1.0. What was never said is that **reading through it twice reintroduces one** — the second read *is* the capability. Every earlier rung was a thing a caller handed over; this one is a thing a caller kept.
+
+**156. Gate.** grid **v1.29.0** — 73 entries / 366 citations · `derive_protocol.mjs` **0.12.0** · `observed_execution_host.mjs` **0.2.0** · negative battery **174/174** with six new forgeries · bridge 48/48 · native semantic film 16/16 · lowering refinement 9/9 film-evidenced · derive 45/45 · realm 20/20 · **eleven** paired probes · harness 9/9 · runner 3/3. `scheduler_certificate.json` byte-identical — twenty-third consecutive round.
+
+**The seam list, twelve long.** …an object's lineage vs its provenance · and now **a value read once vs a value read twice**.
+
+**Pass B is deliberately not in this round.** The inputs decision record and the `church_exp_2_2` film are the next work and they are separate fronts; mixing an authority-boundary closure with a language-architecture ruling is how a round stops being falsifiable as one thing.

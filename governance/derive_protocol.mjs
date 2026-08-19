@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   derive_protocol.mjs — v0.11.0 — the serialized derivation boundary
+   derive_protocol.mjs — v0.12.0 — the serialized derivation boundary
 
    law:derivation.environment-confinement@1 is FALSIFIED under the arbitrary-
    closure measureFn API, and the record says closure comes from REPLACING the
@@ -67,7 +67,41 @@
    trigger to move to B or a hybrid, and it is named in the grid rather than
    discovered later.
 
-   WHAT v0.11.0 CHANGES: AN instanceof GUARD IS SATISFIED BY A SUBCLASS
+   WHAT v0.12.0 CHANGES: SEVER BEFORE VALIDATING, NOT AFTER
+   ────────────────────────────────────────────────────────
+   v0.11.0 turned every authority-bearing OBJECT into constructor DATA — and
+   then validated that data while the caller still owned it, copying afterwards.
+   A getter is read more than once, and the reads need not agree.
+
+       bind(ast)   read 1-2 → programSemId(ast) → the id of const(5)
+                   read 3   → canonicalBytes(ast) → stores const(999)
+
+   so the registry ends up keyed by one program's identity and holding another.
+   `verify()` catches it later as program-id-mismatch — the system fails closed —
+   but bind() has created the state its own comment calls impossible, and
+   authorize() will issue a request for that id in the meantime. Frozen as P-6b
+   in probe_snapshot_v12_repro.mjs, with P-6 the same defect in the executor
+   catalog, where it does NOT fail closed: a getter that answers honestly for
+   the three validating reads and maliciously for the fourth puts an entrypoint
+   OUTSIDE its own hashed closure into the frozen internal catalog, and the
+   un-hashed worker really runs.
+
+       Untrusted data must be SEVERED BEFORE it is validated, not validated
+       before it is severed.
+
+   So the rule, and it is the one that should finally terminate this ladder:
+
+       Every untrusted structure that becomes authority state is canonicalised
+       into an OWNED SNAPSHOT exactly once; validation, identity computation and
+       storage then operate only on that snapshot. No unowned mutable object is
+       consulted twice across a trust decision.
+
+   @6 is the sixth rung and the first that is not an object at all: label, name,
+   action, semantic oracle, authority-bearing object, and now MUTABLE DATA READ
+   TWICE. Round 24 already knew that canonicalBytes refuses a capability; what
+   it did not say is that reading through it twice reintroduces one.
+
+   WHAT v0.11.0 CHANGED: AN instanceof GUARD IS SATISFIED BY A SUBCLASS
    ────────────────────────────────────────────────────────────────────
    v0.10.0 built its own semantic registry from data — and one argument later
    still ACCEPTED a ready-made ObservedExecutionHost behind an `instanceof`
@@ -204,7 +238,7 @@ import { ObservedExecutionHost, digestArtifactFiles } from "./observed_execution
 export { digestArtifactFiles };
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const PROTOCOL_VERSION = "0.11.0";
+export const PROTOCOL_VERSION = "0.12.0";
 
 /* ── the canonical value domain, shared with the World ────────────────────
    Deliberately a copy of the World's rule rather than an import: this module
@@ -393,9 +427,13 @@ export class ProgramRegistry {
   #byId = new Map();
   constructor() { Object.freeze(this); }
   bind(ast) {
-    const id = programSemId(ast);
-    const frozen = JSON.parse(canonicalBytes(ast));       // owned, severed
-    deepFreeze(frozen);
+    // SEVER FIRST. v0.11.0 hashed the caller's object and then cloned it, two
+    // reads of state the caller still owned, so a getter could give the id one
+    // program and the store another (P-6b). Everything below now reads `owned`,
+    // which nobody else has a reference to.
+    const owned = deepFreeze(JSON.parse(canonicalBytes(ast)));
+    const id = programSemId(owned);
+    const frozen = owned;
     const existing = this.#byId.get(id);
     if (existing && canonicalBytes(existing) !== canonicalBytes(frozen))
       throw new Error("program-rebind-refused: " + id);   // unreachable by construction; asserted anyway
@@ -656,7 +694,7 @@ export function footprintWithinGrant(fp, read_grants) {
    reader callable, which was the closure-authority shape this whole line of
    work exists to remove — in-process only, but the same species. Now the
    evaluator receives nothing but canonical data. */
-export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.11.0";
+export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.12.0";
 
 function readerFromGrants(read_grants) {
   return {

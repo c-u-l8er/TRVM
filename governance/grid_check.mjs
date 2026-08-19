@@ -192,7 +192,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -833,6 +833,28 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
       ok(/catalog-entry-extra-field/.test(hostNoc),
         "the host must refuse a catalog entry carrying any field beyond {kind, entrypoint, " +
         "artifact_closure} — an extra field is exactly where a spawn() would reappear");
+      // ── v1.29: sever before validating ────────────────────────────────
+      ok(/const owned = deepFreeze\(JSON\.parse\(canonicalBytes\(ast\)\)\);/.test(dnoc) &&
+         /const id = programSemId\(owned\);/.test(dnoc),
+        "ProgramRegistry.bind must SEVER the AST before computing its identity. Hashing the caller's " +
+        "object and cloning it afterwards is two reads of state the caller owns, so a getter can give " +
+        "the id one program and the store another (P-6b, probe_snapshot_v12_repro.mjs)");
+      ok(/JSON\.parse\(canonicalBytes\(catalog\)\)/.test(hostNoc) &&
+         /host-catalog-must-be-plain-data/.test(hostNoc),
+        "the executor catalog must be snapshotted ONCE before validation, and must be canonical plain " +
+        "data. v0.1.0 read `entrypoint` four times and stored the fourth, so a getter put an " +
+        "entrypoint outside its own hashed closure into the immutable catalog (P-6)");
+      {
+        const os = entries.find((x) => x.id === "derivation.owned-snapshot" && x.revision === 1);
+        ok(!!os && os.canonical === true && os.status === "PROPERTY-TESTED",
+          "law derivation.owned-snapshot@1 missing, non-canonical, or not PROPERTY-TESTED (v1.29)");
+        ok(!!os && /CONSULTED TWICE ACROSS A TRUST DECISION/.test(os.statement ?? ""),
+          "derivation.owned-snapshot@1 must state the general rule and not only the two instances — " +
+          "the value of this one is that it is meant to END the supplier ladder rather than extend it");
+        ok(!!os && /THE MILDER OUTCOME IS NOT A DEFENCE/.test(os.statement ?? ""),
+          "derivation.owned-snapshot@1 must say why P-6b counts even though it fails closed. A second " +
+          "mechanism catching the first is not the first working");
+      }
       ok(/canonicalBytes\(invocation\)/.test(hostNoc),
         "the host must canonicalise the invocation, which refuses a function outright. That is the " +
         "mechanical reason an action cannot ride along with a declaration, rather than a convention");

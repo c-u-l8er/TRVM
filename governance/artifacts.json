@@ -55,7 +55,8 @@
     "probe_execreg_v08_repro.mjs": "P-2: registerExecutor was an assertion dressed as an observation — it launched nothing — and accept(…, executor) put a proof back in the caller's hands, which is the round-17 shape one level up. Paired: 2 breach frozen, 5 confined live.",
     "probe_execlaunch_v09_repro.mjs": "P-3/P-3F: the authority hashed one thing and executed another. artifact_files (evidence) and spawn() (action) were independent fields of one caller-supplied object, so declaring the genuine closure while spawning something else produced provenance 'observed' for an implementation that never ran — in both the derivation and film planes. Paired: 2 breach frozen, 5 confined live.",
     "probe_semoracle_v10_repro.mjs": "P-4: acceptance took its semantic oracle from the claimant. accept(registry, req, res) let a caller supply the mapping from program_sem_id to program, so an issued const(5) request accepted as 999 under a registry-shaped object whose verify() blessed the issued id. Not a type problem — a real ProgramRegistry populated differently does it too. Paired: 2 breach frozen, 5 confined live.",
-    "probe_hostown_v11_repro.mjs": "P-5: an instanceof guard is satisfied by a subclass. A two-method EvilHost overriding run() and observationOf() passed the authority's host check while nothing executed. Paired: 2 breach frozen, 4 confined live."
+    "probe_hostown_v11_repro.mjs": "P-5: an instanceof guard is satisfied by a subclass. A two-method EvilHost overriding run() and observationOf() passed the authority's host check while nothing executed. Paired: 2 breach frozen, 4 confined live.",
+    "probe_snapshot_v12_repro.mjs": "P-6/P-6b: untrusted data was validated while the caller still owned it. A getter read four times put an entrypoint outside its own hashed closure into the immutable catalog and the un-hashed worker ran; the same shape split a registry key from its value. Paired: 2 breach frozen, 5 confined live."
   },
   "subdirs": {
     "bridge": "cross-plane C bridge: ic32_canon.c + bridge_check.mjs (canonical BYTES, 48/48) and ic32_film.c + film_check.mjs (round 23: a semantic-film FRAME the native runtime originates). ic32_film.c #includes ic32_canon.c under IC32_CANON_NO_MAIN so the canonicalizer under the film is the same code the bridge gate replays, not a copy of it.",
@@ -107,7 +108,7 @@
       "why": "round 19's two envelopes were one short. A conforming trace does not prove C executed anything, and neither does a string, and neither would a digest of the executable carried inside the same untrusted result."
     }
   },
-  "status": "v0.11.0 — the authority BUILDS every oracle it consults from data: World reader, semantic registry, execution host from an executor catalog. Five-rung supplier ladder closed. NOT yet the production derivation path",
+  "status": "v0.12.0 — every oracle is built from an OWNED CANONICAL SNAPSHOT taken once: World reader, semantic registry, execution host from a plain-data executor catalog. Six-rung supplier ladder closed. NOT yet the production derivation path",
   "subdir_case_inputs": [
     "bridge/ic32_canon.c",
     "bridge/bridge_check.mjs",
@@ -125,7 +126,8 @@
     "probe_execreg_v08_repro.mjs",
     "probe_execlaunch_v09_repro.mjs",
     "probe_semoracle_v10_repro.mjs",
-    "probe_hostown_v11_repro.mjs"
+    "probe_hostown_v11_repro.mjs",
+    "probe_snapshot_v12_repro.mjs"
   ],
   "gating_probes_note": "The PAIRED probes, and the only ones that gate: each must still BREACH against its verbatim frozen copy and be CONFINED against live, so it fails if a future edit repairs the frozen side instead of the live one. Every other probe_*_repro.mjs freezes a boundary that is DECLARED OPEN and exits NONZERO BY DESIGN — running those as gates makes a review pack report four failures for witnesses that are behaving correctly. Round 23 did exactly that, by replacing a hand-typed list in verify.sh with a glob; the list lives here now and grid_check checks the Makefile against it, so the two cannot drift and neither is a glob."
 }

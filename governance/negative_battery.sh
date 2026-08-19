@@ -1306,5 +1306,48 @@ del g['lowering_spike']['film_grade']
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 
+# ── round 27: sever before validating ───────────────────────────────────────
+run_case bind-hashes-before-severing "must SEVER the AST before computing its identity" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('const owned = deepFreeze(JSON.parse(canonicalBytes(ast)));\n    const id = programSemId(owned);',
+                  'const id = programSemId(ast);\n    const owned = deepFreeze(JSON.parse(canonicalBytes(ast)));')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case catalog-validated-in-place "catalog must be snapshotted ONCE before validation" "
+src = open('observed_execution_host.mjs').read()
+src = src.replace('JSON.parse(canonicalBytes(catalog))', 'catalog')
+open('observed_execution_host.mjs','w').write(src)"
+
+run_case catalog-accepts-a-map "must be canonical plain" "
+src = open('observed_execution_host.mjs').read()
+src = src.replace('host-catalog-must-be-plain-data', 'host-catalog-map-ok')
+open('observed_execution_host.mjs','w').write(src)"
+
+run_case snapshot-law-deleted "law derivation.owned-snapshot@1 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if e['id'] != 'derivation.owned-snapshot']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case snapshot-rule-narrowed "must state the general rule and not only the two instances" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.owned-snapshot':
+        e['statement'] = e['statement'].replace('CONSULTED TWICE ACROSS A TRUST DECISION',
+                                                'read twice by the catalog')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case fail-closed-treated-as-fine "must say why P-6b counts even though it fails closed" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.owned-snapshot':
+        e['statement'] = e['statement'].replace('THE MILDER OUTCOME IS NOT A DEFENCE',
+                                                'This one is caught downstream')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+
 echo; [ $FAILED -eq 0 ] && echo "NEGATIVE BATTERY: $CASES/$CASES forgeries caught" || echo "NEGATIVE BATTERY: FAILURES PRESENT ($CAUGHT/$CASES caught)"
 exit $FAILED

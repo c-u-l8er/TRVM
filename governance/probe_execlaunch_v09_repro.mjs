@@ -249,11 +249,12 @@ class V8FilmAuthority {
       entrypoint: join(HERE, "derive_worker.mjs"), artifact_closure: [join(HERE, "grid_check.mjs")] } });
     return "ACCEPTED"; } catch (e) { return e.message; } })();
   R("live: catalog-carries-no-action",
-    fields === "artifact_closure,entrypoint,kind" && /^catalog-entry-extra-field: /.test(withAction)
+    fields === "artifact_closure,entrypoint,kind" && /^host-catalog-not-canonical: /.test(withAction)
       && /^catalog-entrypoint-outside-closure: /.test(outside),
     `a catalog entry is {${fields}} — a KIND, whose transport is written in the host, and an entrypoint ` +
     `that must lie inside the closure being hashed. An entry carrying a function is refused ` +
-    `(${withAction.split(":")[0]}) and an entrypoint outside its own closure is refused ` +
+    `(${withAction.split(":")[0]}, by canonicalBytes before any field is read) and an entrypoint ` +
+    `outside its own closure is refused ` +
     `(${outside.split(":")[0]}), which is P-3 with the descriptor moved indoors`);
 }
 

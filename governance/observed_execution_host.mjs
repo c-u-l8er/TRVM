@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   observed_execution_host.mjs — v0.1.0 — the only thing here that runs anything
+   observed_execution_host.mjs — v0.2.0 — the only thing here that runs anything
 
    P-3: THE AUTHORITY HASHED ONE THING AND EXECUTED ANOTHER.
 
@@ -70,7 +70,7 @@ import { basename, isAbsolute, resolve } from "node:path";
 import { Worker } from "node:worker_threads";
 import { execFile } from "node:child_process";
 
-export const HOST_VERSION = "0.1.0";
+export const HOST_VERSION = "0.2.0";
 
 /** H over an artifact CLOSURE, length-framed and keyed by BASENAME so the
  *  digest is a property of the bytes rather than of where they were extracted —
@@ -148,7 +148,24 @@ export class ObservedExecutionHost {
   constructor(catalog) {
     if (!catalog || typeof catalog !== "object")
       throw new Error("host-requires-an-executor-catalog");
-    const src = catalog instanceof Map ? [...catalog.entries()] : Object.entries(catalog);
+    // SEVER FIRST, then validate. v0.1.0 validated the caller's object and
+    // copied it afterwards — four separate reads of `entrypoint`, three of them
+    // validating. A getter answering honestly for those three and maliciously
+    // for the fourth put an entrypoint OUTSIDE its own hashed closure into the
+    // supposedly immutable internal catalog, and the un-hashed worker really
+    // ran while acceptance reported the honest closure's digest (P-6).
+    //
+    // canonicalBytes is the same rule the message domain has enforced since
+    // v0.1.0, and it is doing two jobs here: it refuses a capability outright,
+    // and — because the snapshot is taken ONCE — it makes every later read a
+    // read of data nobody else holds. A Map is no longer accepted: this is a
+    // trust boundary whose whole thesis is that capabilities are not data, and
+    // there is no value in admitting richer JS object forms at it.
+    if (catalog instanceof Map) throw new Error("host-catalog-must-be-plain-data");
+    let owned;
+    try { owned = JSON.parse(canonicalBytes(catalog)); }
+    catch (e) { throw new Error("host-catalog-not-canonical: " + e.message); }
+    const src = Object.entries(owned);
     if (src.length === 0) throw new Error("host-catalog-empty");
     const seen = new Map();
     for (const [family, e] of src) {

@@ -1,6 +1,6 @@
 {
  "record": "invariant-grid",
- "version": "1.28.0",
+ "version": "1.29.0",
  "date": "2026-08-18",
  "v1_criteria": {
   "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
@@ -617,7 +617,7 @@
  },
  "law_registry": {
   "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
-  "grid_version": "1.28.0",
+  "grid_version": "1.29.0",
   "entries": [
    {
     "id": "kappa.monotonicity.unrestricted",
@@ -1225,6 +1225,14 @@
     "canonical": true,
     "statement": "AN AUTHORITY-BEARING OBJECT MAY NOT BE SUPPLIED TO THE AUTHORITY THAT WILL TRUST IT. An `instanceof` guard is satisfied by a subclass: two overridden methods — run() that never runs and observationOf() that answers whatever it likes — pass `host instanceof ObservedExecutionHost` while bypassing the catalog, the digest, hash-then-launch and the observation table, all of which remain perfectly correct and perfectly unconsulted. Acceptance then reports implementation_provenance 'observed' for an implementation that never ran. THE QUESTION IS NOT WHAT THE OBJECT IS DESCENDED FROM. THE QUESTION IS WHO BUILT IT. So the repair is not a tighter predicate — Object.getPrototypeOf(host) === ObservedExecutionHost.prototype excludes the subclass and admits a Proxy, and would be derivation.acceptance-authority@1's mistake with a longer expression. The authority takes an EXECUTOR CATALOG, which is data, and constructs the host itself against its module's own class binding, which no caller can substitute. Every authority with such a parameter does the same, because this is a property of the PARAMETER and not of any one class. This is the fifth rung of one ladder: @1 the implementation LABEL, @2 the registration NAME, @3 the ACTION beside the artifact evidence, @4 the SEMANTIC ORACLE at acceptance, @5 the EXECUTION-AUTHORITY OBJECT itself. Each rung sat in the parameter that had stopped being examined because it was 'obviously infrastructure'. What a caller supplies is an INTENT, a RESULT TO VALIDATE, and — at construction only — the DATA every oracle is built from.",
     "evidence": "probe_hostown_v11_repro.mjs, paired and gating: 2/2 reproduce against a frozen v0.10.0 guard — P-5, where a two-method subclass yields ok/validated/fresh_at_check with provenance 'observed', implementation_id impl-c-fake-v1 and executable_artifact_id 'fake-artifact' while run() would throw if it were called; and P-5b, which shows the tighter prototype check would have excluded the subclass and still admitted a Proxy over a genuine host. 4/4 confined live: the host is built from catalog data, both an EvilHost and a GENUINE ObservedExecutionHost are refused in the catalog position because neither is a catalog, editing the caller's catalog object after construction reaches nothing, the authority exposes zero own properties and is frozen with the host behind a #private field, and the five rungs are asserted as a set. derive_realm_battery.mjs 20/20, derive_battery.mjs 45/45, bridge/film_check.mjs 14/14 with FilmAuthority taking catalog data for the same reason."
+   },
+   {
+    "id": "derivation.owned-snapshot",
+    "revision": 1,
+    "status": "PROPERTY-TESTED",
+    "canonical": true,
+    "statement": "UNTRUSTED DATA MUST BE SEVERED BEFORE IT IS VALIDATED, NOT VALIDATED BEFORE IT IS SEVERED. Every untrusted structure that becomes authority state is canonicalised into an OWNED SNAPSHOT exactly once; validation, identity computation and storage then operate only on that snapshot. NO UNOWNED MUTABLE OBJECT IS CONSULTED TWICE ACROSS A TRUST DECISION. A getter is read as many times as it is written, and the reads need not agree. v0.11.0's executor catalog read `entrypoint` four times — typeof, isAbsolute, the entrypoint-inside-closure check, and then the frozen internal entry — so a getter answering honestly for the three validating reads and maliciously for the fourth put an entrypoint OUTSIDE its own hashed closure into the immutable catalog, and the un-hashed executable really ran while acceptance reported the honest closure's digest. ProgramRegistry.bind had the same shape with a milder outcome: it hashed the caller's AST and then cloned it, so the registry could be keyed by const(5)'s identity while holding const(999). THE MILDER OUTCOME IS NOT A DEFENCE. bind fails closed only because verify() recomputes the id from what was stored — a SECOND mechanism catching the first is not the first working, and authorize() will issue a request against the broken id in the meantime. This is the sixth rung, and the first that is not an object: @1 the implementation LABEL, @2 the registration NAME, @3 the ACTION beside the artifact evidence, @4 the SEMANTIC ORACLE, @5 the AUTHORITY-BEARING OBJECT, @6 MUTABLE DATA READ TWICE. canonicalBytes has refused a capability since v0.1.0; what was not said is that reading THROUGH it twice reintroduces one — the second read IS the capability. The executor catalog is canonical PLAIN DATA only, and a Map is refused: this is a trust boundary whose thesis is that capabilities are not data, and admitting richer JS object forms at it buys nothing.",
+    "evidence": "probe_snapshot_v12_repro.mjs, paired and gating: 2/2 reproduce against frozen v0.11.0 copies — P-6, where four reads of one getter place an entrypoint outside its own hashed closure into the frozen internal catalog; and P-6b, where three reads split a registry's key from its value. 5/5 confined live: the catalog getter is read EXACTLY ONCE and the honest entrypoint is stored, the same attack driven end to end through the authority runs the honest worker and leaves the evil worker's startup marker absent, the AST getter is read EXACTLY ONCE so key and value agree by construction rather than by a downstream check, a Map and a function-carrying entry are both refused before any field is examined, and the six rungs are asserted as a set."
    }
   ]
  },
@@ -1515,8 +1523,8 @@
  "artifact_versions": {
   "trvm_law_kernel.mjs": "1.1.0",
   "trvm_world.mjs": "0.12.0",
-  "derive_protocol.mjs": "0.11.0",
-  "observed_execution_host.mjs": "0.1.0",
+  "derive_protocol.mjs": "0.12.0",
+  "observed_execution_host.mjs": "0.2.0",
   "lowering.mjs": "0.1.0",
   "bridge/ic32_film.c": "0.2.0"
  },
@@ -1881,5 +1889,10 @@
   "grid lowering_spike.status corrected from 'DECLARED, not built.' to EXECUTED-PARTIAL with separate execution_grade and film_grade — it contradicted three PROPERTY-TESTED laws in the same file, and grid_check now refuses that contradiction.",
   "gating_probes gains probe_hostown_v11_repro.mjs.",
   "ic32_film 0.1.0 -> 0.2.0: multi-frame films over dup-CARRYING terms; the precondition moves from dup PRESENCE to dup ENABLEDNESS; the readback interaction-count check is removed as accidentally true and replaced by an asserted pool-quiescence terminal. derivation.lowering-refinement@1 goes OBSERVED -> FILM-EVIDENCED for the first witness."
+ ],
+ "changelog_from_1_28_0": [
+  "law:derivation.owned-snapshot@1 added — sever before validating (P-6, P-6b). The executor catalog and ProgramRegistry.bind take a canonical snapshot once and read only that afterwards.",
+  "derive_protocol.mjs 0.11.0 -> 0.12.0; observed_execution_host.mjs 0.1.0 -> 0.2.0; the catalog is canonical plain data only and a Map is refused.",
+  "gating_probes gains probe_snapshot_v12_repro.mjs."
  ]
 }

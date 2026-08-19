@@ -233,11 +233,12 @@ let observedRun = null;
     catch (e) { return e.message; } })();
   R("catalog-entry-well-formed",
     /^catalog-entrypoint-outside-closure: /.test(bad) && /^catalog-closure-aliased: /.test(aliased)
-      && /^catalog-entry-extra-field: /.test(extra),
+      && /^host-catalog-not-canonical: /.test(extra),
     `an entrypoint outside its own hashed closure is refused (${bad.split(":")[0]}) — that is P-3 with ` +
     `the descriptor moved indoors, and moving it indoors is not a repair. Two families over one closure ` +
-    `is refused (${aliased.split(":")[0]}), and a catalog entry carrying an extra field is refused ` +
-    `(${extra}) — which is where a spawn() would have to reappear`);
+    `is refused (${aliased.split(":")[0]}), and a catalog entry carrying a FUNCTION is refused by ` +
+    `canonicalBytes before any field is examined (${extra.split(":")[0]}) — earlier than the schema ` +
+    `check that used to catch it, because the catalog is severed before it is validated (P-6)`);
 }
 
 // 14. relabelling an OBSERVED result after the fact
