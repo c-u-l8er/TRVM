@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   derive_protocol.mjs — v0.7.0 — the serialized derivation boundary
+   derive_protocol.mjs — v0.8.0 — the serialized derivation boundary
 
    law:derivation.environment-confinement@1 is FALSIFIED under the arbitrary-
    closure measureFn API, and the record says closure comes from REPLACING the
@@ -67,16 +67,66 @@
    trigger to move to B or a hybrid, and it is named in the grid rather than
    discovered later.
 
+   WHAT v0.8.0 CHANGES: EXECUTOR EXISTENCE IS NOT EXECUTION PROVENANCE
+   ───────────────────────────────────────────────────────────────────
+   v0.7.0 said "the host observes what it launched" and then shipped
+   `registerExecutor(implementation_id)`, which launched nothing and observed
+   nothing: it took a string, put it in a private Map, and returned a handle
+   carrying a private Symbol. The Symbol proved *this authority minted this
+   handle*. It did not prove *this authority observed this implementation
+   execute this request and produce this result* — and that last sentence is
+   the whole object. Frozen as P-2 in probe_execreg_v08_repro.mjs.
+
+   Worse, `accept(registry, req, res, executor)` put a proof back in the
+   caller's hands, which is exactly the shape round 17 removed from issuance.
+   Even had registration really launched C, a valid C handle could have been
+   paired with bytes produced anywhere else. So:
+
+       request provenance   don't authenticate the grant;
+                            authenticate the WHOLE REQUEST.        (round 17)
+       execution provenance don't authenticate the executor handle;
+                            authenticate the WHOLE EXECUTION EVENT. (here)
+
+   Manual registration is DELETED. The authority is now the thing that runs an
+   executor: `execute(req, launcher)` reads the artifact's bytes ITSELF and
+   hashes them, looks that digest up in its own naming policy, spawns, sends
+   THIS request, receives THESE bytes, and only then records an observation
+   keyed by H(request_sem_id | canonical(the whole result)). `accept` takes no
+   provenance argument and consults that privately held table. Change any byte
+   of the result — including implementation_id — and the key misses.
+
+   THREE IDENTITIES, because one string was answering three questions:
+
+       implementation_family_id   what protocol implementation this is
+       executable_artifact_id     H(the bytes the authority hashed)
+       executor_session_id        this particular authority-driven launch
+
+   The digest→name direction is a NAMING POLICY (`nameArtifact`) and is not an
+   observation: it says "bytes with this digest are what we call impl-c-…",
+   never that anything ran. It cannot be abused into the P-2 attack, because
+   attributing a result to C now requires presenting an artifact whose bytes
+   actually hash to C's digest.
+
+   DECLARED OPEN, and stated conservatively on purpose. Hashing a path and then
+   spawning that path proves *the host observed artifact X immediately before
+   requesting execution of path P*. It is not a proof that the OS executed
+   those exact bytes under every filesystem race, and it is NOT hardware-
+   attested executable identity. That gap stays open and named.
+
    What this file does NOT yet claim: host confinement, determinism of a
-   long-lived evaluator, that implementation_id is bound to executable BYTES
-   (it is a declared constant — impersonation is closed, provenance is not),
-   or that any real derivation has been ported. Separate scopes, named
-   separately in the grid.
+   long-lived evaluator, TOCTOU-free artifact identity, or that any real
+   derivation has been ported. Separate scopes, named separately in the grid.
    ═══════════════════════════════════════════════════════════════════════════ */
 import { createHash } from "node:crypto";
+// The AUTHORITY reads the artifact it is about to launch — see digestArtifactFiles.
+// This adds no capability to the derivation realm: the worker's own header has
+// always said the filesystem is reachable from there, and confinement is a claim
+// about the OBJECT graph that crosses, which is unchanged.
+import { readFileSync } from "node:fs";
+import { basename } from "node:path";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const PROTOCOL_VERSION = "0.7.0";
+export const PROTOCOL_VERSION = "0.8.0";
 
 /* ── the canonical value domain, shared with the World ────────────────────
    Deliberately a copy of the World's rule rather than an import: this module
@@ -522,7 +572,7 @@ export function footprintWithinGrant(fp, read_grants) {
    reader callable, which was the closure-authority shape this whole line of
    work exists to remove — in-process only, but the same species. Now the
    evaluator receives nothing but canonical data. */
-export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.7.0";
+export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.8.0";
 
 function readerFromGrants(read_grants) {
   return {
@@ -770,12 +820,50 @@ export function requestSemId(req) {
   return "rsem-" + H("TRVM-REQUEST-SEM-v1|" + canonicalBytes(req));
 }
 
+/** The identity of an EXECUTION EVENT as a whole: which request went out, and
+ *  which bytes came back. This is the round-17 lesson applied one level up.
+ *  Round 17: don't authenticate the grant, authenticate the whole request.
+ *  Here:     don't authenticate the executor handle, authenticate the whole
+ *            execution event.
+ *
+ *  Because the key covers `canonicalBytes(res)` and not a projection of it,
+ *  relabelling a result AFTER execution — the F-7 forgery — moves the key and
+ *  the observation is simply not there. That is why there is no separate
+ *  "was this relabelled?" check: the question cannot be asked of a table it
+ *  cannot be found in. */
+export function executionKey(request_sem_id, res) {
+  return "xk-" + H("TRVM-EXEC-OBSERVED-v1|" + request_sem_id + "|" + canonicalBytes(res));
+}
+
+/** H over the artifact CLOSURE the launcher declares, length-framed and keyed
+ *  by BASENAME so the digest is a property of the bytes rather than of where
+ *  they were extracted — the review pack unpacks to an arbitrary directory and
+ *  must reach the same identity there.
+ *
+ *  It is a closure and not one file because a JS "executable" that imports
+ *  another module is not identified by its own bytes: derive_worker.mjs behaves
+ *  according to derive_protocol.mjs too. What is NOT covered, and is declared
+ *  open rather than glossed: the node binary, its flags, the standard library,
+ *  and — for a native executable — every shared object the loader will bind. */
+export function digestArtifactFiles(paths) {
+  const h = createHash("sha256").update("TRVM-ARTIFACT-CLOSURE-v1");
+  for (const p of paths) {
+    const bytes = readFileSync(p);
+    h.update("|" + basename(p) + "|" + bytes.length + "|");
+    h.update(bytes);
+  }
+  return h.digest("hex");
+}
+
 /** THE AUTHORITY. It holds the World reader and the issuance table, it is the
  *  only constructor of a DeriveRequest, and acceptance is one of its methods so
  *  that neither proof can arrive as an argument. */
 export class DerivationAuthority {
   #issued = new Map();
-  #executors = new Map();
+  #observed = new Map();        // executionKey -> observation. execute() is its ONLY writer.
+  #artifactNames = new Map();   // executable_artifact_id -> implementation_family_id
+  #namedArtifacts = new Map();  // implementation_family_id -> executable_artifact_id
+  #sessions = 0;
   #reader;
   constructor(reader) {
     if (!reader || typeof reader.read !== "function" || typeof reader.scope !== "function")
@@ -814,24 +902,105 @@ export class DerivationAuthority {
     return { ok: true, request: req };
   }
 
-  /** THE HOST OBSERVES WHAT IT LAUNCHED. This is the only way an implementation
-   *  identity becomes PROVENANCE rather than a claim, and it is why hashing the
-   *  executable would not by itself have been enough: a binary hash carried
-   *  inside the same untrusted result is still self-asserted. The missing object
-   *  was never the digest — it was independent observation of which executor
-   *  actually ran.
+  /** NAMING POLICY, and it is deliberately not an observation.
    *
-   *  The handle is authority-issued and holds a private Symbol, so a caller
-   *  cannot fabricate one or name an executor this authority never launched.
-   *  DECLARED OPEN, and now correctly scoped: WHAT identity to register for a
-   *  native executable — the trusted launcher hashing the binary it is about to
-   *  exec — is unbuilt. WHETHER observation exists at all is no longer optional. */
-  registerExecutor(implementation_id) {
-    if (typeof implementation_id !== "string" || !implementation_id.startsWith("impl-"))
-      throw new Error("executor-implementation-id-malformed");
-    const token = Symbol(implementation_id);
-    this.#executors.set(token, implementation_id);
-    return Object.freeze({ token });
+   *  Binding a digest to a name says "bytes with this digest are what we call
+   *  impl-c-derive-v0.8.0". It makes no claim that anything ran, so it cannot
+   *  be the P-2 defect wearing a new name — v0.7.0's registerExecutor took a
+   *  NAME and manufactured an observation from it, which is the inversion of
+   *  this. Here the observation is made by execute(), which hashes the artifact
+   *  it is about to launch and looks the name up HERE. Attributing a result to
+   *  C therefore requires presenting an artifact whose bytes actually hash to
+   *  C's digest.
+   *
+   *  The map is injective in both directions and rebinding is refused, because
+   *  a policy that can be rewritten mid-run is a policy a caller can choose. */
+  nameArtifact(executable_artifact_id, implementation_family_id) {
+    if (typeof executable_artifact_id !== "string" || !/^[0-9a-f]{64}$/.test(executable_artifact_id))
+      throw new Error("artifact-digest-malformed");
+    if (typeof implementation_family_id !== "string" || !implementation_family_id.startsWith("impl-"))
+      throw new Error("implementation-family-id-malformed");
+    const boundName = this.#artifactNames.get(executable_artifact_id);
+    if (boundName !== undefined && boundName !== implementation_family_id)
+      throw new Error("artifact-already-named: " + executable_artifact_id.slice(0, 12) +
+        "… is " + boundName);
+    const boundDigest = this.#namedArtifacts.get(implementation_family_id);
+    if (boundDigest !== undefined && boundDigest !== executable_artifact_id)
+      throw new Error("family-already-bound: " + implementation_family_id + " is " +
+        boundDigest.slice(0, 12) + "…");
+    this.#artifactNames.set(executable_artifact_id, implementation_family_id);
+    this.#namedArtifacts.set(implementation_family_id, executable_artifact_id);
+    return { ok: true, executable_artifact_id, implementation_family_id };
+  }
+
+  /** THE AUTHORITY RUNS THE EXECUTOR. This method is the only writer of the
+   *  observation table, and every field of an observation is something this
+   *  method did rather than something it was told.
+   *
+   *  A `launcher` supplies MECHANISM and no identity: where the artifact is
+   *  (`artifact_path`) and how to start it and speak to it (`spawn`). It does
+   *  not get to say what it is. The authority reads the bytes at that path,
+   *  hashes them, and resolves the family name from its own policy — so a
+   *  launcher that declares itself "impl-c-derive" while pointing at the JS
+   *  worker gets the JS worker's name, or no name at all.
+   *
+   *  Order matters and is the conservative reading: hash, THEN spawn. The
+   *  strongest honest statement this supports is "the host observed artifact X
+   *  immediately before requesting execution of path P". It is not a proof that
+   *  the OS executed those exact bytes, and it is not attestation. Named here
+   *  and declared open in the grid rather than quietly upgraded in prose. */
+  async execute(req, launcher) {
+    const iss = this.wasIssued(req);
+    if (!iss.ok) return { ok: false, reason: iss.reason };
+    if (!launcher || typeof launcher.spawn !== "function" ||
+        !Array.isArray(launcher.artifact_files) || launcher.artifact_files.length === 0 ||
+        !launcher.artifact_files.every((p) => typeof p === "string"))
+      return { ok: false, reason: "launcher-malformed" };
+
+    // 1. THE AUTHORITY reads and hashes the artifact. Not the launcher, and
+    //    certainly not the executor. A launcher that could hand over the bytes
+    //    to be hashed would be able to present C's bytes and spawn JS, which is
+    //    P-2 with an extra step.
+    let executable_artifact_id;
+    try { executable_artifact_id = digestArtifactFiles(launcher.artifact_files); }
+    catch (e) { return { ok: false, reason: "artifact-unreadable: " + e.message }; }
+    const implementation_family_id = this.#artifactNames.get(executable_artifact_id);
+    if (implementation_family_id === undefined)
+      return { ok: false, reason: "artifact-unnamed: " + executable_artifact_id.slice(0, 12) + "…" };
+
+    // 2. THE AUTHORITY launches it, sends THIS request, and takes THESE bytes.
+    const executor_session_id = "xs-" + H(executable_artifact_id + "|" + req.request_id + "|" +
+      String(this.#sessions++));
+    let session, envelope;
+    try {
+      session = await launcher.spawn();
+      envelope = await session.send(req);
+    } catch (e) {
+      try { await session?.close(); } catch { /* the launch failure is the report */ }
+      return { ok: false, reason: "execution-failed: " + e.message };
+    }
+    try { await session.close(); } catch { /* closing is hygiene, not evidence */ }
+    if (!envelope?.ok) return { ok: false, reason: envelope?.reason ?? "execution-returned-nothing" };
+    const res = envelope.result;
+
+    // 3. and only now is there an observation, over the WHOLE execution event.
+    let key;
+    try { key = executionKey(requestSemId(req), res); }
+    catch (e) { return { ok: false, reason: "result-not-canonical: " + e.message }; }
+    this.#observed.set(key, Object.freeze({
+      implementation_family_id, executable_artifact_id, executor_session_id,
+      artifact_files: Object.freeze(launcher.artifact_files.map((p) => basename(p))),
+    }));
+    return { ok: true, result: res, executor_session_id };
+  }
+
+  /** Read-only view, for batteries and diagnostics. Returns a COPY: handing out
+   *  the record would hand out the ability to edit it. */
+  observationOf(req, res) {
+    let key;
+    try { key = executionKey(requestSemId(req), res); } catch { return null; }
+    const o = this.#observed.get(key);
+    return o ? { ...o } : null;
   }
 
   /** Was THIS request — every field of it — issued by THIS authority? */
@@ -849,8 +1018,15 @@ export class DerivationAuthority {
    *
    *    1. issuance   this request, whole, is one THIS authority issued
    *    2. validation schema, footprint-within-grant, re-derivation, trace
-   *    3. provenance the OBSERVED executor, not the claimed one
+   *    3. provenance the OBSERVED execution event, not a proof handed in
    *    4. freshness  the footprint's dependencies are still live NOW
+   *
+   *  IT TAKES NO PROVENANCE ARGUMENT, and v0.7.0's taking one was the round-17
+   *  defect reintroduced one level up: `accept(registry, req, res, executor)`
+   *  put a proof back in the caller's hands. Provenance is now looked up from
+   *  the authority's own observation table, under a key computed over the whole
+   *  execution event, so there is nothing for a caller to supply and nothing
+   *  for it to pair wrongly.
    *
    *  IT DOES NOT RETURN `committable`, and the earlier draft's doing so was
    *  wrong. One call cannot make a result committable, because the World can
@@ -866,29 +1042,33 @@ export class DerivationAuthority {
    *
    *  No lock capability is exported to reach that: rounds 9B-9C are the record
    *  of what happens when transaction authority gets passed around. */
-  accept(registry, req, res, executor = null) {
+  accept(registry, req, res) {
     const iss = this.wasIssued(req);
     if (!iss.ok) return { ok: false, reason: iss.reason };
     const v = validateForeignResult(registry, req, res);
     if (!v.ok) return v;
 
-    // ── PROVENANCE, against observation rather than against a string ──────
+    // ── PROVENANCE, against an execution event this authority drove ───────
+    // The lookup is the check. A result produced by JS and relabelled C hashes
+    // to a different key and is simply absent; a genuine C observation cannot
+    // be "attached" to other bytes because nothing is attached to anything.
     let observed;
-    if (executor !== null) {
-      observed = this.#executors.get(executor?.token);
-      if (observed === undefined)
-        return { ok: false, reason: "executor-not-registered-with-this-authority" };
-    }
+    try { observed = this.#observed.get(executionKey(requestSemId(req), res)); }
+    catch { observed = undefined; }
     if ("expected_implementation_id" in req) {
       if (observed === undefined)
         return { ok: false, reason: "implementation-provenance-unavailable" };
-      if (observed !== req.expected_implementation_id)
+      if (observed.implementation_family_id !== req.expected_implementation_id)
         return { ok: false, reason: "implementation-mismatch: want " +
-          req.expected_implementation_id + ", observed " + observed };
+          req.expected_implementation_id + ", observed " + observed.implementation_family_id };
     }
-    if (observed !== undefined && v.implementation_claimed !== observed)
+    // Still has content, and a narrower one than it had: with the whole result
+    // inside the key this can no longer fire on relabelling. It fires when an
+    // EXECUTOR's self-assertion disagrees with the name its own bytes carry
+    // under the authority's policy — a conformance fault of the implementation.
+    if (observed !== undefined && v.implementation_claimed !== observed.implementation_family_id)
       return { ok: false, reason: "implementation-claim-contradicts-observation: claims " +
-        v.implementation_claimed + ", observed " + observed };
+        v.implementation_claimed + ", observed " + observed.implementation_family_id };
 
     const f = validateFootprintFresh(this.#reader, res.semantic_result.read_footprint);
     if (!f.ok) return { ok: false, reason: f.reason };
@@ -900,11 +1080,22 @@ export class DerivationAuthority {
     // false` is exactly the distinction worth having. fresh_at_check stays
     // because its temporal limitation is meaningful: it is an observation at a
     // moment, not a promise about the next one.
+    //
+    // THREE IDENTITIES on success, because one string was answering three
+    // questions. The family says what implementation this is; the artifact
+    // digest says which bytes the authority hashed; the session id says which
+    // launch. In-process deriveLocally produces none of them and reports
+    // "unavailable" — the authority ran the evaluator in its own realm and
+    // there is no launch to observe, so manufacturing an observation for it
+    // would be the same category error P-2 is about.
     return observed === undefined
       ? { ok: true, validated: true, fresh_at_check: true,
           implementation_provenance: "unavailable" }
       : { ok: true, validated: true, fresh_at_check: true,
-          implementation_provenance: "observed", implementation_id: observed };
+          implementation_provenance: "observed",
+          implementation_id: observed.implementation_family_id,
+          executable_artifact_id: observed.executable_artifact_id,
+          executor_session_id: observed.executor_session_id };
   }
 }
 Object.freeze(DerivationAuthority.prototype);

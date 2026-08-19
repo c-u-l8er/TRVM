@@ -39,16 +39,29 @@
 
    A conforming trace does not prove C executed anything, and neither does a
    string. The host knows which worker it spawned; that is the only thing here
-   that is not a claim. `registerExecutor` records it, `accept` compares against
-   it, and where no observation exists the honest answer is
+   that is not a claim. Where no observation exists the honest answer is
    `implementation-provenance-unavailable` rather than "C verified".
+
+   THE LIVE HALF MOVED ONCE, AND THE MOVE IS ITSELF ON THE RECORD. v0.7.0
+   answered P-1 with `registerExecutor(name)` + `accept(…, handle)`, which
+   observed nothing and put a proof back in the caller's hands. That is P-2,
+   frozen in probe_execreg_v08_repro.mjs. The live half below is checked against
+   v0.8.0, where the AUTHORITY hashes an artifact closure, launches it, sends
+   this request, takes these bytes, and keys the observation over the whole
+   execution event — so there is no handle to hold and none to forge.
 
    PAIRED, and it gates.
    ═══════════════════════════════════════════════════════════════════════════ */
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import {
   ProgramRegistry, DerivationAuthority, deriveLocally, validateForeignResult,
-  JS_IMPLEMENTATION_ID,
+  JS_IMPLEMENTATION_ID, digestArtifactFiles,
 } from "./derive_protocol.mjs";
+import { jsWorkerLauncher } from "./derive_launcher.mjs";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const JS_DIGEST = digestArtifactFiles([join(HERE, "derive_worker.mjs"), join(HERE, "derive_protocol.mjs")]);
 
 const results = [];
 const R = (id, held, note) => { results.push({ id, held }); console.log(
@@ -58,7 +71,7 @@ const P = { op: "add", a: { op: "read", resource: "fb" }, b: { op: "input", name
 const mkWorld = () => ({ res: { fb: { value: 5, version: 1 } },
   read(r) { return { ...this.res[r] }; }, scope(q) { return "scope:" + q; } });
 const reg = new ProgramRegistry(); const PID = reg.bind(P);
-const C_ID = "impl-c-derive-v0.7.0";
+const C_ID = "impl-c-derive-v0.8.0";
 
 /* ── v0.6.0's derivation and acceptance, VERBATIM in their essentials ─────
    deriveLocally took the identity as a parameter; accept compared the request's
@@ -109,59 +122,72 @@ function v6Accept(registry, req, res) {
     `requirement by refusing it, because an implementation's identity comes from the implementation`);
 }
 
-/* ── live: provenance is compared against OBSERVATION ─────────────────────── */
+/* ── live: provenance is an EXECUTION THE AUTHORITY DROVE ─────────────────
+   v0.7.0 answered P-1 with `registerExecutor` + `accept(…, handle)`. That was
+   the right diagnosis and the wrong mechanism, and P-2 —
+   probe_execreg_v08_repro.mjs — is the record of it. What holds here is the
+   v0.8.0 shape: the authority hashes an artifact closure, launches it, sends
+   this request, takes these bytes, and keys the observation over the whole
+   execution event. There is no handle to hold and none to forge. */
 {
   const world = mkWorld(); const auth = new DerivationAuthority(world);
   const mk = (opts, id) => auth.authorize({ intent_id: id, program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } }, opts).request;
-  const jsHandle = auth.registerExecutor(JS_IMPLEMENTATION_ID);
+  auth.nameArtifact(JS_DIGEST, JS_IMPLEMENTATION_ID);
 
   const honestReq = mk({}, "h1");
-  const honest = deriveLocally(reg, honestReq).result;
-  const observed = auth.accept(reg, honestReq, honest, jsHandle);
-  const unobserved = auth.accept(reg, honestReq, honest);
+  const run = await auth.execute(honestReq, jsWorkerLauncher([P]));
+  const honest = run.result;
+  const observed = auth.accept(reg, honestReq, honest);
   R("provenance-needs-observation",
-    observed.ok && observed.implementation_provenance === "observed"
+    run.ok && observed.ok && observed.implementation_provenance === "observed"
       && observed.implementation_id === JS_IMPLEMENTATION_ID
-      && unobserved.ok && unobserved.implementation_provenance === "unavailable"
-      && unobserved.implementation_id === undefined,
-    `with the host's observation: provenance ${observed.implementation_provenance}, id ` +
-    `${observed.implementation_id}. Without it: provenance ${unobserved.implementation_provenance} and ` +
-    `NO implementation_id at all — the honest answer, rather than repeating the result's claim back`);
+      && observed.executable_artifact_id === JS_DIGEST,
+    `an execution the authority drove: provenance ${observed.implementation_provenance}, family ` +
+    `${observed.implementation_id}, artifact ${String(observed.executable_artifact_id).slice(0, 12)}…. ` +
+    `The identity is the digest of bytes the authority read, not a string it was handed`);
 
+  // the SAME result, one label changed, at the SAME authority that observed it
   const forged = { ...honest, execution_evidence: { ...honest.execution_evidence, implementation_id: C_ID } };
-  const contradicted = auth.accept(reg, honestReq, forged, jsHandle);
-  R("claim-vs-observation", !contradicted.ok
-      && contradicted.reason === "implementation-claim-contradicts-observation: claims " + C_ID +
-         ", observed " + JS_IMPLEMENTATION_ID,
-    `${contradicted.reason} — the result's claim is checked AGAINST the observation instead of standing ` +
-    `in for it`);
+  const contradicted = auth.accept(reg, honestReq, forged);
+  R("claim-vs-observation",
+    contradicted.ok && contradicted.implementation_provenance === "unavailable"
+      && !("implementation_id" in contradicted)
+      && auth.observationOf(honestReq, honest) !== null
+      && auth.observationOf(honestReq, forged) === null,
+    `relabelling does not get COMPARED against the observation, it MISSES it: the key covers the whole ` +
+    `result, so the forged bytes name an execution event that never happened and acceptance drops to ` +
+    `${contradicted.implementation_provenance} with no implementation_id at all. The C label survives ` +
+    `in the result and reaches nothing — v0.7.0 needed a string comparison here, which only worked ` +
+    `while the handle it compared against was honest`);
 
   const cReq = mk({ expected_implementation_id: C_ID }, "h2");
-  const noObs = auth.accept(reg, cReq, { ...honest, request_id: cReq.request_id }, null);
-  const wrongObs = auth.accept(reg, cReq, { ...honest, request_id: cReq.request_id }, jsHandle);
+  const noObs = auth.accept(reg, cReq, { ...honest, request_id: cReq.request_id });
+  const cRun = await auth.execute(mk({ expected_implementation_id: C_ID }, "h3"), jsWorkerLauncher([P]));
   R("unavailable-is-not-verified",
     !noObs.ok && noObs.reason === "implementation-provenance-unavailable"
-      && !wrongObs.ok && /implementation-mismatch: want .*, observed impl-js/.test(wrongObs.reason),
-    `a C requirement with no observation -> ${noObs.reason}; with a JS executor observed -> ` +
-    `${wrongObs.reason}. "Unavailable" is the honest answer where v0.6.0 said "C verified"`);
+      && !cRun.ok && /implementation-mismatch: want .*, this is impl-js/.test(cRun.reason),
+    `a C requirement with no observation -> ${noObs.reason}; and attempting to satisfy one by launching ` +
+    `the JS worker fails at the executor -> ${cRun.reason}. "Unavailable" is the honest answer where ` +
+    `v0.6.0 said "C verified"`);
 
-  let forgedHandle = "ACCEPTED";
-  const acc = auth.accept(reg, honestReq, honest, { token: Symbol("impl-c-derive-v0.7.0") });
-  if (!acc.ok) forgedHandle = acc.reason;
-  R("handles-are-authority-issued", forgedHandle === "executor-not-registered-with-this-authority",
-    `${forgedHandle} — the handle holds a private Symbol this authority created, so a caller cannot ` +
-    `fabricate one or name an executor the host never launched`);
+  const noSuchHandle = auth.accept(reg, honestReq, honest, { token: Symbol(C_ID) });
+  R("no-handle-to-forge",
+    noSuchHandle.ok && noSuchHandle.implementation_id === JS_IMPLEMENTATION_ID
+      && DerivationAuthority.prototype.accept.length === 3,
+    `a fourth argument is now INERT — accept takes ${DerivationAuthority.prototype.accept.length} ` +
+    `parameters and ignores anything past them, returning the observation it already holds ` +
+    `(${noSuchHandle.implementation_id}). v0.7.0 refused a forged handle; v0.8.0 has no handle`);
 }
 
 /* ── and the success shape no longer invites weighing booleans ────────────── */
 {
   const world = mkWorld(); const auth = new DerivationAuthority(world);
+  auth.nameArtifact(JS_DIGEST, JS_IMPLEMENTATION_ID);
   const { request: req } = auth.authorize({ intent_id: "s1", program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
-  const res = deriveLocally(reg, req).result;
-  const h = auth.registerExecutor(JS_IMPLEMENTATION_ID);
-  const acc = auth.accept(reg, req, res, h);
+  const res = (await auth.execute(req, jsWorkerLauncher([P]))).result;
+  const acc = auth.accept(reg, req, res);
   const v = validateForeignResult(reg, req, res);
   R("success-shape-is-narrow",
     acc.trace_conforms === undefined && acc.committable === undefined
@@ -174,11 +200,15 @@ function v6Accept(registry, req, res) {
 }
 
 console.log("=".repeat(100));
-const frozenHeld = results.filter((r) => r.id.includes("frozen") && r.held);
-const liveBreached = results.filter((r) => !r.id.includes("frozen") && !r.held);
+// Denominators are COUNTED, never typed. The earlier version of this line ended
+// "/1 … /6" as literals, which is the same defect as a hand-typed 44/44.
+const frozen = results.filter((r) => r.id.includes("frozen"));
+const liveCases = results.filter((r) => !r.id.includes("frozen"));
+const frozenHeld = frozen.filter((r) => r.held);
+const liveBreached = liveCases.filter((r) => !r.held);
 console.log(
-  `EXEC-CLAIM v0.7 REPRO: ${results.filter((r) => r.id.includes("frozen") && !r.held).length}/1 reproduce ` +
-  `against the frozen v0.6.0 · ${results.filter((r) => !r.id.includes("frozen") && r.held).length}/6 confined against live` +
+  `EXEC-CLAIM v0.7 REPRO: ${frozen.length - frozenHeld.length}/${frozen.length} reproduce ` +
+  `against the frozen v0.6.0 · ${liveCases.length - liveBreached.length}/${liveCases.length} confined against live` +
   (frozenHeld.length ? ` — VACUOUS: ${frozenHeld.map((r) => r.id).join(", ")}` : "") +
   (liveBreached.length ? ` — REGRESSION: ${liveBreached.map((r) => r.id).join(", ")}` : ""));
 process.exit(frozenHeld.length + liveBreached.length ? 1 : 0);

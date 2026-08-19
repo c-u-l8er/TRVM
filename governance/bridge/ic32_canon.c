@@ -346,6 +346,13 @@ static char* canonical_signature(Term root){
     return out;
 }
 
+/* IC32_CANON_NO_MAIN lets ic32_film.c include THIS FILE — not a copy of it —
+   so the canonicalizer under the film emitter is the same code the 48/48 bridge
+   gate replays. A second canonicalizer written for the film round would be
+   proving the film round. Nothing else about this file changes; the bridge must
+   still be byte-identical on all 48 states after the guard, and that is the
+   check to run rather than reading this comment. */
+#ifndef IC32_CANON_NO_MAIN
 int main(int argc, char** argv){
     heap=(Term*)calloc(HEAPCAP,sizeof(Term));
     if (!heap){ fprintf(stderr,"FATAL: heap alloc\n"); return 2; }
@@ -366,3 +373,4 @@ int main(int argc, char** argv){
     }
     return 0;
 }
+#endif /* IC32_CANON_NO_MAIN */

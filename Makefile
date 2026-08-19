@@ -25,7 +25,7 @@ VECTORS := ../docs/spec/conformance/vectors/normalize.json
 
 .PHONY: test conformance native native-selftest zig zig-selftest mojo mojo-selftest \
         wasm-smoke swarm research clean \
-        governance gov-kernel gov-grid gov-world gov-negative gov-bridge gov-strict gov-derive gov-harness
+        governance gov-kernel gov-grid gov-world gov-negative gov-bridge gov-film gov-strict gov-derive gov-harness
 
 test: native zig mojo conformance native-selftest zig-selftest mojo-selftest \
       wasm-smoke swarm research governance
@@ -109,7 +109,7 @@ swarm:
 # broken for a full round after the envelope split. A gate that cannot fail is a
 # display. law:evidence.clean-baseline@1 is about the fixture; this is the same
 # disease in the runner.
-governance: gov-kernel gov-grid gov-world gov-negative gov-bridge gov-derive gov-harness
+governance: gov-kernel gov-grid gov-world gov-negative gov-bridge gov-film gov-derive gov-harness
 	@echo "  evidence plane green"
 
 gov-kernel:
@@ -137,6 +137,19 @@ gov-bridge: $(GOV)/bridge/ic32_canon
 # included verbatim with its main renamed — the runtime under test is the
 # runtime that ships.
 $(GOV)/bridge/ic32_canon: $(GOV)/bridge/ic32_canon.c runtime/c/ic32.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+# Round 23. For twenty-two rounds every semantic film in the tree was MADE by
+# the law kernel: the C runtime could say what state it was in and could not say
+# that it had moved. This emits a frame from ic32's own execution and hands it to
+# the kernel's OWN replaySemFilm. ic32_film.c #includes ic32_canon.c under
+# IC32_CANON_NO_MAIN, so the canonicalizer beneath the film is the same code the
+# 48/48 bridge replays rather than a copy written for the occasion.
+gov-film: $(GOV)/bridge/ic32_film
+	@echo "==== [governance] native semantic film — C originates the evidence ===="
+	@cd $(GOV) && out=$$($(NODE) bridge/film_check.mjs) && printf "%s\n" "$$out" | tail -1
+
+$(GOV)/bridge/ic32_film: $(GOV)/bridge/ic32_film.c $(GOV)/bridge/ic32_canon.c runtime/c/ic32.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 # Release / pack-cut gate. CONF-2 may report NOT_APPLICABLE for a standalone
@@ -177,6 +190,7 @@ gov-derive:
 	@cd $(GOV) && out=$$($(NODE) probe_issuebind_v05_repro.mjs) && printf "%s\n" "$$out" | tail -1
 	@cd $(GOV) && out=$$($(NODE) probe_traceforge_v06_repro.mjs) && printf "%s\n" "$$out" | tail -1
 	@cd $(GOV) && out=$$($(NODE) probe_execclaim_v07_repro.mjs) && printf "%s\n" "$$out" | tail -1
+	@cd $(GOV) && out=$$($(NODE) probe_execreg_v08_repro.mjs) && printf "%s\n" "$$out" | tail -1
 
 ## --- identity/memory result ------------------------------------------------
 research:

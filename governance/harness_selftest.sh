@@ -45,8 +45,18 @@ import json,re,os
 m=json.load(open('$BASE/artifacts.json'))
 fs=list(m['case_inputs']) + list(m.get('tools', []))
 fs+=sorted(f for f in os.listdir('$BASE') if re.match(m['ledgers_pattern'],f))
+# Round 23: subdir artifacts too — grid_check asserts invariants on bridge/*,
+# and a flat case tree fails the CLEAN BASELINE (M-9) before any perturbation.
+# The same one-line omission in negative_battery.sh and here, found the same way.
+fs+=list(m.get('subdir_case_inputs', []))
+fs+=list(m.get('gating_probes', []))
 print(' '.join(fs))")
-mkcase () { local d="$SCRATCH/$1"; rm -rf "$d"; mkdir -p "$d"; for f in $CASE_INPUTS; do cp "$BASE/$f" "$d/"; done; echo "$d"; }
+# v1.24: grid_check reads ../Makefile and used to SKIP its two recipe checks
+# when it was absent — a checker reporting clean while measuring nothing.
+# The case trees live at $SCRATCH/<case>, so one copy at $SCRATCH/Makefile
+# serves every case and makes absence a failure rather than a pass.
+mkdir -p "$SCRATCH" && cp "$BASE/../Makefile" "$SCRATCH/Makefile" 2>/dev/null || true
+mkcase () { local d="$SCRATCH/$1"; rm -rf "$d"; mkdir -p "$d"; for f in $CASE_INPUTS; do mkdir -p "$d/$(dirname "$f")"; cp "$BASE/$f" "$d/$f"; done; echo "$d"; }
 
 # ── M-1. the checker must not depend on the working directory ───────────────
 # Round 15's finding, as a standing gate. The citation scan read whatever sat

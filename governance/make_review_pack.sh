@@ -35,21 +35,39 @@ for f in $FILES; do cp "$BASE/$f" "$OUT/governance/"; done
 cp "$TRVM/Makefile" "$OUT/Makefile"
 mkdir -p "$OUT/runtime/c" "$OUT/governance/bridge" "$OUT/docs/spec/conformance/vectors"
 cp "$TRVM/runtime/c/ic32.c" "$OUT/runtime/c/" 2>/dev/null
-cp "$BASE/bridge/ic32_canon.c" "$BASE/bridge/bridge_check.mjs" "$OUT/governance/bridge/" 2>/dev/null
+cp "$BASE/bridge/ic32_canon.c" "$BASE/bridge/bridge_check.mjs" \
+   "$BASE/bridge/ic32_film.c"  "$BASE/bridge/film_check.mjs" "$OUT/governance/bridge/" 2>/dev/null
 cp "$TRVM/docs/spec/conformance/vectors/normalize.json" "$OUT/docs/spec/conformance/vectors/" 2>/dev/null
 git -C "$TRVM" log --oneline -12 > "$OUT/COMMITS.txt"
 
 cat > "$OUT/verify.sh" <<'VERIFY'
 #!/bin/bash
 # Verify this pack from wherever it was extracted. No existing checkout needed.
-#   ./verify.sh
+#   ./verify.sh                     every gate is required; a skip is a PARTIAL
+#   ./verify.sh --allow-skip-bridge the native gates may be skipped, and then
+#                                   the verdict is PARTIAL and never "green"
+#
 # Checks MANIFEST.sha256, then RUNS every gate and writes RESULTS.txt from the
 # runs themselves. Exits nonzero if any gate fails — this pack is a gate, not a
 # transcript, and round 21 is the reason that distinction is in the file name.
+#
+# Round 23 fixed three things here, all of them the same fault in miniature:
+#   · a SKIPPED gate left FAILED=0 and the footer still said "every gate
+#     replayed green". A skip is not green. The native gates are required by
+#     default now, and --allow-skip-bridge downgrades the verdict rather than
+#     hiding the hole.
+#   · the prose said "all eighteen gates" and the script ran a different
+#     number. The tally below is COUNTED by the runner, so there is no sentence
+#     left to keep in sync.
+#   · a failed manifest carried on executing the very files whose integrity had
+#     just failed. It aborts now.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 cd "$HERE" || exit 1
-FAILED=0
+ALLOW_SKIP=0
+for a in "$@"; do case "$a" in --allow-skip-bridge) ALLOW_SKIP=1 ;;
+  *) echo "unknown option: $a" >&2; exit 2 ;; esac; done
+FAILED=0 ATTEMPTED=0 PASSED=0 SKIPPED=0
 say () { printf '%s\n' "$*" | tee -a RESULTS.txt; }
 : > RESULTS.txt
 say "TRVM governance review pack — replayed $(date -u +%Y-%m-%dT%H:%MZ) on node $(node -v 2>/dev/null || echo MISSING)"
@@ -62,17 +80,30 @@ say "── manifest ───────────────────�
 if sha256sum -c MANIFEST.sha256 --quiet 2>/dev/null; then
   say "MANIFEST: all $(grep -c . MANIFEST.sha256) files verify"
 else
-  say "MANIFEST: FAILED"; FAILED=1
+  # ABORT. Continuing would execute files whose integrity has already failed and
+  # report their output as evidence, which is how round 21's pack came to carry
+  # a green README over a broken capture.
+  say "MANIFEST: FAILED — aborting before running anything"
+  sha256sum -c MANIFEST.sha256 2>&1 | grep -v ': OK$' | head -20 | sed 's/^/        /' | tee -a RESULTS.txt >/dev/null
+  say ""
+  say "REVIEW PACK: ABORTED (manifest integrity)"
+  exit 1
 fi
 say ""
 say "── replayed gates (every number below was produced by this run) ───────"
 
 run () {  # label, dir, command...
   local label="$1" dir="$2"; shift 2
+  ATTEMPTED=$((ATTEMPTED + 1))
   local out; out=$(cd "$dir" && "$@" 2>&1); local code=$?
   local last; last=$(printf '%s\n' "$out" | tail -1)
   if [ $code -ne 0 ]; then FAILED=1; say "FAIL  $label"; printf '%s\n' "$out" | tail -6 | sed 's/^/        /' | tee -a RESULTS.txt >/dev/null
-  else say "PASS  $label — $last"; fi
+  else PASSED=$((PASSED + 1)); say "PASS  $label — $last"; fi
+}
+skip () {  # label, why — a skip is COUNTED, never silently green
+  SKIPPED=$((SKIPPED + 1))
+  if [ $ALLOW_SKIP -eq 0 ]; then FAILED=1; say "FAIL  $1 — REQUIRED and not run ($2)"
+  else say "SKIP  $1 ($2) — verdict downgraded to PARTIAL"; fi
 }
 
 run "law kernel"         governance env TRVM_VECTORS=../docs/spec/conformance/vectors/normalize.json node trvm_law_kernel.mjs
@@ -84,20 +115,38 @@ run "harness self-test"  governance ./harness_selftest.sh
 run "runner contract"    governance ./runner_contract.sh
 run "derive battery"     governance node derive_battery.mjs
 run "realm battery"      governance node derive_realm_battery.mjs
-for p in governance/probe_derivegrant_v02_repro.mjs governance/probe_coresem_v03_repro.mjs \
-         governance/probe_stalegrant_v03_repro.mjs governance/probe_issuebind_v05_repro.mjs \
-         governance/probe_traceforge_v06_repro.mjs governance/probe_execclaim_v07_repro.mjs; do
-  run "$(basename "$p" .mjs)" governance node "$(basename "$p")"
-done
-if command -v gcc >/dev/null 2>&1 && [ -f runtime/c/ic32.c ]; then
-  if gcc -O2 -o governance/bridge/ic32_canon governance/bridge/ic32_canon.c 2>/dev/null; then
-    run "cross-plane bridge" governance node bridge/bridge_check.mjs
-  else say "SKIP  cross-plane bridge (ic32_canon.c did not compile here)"; fi
-else say "SKIP  cross-plane bridge (no gcc, or runtime/c/ic32.c absent)"; fi
+# The GATING probes, from the registry — never a glob and never a second
+# hand-typed list. Round 23's first cut globbed probe_*_repro.mjs and reported
+# four failures for witnesses that exit nonzero BY DESIGN: they freeze a
+# boundary that is declared open, and a witness behaving correctly is not a
+# gate failing. The distinction is data, so it is read from the registry.
+GATING=$(cd governance && python3 -c "
+import json; print(' '.join(json.load(open('artifacts.json'))['gating_probes']))")
+for p in $GATING; do run "$(basename "$p" .mjs)" governance node "$p"; done
+NONGATING=$(cd governance && ls probe_*_repro.mjs 2>/dev/null | grep -vxF "$(printf '%s\n' $GATING)" | wc -l)
+say "note  $NONGATING further probe_*_repro.mjs freeze DECLARED-OPEN boundaries and exit nonzero by"
+say "      design; they are witnesses, not gates, and are not run here. artifacts.json says which."
+if ! command -v gcc >/dev/null 2>&1; then
+  skip "cross-plane bridge" "no gcc"; skip "native semantic film" "no gcc"
+elif [ ! -f runtime/c/ic32.c ]; then
+  skip "cross-plane bridge" "runtime/c/ic32.c absent"; skip "native semantic film" "runtime/c/ic32.c absent"
+else
+  if gcc -O2 -o governance/bridge/ic32_canon governance/bridge/ic32_canon.c 2>/dev/null
+  then run "cross-plane bridge" governance node bridge/bridge_check.mjs
+  else skip "cross-plane bridge" "ic32_canon.c did not compile here"; fi
+  if gcc -O2 -o governance/bridge/ic32_film governance/bridge/ic32_film.c 2>/dev/null
+  then run "native semantic film" governance node bridge/film_check.mjs
+  else skip "native semantic film" "ic32_film.c did not compile here"; fi
+fi
 
 say ""
-[ $FAILED -eq 0 ] && say "REVIEW PACK: every gate replayed green" \
-                  || say "REVIEW PACK: FAILURES PRESENT (see above)"
+say "checks attempted $((ATTEMPTED + SKIPPED))"
+say "         passed  $PASSED"
+say "         failed  $((ATTEMPTED - PASSED))"
+say "         skipped $SKIPPED"
+if [ $FAILED -ne 0 ]; then say "REVIEW PACK: FAILURES PRESENT (see above)"
+elif [ $SKIPPED -ne 0 ]; then say "REVIEW PACK: PARTIAL — $SKIPPED gate(s) not run; this is NOT a green replay"
+else say "REVIEW PACK: every gate replayed green"; fi
 say "Counts above are from THIS run. Nothing in this pack transcribes a number."
 exit $FAILED
 VERIFY

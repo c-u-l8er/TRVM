@@ -451,47 +451,64 @@ const mkReq = (over = {}) => {
   const auth = new DerivationAuthority(live);
   const mk = (opts, id) => auth.authorize({ intent_id: id, program_sem_id: PID,
     canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } }, opts).request;
-  const C = "impl-c-derive-v0.7.0";
-  const jsHandle = auth.registerExecutor(JS_IMPLEMENTATION_ID);
+  const C = "impl-c-derive-v0.8.0";
   const req = mk({}, "pv1");
   const res = deriveLocally(reg, req).result;
-  const observed = auth.accept(reg, req, res, jsHandle);
+
+  // IN-PROCESS DERIVATION HAS NO LAUNCH, so it has no observation, and this
+  // battery's whole scope is in-process. That is the honest reading and not a
+  // gap: the authority ran the evaluator in its own realm, and manufacturing an
+  // observation for that would be the same category error P-2 is about. The
+  // observed case lives in derive_realm_battery.mjs, where something is spawned.
   const unobserved = auth.accept(reg, req, res);
-  R("provenance-requires-observation",
-    observed.ok && observed.implementation_provenance === "observed"
-      && observed.implementation_id === JS_IMPLEMENTATION_ID
-      && unobserved.ok && unobserved.implementation_provenance === "unavailable"
-      && unobserved.implementation_id === undefined,
-    `observed -> provenance ${observed.implementation_provenance}, id ${observed.implementation_id}; ` +
-    `unobserved -> ${unobserved.implementation_provenance} with NO id. The honest answer where v0.6.0 ` +
-    `repeated the result's own claim back as if it were provenance`);
-  const forged = withExec(res, { implementation_id: C });
-  const contradicted = auth.accept(reg, req, forged, jsHandle);
+  R("in-process-has-no-provenance",
+    unobserved.ok && unobserved.implementation_provenance === "unavailable"
+      && unobserved.implementation_id === undefined
+      && auth.observationOf(req, res) === null,
+    `deriveLocally + accept -> ${unobserved.implementation_provenance} with NO implementation_id. There ` +
+    `was no launch, so there is nothing to have observed. v0.6.0 repeated the result's own claim back ` +
+    `as if it were provenance; v0.7.0 would have called this "observed" on the strength of a string`);
+
   const cReq = mk({ expected_implementation_id: C }, "pv2");
   const cRes = { ...res, request_id: cReq.request_id };
-  const noObs = auth.accept(reg, cReq, cRes, null);
-  const wrongObs = auth.accept(reg, cReq, cRes, jsHandle);
-  R("claim-checked-against-observation",
-    !contradicted.ok && /implementation-claim-contradicts-observation/.test(contradicted.reason)
-      && !noObs.ok && noObs.reason === "implementation-provenance-unavailable"
-      && !wrongObs.ok && /implementation-mismatch: want .*, observed impl-js/.test(wrongObs.reason),
-    `a C claim against an observed JS executor -> ${contradicted.reason.split(":")[0]}; a C requirement ` +
-    `with no observation -> ${noObs.reason}; with JS observed -> ${wrongObs.reason.split(",")[0]}…`);
-  let forgedHandle = "ACCEPTED";
-  const bad = auth.accept(reg, req, res, { token: Symbol(C) });
-  if (!bad.ok) forgedHandle = bad.reason;
-  R("executor-handles-are-authority-issued", forgedHandle === "executor-not-registered-with-this-authority",
-    `${forgedHandle} — the handle carries a private Symbol this authority minted, so a caller cannot ` +
-    `fabricate one or name an executor the host never launched`);
-  let malformed = "ACCEPTED";
-  try { auth.registerExecutor("c"); } catch (e) { malformed = e.message; }
-  R("registered-identity-well-formed", malformed === "executor-implementation-id-malformed",
-    `${malformed} — WHAT identity a native executable registers (the launcher hashing the binary it ` +
-    `execs) is DECLARED OPEN; WHETHER an observation exists is not optional any more`);
+  const noObs = auth.accept(reg, cReq, cRes);
+  const forged = withExec(res, { implementation_id: C });
+  const relabelled = auth.accept(reg, req, forged);
+  R("requirement-without-observation-refused",
+    !noObs.ok && noObs.reason === "implementation-provenance-unavailable"
+      && relabelled.ok && relabelled.implementation_provenance === "unavailable"
+      && !("implementation_id" in relabelled) && !("executable_artifact_id" in relabelled),
+    `a C requirement with no observation -> ${noObs.reason}. And relabelling an UNREQUIRED result ` +
+    `${C} buys nothing: acceptance still returns ` +
+    `{${Object.keys(relabelled).join(", ")}} — no implementation_id, no artifact digest. It cannot ` +
+    `report an implementation it did not observe, so there is nothing for the label to become`);
+
+  // THE REGISTRATION API IS GONE. Not deprecated, not hardened — absent.
+  R("no-caller-supplied-provenance",
+    typeof auth.registerExecutor === "undefined"
+      && !("registerExecutor" in DerivationAuthority.prototype)
+      && DerivationAuthority.prototype.accept.length === 3
+      && typeof auth.execute === "function" && typeof auth.nameArtifact === "function",
+    `registerExecutor is absent and accept takes ${DerivationAuthority.prototype.accept.length} ` +
+    `parameters, so there is no argument in which a caller may hand acceptance a proof. What replaced ` +
+    `it is execute() — the authority hashes, launches, sends and receives — and nameArtifact(), which ` +
+    `is a digest→name POLICY and makes no claim that anything ran`);
+
+  // the naming policy refuses malformed input in BOTH directions, because a
+  // digest that is not a digest would make the artifact identity a label again
+  const nm = (d, f) => { try { auth.nameArtifact(d, f); return "ACCEPTED"; } catch (e) { return e.message; } };
+  R("naming-policy-well-formed",
+    nm("not-a-digest", C) === "artifact-digest-malformed"
+      && nm("a".repeat(64), "c") === "implementation-family-id-malformed"
+      && nm("a".repeat(64), C) === "ACCEPTED",
+    `a family name is not a digest and a digest is not a family name: ${nm("not-a-digest", C)} / ` +
+    `${nm("b".repeat(64), "c")}. WHAT bytes a native executable's digest should cover — the ELF, and ` +
+    `every shared object the loader binds — is DECLARED OPEN; that an execution be OBSERVED is not`);
+
   R("acceptance-success-shape-narrow",
-    observed.trace_conforms === undefined && observed.committable === undefined
-      && observed.fresh_at_check === true,
-    `accept success = {${Object.keys(observed).join(", ")}} — trace_conforms is redundant on success ` +
+    unobserved.trace_conforms === undefined && unobserved.committable === undefined
+      && unobserved.fresh_at_check === true,
+    `accept success = {${Object.keys(unobserved).join(", ")}} — trace_conforms is redundant on success ` +
     `and a boolean per check invites weighing them; it stays in the validator and in failure diagnostics`);
 }
 

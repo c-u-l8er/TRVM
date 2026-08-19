@@ -1407,6 +1407,15 @@ export {
   readback, semId, normalizeFloat, runFloat, refNormalize,
   // the corpus the golden fixtures are cut from, and what "the corpus" means
   EMBEDDED_VECTORS, CORPUS_FIELDS, projectVector,
+  // THE SEMANTIC-FILM CHECKER, exported so a film produced by something other
+  // than this file can be handed to it unmodified. Round 23: a native ic32
+  // frame is checked by exactly the replay the JS films are checked by, on a
+  // FRESH runtime, with no translation step in between — a checker written for
+  // the occasion would be checking the occasion. The enumeration primitives go
+  // with it so a caller can say WHY a locus did not match rather than only that
+  // replay refused; they are the same functions replaySemFilm uses.
+  replaySemFilm, findFloatRedexes, semLocusOf, semFilmIdOf, frameId31,
+  PLANE_OF, PLANE_POOL_FREE,
 };
 
 // ── 1 · CONFORMANCE ───────────────────────────────────────────────────────

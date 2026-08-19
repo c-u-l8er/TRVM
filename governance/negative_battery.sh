@@ -29,13 +29,17 @@ import json,re,os
 m=json.load(open('$BASE/artifacts.json'))
 fs=list(m['case_inputs']) + list(m.get('tools', []))
 fs+=sorted(f for f in os.listdir('$BASE') if re.match(m['ledgers_pattern'],f))
+# Round 23: subdir artifacts too. grid_check asserts invariants on bridge/*, and
+# a flat case tree made the UNPERTURBED baseline fail on four absent files.
+fs+=list(m.get('subdir_case_inputs', []))
+fs+=list(m.get('gating_probes', []))
 print(' '.join(fs))")
 # law:evidence.instrument-nonvacuity@1 — the mechanised half.
 # A per-file digest, not a whole-tree one: "something changed" is weaker than
 # "the intended target changed", and the law says target. changed_files() names
 # what the perturbation actually moved, so a case that edits the wrong artifact
 # is as visible as one that edits nothing.
-file_digests () { ( cd "$1" && for f in *; do [ -f "$f" ] && printf "%s %s\n" "$(sha256sum "$f" | cut -d" " -f1)" "$f"; done | sort ); }
+file_digests () { ( cd "$1" && find . -type f | sed "s|^\./||" | sort | while read -r f; do printf "%s %s\n" "$(sha256sum "$f" | cut -d" " -f1)" "$f"; done | sort ); }
 # Symmetric difference, not one-sided: a case that DELETES an artifact removes a
 # line from the "after" set, which a one-sided comm cannot see. The first draft
 # used comm -13 and duly reported refine-receipt-missing — a case that deletes
@@ -70,11 +74,16 @@ print(','.join(sorted(t)))" "$1"; }
 # the same source by the same recipe. That is verified rather than assumed: each
 # case compares its own pre-perturbation digest against the baselined tree, so a
 # fixture that drifts is a FIXTURE DRIFT failure rather than a silent difference.
+# v1.24: grid_check reads ../Makefile and used to SKIP its two recipe checks
+# when it was absent — a checker reporting clean while measuring nothing.
+# The case trees live at $SCRATCH/<case>, so one copy at $SCRATCH/Makefile
+# serves every case and makes absence a failure rather than a pass.
+mkdir -p "$SCRATCH" && cp "$BASE/../Makefile" "$SCRATCH/Makefile" 2>/dev/null || true
 BASELINE_DIGEST=""
 establish_baseline () {
   local d=$SCRATCH/__baseline
   rm -rf "$d" && mkdir -p "$d"
-  for f in $CASE_INPUTS; do cp "$BASE/$f" "$d/"; done
+  for f in $CASE_INPUTS; do mkdir -p "$d/$(dirname "$f")" && cp "$BASE/$f" "$d/$f"; done
   local out; out=$(cd "$d" && node grid_check.mjs 2>&1); local code=$?
   if [ $code -ne 0 ]; then
     echo "FAIL  BASELINE (the unperturbed fixture does not pass; no case below is isolated-cause evidence)"
@@ -89,7 +98,7 @@ run_case () {  # name, expected-grep, setup-script(python)
   local name="$1" want="$2" py="$3"
   local d=$SCRATCH/$name
   rm -rf "$d" && mkdir -p "$d"
-  for f in $CASE_INPUTS; do cp "$BASE/$f" "$d/"; done
+  for f in $CASE_INPUTS; do mkdir -p "$d/$(dirname "$f")" && cp "$BASE/$f" "$d/$f"; done
   # law:evidence.instrument-nonvacuity@1 — a forgery that forges NOTHING is
   # vacuous, and a vacuous falsifier is worse than an absent one because the
   # roster still counts it. Six apparatus failures across four rounds would each
@@ -204,7 +213,7 @@ run_case_engine() {  # like run_case but the verifier is the WORLD ENGINE mode
   local name="$1" want="$2" py="$3"
   local d="$SCRATCH/$name"
   rm -rf "$d" && mkdir -p "$d" || { echo "FAIL  $name (scratch unusable: $d)"; CASES=$((CASES+1)); FAILED=1; return; }
-  for f in $CASE_INPUTS; do cp "$BASE/$f" "$d/"; done
+  for f in $CASE_INPUTS; do mkdir -p "$d/$(dirname "$f")" && cp "$BASE/$f" "$d/$f"; done
   local pre; pre=$(file_digests "$d")
   # PHASE 1 of law:evidence.clean-baseline@1 — this case's fixture must BE the
   # one that was baselined, not merely one built by the same recipe
@@ -901,11 +910,12 @@ src = open('derive_protocol.mjs').read()
 src = src.replace('implementation_claimed: impl', 'implementation_id: impl')
 open('derive_protocol.mjs','w').write(src)"
 
-run_case provenance-law-v2-deleted "implementation-provenance@2 missing" "
+run_case provenance-law-v2-scrubbed "no longer opens with 'an execution claim is not" "
 import json
 g = json.load(open('invariant-grid.json'))
-g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
-                                if not (e['id'] == 'derivation.implementation-provenance' and e['revision'] == 2)]
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.implementation-provenance' and e['revision'] == 2:
+        e['statement'] = 'provenance is established by the executor handle.'
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 run_case false-claim-history-scrubbed "must stay on the record AS a false claim" "
@@ -927,6 +937,136 @@ import json
 g = json.load(open('invariant-grid.json'))
 del g['lowering_spike']['identities']['outcome_encoding']
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+
+# ── round 23: executor existence is not execution provenance ────────────────
+run_case registration-api-restored "registerExecutor must be DELETED" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('  nameArtifact(executable_artifact_id, implementation_family_id) {',
+  '  registerExecutor(id) { return Object.freeze({ token: Symbol(id) }); }\n'
+  '  nameArtifact(executable_artifact_id, implementation_family_id) {')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case acceptance-takes-a-proof-again "must be a METHOD on the authority taking EXACTLY" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('accept(registry, req, res) {', 'accept(registry, req, res, executor = null) {')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case launcher-supplies-the-bytes "must read and hash the artifact ITSELF" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('digestArtifactFiles(launcher.artifact_files)', 'launcher.readArtifact()')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case observation-key-projected "keyed over the WHOLE execution event" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('canonicalBytes(res));', 'canonicalBytes(semanticProjection(res)));')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case second-observation-writer "EXACTLY ONE writer" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('  observationOf(req, res) {',
+  '  vouch(req, res, o) { this.#observed.set(executionKey(requestSemId(req), res), o); }\n'
+  '  observationOf(req, res) {')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case provenance-law-v3-deleted "implementation-provenance@3 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if not (e['id'] == 'derivation.implementation-provenance' and e['revision'] == 3)]
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case attestation-overclaimed "must state conservatively what hash-then-spawn" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.implementation-provenance' and e['revision'] == 3:
+        e['statement'] = e['statement'].replace(
+            'It is NOT a proof that the OS executed those exact bytes under every filesystem race, and '
+            'it is not hardware-attested executable identity.',
+            'This is hardware-grade executable identity.')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case superseded-law-made-current "must stay on the record as history" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.implementation-provenance' and e['revision'] == 2:
+        e['canonical'] = True
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+# ── round 23: the execution plane originates evidence ───────────────────────
+run_case film-law-deleted "law film.native-emission@1 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if e['id'] != 'film.native-emission']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case film-scope-inflated "no longer states its scope as CHECKED refusals" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'film.native-emission':
+        e['statement'] = e['statement'].replace('DUP-FREE fragment', 'whole corpus').replace(
+            'REFUSED BY NAME', 'handled')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case film-planes-collapsed "must keep the two transition systems apart" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'film.native-emission':
+        e['statement'] = e['statement'].replace('film_planes', 'one unified relation')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case film-canonicalizer-copied "must INCLUDE ic32_canon.c rather than copy it" "
+src = open('bridge/ic32_film.c').read()
+src = src.replace('#define IC32_CANON_NO_MAIN 1', '/* copied instead */')
+open('bridge/ic32_film.c','w').write(src)"
+
+run_case film-quiescence-asserted "must CHECK quiescence and readback purity" "
+src = open('bridge/ic32_film.c').read()
+src = src.replace('film-readback-was-not-pure', 'film-readback-assumed-pure')
+open('bridge/ic32_film.c','w').write(src)"
+
+run_case film-emitter-absent "cites bridge/film_check.mjs, which is absent" "
+import os
+os.remove('bridge/film_check.mjs')"
+
+# ── round 23: a skipped gate is not a green one ─────────────────────────────
+run_case skip-reads-as-green "must make the native gates REQUIRED by default" "
+src = open('make_review_pack.sh').read()
+src = src.replace('verdict downgraded to PARTIAL', 'not run')
+open('make_review_pack.sh','w').write(src)"
+
+run_case pack-transcribes-its-count "must COUNT what it ran" "
+src = open('make_review_pack.sh').read()
+src = src.replace('ATTEMPTED=\$((ATTEMPTED + 1))', ': # counted elsewhere')
+open('make_review_pack.sh','w').write(src)"
+
+run_case pack-runs-past-a-bad-manifest "failed manifest must ABORT the review pack" "
+src = open('make_review_pack.sh').read()
+src = src.replace('aborting before running anything', 'continuing anyway')
+open('make_review_pack.sh','w').write(src)"
+
+run_case gating-probes-undeclared "must declare gating_probes" "
+import json
+m = json.load(open('artifacts.json'))
+del m['gating_probes']
+json.dump(m, open('artifacts.json','w'), indent=2)"
+
+run_case pack-globs-the-probes "must READ gating_probes rather than glob" "
+src = open('make_review_pack.sh').read()
+src = src.replace(chr(36) + \"(cd governance && python3 -c \\\"\\nimport json; print(' '.join(json.load(open('artifacts.json'))['gating_probes'])))\\\"\", 'probe_*_repro.mjs')
+src = src.replace(\"json.load(open('artifacts.json'))['gating_probes']\", \"['probe_execreg_v08_repro.mjs']\")
+open('make_review_pack.sh','w').write(src)"
+
+run_case gate-list-drifts-from-registry "gating probe list and artifacts.json's gating_probes disagree" "
+import json
+m = json.load(open('artifacts.json'))
+m['gating_probes'] = [p for p in m['gating_probes'] if p != 'probe_execreg_v08_repro.mjs']
+json.dump(m, open('artifacts.json','w'), indent=2)"
 
 
 echo; [ $FAILED -eq 0 ] && echo "NEGATIVE BATTERY: $CASES/$CASES forgeries caught" || echo "NEGATIVE BATTERY: FAILURES PRESENT ($CAUGHT/$CASES caught)"

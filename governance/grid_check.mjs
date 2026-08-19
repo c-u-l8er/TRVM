@@ -192,7 +192,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -699,6 +699,11 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
     }
     // ── v1.18: the derivation authority ─────────────────────────────────
     {
+      // Comment-stripped, for assertions about what the CODE does. The header
+      // of derive_protocol.mjs names registerExecutor in its own history, and
+      // a check that cannot tell a mention from a declaration would force the
+      // record to stop naming what it deleted.
+      const dnoc = dsrc.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
       for (const s2 of ["export function validateFootprintFresh", "export function requestSemId",
         "export class DerivationAuthority", "export function checkIntent"])
         ok(dsrc.includes(s2), `derive_protocol.mjs missing v0.5.0 construct "${s2}"`);
@@ -706,9 +711,11 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         "issuance must bind request_sem_id, not grant_id — binding the grant answers 'was this issued?' " +
         "about a GRANT while the thing being accepted is a REQUEST, and an input swap under an " +
         "untouched request_id passes (probe_issuebind_v05_repro.mjs I-1)");
-      ok(/accept\(registry, req, res, executor = null\) \{/.test(dsrc) && !/export function acceptForeignResult/.test(dsrc),
-        "acceptance must be a METHOD on the authority and not a free function — one taking `issuer` and " +
-        "`liveReader` as parameters lets the caller supply both proofs of its own authority (I-3)");
+      ok(/accept\(registry, req, res\) \{/.test(dsrc) && !/export function acceptForeignResult/.test(dsrc),
+        "acceptance must be a METHOD on the authority taking EXACTLY (registry, req, res) — a free " +
+        "function taking `issuer` and `liveReader` lets the caller supply both proofs of its own " +
+        "authority (I-3), and v0.7.0's fourth `executor` parameter was the same defect one level up: a " +
+        "proof supplied at acceptance time (P-2b, probe_execreg_v08_repro.mjs)");
       ok(!/committable/.test(dsrc.replace(/\/\*[\s\S]*?\*\//g, "")),
         "acceptance must not return `committable` — one call cannot establish committability, because " +
         "the World can move between it returning and the caller applying");
@@ -737,22 +744,124 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
       ok(/export function deriveLocally\(registry, req\) \{/.test(dsrc),
         "deriveLocally must take NO implementation parameter — v0.6.0 took one and a caller could run " +
         "the JS evaluator while stamping its output impl-c-derive-… (P-1, probe_execclaim_v07_repro.mjs)");
-      ok(dsrc.includes("registerExecutor(implementation_id)") &&
-         /implementation-claim-contradicts-observation/.test(dsrc) &&
+      ok(/implementation-claim-contradicts-observation/.test(dsrc) &&
          /implementation-provenance-unavailable/.test(dsrc),
         "the authority must observe what the host launched and compare the claim against it — a " +
         "conforming trace does not prove C executed anything, and neither does a string");
+      // ── v1.24: executor existence is not execution provenance ─────────
+      ok(!/registerExecutor/.test(dnoc),
+        "registerExecutor must be DELETED, not deprecated — it took a name, launched nothing, observed " +
+        "nothing, and returned a handle whose private Symbol proved only that this authority minted it " +
+        "(P-2, probe_execreg_v08_repro.mjs)");
+      ok(/async execute\(req, launcher\) \{/.test(dsrc) && /nameArtifact\(executable_artifact_id, implementation_family_id\)/.test(dsrc),
+        "the AUTHORITY must be the thing that runs an executor — execute(req, launcher) — and the " +
+        "digest→name direction must be a separate naming POLICY that claims nothing about execution");
+      ok(/digestArtifactFiles\(launcher\.artifact_files\)/.test(dsrc) &&
+         !/launcher\.(readArtifact|implementation_family_id|implementation_id)/.test(dsrc),
+        "the authority must read and hash the artifact ITSELF from paths the launcher names. A launcher " +
+        "that hands over the bytes, or that names its own family, can present C's identity and spawn " +
+        "JS — which is P-2 with an extra step");
+      ok(/export function executionKey\(request_sem_id, res\)/.test(dsrc) &&
+         /canonicalBytes\(res\)/.test(dsrc.slice(dsrc.indexOf("export function executionKey"))),
+        "the observation must be keyed over the WHOLE execution event — H(request_sem_id | " +
+        "canonical(res)) — so relabelling a result moves the key rather than being compared against it");
+      ok(/#observed = new Map\(\)/.test(dsrc) && /this\.#observed\.set\(key,/.test(dsrc) &&
+         (dsrc.match(/this\.#observed\.set\(/g) ?? []).length === 1,
+        "the observation table must have EXACTLY ONE writer, and it must be execute() — a second writer " +
+        "is a second way to become provenanced without having been launched");
+      {
+        const ip3 = entries.find((x) => x.id === "derivation.implementation-provenance" && x.revision === 3);
+        ok(!!ip3 && ip3.canonical === true,
+          "law derivation.implementation-provenance@3 missing or non-canonical (v1.24)");
+        ok(!!ip3 && /EXECUTOR EXISTENCE IS NOT EXECUTION PROVENANCE/.test(ip3.statement ?? ""),
+          "derivation.implementation-provenance@3 no longer opens with 'executor existence is not " +
+          "execution provenance' — that sentence is the whole round");
+        ok(!!ip3 && /not hardware-attested/i.test(ip3.statement ?? ""),
+          "derivation.implementation-provenance@3 must state conservatively what hash-then-spawn " +
+          "proves. 'The host observed artifact X immediately before requesting execution of path P' is " +
+          "not 'the OS executed those bytes', and turning the first into the second is exactly the " +
+          "overclaim @1 and @2 were each superseded for");
+        const ip2b = entries.find((x) => x.id === "derivation.implementation-provenance" && x.revision === 2);
+        ok(!!ip2b && ip2b.canonical === false && /superseded/i.test(ip2b.revision_note ?? ""),
+          "derivation.implementation-provenance@2 must stay on the record as history — it claimed the " +
+          "host observed what it launched while registration launched nothing");
+      }
+      // ── v1.24: the execution plane originates evidence ────────────────
+      {
+        const nf = entries.find((x) => x.id === "film.native-emission" && x.revision === 1);
+        ok(!!nf && nf.canonical === true && nf.status === "PROPERTY-TESTED",
+          "law film.native-emission@1 missing, non-canonical, or not PROPERTY-TESTED (v1.24)");
+        ok(!!nf && /DUP-FREE fragment/.test(nf.statement ?? "") && /REFUSED BY NAME/.test(nf.statement ?? ""),
+          "film.native-emission@1 no longer states its scope as CHECKED refusals. 'One frame, the " +
+          "dup-free fragment, C→JS only' is the theorem; an emitter that silently skipped what it " +
+          "cannot do would be claiming the general case with a fixture's evidence");
+        ok(!!nf && /replaySemFilm/.test(nf.statement ?? "") && /WITHOUT normalization or translation/.test(nf.statement ?? ""),
+          "film.native-emission@1 must name the kernel's OWN replaySemFilm and say the frame is " +
+          "accepted without translation — a checker written for the occasion checks the occasion");
+        ok(!!nf && /film_planes/.test(nf.statement ?? ""),
+          "film.native-emission@1 must keep the two transition systems apart. The TRVM calculus film " +
+          "and the derivation evidence relation share HOST infrastructure and no semantics, and round " +
+          "15 §61 exists because a session could otherwise finish the second and write that the first " +
+          "was done");
+        for (const f of ["bridge/ic32_film.c", "bridge/film_check.mjs"])
+          ok(existsSync(A(f)), `film.native-emission@1 cites ${f}, which is absent`);
+        const filmSrc = existsSync(A("bridge/ic32_film.c")) ? readFileSync(A("bridge/ic32_film.c"), "utf8") : "";
+        ok(/#define IC32_CANON_NO_MAIN/.test(filmSrc) && /#include "ic32_canon\.c"/.test(filmSrc),
+          "ic32_film.c must INCLUDE ic32_canon.c rather than copy it — the canonicalizer beneath the " +
+          "film has to be the same code the 48/48 bridge gate replays, or the film round is proving a " +
+          "canonicalizer nothing else has ever checked");
+        ok(/film-readback-was-not-pure/.test(filmSrc) && /film-not-normal-form-after-one-step/.test(filmSrc),
+          "ic32_film.c must CHECK quiescence and readback purity rather than assert them — the first " +
+          "version of it printed a binder name where a term was bound, which is a well-formed string " +
+          "asserting an identity that does not hold");
+      }
+      // ── v1.24: a skipped gate is not a green one ──────────────────────
+      {
+        const pack = existsSync(A("make_review_pack.sh")) ? readFileSync(A("make_review_pack.sh"), "utf8") : "";
+        ok(/--allow-skip-bridge/.test(pack) && /verdict downgraded to PARTIAL/.test(pack),
+          "make_review_pack.sh must make the native gates REQUIRED by default and downgrade to PARTIAL " +
+          "when they are skipped. Round 22's pack let a missing gcc SKIP the bridge without setting " +
+          "FAILED, and then printed 'every gate replayed green'");
+        ok(/checks attempted/.test(pack) && /ATTEMPTED=\$\(\(ATTEMPTED \+ 1\)\)/.test(pack),
+          "the review pack must COUNT what it ran. Its prose said 'all eighteen gates' while the script " +
+          "ran a different number, which is the hand-typed 44/44 defect in a different file");
+        ok(/aborting before running anything/.test(pack),
+          "a failed manifest must ABORT the review pack. Continuing executes files whose integrity has " +
+          "already failed and reports their output as evidence");
+        // ── the gating set is DATA, and nothing may keep a second copy ────
+        const reg2 = existsSync(A("artifacts.json"))
+          ? JSON.parse(readFileSync(A("artifacts.json"), "utf8")) : {};
+        const gating = reg2.gating_probes ?? [];
+        ok(Array.isArray(gating) && gating.length > 0,
+          "artifacts.json must declare gating_probes — WHICH probes gate is not derivable from the " +
+          "filename. The paired ones gate; the rest freeze a DECLARED-OPEN boundary and exit nonzero " +
+          "by design, so globbing probe_*_repro.mjs reports failures for witnesses behaving correctly");
+        for (const p2 of gating) ok(existsSync(A(p2)), `gating_probes names ${p2}, which is absent`);
+        ok(/json\.load\(open\('artifacts\.json'\)\)\['gating_probes'\]/.test(pack),
+          "the review pack must READ gating_probes rather than glob or re-type it");
+        {
+          const mk2 = existsSync(join(ROOT, "..", "Makefile"))
+            ? readFileSync(join(ROOT, "..", "Makefile"), "utf8") : "";
+          ok(!!mk2, "../Makefile absent, so the gating-list cross-check measured nothing");
+          if (mk2) {
+            const inMake = [...mk2.matchAll(/\$\(NODE\) (probe_\w+\.mjs)\)/g)].map((m2) => m2[1]).sort();
+            ok(JSON.stringify(inMake) === JSON.stringify([...gating].sort()),
+              "the Makefile's gating probe list and artifacts.json's gating_probes disagree — Makefile " +
+              `runs [${inMake.join(", ")}], registry declares [${[...gating].sort().join(", ")}]. Two ` +
+              "hand-maintained copies of one list is how a probe gets added in one place and gates in " +
+              "neither");
+          }
+        }
+      }
       ok(/implementation_claimed: impl/.test(dsrc) &&
          !/expected_implementation_id" in req && impl !== req\.expected_implementation_id/.test(dsrc),
         "validateForeignResult must report implementation_claimed and must NOT compare the request's " +
         "expectation against the result's own label — that is a claim against a claim, which is P-1");
       {
         const ip2 = entries.find((x) => x.id === "derivation.implementation-provenance" && x.revision === 2);
-        ok(!!ip2 && ip2.canonical === true,
-          "law derivation.implementation-provenance@2 missing or non-canonical");
         ok(!!ip2 && /AN EXECUTION CLAIM IS NOT PROVENANCE/.test(ip2.statement ?? ""),
           "derivation.implementation-provenance@2 no longer opens with 'an execution claim is not " +
-          "provenance' — that sentence is the whole round");
+          "provenance' — that sentence is the whole of round 22 and survives into @3");
         const ip1 = entries.find((x) => x.id === "derivation.implementation-provenance" && x.revision === 1);
         ok(!!ip1 && /record of a FALSE claim/i.test(ip1.revision_note ?? ""),
           "derivation.implementation-provenance@1 must stay on the record AS a false claim — it said " +
@@ -806,6 +915,12 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         "evidence.clean-baseline@1 no longer carries its runner half (v1.22) — `cmd | tail -1` takes " +
         "the PIPE's exit status, so a gate whose subject crashed prints a stack trace and reports success");
       {
+        // v1.24: an ABSENT Makefile used to skip both of these silently, which
+        // is the vacuity class this file exists to prosecute — a checker that
+        // reports clean while measuring nothing. The case trees carry a copy at
+        // ../Makefile now, so absence is a failure.
+        ok(existsSync(join(ROOT, "..", "Makefile")),
+          "../Makefile absent, so the governance-recipe checks scanned nothing and passed vacuously");
         const mk = existsSync(join(ROOT, "..", "Makefile"))
           ? readFileSync(join(ROOT, "..", "Makefile"), "utf8") : "";
         if (mk) ok(!/^\t@cd \$\(GOV\) && (?!out=).*\| tail -/m.test(mk),
