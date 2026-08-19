@@ -156,6 +156,7 @@ gov-derive:
 # has gone vacuous and stopped measuring — and against live, where it must be
 # confined. law:evidence.instrument-nonvacuity@1 applied to a repro.
 	@cd $(GOV) && $(NODE) probe_derivegrant_v02_repro.mjs | tail -1
+	@cd $(GOV) && $(NODE) probe_coresem_v03_repro.mjs | tail -1
 
 ## --- identity/memory result ------------------------------------------------
 research:

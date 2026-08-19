@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   derive_protocol.mjs — v0.2.0 — the serialized derivation boundary
+   derive_protocol.mjs — v0.4.0 — the serialized derivation boundary
 
    law:derivation.environment-confinement@1 is FALSIFIED under the arbitrary-
    closure measureFn API, and the record says closure comes from REPLACING the
@@ -76,7 +76,7 @@
 import { createHash } from "node:crypto";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const PROTOCOL_VERSION = "0.2.0";
+export const PROTOCOL_VERSION = "0.4.0";
 
 /* ── the canonical value domain, shared with the World ────────────────────
    Deliberately a copy of the World's rule rather than an import: this module
@@ -113,25 +113,149 @@ export function canonicalBytes(v, path = "$", onPath = new Set()) {
   throw new Error("not-canonical: " + t + " at " + path);
 }
 
-/* ── PROGRAM: a canonical AST, not a closure ──────────────────────────────
-   Small on purpose, and the grid rules it stays that way: a small TOTAL core
-   plus named semantic primitives, never a general programming language. The
-   point of the first round is not expressive power; it is that the thing
-   crossing the boundary is DATA whose identity is its content. Growing the
-   language must not change existing program ids, which is why every node is a
-   plain tagged object and the id is taken over canonical bytes. */
+/* ── TRVM-DERIVE-CORE-v1: the frozen core, and why freezing it was urgent ──
+   v0.2.0 computed program_sem_id as H("TRVM-PROGRAM-v1|" + canonicalBytes(ast))
+   while the record simultaneously said the language was deliberately NOT frozen.
+   Those two cannot both be true: the id bound SYNTAX and claimed to bind
+   semantics. Four gaps sat behind one id, all reproduced before this repair
+   (probe_coresem_v03_repro.mjs):
+
+     add was JavaScript `+`      "2"+"3" -> "23"; []+{} -> "[object Object]"
+     bind() validated nothing    {op:"exec", cmd:"rm -rf /"} received an id
+     arity/fields unconstrained  {op:"const"} and add-without-b received ids
+     evaluation order was free   the footprint was an ARRAY appended at access,
+                                 so a right-to-left implementation returned a
+                                 different — and therefore diverging — semantic
+                                 projection for a program it computed identically
+
+   A C implementation could satisfy every one of those differently and agree on
+   program_sem_id, which is exactly the property the id exists to deny.
+
+   The fourth is closed by RULING rather than by declaration: the footprint is
+   now a canonical dependency SET and access order lives in a separate
+   read_trace outside the semantic projection. Declaring an order would have
+   made two correct implementations disagree over a field neither considers
+   semantic; depending on {a,b} is one dependency set however it was visited.
+   Execution strategy does not silently become semantic identity — the same
+   principle that keeps ref_interactions out of conformance identity.
+
+   So the core is frozen HERE, as a canonical record, and its identity is
+   CONTENT-BOUND rather than a label: core_sem_id = H(canonical CORE_SPEC). A
+   bare "TRVM-DERIVE-CORE-v1" string would be the same defect the primitive
+   ruling already refuses for "componentReachability" — a name anyone can claim.
+   Change what `add` means and core_sem_id moves and every program id moves with
+   it, which is the property that makes the id semantic.
+
+   BREAKING, deliberately, and now: every program_sem_id changes. No second
+   implementation exists yet, which is the only reason this is cheap, and is the
+   reason it happens before the C work rather than after it. */
+export const CORE_SPEC = Object.freeze({
+  language: "TRVM-DERIVE-CORE",
+  version: 1,
+  value_domain: "null | boolean | finite number | string | canonical array | canonical plain object. " +
+    "Non-finite numbers, cycles, and non-plain objects (Map, Set, Date, class instances, " +
+    "transferable handles) are not values and are refused wherever they appear.",
+  numbers: "IEEE-754 binary64. Every arithmetic OPERAND must be a number — there is no coercion, " +
+    "no string concatenation and no object stringification — and every arithmetic RESULT must be " +
+    "finite. Overflow is a refusal at the operation, not a non-finite value handed onward.",
+  signed_zero: "the canonical numeric quotient IDENTIFIES -0 with +0. canonicalBytes serializes " +
+    "both as \"0\", so they are one value in the message domain, in warrant_id, in replay and in " +
+    "every equality this system takes. An implementation must not distinguish them at the boundary " +
+    "even where its own arithmetic does. Stated because it was already true of the canonical " +
+    "domain and unstated — which is how a C implementation would have decided it by accident.",
+  evaluation_order: "depth-first, operands in declared field order: `a` fully evaluated before `b`. " +
+    "This is DETERMINISTIC so that refusals, short-circuiting and the execution trace are the same " +
+    "everywhere. It is deliberately NOT semantic identity: see read_footprint.",
+  read_footprint: "a canonical DEPENDENCY SET, not a sequence — sorted and deduplicated. Depending " +
+    "on {a,b} must not become a different semantic identity because one correct implementation " +
+    "visited a then b and another visited b then a. Execution strategy does not silently become " +
+    "semantics unless the calculus requires it, which is the same principle that keeps " +
+    "ref_interactions out of conformance identity. Access ORDER, with repeats, is preserved " +
+    "separately in read_trace, which is evidence-plane material and is excluded from the semantic " +
+    "projection.",
+  ops: {
+    const: { fields: ["value"], returns: "the literal, which must be a canonical value" },
+    input: { fields: ["name"], reads: "canonical_inputs ONLY — never read_grants" },
+    read: { fields: ["resource"], reads: "read_grants.exact; appends [resource, version] to the footprint" },
+    scope: { fields: ["query"], reads: "read_grants.predicates; appends [query, digest] to the footprint" },
+    cite: { fields: ["name"], reads: 'read_grants.exact under the key "warrant:" + name; returns .value.value' },
+    add: { fields: ["a", "b"], returns: "numeric sum" },
+    sub: { fields: ["a", "b"], returns: "numeric difference" },
+    mul: { fields: ["a", "b"], returns: "numeric product" },
+    len: { fields: ["a"], returns: "array length; a non-array operand is refused" },
+  },
+  grammar: "every node is a plain object whose key set is EXACTLY {op} union the op's declared " +
+    "fields. Unknown ops, missing fields and extra fields are all refused at bind time, so an id " +
+    "is never issued for a program outside the language.",
+  refusals: [
+    "program-malformed-node", "program-unknown-op", "program-node-fields",
+    "program-name-not-a-string", "program-const-not-canonical",
+    "program-input-missing", "program-type", "program-arith-non-finite",
+    "read-not-granted", "scope-not-granted",
+  ],
+  totality: "the core is TOTAL: no recursion, no unbounded loop, no general function. Every " +
+    "program terminates in a number of steps bounded by its own node count.",
+  extension: "new behaviour arrives as {op:'prim', primitive_sem_id, args} with a content-bound " +
+    "primitive identity, never as if/while/function/closure/eval. A prim extension bumps the CORE " +
+    "version and therefore every program id, which is intended: a program written against a " +
+    "different language is a different program.",
+});
+export const CORE_SEM_ID = "core-" + H("TRVM-DERIVE-CORE-SPEC-v1|" + canonicalBytes(CORE_SPEC));
+
 const OPS = {
   const: (n) => n.value,
   read: null, scope: null, cite: null,          // effectful — handled by the evaluator
-  add: (n, ev) => ev(n.a) + ev(n.b),
-  sub: (n, ev) => ev(n.a) - ev(n.b),
-  mul: (n, ev) => ev(n.a) * ev(n.b),
+  add: (n, ev) => arith("add", ev(n.a), ev(n.b), (x, y) => x + y),
+  sub: (n, ev) => arith("sub", ev(n.a), ev(n.b), (x, y) => x - y),
+  mul: (n, ev) => arith("mul", ev(n.a), ev(n.b), (x, y) => x * y),
   len: (n, ev) => { const v = ev(n.a); if (!Array.isArray(v)) throw new Error("program-type: len of non-array"); return v.length; },
   input: null,
 };
 
+/** No coercion, and overflow refused at the operation. `+` on two strings is
+ *  concatenation in JavaScript and would be something else in C; the core says
+ *  neither implementation may guess. */
+function arith(op, x, y, f) {
+  if (typeof x !== "number" || typeof y !== "number")
+    throw new Error("program-type: " + op + " of non-number");
+  const r = f(x, y);
+  if (!Number.isFinite(r)) throw new Error("program-arith-non-finite: " + op);
+  return r;
+}
+
+/** The grammar check. An id may not be issued for a program outside the
+ *  language — v0.2.0 handed one to {op:"exec", cmd:"rm -rf /"}, which failed
+ *  only later, at evaluation, having already been given a semantic identity. */
+export function validateProgram(ast, path = "$") {
+  if (ast === null || typeof ast !== "object" || Array.isArray(ast))
+    return { ok: false, reason: "program-malformed-node at " + path };
+  const spec = CORE_SPEC.ops[ast.op];
+  if (typeof ast.op !== "string" || !spec)
+    return { ok: false, reason: "program-unknown-op: " + String(ast.op) + " at " + path };
+  const want = ["op", ...spec.fields].sort();
+  const got = Object.keys(ast).sort();
+  if (canonicalBytes(got) !== canonicalBytes(want))
+    return { ok: false, reason: "program-node-fields at " + path + ": [" + got.join(",") +
+      "] wanted [" + want.join(",") + "]" };
+  for (const f of ["name", "resource", "query"])
+    if (spec.fields.includes(f) && typeof ast[f] !== "string")
+      return { ok: false, reason: "program-name-not-a-string at " + path + "." + f };
+  if (ast.op === "const") {
+    try { canonicalBytes(ast.value); }
+    catch (e) { return { ok: false, reason: "program-const-not-canonical at " + path + ": " + e.message }; }
+  }
+  for (const f of ["a", "b"]) if (spec.fields.includes(f)) {
+    const sub = validateProgram(ast[f], path + "." + f);
+    if (!sub.ok) return sub;
+  }
+  return { ok: true };
+}
+
+/** program_sem_id commits the CORE SEMANTICS as well as the syntax. */
 export function programSemId(ast) {
-  return "psem-" + H("TRVM-PROGRAM-v1|" + canonicalBytes(ast));
+  const v = validateProgram(ast);
+  if (!v.ok) throw new Error(v.reason);
+  return "psem-" + H("TRVM-PROGRAM-v2|" + CORE_SEM_ID + "|" + canonicalBytes(ast));
 }
 
 /* A program registry whose binding cannot be forged: the key IS the hash of
@@ -232,13 +356,19 @@ export function resolveGrants(reader, want = {}) {
 const REQUEST_REQUIRED = ["request_id", "program_sem_id", "canonical_inputs", "read_grants", "grant_id"];
 const REQUEST_OPTIONAL = ["expected_implementation_id"];
 const RESULT_FIELDS = ["request_id", "program_sem_id", "implementation_id", "grant_id",
-  "value", "witness", "support", "read_footprint"];
+  "value", "witness", "support", "read_footprint", "read_trace"];
 /** the portable half of a result: everything two implementations must agree on.
- *  implementation_id is deliberately OUT — two conforming implementations of
- *  the same program produce different executable provenance and identical
- *  semantics, and comparing whole results would make cross-implementation
- *  validation fail by construction. */
-export const SEMANTIC_RESULT_FIELDS = RESULT_FIELDS.filter((f) => f !== "implementation_id");
+ *  TWO fields are deliberately OUT.
+ *    implementation_id — two conforming implementations of the same program
+ *      produce different executable provenance and identical semantics, and
+ *      comparing whole results would make cross-implementation validation fail
+ *      by construction.
+ *    read_trace — access ORDER with repeats is execution strategy. Depending on
+ *      {a,b} is one dependency set however it was visited, and a-then-b must not
+ *      be a different semantic identity from b-then-a. The trace is kept because
+ *      the film plane wants it, and kept OUT because semantics do not. */
+const NON_SEMANTIC_RESULT_FIELDS = ["implementation_id", "read_trace"];
+export const SEMANTIC_RESULT_FIELDS = RESULT_FIELDS.filter((f) => !NON_SEMANTIC_RESULT_FIELDS.includes(f));
 
 export function semanticProjection(res) {
   const out = {};
@@ -292,6 +422,20 @@ export function checkResult(res, req) {
   const fp = res.read_footprint;
   if (fp === null || typeof fp !== "object" || !Array.isArray(fp.exact) || !Array.isArray(fp.predicates))
     return { ok: false, reason: "result-footprint-malformed" };
+  const tr = res.read_trace;
+  if (tr === null || typeof tr !== "object" || !Array.isArray(tr.exact) || !Array.isArray(tr.predicates))
+    return { ok: false, reason: "result-trace-malformed" };
+  // the footprint must BE the canonical set: sorted, deduplicated. A result
+  // carrying a sequence where a set is required is refused rather than
+  // silently normalized, because normalizing on receipt would let two
+  // implementations disagree about the bytes they each committed to.
+  for (const kind of ["exact", "predicates"]) {
+    const seen = new Map();
+    for (const p of tr[kind]) seen.set(canonicalBytes(p), p);
+    const want = [...seen.values()].sort((x, y) => canonicalBytes(x) < canonicalBytes(y) ? -1 : 1);
+    if (canonicalBytes(fp[kind]) !== canonicalBytes(want))
+      return { ok: false, reason: "result-footprint-not-canonical-set: " + kind };
+  }
   // the witness must agree with the footprint it accompanies, checked before
   // any re-derivation so a lying claim is refused on its own evidence
   if (res.witness?.reads !== fp.exact.length || res.witness?.scopes !== fp.predicates.length)
@@ -330,7 +474,7 @@ export function footprintWithinGrant(fp, read_grants) {
    reader callable, which was the closure-authority shape this whole line of
    work exists to remove — in-process only, but the same species. Now the
    evaluator receives nothing but canonical data. */
-export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.2.0";
+export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.4.0";
 
 function readerFromGrants(read_grants) {
   return {
@@ -389,11 +533,21 @@ export function evaluate(ast, read_grants, inputs = {}) {
     }
   };
   const value = ev(ast);
+  // the footprint is a canonical dependency SET; the trace keeps access order
+  // and repeats. Two implementations that visit the same dependencies in
+  // different orders agree on the first and differ on the second, which is why
+  // only the first is inside the semantic projection.
+  const dedupe = (pairs) => {
+    const seen = new Map();
+    for (const p of pairs) seen.set(canonicalBytes(p), p);
+    return [...seen.values()].sort((x, y) => canonicalBytes(x) < canonicalBytes(y) ? -1 : 1);
+  };
   return {
     value,
-    witness: { op: ast.op, reads: exact.length, scopes: predicates.length },
+    witness: { op: ast.op, reads: dedupe(exact).length, scopes: dedupe(predicates).length },
     support: [...new Set(support)].sort(),
-    read_footprint: { exact, predicates },
+    read_footprint: { exact: dedupe(exact), predicates: dedupe(predicates) },
+    read_trace: { exact, predicates },
   };
 }
 
@@ -421,7 +575,7 @@ export function deriveLocally(registry, req, implementationId = JS_IMPLEMENTATIO
     implementation_id: implementationId,
     grant_id: req.grant_id,
     value: out.value, witness: out.witness,
-    support: out.support, read_footprint: out.read_footprint,
+    support: out.support, read_footprint: out.read_footprint, read_trace: out.read_trace,
   };
   const rr = checkResult(res, req);
   if (!rr.ok) return { ok: false, reason: rr.reason };

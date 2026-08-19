@@ -1,4 +1,4 @@
-/* derive_realm_battery.mjs — the crossing itself, v0.2.0.
+/* derive_realm_battery.mjs — the crossing itself, v0.4.0.
    The claim under test is narrow and stated as such: OBJECT authority does not
    cross, the derivation realm reads only what it was granted, and the executor
    — not the caller — says which implementation ran. Determinism and host
@@ -106,7 +106,8 @@ R("crossing-derives", honest.ok && honest.result.value === 5
 {
   const req = mkReq();
   const forged = { ...honest.result, witness: { ...honest.result.witness, reads: 2 },
-    read_footprint: { exact: [["fb", 1], ["secret:key", 1]], predicates: [] } };
+    read_footprint: { exact: [["fb", 1], ["secret:key", 1]], predicates: [] },
+    read_trace: { exact: [["fb", 1], ["secret:key", 1]], predicates: [] } };
   const v = validateForeignResult(reg, req, forged);
   R("foreign-footprint-refused", !v.ok && v.reason === "footprint-ungranted-read: secret:key",
     `${v.reason} — the authority checks the returned footprint against the grant it issued, on its own ` +
@@ -117,9 +118,9 @@ R("crossing-derives", honest.ok && honest.result.value === 5
 // 9. a conforming foreign implementation validates on the semantic projection
 {
   const req = mkReq();
-  const asIfC = { ...honest.result, implementation_id: "impl-c-derive-v0.2.0" };
+  const asIfC = { ...honest.result, implementation_id: "impl-c-derive-v0.4.0" };
   const v = validateForeignResult(reg, req, asIfC);
-  R("cross-implementation-shape", v.ok && v.implementation_id === "impl-c-derive-v0.2.0"
+  R("cross-implementation-shape", v.ok && v.implementation_id === "impl-c-derive-v0.4.0"
       && canonicalBytes(semanticProjection(asIfC)) === canonicalBytes(semanticProjection(honest.result)),
     `the same result stamped by a C executor validates and its provenance is RECORDED rather than ` +
     `compared away. This is the shape a real C implementation plugs into — it is not a claim that one ` +

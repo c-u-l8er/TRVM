@@ -192,7 +192,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -645,10 +645,40 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
       "export const SEMANTIC_RESULT_FIELDS", "footprint-ungranted-read", "request-grant-id-mismatch",
       "implementation-mismatch: want"])
       ok(dsrc.includes(s), `derive_protocol.mjs missing v0.2.0 construct "${s}"`);
-    ok(/SEMANTIC_RESULT_FIELDS = RESULT_FIELDS\.filter\(\(f\) => f !== "implementation_id"\)/.test(dsrc),
-      "derive_protocol.mjs must exclude implementation_id from the semantic projection — including it " +
-      "would make cross-implementation validation fail by construction, which is the whole reason the " +
-      "film identity split exists");
+    ok(/NON_SEMANTIC_RESULT_FIELDS = \["implementation_id", "read_trace"\]/.test(dsrc) &&
+       /SEMANTIC_RESULT_FIELDS = RESULT_FIELDS\.filter\(\(f\) => !NON_SEMANTIC_RESULT_FIELDS\.includes\(f\)\)/.test(dsrc),
+      "derive_protocol.mjs must exclude implementation_id AND read_trace from the semantic projection — " +
+      "the first would make cross-implementation validation fail by construction; the second would make " +
+      "access ORDER a semantic identity, so two correct implementations visiting {a,b} in different " +
+      "orders would diverge over a field neither considers semantic");
+    // ── v1.17: the frozen core ───────────────────────────────────────────
+    for (const s2 of ["export const CORE_SPEC", "export const CORE_SEM_ID", "export function validateProgram"])
+      ok(dsrc.includes(s2), `derive_protocol.mjs missing v0.4.0 construct "${s2}"`);
+    ok(/H\("TRVM-DERIVE-CORE-SPEC-v1\|" \+ canonicalBytes\(CORE_SPEC\)\)/.test(dsrc),
+      "CORE_SEM_ID must be H(canonical CORE_SPEC) — a bare label is the caller-selected identity the " +
+      "primitive ruling already refuses for componentReachability");
+    ok(/H\("TRVM-PROGRAM-v2\|" \+ CORE_SEM_ID \+ "\|" \+ canonicalBytes\(ast\)\)/.test(dsrc),
+      "program_sem_id must commit CORE_SEM_ID — without it the id binds SYNTAX while the record claims " +
+      "it binds semantics, and four behaviours can differ behind one id (probe_coresem_v03_repro.mjs)");
+    ok(/export function programSemId[\s\S]{0,220}validateProgram\(ast\)/.test(dsrc),
+      "programSemId must validate the grammar BEFORE hashing — v0.2.0 issued an id to " +
+      '{op:"exec", cmd:"rm -rf /"}, which failed only later at evaluation');
+    ok(dsrc.includes('throw new Error("program-type: " + op + " of non-number")') &&
+       dsrc.includes('throw new Error("program-arith-non-finite: " + op)'),
+      "arithmetic must refuse non-number operands and non-finite results on add/sub/mul alike");
+    ok(!!g.derivation_language?.frozen,
+      "grid derivation_language.frozen missing (v1.17) — the core is frozen and the record must say so");
+    {
+      const cs = entries.find((x) => x.id === "derivation.core-semantics");
+      ok(!!cs && cs.canonical === true && cs.status === "REGRESSION-LOCKED",
+        "law derivation.core-semantics@1 missing, non-canonical, or not REGRESSION-LOCKED");
+      ok(!!cs && /DEPENDENCY SET/.test(cs.statement ?? "") && /NOT semantic identity/.test(cs.statement ?? ""),
+        "derivation.core-semantics@1 no longer states the footprint is a dependency SET whose order is " +
+        "not semantic identity — declaring the order semantic makes two correct implementations diverge");
+      const man3 = existsSync(A("artifacts.json")) ? JSON.parse(readFileSync(A("artifacts.json"), "utf8")) : {};
+      ok(!!man3.derivation_boundary?.footprint_is_a_set && !!man3.derivation_boundary?.frozen_core,
+        "artifacts.json derivation_boundary missing frozen_core or footprint_is_a_set (v1.17)");
+    }
     ok(!!g.derivation_language && g.derivation_language.not_built != null,
       "grid derivation_language missing (v1.16) — small total core plus named semantic primitives is a " +
       "RULING made before the expressiveness round, and it must not quietly become a general language");

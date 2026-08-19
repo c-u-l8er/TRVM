@@ -587,9 +587,10 @@ src = open('derive_worker.mjs').read()
 src = src.replace('implementation_id: JS_IMPLEMENTATION_ID,', 'implementation_id: req.expected_implementation_id,')
 open('derive_worker.mjs','w').write(src)"
 
-run_case derive-semantic-projection-widened "exclude implementation_id from the semantic projection" "
+run_case derive-semantic-projection-widened "must exclude implementation_id AND read_trace" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('RESULT_FIELDS.filter((f) => f !== \"implementation_id\")', 'RESULT_FIELDS.slice()')
+src = src.replace('NON_SEMANTIC_RESULT_FIELDS = [\"implementation_id\", \"read_trace\"]',
+                  'NON_SEMANTIC_RESULT_FIELDS = [\"read_trace\"]')
 open('derive_protocol.mjs','w').write(src)"
 
 run_case derive-footprint-check-removed "missing v0.2.0 construct" "
@@ -629,6 +630,58 @@ import json
 m = json.load(open('artifacts.json'))
 del m['derivation_boundary']['two_evidence_objects']
 json.dump(m, open('artifacts.json','w'), indent=1)"
+
+# ── round 16: the frozen core ────────────────────────────────────────────────
+
+run_case derive-core-not-committed "program_sem_id must commit CORE_SEM_ID" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('H(\"TRVM-PROGRAM-v2|\" + CORE_SEM_ID + \"|\" + canonicalBytes(ast))',
+                  'H(\"TRVM-PROGRAM-v2|\" + canonicalBytes(ast))')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case derive-grammar-unchecked "must validate the grammar BEFORE hashing" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('  const v = validateProgram(ast);\n  if (!v.ok) throw new Error(v.reason);\n', '')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case derive-arith-coercion-restored "must refuse non-number operands" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('throw new Error(\"program-type: \" + op + \" of non-number\")', 'void 0')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case derive-trace-made-semantic "must exclude implementation_id AND read_trace" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('NON_SEMANTIC_RESULT_FIELDS = [\"implementation_id\", \"read_trace\"]',
+                  'NON_SEMANTIC_RESULT_FIELDS = [\"implementation_id\"]')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case footprint-set-ruling-dropped "dependency SET" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.core-semantics':
+        e['statement'] = e['statement'].replace('canonical DEPENDENCY SET', 'sequence')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case core-freeze-undeclared "derivation_language.frozen missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+del g['derivation_language']['frozen']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case core-law-deleted "law derivation.core-semantics@1 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if e['id'] != 'derivation.core-semantics']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case core-record-collapsed "frozen_core or footprint_is_a_set" "
+import json
+m = json.load(open('artifacts.json'))
+del m['derivation_boundary']['footprint_is_a_set']
+json.dump(m, open('artifacts.json','w'), indent=1)"
+
 
 echo; [ $FAILED -eq 0 ] && echo "NEGATIVE BATTERY: $CASES/$CASES forgeries caught" || echo "NEGATIVE BATTERY: FAILURES PRESENT ($CAUGHT/$CASES caught)"
 exit $FAILED

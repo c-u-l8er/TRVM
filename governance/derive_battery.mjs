@@ -1,4 +1,4 @@
-/* derive_battery.mjs — falsifiers for the serialized derivation boundary, v0.2.0.
+/* derive_battery.mjs — falsifiers for the serialized derivation boundary, v0.4.0.
    Written before the protocol is believed, per the house rule. Every case that
    must be refused asserts the EXACT refusal string, so a repair that changes
    what is refused cannot pass by refusing for a different reason.
@@ -7,7 +7,9 @@ import {
   ProgramRegistry, programSemId, canonicalBytes, checkRequest, checkResult,
   deriveLocally, validateForeignResult, evaluate, resolveGrants, grantId,
   footprintWithinGrant, semanticProjection, JS_IMPLEMENTATION_ID,
+  CORE_SPEC, CORE_SEM_ID, validateProgram, SEMANTIC_RESULT_FIELDS,
 } from "./derive_protocol.mjs";
+import { createHash } from "node:crypto";
 
 const rows = [];
 let fail = false;
@@ -146,10 +148,12 @@ const mkReq = (over = {}) => {
   // over-claiming: a footprint naming a resource the authority never granted
   const overclaim = validateForeignResult(reg, req, { ...honest,
     witness: { ...honest.witness, reads: 2 },
-    read_footprint: { exact: [["fb", 1], ["secret:key", 1]], predicates: [] } });
+    read_footprint: { exact: [["fb", 1], ["secret:key", 1]], predicates: [] },
+    read_trace: { exact: [["fb", 1], ["secret:key", 1]], predicates: [] } });
   // version forgery: the right resource at a version the grant does not carry
   const wrongVer = validateForeignResult(reg, req, { ...honest,
-    read_footprint: { exact: [["fb", 99]], predicates: [] } });
+    read_footprint: { exact: [["fb", 99]], predicates: [] },
+    read_trace: { exact: [["fb", 99]], predicates: [] } });
   // and the subset check is INDEPENDENT of re-derivation: it fires here even
   // though the value is honest and would have re-derived equal
   const direct = footprintWithinGrant({ exact: [["nope", 1]], predicates: [] }, req.read_grants);
@@ -229,10 +233,111 @@ const mkReq = (over = {}) => {
     `the stored program is deep-frozen; mutating it throws and the registry still reads 'add'`);
 }
 
+// ── 10. TRVM-DERIVE-CORE-v1: the id commits SEMANTICS, not just syntax ──
+{
+  R("core-id-is-content-bound", CORE_SEM_ID === "core-" + createHash("sha256")
+      .update("TRVM-DERIVE-CORE-SPEC-v1|" + canonicalBytes(CORE_SPEC)).digest("hex")
+      && Object.isFrozen(CORE_SPEC),
+    `CORE_SEM_ID recomputes from the frozen CORE_SPEC (${CORE_SEM_ID.slice(0, 20)}…). A bare label ` +
+    `"TRVM-DERIVE-CORE-v1" would be the caller-selected-name defect the primitive ruling already refuses`);
+  R("program-id-commits-the-core", programSemId(P) === "psem-" + createHash("sha256")
+      .update("TRVM-PROGRAM-v2|" + CORE_SEM_ID + "|" + canonicalBytes(P)).digest("hex"),
+    `program_sem_id = H("TRVM-PROGRAM-v2|" + core_sem_id + "|" + canonicalBytes(ast)) — change what ` +
+    `add means and the core moves and every program id moves with it, which is what makes the id semantic`);
+  // the grammar refuses out-of-language programs BEFORE issuing an identity
+  const malformed = [
+    ["unknown op", { op: "exec", cmd: "rm -rf /" }, /program-unknown-op/],
+    ["missing field", { op: "const" }, /program-node-fields/],
+    ["extra field", { op: "add", a: { op: "const", value: 1 }, b: { op: "const", value: 2 }, x: 1 }, /program-node-fields/],
+    ["non-string name", { op: "input", name: 7 }, /program-node-fields|program-name-not-a-string/],
+    ["bad child", { op: "add", a: { op: "const", value: 1 }, b: { op: "nope" } }, /program-unknown-op/],
+    ["non-canonical const", { op: "const", value: new Map() }, /program-const-not-canonical/],
+  ];
+  const got = malformed.map(([l, ast, rx]) => {
+    const v = validateProgram(ast);
+    let threw = "ISSUED AN ID";
+    try { programSemId(ast); } catch (e) { threw = e.message; }
+    return [l, !v.ok && rx.test(v.reason) && rx.test(threw)];
+  });
+  R("grammar-refuses-before-id", got.every((x) => x[1]),
+    got.map(([l, ok]) => `${l}:${ok ? "refused" : "ADMITTED"}`).join(" ") +
+    ` — v0.2.0 issued a program_sem_id to {op:"exec", cmd:"rm -rf /"}, which failed only later at ` +
+    `evaluation, having already been given a semantic identity`);
+  // arithmetic is typed and total: no coercion, no non-finite result
+  const A = { op: "add", a: { op: "input", name: "x" }, b: { op: "input", name: "y" } };
+  const ev = (i) => { try { return "=" + JSON.stringify(evaluate(A, { exact: {}, predicates: {} }, i).value); }
+    catch (e) { return e.message; } };
+  R("arithmetic-typed-and-total",
+    ev({ x: 2, y: 3 }) === "=5" && /program-type: add of non-number/.test(ev({ x: "2", y: "3" }))
+      && /program-type: add of non-number/.test(ev({ x: [], y: {} }))
+      && /program-arith-non-finite: add/.test(ev({ x: 1e308, y: 1e308 })),
+    `2+3 ${ev({ x: 2, y: 3 })} · "2"+"3" ${ev({ x: "2", y: "3" })} · []+{} ${ev({ x: [], y: {} })} · ` +
+    `1e308+1e308 ${ev({ x: 1e308, y: 1e308 })}. v0.2.0's add was JavaScript's + and produced "23" and ` +
+    `"[object Object]" under the same program_sem_id`);
+}
+
+
+// ── 11. the footprint is a SET; the trace keeps order ────────────────────
+{
+  // b is visited first and twice; a once. Three accesses, two dependencies.
+  const RD = { op: "add", a: { op: "read", resource: "b" },
+    b: { op: "add", a: { op: "read", resource: "a" }, b: { op: "read", resource: "b" } } };
+  const g = { exact: { a: { value: 1, version: 1 }, b: { value: 2, version: 1 } }, predicates: {} };
+  const out = evaluate(RD, g, {});
+  R("footprint-is-a-canonical-set",
+    canonicalBytes(out.read_footprint.exact) === canonicalBytes([["a", 1], ["b", 1]])
+      && canonicalBytes(out.read_trace.exact) === canonicalBytes([["b", 1], ["a", 1], ["b", 1]])
+      && out.witness.reads === 2,
+    `three accesses in order ${JSON.stringify(out.read_trace.exact)} produce the dependency set ` +
+    `${JSON.stringify(out.read_footprint.exact)}. Depending on {a,b} is ONE dependency set however it ` +
+    `was visited — declaring the order semantic would make two correct implementations diverge over a ` +
+    `field neither of them considers semantic`);
+  R("trace-is-outside-the-semantic-projection",
+    !SEMANTIC_RESULT_FIELDS.includes("read_trace") && !SEMANTIC_RESULT_FIELDS.includes("implementation_id")
+      && SEMANTIC_RESULT_FIELDS.includes("read_footprint"),
+    `semantic projection = [${SEMANTIC_RESULT_FIELDS.join(", ")}] — the trace is kept because the film ` +
+    `plane wants access order, and excluded because semantics do not. Same reasoning that keeps ` +
+    `ref_interactions out of conformance identity`);
+  // a result carrying a sequence where the set is required is REFUSED, not normalized
+  const req = mkReq();
+  const honest = deriveLocally(reg, req).result;
+  const resequenced = { ...honest, read_footprint: { exact: [["fb", 1], ["fb", 1]], predicates: [] } };
+  const c = checkResult(resequenced, req);
+  R("footprint-set-is-checked-not-normalized",
+    !c.ok && c.reason === "result-footprint-not-canonical-set: exact",
+    `${c.reason} — normalizing on receipt would let two implementations commit to different bytes and ` +
+    `still be told they agreed`);
+}
+
+// ── 12. the arithmetic edge matrix, all three operators ──────────────────
+{
+  const g = { exact: {}, predicates: {} };
+  const bin = (op) => ({ op, a: { op: "input", name: "x" }, b: { op: "input", name: "y" } });
+  const run = (op, i) => { try { return "=" + JSON.stringify(evaluate(bin(op), g, i).value); }
+    catch (e) { return e.message; } };
+  const overflow = [["add", { x: 1e308, y: 1e308 }], ["sub", { x: -1e308, y: 1e308 }], ["mul", { x: 1e308, y: 2 }]];
+  const typed = [["add", { x: "2", y: "3" }], ["sub", { x: [], y: 1 }], ["mul", { x: 1, y: {} }]];
+  R("overflow-refused-on-every-operator",
+    overflow.every(([op, i]) => run(op, i) === "program-arith-non-finite: " + op),
+    overflow.map(([op, i]) => `${op}:${run(op, i)}`).join(" · ") +
+    ` — one refusal string, three separately frozen semantic surfaces, each witnessed`);
+  R("coercion-refused-on-every-operator",
+    typed.every(([op, i]) => run(op, i) === "program-type: " + op + " of non-number"),
+    typed.map(([op, i]) => `${op}:${run(op, i)}`).join(" · "));
+  // signed zero: the canonical quotient identifies -0 with +0, and says so
+  const negZero = evaluate(bin("mul"), g, { x: -1, y: 0 }).value;
+  R("signed-zero-identified", Object.is(negZero, -0) && canonicalBytes(negZero) === "0"
+      && canonicalBytes(-0) === canonicalBytes(0) && /IDENTIFIES -0 with \+0/.test(CORE_SPEC.signed_zero),
+    `mul(-1, 0) evaluates to ${Object.is(negZero, -0) ? "-0" : "+0"} and canonicalizes to ` +
+    `${canonicalBytes(negZero)} — the canonical numeric quotient identifies them, which was already ` +
+    `true of the domain and unstated. A C implementation would otherwise have decided it by accident`);
+}
+
 console.log("═".repeat(96));
 console.log(fail
   ? `DERIVE-BATTERY: FAIL — ${rows.filter((r) => !r.ok).length}/${rows.length}`
-  : `DERIVE-BATTERY: PASS — ${rows.length}/${rows.length}. The program is data and its id is its hash; the ` +
-    `grant is what the authority made available and the footprint is what the program consumed; the ` +
-    `executor asserts its own identity; and a foreign result is re-derived before it is evidence.`);
+  : `DERIVE-BATTERY: PASS — ${rows.length}/${rows.length}. The program is data and its id commits the ` +
+    `frozen core's semantics, not just its syntax; the grant is what the authority made available and ` +
+    `the footprint is what the program consumed — a canonical dependency SET whose access order is a ` +
+    `separate trace, outside semantics; and the executor asserts its own identity.`);
 process.exit(fail ? 1 : 0);
