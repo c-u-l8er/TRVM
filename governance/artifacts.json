@@ -56,7 +56,8 @@
     "probe_execlaunch_v09_repro.mjs": "P-3/P-3F: the authority hashed one thing and executed another. artifact_files (evidence) and spawn() (action) were independent fields of one caller-supplied object, so declaring the genuine closure while spawning something else produced provenance 'observed' for an implementation that never ran — in both the derivation and film planes. Paired: 2 breach frozen, 5 confined live.",
     "probe_semoracle_v10_repro.mjs": "P-4: acceptance took its semantic oracle from the claimant. accept(registry, req, res) let a caller supply the mapping from program_sem_id to program, so an issued const(5) request accepted as 999 under a registry-shaped object whose verify() blessed the issued id. Not a type problem — a real ProgramRegistry populated differently does it too. Paired: 2 breach frozen, 5 confined live.",
     "probe_hostown_v11_repro.mjs": "P-5: an instanceof guard is satisfied by a subclass. A two-method EvilHost overriding run() and observationOf() passed the authority's host check while nothing executed. Paired: 2 breach frozen, 4 confined live.",
-    "probe_snapshot_v12_repro.mjs": "P-6/P-6b: untrusted data was validated while the caller still owned it. A getter read four times put an entrypoint outside its own hashed closure into the immutable catalog and the un-hashed worker ran; the same shape split a registry key from its value. Paired: 2 breach frozen, 5 confined live."
+    "probe_snapshot_v12_repro.mjs": "P-6/P-6b: untrusted data was validated while the caller still owned it. A getter read four times put an entrypoint outside its own hashed closure into the immutable catalog and the un-hashed worker ran; the same shape split a registry key from its value. Paired: 2 breach frozen, 5 confined live.",
+    "probe_reread_v13_repro.mjs": "P-7/P-7b: the issued request was authenticated as one value and used as another. wasIssued() hashed ONE read of every field and passed; execute() then re-read the caller's object for the family, for the host's canonicalisation and for the worker's structured clone, so a request answering const(5) to the first read and const(999) after it was issued as one program and executed as another, and acceptance returned implementation_provenance \"observed\" for it. The same 999 result under the frozen issued request is refused, so the forgery is exactly the caller's retained ownership. P-7b is the same defect on `res`, closed in the same round. P-7c is the same defect in ObservedExecutionHost.run(), which keyed the observation over read 1 of the invocation and launched read 2 — leaving a true-looking observation for an execution that did not happen. Paired: 3 breach frozen, 6 confined live."
   },
   "subdirs": {
     "bridge": "cross-plane C bridge: ic32_canon.c + bridge_check.mjs (canonical BYTES, 48/48) and ic32_film.c + film_check.mjs (round 23: a semantic-film FRAME the native runtime originates). ic32_film.c #includes ic32_canon.c under IC32_CANON_NO_MAIN so the canonicalizer under the film is the same code the bridge gate replays, not a copy of it.",
@@ -108,7 +109,7 @@
       "why": "round 19's two envelopes were one short. A conforming trace does not prove C executed anything, and neither does a string, and neither would a digest of the executable carried inside the same untrusted result."
     }
   },
-  "status": "v0.12.0 — every oracle is built from an OWNED CANONICAL SNAPSHOT taken once: World reader, semantic registry, execution host from a plain-data executor catalog. Six-rung supplier ladder closed. NOT yet the production derivation path",
+  "status": "v0.13.0 — every authority operation consumes either an authority-owned object or ONE canonical snapshot made at entry: ownCanonical() at the top of authorize/wasIssued/execute/accept/observationOf/bindProgram, and the issuance table keeps the REQUEST rather than only its hash, so wasIssued answers 'what did I issue?' and no method re-reads the caller. Seven-rung supplier ladder closed; the ladder is one machine-readable record and live surfaces derive their count from it. NOT yet the production derivation path",
   "subdir_case_inputs": [
     "bridge/ic32_canon.c",
     "bridge/bridge_check.mjs",
@@ -127,7 +128,8 @@
     "probe_execlaunch_v09_repro.mjs",
     "probe_semoracle_v10_repro.mjs",
     "probe_hostown_v11_repro.mjs",
-    "probe_snapshot_v12_repro.mjs"
+    "probe_snapshot_v12_repro.mjs",
+    "probe_reread_v13_repro.mjs"
   ],
   "gating_probes_note": "The PAIRED probes, and the only ones that gate: each must still BREACH against its verbatim frozen copy and be CONFINED against live, so it fails if a future edit repairs the frozen side instead of the live one. Every other probe_*_repro.mjs freezes a boundary that is DECLARED OPEN and exits NONZERO BY DESIGN — running those as gates makes a review pack report four failures for witnesses that are behaving correctly. Round 23 did exactly that, by replacing a hand-typed list in verify.sh with a glob; the list lives here now and grid_check checks the Makefile against it, so the two cannot drift and neither is a glob."
 }

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   derive_protocol.mjs — v0.12.0 — the serialized derivation boundary
+   derive_protocol.mjs — v0.13.0 — the serialized derivation boundary
 
    law:derivation.environment-confinement@1 is FALSIFIED under the arbitrary-
    closure measureFn API, and the record says closure comes from REPLACING the
@@ -67,7 +67,54 @@
    trigger to move to B or a hybrid, and it is named in the grid rather than
    discovered later.
 
-   WHAT v0.12.0 CHANGES: SEVER BEFORE VALIDATING, NOT AFTER
+   WHAT v0.13.0 CHANGES: THE LAW WAS RIGHT AND IT STOPPED AT THE CONSTRUCTOR
+   ─────────────────────────────────────────────────────────────────────────
+   v0.12.0 wrote the rule below and applied it wherever authority state was
+   being CONSTRUCTED — the executor catalog, the program registry, the issued
+   request. Method arguments kept the older shape: authenticate the caller's
+   object, then go on reading the caller's object.
+
+       execute(req)   wasIssued(req)   → hashes ONE read of every field: PASSES
+                      req.expected_implementation_id   → read again
+                      { message: req } → read again by the host, and again by
+                                         the worker's structured clone
+
+   A request whose `program_sem_id` answers const(5) to the first read and
+   const(999) to every read after it is therefore ISSUED as one program and
+   EXECUTED as another. Both programs exist in the registry, so nothing is
+   malformed and nothing fails closed. Acceptance, handed a fresh copy of the
+   same time-varying object, re-derives 999 against 999, finds the provenance of
+   an execution the authority genuinely drove, and returns
+
+       { ok: true, validated: true, implementation_provenance: "observed" }
+
+   for a result the authority never authorized. The same frozen request paired
+   with the same 999 result is correctly refused as result-program-mismatch, so
+   this is not fail-closed hygiene: the forgery is exactly the caller's retained
+   ownership and nothing else. Frozen as P-7 in probe_reread_v13_repro.mjs.
+
+       @7  the caller supplied MUTABLE DATA AUTHENTICATED ONCE, then read again
+           while the authority exercised the authority that authentication bought
+
+   @6 and @7 are one rule seen at two moments. @6: validate external X, read X
+   again, store X'. @7: authenticate external X, then exercise authority using
+   X'. The generalisation the ladder has been converging on, stated so that it
+   covers arguments and not only constructor data:
+
+       EVERY AUTHORITY OPERATION CONSUMES EITHER AN AUTHORITY-OWNED OBJECT OR
+       ONE CANONICAL SNAPSHOT MADE AT ENTRY. No trust decision authenticates one
+       read of external state and exercises authority using another.
+
+   Mechanically: `ownCanonical` is called once at the top of every method taking
+   a non-root data argument, `#issued` keeps the REQUEST and not merely its
+   hash — "were these bytes issued?" was answerable before, "what did I issue?"
+   was not, and every method that needed the second question had no choice but
+   to re-read the caller — and `wasIssued` returns that owned request, which is
+   what execute() and accept() use from there. The result side was closed in the
+   same round rather than waiting to be found: `res` was read by six checks in
+   sequence, and one argument to the right is where this ladder keeps going next.
+
+   WHAT v0.12.0 CHANGED: SEVER BEFORE VALIDATING, NOT AFTER
    ────────────────────────────────────────────────────────
    v0.11.0 turned every authority-bearing OBJECT into constructor DATA — and
    then validated that data while the caller still owned it, copying afterwards.
@@ -136,7 +183,9 @@
        supplied by the claimant. Acceptance takes no proof from its caller,
        INCLUDING the mapping from semantic identity to semantic program.
 
-   The supplier ladder, four rungs and one shape:
+   The supplier ladder as it stood at v0.10.0 — four rungs and one shape. It is
+   seven now; SUPPLIER_LADDER below is the record, and every live surface derives
+   its count and wording from that rather than from a sentence like this one:
 
        @1  the caller supplied the implementation LABEL
        @2  the caller supplied the registration NAME
@@ -238,7 +287,7 @@ import { ObservedExecutionHost, digestArtifactFiles } from "./observed_execution
 export { digestArtifactFiles };
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const PROTOCOL_VERSION = "0.12.0";
+export const PROTOCOL_VERSION = "0.13.0";
 
 /* ── the canonical value domain, shared with the World ────────────────────
    Deliberately a copy of the World's rule rather than an import: this module
@@ -431,7 +480,7 @@ export class ProgramRegistry {
     // reads of state the caller still owned, so a getter could give the id one
     // program and the store another (P-6b). Everything below now reads `owned`,
     // which nobody else has a reference to.
-    const owned = deepFreeze(JSON.parse(canonicalBytes(ast)));
+    const owned = ownCanonical(ast);
     const id = programSemId(owned);
     const frozen = owned;
     const existing = this.#byId.get(id);
@@ -464,6 +513,55 @@ function deepFreeze(v) {
   for (const k of Object.keys(v)) deepFreeze(v[k]);
   return v;
 }
+
+/** THE SNAPSHOT. One read of every field, and what comes back is ours.
+ *
+ *  This is the whole of the round-27 law expressed as a function, and it exists
+ *  as a function rather than as a discipline for a reason: v0.12.0 stated the
+ *  law correctly and then applied it only where authority state was being
+ *  CONSTRUCTED. Method arguments kept their old shape — authenticate the
+ *  caller's object, then keep reading the caller's object — which is P-7.
+ *  A rule that must be remembered at each new entrypoint is a rule that will be
+ *  forgotten at the next one, so there is one call, at the top of each method,
+ *  and everything below it reads a value nobody else holds a reference to.
+ *
+ *  canonicalBytes does the severing AND the refusing: a function, a Map, a
+ *  cycle or a non-finite number dies here, before any field has been examined.
+ *  That ordering is round 27's other half — sever BEFORE validating. */
+export function ownCanonical(v) {
+  return deepFreeze(JSON.parse(canonicalBytes(v)));
+}
+
+/** THE SUPPLIER LADDER, as data, because the prose copies drifted.
+ *
+ *  Every rung was found the same way: a caller-controlled field on the path to
+ *  a verdict became the verdict. The count and the wording were hand-maintained
+ *  in a module header, a battery diagnostic and each probe, and by round 27A the
+ *  live battery was still printing "Four rungs" against a six-rung mechanism —
+ *  a stale instrument in a tree whose recurring finding is stale instruments.
+ *  Live surfaces derive both from here now. The frozen probes keep their own
+ *  era's wording on purpose: each records the ladder as it stood when its
+ *  witness was cut, and rewriting that would be falsifying a dated record. */
+export const SUPPLIER_LADDER = Object.freeze([
+  Object.freeze({ rung: 1, supplied: "LABEL",
+    what: "the implementation label, deriveLocally's third parameter" }),
+  Object.freeze({ rung: 2, supplied: "NAME",
+    what: "the registration name, registerExecutor" }),
+  Object.freeze({ rung: 3, supplied: "ACTION",
+    what: "the action beside the artifact evidence, a launcher's spawn" }),
+  Object.freeze({ rung: 4, supplied: "SEMANTIC ORACLE",
+    what: "the program resolver used at acceptance, accept's registry parameter" }),
+  Object.freeze({ rung: 5, supplied: "AUTHORITY-BEARING OBJECT",
+    what: "the execution host itself, behind an instanceof guard" }),
+  Object.freeze({ rung: 6, supplied: "MUTABLE DATA READ TWICE",
+    what: "data validated while the caller still owned it, then read again to store" }),
+  Object.freeze({ rung: 7, supplied: "MUTABLE DATA AUTHENTICATED ONCE",
+    what: "a request proved issued, then read again to decide what to execute" }),
+]);
+export const LADDER_RUNGS = SUPPLIER_LADDER.length;
+/** "label · name · action · …" — one string, derived, for diagnostics. */
+export const ladderPhrase = () =>
+  SUPPLIER_LADDER.map((r) => r.supplied.toLowerCase()).join(" · ");
 
 /* ── THE AUTHORITY GRANT ──────────────────────────────────────────────────
    A bounded canonical world slice, keyed by resource. Keyed objects rather
@@ -694,7 +792,7 @@ export function footprintWithinGrant(fp, read_grants) {
    reader callable, which was the closure-authority shape this whole line of
    work exists to remove — in-process only, but the same species. Now the
    evaluator receives nothing but canonical data. */
-export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.12.0";
+export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.13.0";
 
 function readerFromGrants(read_grants) {
   return {
@@ -996,33 +1094,50 @@ export class DerivationAuthority {
   programIds() { return this.#registry.ids(); }
   programOf(id) { return this.#registry.get(id); }
 
-  /** intent in — authority-issued, owned, frozen request out */
+  /** intent in — authority-issued, owned, frozen request out.
+   *
+   *  BOTH arguments are snapshotted at entry. v0.12.0 validated `intent` in
+   *  place and then read it four more times to build the body, and read
+   *  `options.expected_implementation_id` twice; the issued request was severed
+   *  at the end, so the outcome was self-consistent and the ordering was still
+   *  wrong. The law is about every non-root data argument, not only the ones
+   *  where a witness has been written. */
   authorize(intent, options = {}) {
-    const c = checkIntent(intent);
+    let ownIntent, ownOptions;
+    try { ownIntent = ownCanonical(intent); }
+    catch (e) { return { ok: false, reason: "intent-not-canonical: " + e.message }; }
+    try { ownOptions = ownCanonical(options); }
+    catch (e) { return { ok: false, reason: "authorize-options-not-canonical: " + e.message }; }
+    if (ownOptions === null || typeof ownOptions !== "object" || Array.isArray(ownOptions))
+      return { ok: false, reason: "authorize-options-not-an-object" };
+    const c = checkIntent(ownIntent);
     if (!c.ok) return { ok: false, reason: c.reason };
-    const unknown = Object.keys(options).filter((k) => !AUTHORIZE_OPTIONS.includes(k)).sort();
+    const unknown = Object.keys(ownOptions).filter((k) => !AUTHORIZE_OPTIONS.includes(k)).sort();
     if (unknown.length)
       return { ok: false, reason: "authorize-options-unknown: [" + unknown.join(",") + "]" };
-    if ("expected_implementation_id" in options && typeof options.expected_implementation_id !== "string")
+    if ("expected_implementation_id" in ownOptions &&
+        typeof ownOptions.expected_implementation_id !== "string")
       return { ok: false, reason: "authorize-expected-implementation-malformed" };
     let g;
-    try { g = resolveGrants(this.#reader, intent.requested_resources); }
+    try { g = resolveGrants(this.#reader, ownIntent.requested_resources); }
     catch (e) { return { ok: false, reason: e.message }; }
     const body = {
-      program_sem_id: intent.program_sem_id,
-      canonical_inputs: intent.canonical_inputs,
+      program_sem_id: ownIntent.program_sem_id,
+      canonical_inputs: ownIntent.canonical_inputs,
       read_grants: g.read_grants,
       grant_id: g.grant_id,
-      ...("expected_implementation_id" in options
-        ? { expected_implementation_id: options.expected_implementation_id } : {}),
+      ...("expected_implementation_id" in ownOptions
+        ? { expected_implementation_id: ownOptions.expected_implementation_id } : {}),
     };
-    const request_id = "req-" + H("TRVM-REQUEST-v1|" + intent.intent_id + "|" + canonicalBytes(body));
-    // owned and severed through canonicalBytes — the same rule the World uses,
-    // not a second clone algorithm — then deep-frozen
-    const req = deepFreeze(JSON.parse(canonicalBytes({ request_id, ...body })));
+    const request_id = "req-" + H("TRVM-REQUEST-v1|" + ownIntent.intent_id + "|" + canonicalBytes(body));
+    const req = ownCanonical({ request_id, ...body });
     const rc = checkRequest(req);
     if (!rc.ok) return { ok: false, reason: rc.reason };
-    this.#issued.set(request_id, requestSemId(req));
+    // THE ISSUED REQUEST ITSELF IS KEPT, not only its identity. v0.12.0 stored
+    // the semantic hash, which can answer "were these bytes issued?" and cannot
+    // answer "what did I issue?" — so every method that needed the second
+    // question had no choice but to re-read the caller's object. That is P-7.
+    this.#issued.set(request_id, Object.freeze({ request_sem_id: requestSemId(req), request: req }));
     return { ok: true, request: req };
   }
 
@@ -1045,7 +1160,14 @@ export class DerivationAuthority {
     if (!this.#host) return { ok: false, reason: "authority-has-no-execution-host" };
     const iss = this.wasIssued(req);
     if (!iss.ok) return { ok: false, reason: iss.reason };
-    let family = req.expected_implementation_id;
+    // FROM HERE THE ARGUMENT IS NOT READ AGAIN. v0.12.0 authenticated `req` and
+    // then kept reading it — once for the family, once more when the host
+    // canonicalised the invocation, once more when the worker cloned it — so a
+    // request whose program_sem_id answered const(5) to wasIssued and const(999)
+    // to everyone after it was issued as one program and EXECUTED as another
+    // (P-7). `issued` is the authority's own copy of what it actually issued.
+    const issued = iss.request;
+    let family = issued.expected_implementation_id;
     if (family === undefined) {
       const fams = this.#host.families();
       if (fams.length !== 1)
@@ -1053,7 +1175,7 @@ export class DerivationAuthority {
           fams.join(",") + "] and the request names none" };
       family = fams[0];
     }
-    const invocation = { init: { programs: this.#registry.image() }, message: req };
+    const invocation = { init: { programs: this.#registry.image() }, message: issued };
     const r = await this.#host.run(family, DERIVE_EXEC_DOMAIN, invocation);
     if (!r.ok) return { ok: false, reason: r.reason };
     if (!r.output?.ok) return { ok: false, reason: r.output?.reason ?? "execution-returned-nothing" };
@@ -1062,22 +1184,40 @@ export class DerivationAuthority {
       executable_artifact_id: r.executable_artifact_id };
   }
 
-  /** Read-only view, for batteries and diagnostics. Returns a COPY. */
+  /** Read-only view, for batteries and diagnostics. Returns a COPY.
+   *  Severs both arguments, because a diagnostic that reads a live object twice
+   *  is the same defect wearing a smaller hat. */
   observationOf(req, res) {
     if (!this.#host) return null;
+    let ownReq, ownRes;
+    try { ownReq = ownCanonical(req); ownRes = ownCanonical(res); }
+    catch { return null; }
     return this.#host.observationOf(DERIVE_EXEC_DOMAIN,
-      { init: { programs: this.#registry.image() }, message: req },
-      { ok: true, result: res });
+      { init: { programs: this.#registry.image() }, message: ownReq },
+      { ok: true, result: ownRes });
   }
 
-  /** Was THIS request — every field of it — issued by THIS authority? */
+  /** Was THIS request — every field of it — issued by THIS authority?
+   *
+   *  AND, WHEN IT WAS, WHICH ONE. The second half is the P-7 repair. Answering
+   *  only the first question forces every caller of this method to go on using
+   *  the object it just authenticated, and an object that is authenticated is
+   *  not thereby owned: the bytes that passed are one read, and the next read
+   *  need not agree with them. So the argument is severed once — that snapshot
+   *  is what gets hashed and compared — and what comes back is the AUTHORITY'S
+   *  OWN copy of the request, which is what every caller uses from here.
+   *
+   *  `request` is deep-frozen and safe to hand out; it is the same object the
+   *  caller was given at authorize() time. */
   wasIssued(req) {
-    const stored = this.#issued.get(req?.request_id);
-    if (stored === undefined) return { ok: false, reason: "grant-not-issued-by-this-authority" };
-    let mine;
-    try { mine = requestSemId(req); }
+    let snapshot;
+    try { snapshot = ownCanonical(req); }
     catch (e) { return { ok: false, reason: "request-not-canonical: " + e.message }; }
-    return stored === mine ? { ok: true } : { ok: false, reason: "request-not-as-issued" };
+    const stored = this.#issued.get(snapshot?.request_id);
+    if (stored === undefined) return { ok: false, reason: "grant-not-issued-by-this-authority" };
+    return stored.request_sem_id === requestSemId(snapshot)
+      ? { ok: true, request: stored.request }
+      : { ok: false, reason: "request-not-as-issued" };
   }
 
   /** ACCEPTANCE — everything a result must clear before an authority may act on
@@ -1112,11 +1252,25 @@ export class DerivationAuthority {
   accept(req, res) {
     const iss = this.wasIssued(req);
     if (!iss.ok) return { ok: false, reason: iss.reason };
+    // BOTH SIDES ARE OWNED BEFORE ANY CHECK RUNS. The request is the
+    // authority's own copy of what it issued; the result is snapshotted once,
+    // here, and the six checks below — schema, footprint containment,
+    // re-derivation, trace conformance, provenance lookup, freshness — every
+    // one of which used to read the caller's live object, all read this.
+    //
+    // The request side is P-7. The result side is its sibling and was closed at
+    // the same time on purpose: a caller who cannot vary the request while it is
+    // being validated can still vary the result, and "the same class of defect
+    // one argument to the right" is how this ladder has gone seven times.
+    const issued = iss.request;
+    let ownRes;
+    try { ownRes = ownCanonical(res); }
+    catch (e) { return { ok: false, reason: "result-not-canonical: " + e.message }; }
     // THE ORACLE IS THIS AUTHORITY'S OWN. v0.9.0 took it as the first parameter,
     // so re-derivation ran against the program the CLAIMANT nominated and
     // agreed with itself (P-4). Nothing about re-derivation was wrong; what was
     // wrong was who chose the program it re-derived.
-    const v = validateForeignResult(this.#registry, req, res);
+    const v = validateForeignResult(this.#registry, issued, ownRes);
     if (!v.ok) return v;
 
     // ── PROVENANCE, against an execution event this authority drove ───────
@@ -1125,13 +1279,13 @@ export class DerivationAuthority {
     // be "attached" to other bytes because nothing is attached to anything.
     // The table lives in the HOST, which is the only thing that launches, so
     // there is no second place an observation could come from.
-    const observed = this.observationOf(req, res) ?? undefined;
-    if ("expected_implementation_id" in req) {
+    const observed = this.observationOf(issued, ownRes) ?? undefined;
+    if ("expected_implementation_id" in issued) {
       if (observed === undefined)
         return { ok: false, reason: "implementation-provenance-unavailable" };
-      if (observed.implementation_family_id !== req.expected_implementation_id)
+      if (observed.implementation_family_id !== issued.expected_implementation_id)
         return { ok: false, reason: "implementation-mismatch: want " +
-          req.expected_implementation_id + ", observed " + observed.implementation_family_id };
+          issued.expected_implementation_id + ", observed " + observed.implementation_family_id };
     }
     // Still has content, and a narrower one than it had: with the whole result
     // inside the key this can no longer fire on relabelling. It fires when an
@@ -1141,7 +1295,7 @@ export class DerivationAuthority {
       return { ok: false, reason: "implementation-claim-contradicts-observation: claims " +
         v.implementation_claimed + ", observed " + observed.implementation_family_id };
 
-    const f = validateFootprintFresh(this.#reader, res.semantic_result.read_footprint);
+    const f = validateFootprintFresh(this.#reader, ownRes.semantic_result.read_footprint);
     if (!f.ok) return { ok: false, reason: f.reason };
 
     // trace_conforms is NOT in the success shape. On success it is redundant —

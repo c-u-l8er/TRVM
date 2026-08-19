@@ -744,8 +744,8 @@ json.dump(m, open('artifacts.json','w'), indent=1)"
 
 run_case issuance-binds-the-grant-again "issuance must bind request_sem_id" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('this.#issued.set(request_id, requestSemId(req));',
-                  'this.#issued.set(request_id, body.grant_id);')
+src = src.replace('this.#issued.set(request_id, Object.freeze({ request_sem_id: requestSemId(req), request: req }));',
+                  'this.#issued.set(request_id, Object.freeze({ request_sem_id: body.grant_id, request: req }));')
 open('derive_protocol.mjs','w').write(src)"
 
 run_case acceptance-made-a-free-function "acceptance must be a METHOD" "
@@ -1168,8 +1168,8 @@ open('derive_protocol.mjs','w').write(src)"
 
 run_case oracle-comes-from-outside "must re-derive through the authority" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('validateForeignResult(this.#registry, req, res)',
-                  'validateForeignResult(arguments[2] ?? this.#registry, req, res)')
+src = src.replace('validateForeignResult(this.#registry, issued, ownRes)',
+                  'validateForeignResult(arguments[2] ?? this.#registry, issued, ownRes)')
 open('derive_protocol.mjs','w').write(src)"
 
 run_case worker-image-from-a-parameter "program image must be the AUTHORITY" "
@@ -1309,8 +1309,8 @@ json.dump(g, open('invariant-grid.json','w'), indent=1)"
 # ── round 27: sever before validating ───────────────────────────────────────
 run_case bind-hashes-before-severing "must SEVER the AST before computing its identity" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('const owned = deepFreeze(JSON.parse(canonicalBytes(ast)));\n    const id = programSemId(owned);',
-                  'const id = programSemId(ast);\n    const owned = deepFreeze(JSON.parse(canonicalBytes(ast)));')
+src = src.replace('const owned = ownCanonical(ast);\n    const id = programSemId(owned);',
+                  'const id = programSemId(ast);\n    const owned = ownCanonical(ast);')
 open('derive_protocol.mjs','w').write(src)"
 
 run_case catalog-validated-in-place "catalog must be snapshotted ONCE before validation" "
@@ -1328,6 +1328,54 @@ import json
 g = json.load(open('invariant-grid.json'))
 g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
                                 if e['id'] != 'derivation.owned-snapshot']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+# ── round 27A.1: authenticate once, then act on a later read ────────────────
+run_case execute-runs-the-presented-request "must carry the ISSUED request" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('message: issued }', 'message: req }')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case wasissued-answers-only-yes "must return the issued request and not only a boolean" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('? { ok: true, request: stored.request }', '? { ok: true }')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case accept-reads-the-live-result "accept/res must be snapshotted at method entry" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('ownRes = ownCanonical(res);', 'ownRes = res;')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case authorize-reads-the-live-intent "authorize/intent must be snapshotted at method entry" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('ownIntent = ownCanonical(intent);', 'ownIntent = intent;')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case snapshot-helper-inlined "snapshot must be ONE exported function" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('export function ownCanonical(v) {', 'function ownCanonical(v) {')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case host-runs-the-presented-invocation "must launch the SNAPSHOT it keyed" "
+src = open('observed_execution_host.mjs').read()
+src = src.replace('runNodeWorker(entry, owned)', 'runNodeWorker(entry, invocation)')
+open('observed_execution_host.mjs','w').write(src)"
+
+run_case entry-snapshot-law-deleted "law derivation.entry-snapshot@1 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if e['id'] != 'derivation.entry-snapshot']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case entry-snapshot-scoped-to-constructors "must state the rule over AUTHORITY OPERATIONS" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.entry-snapshot':
+        e['statement'] = e['statement'].replace(
+            'AUTHENTICATES ONE READ OF EXTERNAL STATE AND EXERCISES AUTHORITY USING ANOTHER',
+            'validates constructor data twice')
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 run_case snapshot-rule-narrowed "must state the general rule and not only the two instances" "

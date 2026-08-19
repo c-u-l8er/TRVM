@@ -192,7 +192,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -704,13 +704,25 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
       // a check that cannot tell a mention from a declaration would force the
       // record to stop naming what it deleted.
       const dnoc = dsrc.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+      // …and the same argument one step further. v1.30 added SUPPLIER_LADDER, a
+      // machine-readable record of the ladder, and a record that names the
+      // deleted registerExecutor as rung @2 is a MENTION in a string literal,
+      // not a declaration. The comment above already made this distinction for
+      // comments; a check that cannot make it for data would force the record
+      // to stop naming what it deleted, which is the same defect one quote
+      // character to the right. Absence checks run against this.
+      const dnostr = dnoc.replace(/`(?:[^`\\]|\\.)*`/g, "``")
+        .replace(/"(?:[^"\\]|\\.)*"/g, '""').replace(/'(?:[^'\\]|\\.)*'/g, "''");
       for (const s2 of ["export function validateFootprintFresh", "export function requestSemId",
         "export class DerivationAuthority", "export function checkIntent"])
         ok(dsrc.includes(s2), `derive_protocol.mjs missing v0.5.0 construct "${s2}"`);
-      ok(/this\.#issued\.set\(request_id, requestSemId\(req\)\)/.test(dsrc),
+      ok(/this\.#issued\.set\(request_id, Object\.freeze\(\{ request_sem_id: requestSemId\(req\), request: req \}\)\)/.test(dsrc),
         "issuance must bind request_sem_id, not grant_id — binding the grant answers 'was this issued?' " +
         "about a GRANT while the thing being accepted is a REQUEST, and an input swap under an " +
-        "untouched request_id passes (probe_issuebind_v05_repro.mjs I-1)");
+        "untouched request_id passes (probe_issuebind_v05_repro.mjs I-1). AND IT MUST KEEP THE REQUEST " +
+        "ITSELF, not only the hash: a table holding hashes can answer 'were these bytes issued?' and " +
+        "cannot answer 'what did I issue?', so every method needing the second question re-read the " +
+        "caller's object and P-7 followed (probe_reread_v13_repro.mjs)");
       ok(/accept\(req, res\) \{/.test(dsrc) && !/export function acceptForeignResult/.test(dsrc),
         "acceptance must be a METHOD on the authority taking EXACTLY (req, res). A free function " +
         "taking `issuer` and `liveReader` lets the caller supply both proofs of its own authority " +
@@ -758,9 +770,12 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         "grid lowering_spike must carry the two execution grades separately — an execution the host " +
         "observed and one the kernel replayed are different claims");
       ok(/#registry = new ProgramRegistry\(\)/.test(dnoc) &&
-         /validateForeignResult\(this\.#registry, req, res\)/.test(dnoc),
+         /validateForeignResult\(this\.#registry, issued, ownRes\)/.test(dnoc),
         "acceptance must re-derive through the authority's OWN registry. Re-derivation was never the " +
-        "defect: it re-derived against the program the CLAIMANT nominated and agreed with itself");
+        "defect: it re-derived against the program the CLAIMANT nominated and agreed with itself. " +
+        "AND IT MUST RE-DERIVE OVER OWNED OPERANDS — `issued` is the authority's copy of what it " +
+        "issued and `ownRes` is the one snapshot of the result; passing the live (req, res) is P-7, " +
+        "where re-derivation agreed perfectly about bytes that arrived after authentication");
       ok(/async execute\(req\) \{/.test(dnoc) &&
          /init: \{ programs: this\.#registry\.image\(\) \}/.test(dnoc),
         "execute must take EXACTLY (req), and the far side's program image must be the AUTHORITY's " +
@@ -834,7 +849,7 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         "the host must refuse a catalog entry carrying any field beyond {kind, entrypoint, " +
         "artifact_closure} — an extra field is exactly where a spawn() would reappear");
       // ── v1.29: sever before validating ────────────────────────────────
-      ok(/const owned = deepFreeze\(JSON\.parse\(canonicalBytes\(ast\)\)\);/.test(dnoc) &&
+      ok(/const owned = ownCanonical\(ast\);/.test(dnoc) &&
          /const id = programSemId\(owned\);/.test(dnoc),
         "ProgramRegistry.bind must SEVER the AST before computing its identity. Hashing the caller's " +
         "object and cloning it afterwards is two reads of state the caller owns, so a getter can give " +
@@ -855,9 +870,64 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "derivation.owned-snapshot@1 must say why P-6b counts even though it fails closed. A second " +
           "mechanism catching the first is not the first working");
       }
+      // ── v1.30: the law was right and it stopped at the constructor ────
+      // v1.29 asserted the snapshot rule wherever authority state was BUILT.
+      // P-7 lived in the space those assertions did not reach: method
+      // arguments. These check the same rule at the other boundary.
+      ok(/export function ownCanonical\(v\) \{/.test(dnoc) &&
+         /return deepFreeze\(JSON\.parse\(canonicalBytes\(v\)\)\);/.test(dnoc),
+        "the snapshot must be ONE exported function, not a discipline repeated at each entrypoint. " +
+        "v0.12.0 stated the rule correctly and applied it only where it had been written down; a rule " +
+        "that must be remembered at each new method is one that will be forgotten at the next");
+      for (const [m, pat] of [
+        ["authorize/intent", /ownIntent = ownCanonical\(intent\)/],
+        ["authorize/options", /ownOptions = ownCanonical\(options\)/],
+        ["wasIssued/req", /snapshot = ownCanonical\(req\)/],
+        ["accept/res", /ownRes = ownCanonical\(res\)/],
+        ["observationOf", /ownReq = ownCanonical\(req\); ownRes = ownCanonical\(res\)/],
+      ]) ok(pat.test(dnoc),
+        `${m} must be snapshotted at method entry — the law covers every non-root data argument, not ` +
+        "only the constructor data a witness happened to be written against");
+      ok(/const issued = iss\.request;/.test(dnoc) &&
+         (dnoc.match(/const issued = iss\.request;/g) ?? []).length === 2,
+        "execute() and accept() must both bind the AUTHORITY'S OWN copy of the request out of " +
+        "wasIssued() and read that. Authenticating the caller's object and then continuing to read it " +
+        "is P-7: the bytes that passed are one read, and the next read need not agree with them");
+      ok(/message: issued \}/.test(dnoc) && !/message: req \}/.test(dnoc),
+        "the invocation the host runs must carry the ISSUED request. Passing the live argument is the " +
+        "exact forgery: const(5) answered wasIssued and const(999) answered the host and the worker");
+      ok(/\? \{ ok: true, request: stored\.request \}/.test(dnoc),
+        "wasIssued() must return the issued request and not only a boolean. 'Yes' forces its caller to " +
+        "go on using the object it just authenticated, and an object that is authenticated is not " +
+        "thereby owned");
+      {
+        const es = entries.find((x) => x.id === "derivation.entry-snapshot" && x.revision === 1);
+        ok(!!es && es.canonical === true && es.status === "PROPERTY-TESTED",
+          "law derivation.entry-snapshot@1 missing, non-canonical, or not PROPERTY-TESTED (v1.30)");
+        ok(!!es && /AUTHENTICATES ONE READ OF EXTERNAL STATE AND EXERCISES AUTHORITY USING ANOTHER/
+          .test(es.statement ?? ""),
+          "derivation.entry-snapshot@1 must state the rule over AUTHORITY OPERATIONS, not over " +
+          "constructors. The v1.29 law was already true and already written down when P-7 was found " +
+          "underneath it; what was missing was its reach, not its content");
+        ok(!!es && /ONE ARGUMENT TO THE RIGHT/.test(es.statement ?? ""),
+          "derivation.entry-snapshot@1 must record why the RESULT side was closed in the same round " +
+          "rather than waiting for its own witness — seven rungs have each been found in the parameter " +
+          "next to the one that was just repaired");
+      }
       ok(/canonicalBytes\(invocation\)/.test(hostNoc),
         "the host must canonicalise the invocation, which refuses a function outright. That is the " +
         "mechanical reason an action cannot ride along with a declaration, rather than a convention");
+      // ── v1.30: …and must RUN the snapshot it keyed (P-7c) ─────────────
+      ok(/owned = JSON\.parse\(inputCanonical\)/.test(hostNoc) &&
+         /runNodeWorker\(entry, owned\)/.test(hostNoc) &&
+         /runNativeExec\(entry, owned\)/.test(hostNoc),
+        "the host must launch the SNAPSHOT it keyed, not the caller's object. v0.2.1 canonicalised " +
+        "the invocation for the observation key and handed the live object to the transport, so an " +
+        "invocation honest on read 1 and hostile on read 2 was keyed under one request and executed " +
+        "as another — leaving a TRUE-LOOKING observation for an execution that did not happen, in the " +
+        "table built so that relabelling would move the key. The obligation belongs to the " +
+        "ENTRYPOINT: DerivationAuthority.execute passes owned parts, but the host is exported and " +
+        "FilmAuthority and lowering_check drive it directly (P-7c, probe_reread_v13_repro.mjs)");
       ok((hostNoc.match(/this\.#observed\.set\(/g) ?? []).length === 1 &&
          /list\.push\(Object\.freeze/.test(hostNoc),
         "the host's observation table must have exactly one writer, and must keep ALL sessions per " +
@@ -882,7 +952,7 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "authority reads the artifact itself, and that was true and not sufficient");
       }
       // ── v1.24: executor existence is not execution provenance ─────────
-      ok(!/registerExecutor/.test(dnoc),
+      ok(!/registerExecutor/.test(dnostr),
         "registerExecutor must be DELETED, not deprecated — it took a name, launched nothing, observed " +
         "nothing, and returned a handle whose private Symbol proved only that this authority minted it " +
         "(P-2, probe_execreg_v08_repro.mjs)");

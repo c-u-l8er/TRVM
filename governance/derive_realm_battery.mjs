@@ -12,6 +12,7 @@ import {
   ProgramRegistry, programSemId, canonicalBytes, validateForeignResult,
   resolveGrants, grantId, semanticProjection, JS_IMPLEMENTATION_ID,
   DerivationAuthority, requestSemId, deriveLocally,
+  SUPPLIER_LADDER, LADDER_RUNGS, ladderPhrase,
 } from "./derive_protocol.mjs";
 import { ObservedExecutionHost, digestArtifactFiles } from "./observed_execution_host.mjs";
 import { JS_WORKER_ENTRY, defaultDeriveCatalog } from "./derive_launcher.mjs";
@@ -353,10 +354,97 @@ let observedRun = null;
       && DerivationAuthority.prototype.execute.length === 1,
     `registerExecutor and nameArtifact are absent, accept takes ` +
     `${DerivationAuthority.prototype.accept.length} parameters and execute takes ` +
-    `${DerivationAuthority.prototype.execute.length}. Four rungs, one shape: the implementation LABEL, ` +
-    `the registration NAME, the ACTION beside the evidence, and the SEMANTIC ORACLE at acceptance. ` +
-    `Every oracle this authority consults — World reader, program registry, execution host — is fixed ` +
-    `at construction, and a caller supplies an INTENT and a RESULT TO VALIDATE`);
+    `${DerivationAuthority.prototype.execute.length}. ${LADDER_RUNGS} rungs, one shape: ` +
+    `${ladderPhrase()}. Every oracle this authority consults — World reader, program registry, ` +
+    `execution host — is fixed at construction, and a caller supplies an INTENT and a RESULT TO ` +
+    `VALIDATE, each of which is snapshotted at entry rather than trusted to hold still`);
+}
+
+// 20. EVERY ENTRYPOINT READS ITS ARGUMENT EXACTLY ONCE — mechanically, over the
+//     method list, not case by case. This is the enforcement of the round-27
+//     law rather than a restatement of it: P-7 existed because the law was
+//     applied where it had been WRITTEN DOWN (constructor data) and nowhere
+//     else, so a check that enumerates the surface is worth more than three
+//     hand-written witnesses. A method added later with a live argument fails
+//     here without anybody remembering to come back.
+{
+  const auth = mkAuth();
+  // P reads `fb` and takes input `bias`, so the intent must grant and supply
+  // both. An under-specified fixture here would leave run.result undefined and
+  // the res-side probes would score 0/0 — a check passing because it measured
+  // nothing, which is the exact species this battery exists to catch.
+  const mkIntent = (id) => ({ intent_id: id, program_sem_id: programSemId(P),
+    canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
+  const a = auth.authorize(mkIntent("rc"));
+  const run = await auth.execute(a.request);
+  if (!run.ok) throw new Error("read-count fixture did not execute: " + run.reason);
+  const goodRes = run.result;
+  if (auth.accept(a.request, goodRes).ok !== true)
+    throw new Error("read-count fixture does not accept; the res-side probes would measure nothing");
+
+  /** a structural copy of `src` whose every leaf field counts its own reads */
+  const counted = (src, tally) => {
+    if (src === null || typeof src !== "object") return src;
+    if (Array.isArray(src)) return src.map((x) => counted(x, tally));
+    const o = {};
+    for (const k of Object.keys(src)) {
+      const v = counted(src[k], tally);
+      Object.defineProperty(o, k, {
+        enumerable: true, configurable: true,
+        get() { tally.n++; return v; },
+      });
+    }
+    return o;
+  };
+
+  const probes = [
+    ["authorize/intent", (x) => auth.authorize(x), () => mkIntent("rc2")],
+    ["authorize/options", (x) => auth.authorize(mkIntent("rc3"), x),
+      () => ({ expected_implementation_id: JS_IMPLEMENTATION_ID })],
+    ["wasIssued/req", (x) => auth.wasIssued(x), () => a.request],
+    ["execute/req", (x) => auth.execute(x), () => a.request],
+    ["accept/req", (x) => auth.accept(x, goodRes), () => a.request],
+    ["accept/res", (x) => auth.accept(a.request, x), () => goodRes],
+    ["observationOf/req", (x) => auth.observationOf(x, goodRes), () => a.request],
+    ["observationOf/res", (x) => auth.observationOf(a.request, x), () => goodRes],
+    ["bindProgram/ast", (x) => auth.bindProgram(x), () => ({ op: "const", value: 7 })],
+  ];
+  const worst = [];
+  for (const [name, call, mk] of probes) {
+    // the floor is ONE read of every property at every level, not zero: a
+    // snapshot has to read the thing once to own it. JSON.stringify walks
+    // exactly that set, so it measures the floor for the same argument shape.
+    const floor = { n: 0 };
+    JSON.stringify(counted(mk(), floor));
+    const tally = { n: 0 };
+    await call(counted(mk(), tally));
+    worst.push([name, tally.n, floor.n]);
+  }
+  const overRead = worst.filter(([, got, once]) => got > once);
+  R("every-entrypoint-reads-its-argument-once",
+    overRead.length === 0,
+    `${worst.length} entrypoints, each handed a structurally identical argument whose every field ` +
+    `counts its own reads: ` + worst.map(([n, g, o]) => `${n} ${g}/${o}`).join(" · ") +
+    `. Reads never exceed the one-read-per-field floor, so no argument is consulted twice across a ` +
+    `trust decision. At v0.12.0 execute/req read 3 and accept/res read 6, and a request that answered ` +
+    `const(5) to the first read and const(999) to the rest was issued as one program and executed as ` +
+    `another (P-7)` + (overRead.length ? ` — OVER-READ: ${overRead.map(([n]) => n).join(",")}` : ""));
+}
+
+// 21. and the ladder itself is one record, not seven prose copies
+{
+  R("supplier-ladder-is-derived",
+    LADDER_RUNGS === SUPPLIER_LADDER.length && LADDER_RUNGS === 7
+      && SUPPLIER_LADDER[6].supplied === "MUTABLE DATA AUTHENTICATED ONCE"
+      && ladderPhrase().split(" · ").length === LADDER_RUNGS
+      && SUPPLIER_LADDER.every((r, i) => r.rung === i + 1)
+      && Object.isFrozen(SUPPLIER_LADDER),
+    `the count and the wording printed above come from SUPPLIER_LADDER, which is ${LADDER_RUNGS} ` +
+    `frozen entries in derive_protocol.mjs. Until round 27A.1 this battery printed a hand-typed ` +
+    `"Four rungs" against a six-rung mechanism — the mechanism was right and the instrument had been ` +
+    `stale for two rounds. A count maintained in prose in six places is a count that will disagree ` +
+    `with itself; the frozen probes keep their own era's wording deliberately, because each records ` +
+    `the ladder as it stood when its witness was cut`);
 }
 
 await w.terminate();

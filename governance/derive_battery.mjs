@@ -397,7 +397,18 @@ const mkReq = (over = {}) => {
   const a = auth.authorize(intent);
   const res = deriveLocally(reg, a.request).result;
   const mine = auth.accept(a.request, res);
-  const theirs = new DerivationAuthority(live, [P]).accept(reg, a.request, res);
+  // TWO PARAMETERS. This read `.accept(reg, a.request, res)` until round 27A.1 —
+  // the P-4-era three-argument signature, left behind when the registry
+  // parameter was deleted in v0.10.0. It PASSED for eighteen rounds, and not
+  // because a different authority refused a request it had not issued: `reg`
+  // landed in the `req` slot, `reg.request_id` was undefined, and the issuance
+  // table's miss on undefined produced the expected reason by accident. The
+  // case asserted a string and never once exercised the sentence it prints.
+  // v0.13.0's snapshot-at-entry is what surfaced it: a ProgramRegistry is not
+  // canonical data, so the argument now fails loudly instead of quietly
+  // agreeing. Same species as the three instruments round 10 found and the two
+  // round 23 found — a green check measuring nothing.
+  const theirs = new DerivationAuthority(live, [P]).accept(a.request, res);
   // the defect: same request_id, same grant_id, different inputs
   const swapped = { ...a.request, canonical_inputs: { bias: 1000 } };
   const swappedRes = deriveLocally(reg, swapped).result;

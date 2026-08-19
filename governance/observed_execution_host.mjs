@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   observed_execution_host.mjs — v0.2.0 — the only thing here that runs anything
+   observed_execution_host.mjs — v0.3.0 — the only thing here that runs anything
 
    P-3: THE AUTHORITY HASHED ONE THING AND EXECUTED ANOTHER.
 
@@ -70,7 +70,7 @@ import { basename, isAbsolute, resolve } from "node:path";
 import { Worker } from "node:worker_threads";
 import { execFile } from "node:child_process";
 
-export const HOST_VERSION = "0.2.0";
+export const HOST_VERSION = "0.3.0";
 
 /** H over an artifact CLOSURE, length-framed and keyed by BASENAME so the
  *  digest is a property of the bytes rather than of where they were extracted —
@@ -174,8 +174,14 @@ export class ObservedExecutionHost {
       const entry = Object.freeze({ kind: e.kind, entrypoint: e.entrypoint,
         artifact_closure: Object.freeze([...e.artifact_closure]) });
       // the family→closure map is injective, so two names cannot mean one
-      // executable and one name cannot mean two
-      const key = entry.artifact_closure.join(" ");
+      // executable and one name cannot mean two.
+      //   AS AN ESCAPE, not as a literal byte. Until round 27A.1 this separator
+      // was a raw NUL in the source, which made file(1) classify the whole
+      // module as `data` and made every text tool — grep included — skip it in
+      // silence. A grep over this file returned nothing and read like an answer.
+      // The string is identical; what changed is that the module is visible to
+      // the instruments that audit it.
+      const key = entry.artifact_closure.join("\u0000");
       if (seen.has(key)) throw new Error("catalog-closure-aliased: " + family + " and " + seen.get(key));
       seen.set(key, family);
       this.#catalog.set(family, entry);
@@ -205,8 +211,20 @@ export class ObservedExecutionHost {
   async run(family, domain, invocation) {
     const entry = this.#catalog.get(family);
     if (!entry) return { ok: false, reason: "executor-not-in-catalog: " + String(family) };
-    let inputCanonical;
-    try { inputCanonical = canonicalBytes(invocation); }
+    // SEVERED ONCE, AND WHAT RUNS IS THE SNAPSHOT. v0.2.1 canonicalised the
+    // invocation for the observation key and then handed the SAME live object
+    // to the transport, so a caller-owned invocation whose `message` answers
+    // honestly on read 1 and hostilely on read 2 was KEYED under one request and
+    // EXECUTED as another — and the observation table then held an entry saying
+    // the honest bytes produced that output. That is worse than being unable to
+    // find a forged observation: it is a true-looking one for an execution that
+    // did not happen, in the table round 23 built so that relabelling would move
+    // the key. Unreachable through DerivationAuthority.execute, whose invocation
+    // is built from owned parts — but the host is exported and FilmAuthority and
+    // lowering_check drive it directly, so it is an authority operation in its
+    // own right and carries the obligation itself (P-7c).
+    let inputCanonical, owned;
+    try { inputCanonical = canonicalBytes(invocation); owned = JSON.parse(inputCanonical); }
     catch (e) { return { ok: false, reason: "invocation-not-canonical: " + e.message }; }
 
     let executable_artifact_id;
@@ -219,8 +237,8 @@ export class ObservedExecutionHost {
     let output;
     try {
       output = entry.kind === "node-worker"
-        ? await runNodeWorker(entry, invocation)
-        : await runNativeExec(entry, invocation);
+        ? await runNodeWorker(entry, owned)
+        : await runNativeExec(entry, owned);
     } catch (e) { return { ok: false, reason: "execution-failed: " + String(e.message).split("\n")[0] }; }
 
     let key;

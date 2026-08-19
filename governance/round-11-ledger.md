@@ -751,3 +751,110 @@ Not getter detection, not banning Proxies, not another predicate. Snapshot once,
 **The seam list, twelve long.** …an object's lineage vs its provenance · and now **a value read once vs a value read twice**.
 
 **Pass B is deliberately not in this round.** The inputs decision record and the `church_exp_2_2` film are the next work and they are separate fronts; mixing an authority-boundary closure with a language-architecture ruling is how a round stops being falsifiable as one thing.
+
+## Round 27, pass A.1 — authenticated as one value, used as another
+
+**157. P-7, found by GPT against the round-27A pack, and reproduced here before anything was built against it.** Round 27A's law is correct and its reach was the constructor. Every place where untrusted structure *became* authority state took one snapshot; method **arguments** kept the older shape — authenticate the caller's object, then go on reading the caller's object.
+
+```
+execute(req)
+  wasIssued(req)                     → hashes ONE read of every field → PASSES
+  req.expected_implementation_id     → read again
+  { message: req }                   → read again by the host's canonicalBytes,
+                                       and again by the worker's structured clone
+```
+
+Three reads after the one that authenticated. So a request whose `program_sem_id` answers `const(5)` to the first read and `const(999)` to every read after it is **issued as one program and executed as another**:
+
+```
+authority issued    request R → const(5)     psem-82eee05e…
+authority executed             const(999)    psem-3b198d80…
+native worker returned         999
+```
+
+Both programs are genuinely in the authority's own registry, so nothing is malformed, no identity is forged, nothing fails closed. Then acceptance, handed a *fresh* time-varying copy of the same request:
+
+```
+wasIssued      sees the issued const(5) bytes       → PASS
+re-derivation  now sees const(999), re-derives 999  → AGREES
+provenance     the execution really was authority-driven → observed
+freshness                                            → PASS
+
+{ ok: true, validated: true, fresh_at_check: true,
+  implementation_provenance: "observed", implementation_id: "impl-js-derive-…" }
+```
+
+**The same 999 result paired with the FROZEN issued request is refused as `result-program-mismatch`.** That is what makes this a forgery rather than fail-closed hygiene that happens to hold: the entire difference is the caller's retained ownership. Frozen as P-7 in `probe_reread_v13_repro.mjs`, paired and gating.
+
+**158. The repair is not a fresher hash, and the issuance table was the tell.** Hashing again would authenticate a *second* read and leave a third. `#issued` stored `request_id → request_sem_id`, which can answer *"were these bytes issued?"* and cannot answer *"what did I issue?"* — so every method that needed the second question had **no choice** but to re-read the caller. It now stores the request itself, `wasIssued` returns it, and `execute`/`accept` read that.
+
+GPT preferred the stronger form: `execute(request_id)` / `accept(request_id, result)`, operating only on the authority's copy. Taken the weaker-looking option deliberately, and not for ergonomics — **an id is a strictly weaker credential than the bytes.** Knowing the whole request implies knowing its id; the converse is false. Keeping `(req, res)` keeps full-bytes authentication *and* gets owned exercise; `execute(request_id)` would make the request_id a bearer token. One to argue if GPT sees it differently.
+
+**159. The result side was closed in the same round, one argument to the right.** `res` was live caller-owned input consulted by six checks in sequence — schema, footprint containment, re-derivation, trace conformance, the provenance lookup, freshness. No witness was written for it first. Seven rungs have each been found in the parameter beside the one just repaired, and waiting for the eighth to be demonstrated would be pretending not to know where it is. `authorize`'s `intent` and `options` were snapshotted at entry for the same reason.
+
+**160. The law, stated so that it covers arguments and not only constructor data.**
+
+> **Every authority operation consumes either an authority-owned object or one canonical snapshot made at entry. No trust decision authenticates one read of external state and exercises authority using another.**
+
+`law:derivation.entry-snapshot@1`. Mechanically: one exported `ownCanonical()` called at the top of `authorize`, `wasIssued`, `execute`, `accept`, `observationOf` and `ProgramRegistry.bind`. It is a *function* rather than a discipline because v0.12.0 proved the discipline's failure mode — the rule was written down and applied exactly where it had been written down.
+
+**161. And the enforcement is an enumeration, not three more witnesses.** `derive_realm_battery.mjs` now hands every entrypoint a structurally identical argument whose every field counts its own reads, and fails if any count exceeds the one-read-per-field floor:
+
+```
+authorize/intent 7/7 · authorize/options 1/1 · wasIssued/req 11/11 · execute/req 11/11
+accept/req 11/11 · accept/res 18/18 · observationOf/req 11/11 · observationOf/res 18/18
+bindProgram/ast 2/2
+```
+
+Reintroducing the defect in `execute` alone moves that to **`execute/req 33/11`** and the case names the offender. A method added later with a live argument fails here without anyone remembering to come back. *The first version of this check scored `accept/res 0/0` — the fixture under-granted, `run.result` was `undefined`, and the res-side probes passed by measuring nothing. It now throws if the fixture does not execute and accept.*
+
+**162. Two instruments were reporting without measuring, and this round found both.**
+
+- **`derive_battery.mjs`'s `issuance-binds-the-whole-request` had been calling the deleted three-argument `accept(reg, req, res)` since v0.10.0.** `reg` landed in the `req` slot, `reg.request_id` was `undefined`, and the issuance table's miss on `undefined` produced the expected string `grant-not-issued-by-this-authority` **by accident**. It asserted that string for eighteen rounds and never once exercised the sentence it printed. Snapshot-at-entry is what surfaced it: a `ProgramRegistry` is not canonical data, so the argument now fails loudly instead of quietly agreeing. Fixed, and it still passes — the *behaviour* was always right; only the instrument was wrong.
+- **`derive_realm_battery.mjs` was printing a hand-typed "Four rungs" against a six-rung mechanism.** Two rounds stale. There is now one machine-readable `SUPPLIER_LADDER` and every live surface derives its count and wording from it. The frozen probes keep their own era's wording **on purpose** — each records the ladder as it stood when its witness was cut, and rewriting that would be falsifying a dated record.
+
+**163. And one that was invisible rather than wrong.** `observed_execution_host.mjs` separated artifact-closure paths with a **raw NUL byte in the source**. `file(1)` classified the module as `data`; ugrep, and every other text tool, skipped it in silence. *A grep over that file returned nothing and read like an answer.* Now the six-character `\u0000` escape — identical string, visible module. Same species as the two above: an instrument that reports without measuring, except here the instrument was `grep`.
+
+**163b. P-7c — the same defect in the host, found here rather than reported.** GPT's list stopped at the authority. `ObservedExecutionHost.run()` canonicalised `invocation` for the observation key and then handed the **same live object** to the transport:
+
+```
+inputCanonical = canonicalBytes(invocation)   ← read 1: the KEY
+runNodeWorker(entry, invocation)              ← read 2: what RUNS
+```
+
+An invocation honest on read 1 and hostile on read 2 is therefore keyed under one request and executed as another, and the table ends up holding:
+
+```
+observation under the HONEST request bytes    PRESENT
+observation under the bytes that actually ran ABSENT
+```
+
+That is **worse than a forged observation being unfindable**: it is a true-looking observation for an execution that did not happen, in the table round 23 built so that relabelling would *move* the key. Unreachable through `DerivationAuthority.execute`, whose invocation is assembled from owned parts — but the host is exported, `FilmAuthority` and `lowering_check` drive it directly, and it is the only writer of the observation table. **The obligation belongs to the entrypoint, not to its politest caller.** `run()` now launches the snapshot it keyed. Host 0.2.0 → **0.3.0**.
+
+**164. Seven rungs, and @6 and @7 are one rule at two moments.**
+
+```
+@1 the implementation LABEL          @5 the AUTHORITY-BEARING OBJECT
+@2 the registration NAME             @6 MUTABLE DATA READ TWICE
+@3 the ACTION beside the evidence    @7 MUTABLE DATA AUTHENTICATED ONCE
+@4 the SEMANTIC ORACLE at acceptance
+```
+
+```
+@6   validate external X     → read X again → store X'
+@7   authenticate external X → exercise authority using X'
+```
+
+The round-27A law *predicted* @7. It had simply not been applied to every authority entrypoint.
+
+**165. Gate.** grid **v1.30.0** — 74 entries / 367 citations · `derive_protocol.mjs` **0.13.0** · `observed_execution_host.mjs` **0.3.0** · negative battery **182/182** with eight new forgeries and three repointed off dead source text · bridge 48/48 · native semantic film 16/16 · lowering refinement 9/9 film-evidenced · derive **45/45** · realm **22/22** · **twelve** paired probes (the newest is 3/3 frozen, 6/6 live) · harness 9/9 · runner 3/3. `scheduler_certificate.json` byte-identical — **twenty-fourth** consecutive round.
+
+**166. The posture changes after this, and that is GPT's call taken as given.** Stop asking *"what is P-next?"* as the main activity; let actual counterexamples reopen the line. The bulk of the work becomes what TRVM needs — more causal computation, native film coverage, inputs, primitives, WRL/Forge integration, real programs.
+
+**167. Pass B, ruled and not to be re-litigated.**
+
+- **`instantiation_sem_id` gets its own identity and its own law.** Lowering and instantiation compose but answer different questions, and merging them makes a target failure ambiguous between *translated wrong* and *inputs wired wrong*. The chain: `program_sem_id →(lowering_sem_id)→ target_template_sem_id →(instantiation_sem_id + inputs_sem_id)→ target_term_sem_id →(native film)→ target_nf_sem_id →(decode_sem_id)→ target_outcome_sem_id`, with `source_outcome_sem_id == target_outcome_sem_id`.
+- **`instantiation_sem_id` identifies the RELATION, not the invocation.** It commits port namespace/version, the source-name→port rule, missing/extra-input semantics, canonical input embedding, substitution semantics, refusal vocabulary, conformance vectors. It does **not** contain `x=5` — that is `inputs_sem_id`. An `InstantiationReceipt {target_template_sem_id, instantiation_sem_id, inputs_sem_id, target_term_sem_id}` verified by independent re-instantiation. **No film**: instantiation is a deterministic relation, not a transition system.
+- **I-4 is the inverse of round 16.** Round 16: identity depended on a spelling that should not matter. I-4's danger: identity accidentally depends on an *allocation* that should not matter, while losing the *source name* that does. The quotient — internal target variable names are non-semantic/alpha-equivalent; source input keys are semantic. The port is `input-port("x")` at the canonical target-AST layer, before textual/ic32 variable allocation, so `_impl17` and `q93` reach the same `target_template_sem_id`. **Do not Unicode-normalize source input strings** — if the frozen core distinguishes two code-point sequences, the port identity must preserve that exact distinction; normalizing is itself a language-semantic change.
+- **Three falsifiers, not one:** different internal allocations + same source name → **same** `target_template_sem_id`; same allocation + different source names → **different**; x/y port binding swapped at instantiation → the term/outcome changes or refuses, and **must never validate under the correct instantiation receipt**.
+- **Fixture A = `church_exp_2_2`** (21 frames: DUP-LAM, both SUP cases, DUP-VAR, DUP-APP, APP-SUP, APP-LAM, all `t:`/`d:`/`v:` locus families). **Fixture B = a purpose-built DUP-ERA witness**, because `church_exp_2_2` does not exercise it and six rules claimed from one large term that happened to terminate is coverage by hope.
