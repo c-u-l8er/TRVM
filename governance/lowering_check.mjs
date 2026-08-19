@@ -67,7 +67,7 @@ const R = (id, ok, note) => { ran++; if (!ok) fail = true;
 
 for (const [n, p] of [["ic32_canon", CANON], ["ic32_film", FILM]]) {
   if (!existsSync(p)) {
-    console.log(`LOWERING-CHECK: SKIP — ${n} not built (make gov-film builds both).`);
+    console.log(`LOWERING-CHECK: SKIP — ${n} not built (make gov-lower builds both).`);
     console.log("  Unbuilt is never green: this exits nonzero so a CI that lost its compiler");
     console.log("  cannot read as a passing refinement claim.");
     process.exit(1);

@@ -12,7 +12,8 @@ import {
   ProgramRegistry, programSemId, canonicalBytes, validateForeignResult,
   resolveGrants, grantId, semanticProjection, JS_IMPLEMENTATION_ID,
   DerivationAuthority, requestSemId, deriveLocally,
-  SUPPLIER_LADDER, LADDER_RUNGS, ladderPhrase,
+  SUPPLIER_LADDER, LADDER_RUNGS, ladderPhrase, ownCanonical,
+  checkRequest, checkIntent,
 } from "./derive_protocol.mjs";
 import { ObservedExecutionHost, digestArtifactFiles } from "./observed_execution_host.mjs";
 import { JS_WORKER_ENTRY, defaultDeriveCatalog } from "./derive_launcher.mjs";
@@ -429,6 +430,76 @@ let observedRun = null;
     `trust decision. At v0.12.0 execute/req read 3 and accept/res read 6, and a request that answered ` +
     `const(5) to the first read and const(999) to the rest was issued as one program and executed as ` +
     `another (P-7)` + (overRead.length ? ` — OVER-READ: ${overRead.map(([n]) => n).join(",")}` : ""));
+}
+
+// 20b. THE FIELD-READ COUNTER ONLY SEES `get`, AND THAT IS NOT THE WHOLE
+//      SURFACE. Object.keys(x) twice leaves an accessor's read count at ZERO
+//      while touching the object twice, and a Proxy can put code behind
+//      ownKeys, getOwnPropertyDescriptor, getPrototypeOf and has as well. So
+//      case 20 is a good regression detector and NOT a terminating proof, and
+//      this is the instrument that measures the rest of it.
+//
+//      The invariant asserted is architectural rather than numeric: an
+//      entrypoint must touch the external object EXACTLY as much as one
+//      ownCanonical() traversal does, and never again afterwards.
+{
+  const auth = mkAuth();
+  const mkIntent = (id) => ({ intent_id: id, program_sem_id: programSemId(P),
+    canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } });
+  const a = auth.authorize(mkIntent("mt"));
+  const run = await auth.execute(a.request);
+  if (!run.ok) throw new Error("meta-trap fixture did not execute: " + run.reason);
+  const goodRes = run.result;
+
+  /** recursively Proxy-wrapped, so nested objects are counted too */
+  const wrap = (v, t) => {
+    if (v === null || typeof v !== "object") return v;
+    const inner = Array.isArray(v) ? v.map((x) => wrap(x, t))
+      : Object.fromEntries(Object.entries(v).map(([k, x]) => [k, wrap(x, t)]));
+    const bump = (k) => { t[k] = (t[k] ?? 0) + 1; };
+    return new Proxy(inner, {
+      ownKeys(x) { bump("ownKeys"); return Reflect.ownKeys(x); },
+      getOwnPropertyDescriptor(x, k) { bump("gOPD"); return Reflect.getOwnPropertyDescriptor(x, k); },
+      getPrototypeOf(x) { bump("getPrototypeOf"); return Reflect.getPrototypeOf(x); },
+      has(x, k) { bump("has"); return Reflect.has(x, k); },
+      get(x, k, r) { bump("get"); return Reflect.get(x, k, r); },
+    });
+  };
+  const surface = async (mk, call) => {
+    const t = {};
+    try { await call(wrap(mk(), t)); } catch { /* refusals still count their reads */ }
+    return JSON.stringify(Object.keys(t).sort().map((k) => k + ":" + t[k]));
+  };
+  const oneTraversal = async (mk) => surface(mk, (x) => { try { ownCanonical(x); } catch {} });
+
+  const probes = [
+    ["authorize/intent", (x) => auth.authorize(x), () => mkIntent("mt2")],
+    ["authorize/options", (x) => auth.authorize(mkIntent("mt3"), x),
+      () => ({ expected_implementation_id: JS_IMPLEMENTATION_ID })],
+    ["wasIssued/req", (x) => auth.wasIssued(x), () => a.request],
+    ["execute/req", (x) => auth.execute(x), () => a.request],
+    ["accept/req", (x) => auth.accept(x, goodRes), () => a.request],
+    ["accept/res", (x) => auth.accept(a.request, x), () => goodRes],
+    ["observationOf/req", (x) => auth.observationOf(x, goodRes), () => a.request],
+    ["observationOf/res", (x) => auth.observationOf(a.request, x), () => goodRes],
+    ["bindProgram/ast", (x) => auth.bindProgram(x), () => ({ op: "const", value: 11 })],
+    // the reusable exports, which a second authority would be built on
+    ["checkRequest/req", (x) => checkRequest(x), () => a.request],
+    ["checkIntent/intent", (x) => checkIntent(x), () => mkIntent("mt4")],
+    ["validateForeignResult/res", (x) => validateForeignResult(reg, a.request, x), () => goodRes],
+  ];
+  const rows = [];
+  for (const [name, call, mk] of probes)
+    rows.push([name, await surface(mk, call), await oneTraversal(mk)]);
+  const over = rows.filter(([, got, base]) => got !== base);
+  R("meta-operations-stop-at-one-traversal",
+    over.length === 0,
+    `${rows.length} entrypoints, each handed a RECURSIVELY Proxy-wrapped argument counting ownKeys, ` +
+    `getOwnPropertyDescriptor, getPrototypeOf, has and get. Every one touches the external object ` +
+    `exactly as much as a single ownCanonical() traversal and never again: e.g. wasIssued/req ` +
+    `${rows[2][1]}. Before the reusable exports were factored, checkRequest alone was ` +
+    `ownKeys:2 gOPD:10 getPrototypeOf:1 get:13 has:1 — a field-read counter sees only the last of ` +
+    `those` + (over.length ? ` — OVER: ${over.map(([n, g, b]) => `${n} ${g} vs ${b}`).join(" · ")}` : ""));
 }
 
 // 21. and the ladder itself is one record, not seven prose copies

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   derive_protocol.mjs — v0.13.0 — the serialized derivation boundary
+   derive_protocol.mjs — v0.14.0 — the serialized derivation boundary
 
    law:derivation.environment-confinement@1 is FALSIFIED under the arbitrary-
    closure measureFn API, and the record says closure comes from REPLACING the
@@ -287,7 +287,7 @@ import { ObservedExecutionHost, digestArtifactFiles } from "./observed_execution
 export { digestArtifactFiles };
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const PROTOCOL_VERSION = "0.13.0";
+export const PROTOCOL_VERSION = "0.14.0";
 
 /* ── the canonical value domain, shared with the World ────────────────────
    Deliberately a copy of the World's rule rather than an import: this module
@@ -527,7 +527,36 @@ function deepFreeze(v) {
  *
  *  canonicalBytes does the severing AND the refusing: a function, a Map, a
  *  cycle or a non-finite number dies here, before any field has been examined.
- *  That ordering is round 27's other half — sever BEFORE validating. */
+ *  That ordering is round 27's other half — sever BEFORE validating.
+ *
+ *  DECLARED OPEN, and the distinction matters enough to state precisely.
+ *  Elsewhere this module says "canonicalBytes refuses a capability". That is
+ *  true of a capability as a VALUE — `{evil: () => …}` dies. It is NOT true
+ *  that canonicalisation never runs caller code: reading `{get x() {…}}`
+ *  executes a function, and a Proxy runs traps for ownKeys,
+ *  getOwnPropertyDescriptor, getPrototypeOf, has and get while being
+ *  serialised. So the accurate claim is
+ *
+ *      ownCanonical prevents caller-owned BEHAVIOUR FROM SURVIVING the
+ *      canonicalisation boundary
+ *
+ *  and not
+ *
+ *      canonicalisation never invokes caller behaviour.
+ *
+ *  No such behaviour participates in any authority decision, because every
+ *  decision happens on the captured value afterwards and nothing below the
+ *  snapshot holds a reference to the external object — that is the invariant,
+ *  and derive_realm_battery.mjs measures the full trap surface to detect a
+ *  regression in it. But "no hostile same-realm code executes at ingestion" is
+ *  a STRONGER property this API shape cannot have: an arbitrary JavaScript
+ *  object can never be that boundary. Reaching it needs
+ *
+ *      canonical serialized text  →  parser owned by the authority  →  data
+ *
+ *  because a primitive string has no getters and no traps. That is the future
+ *  serialized-wire boundary and it is not built. Named here rather than
+ *  discovered later. */
 export function ownCanonical(v) {
   return deepFreeze(JSON.parse(canonicalBytes(v)));
 }
@@ -685,7 +714,7 @@ export function validateTraceConformance(localTrace, foreignTrace) {
   return { ok: true };
 }
 
-export function checkRequest(req) {
+export function checkRequestOwned(req) {
   if (req === null || typeof req !== "object" || Array.isArray(req))
     return { ok: false, reason: "request-not-an-object" };
   const keys = Object.keys(req);
@@ -713,7 +742,7 @@ export function checkRequest(req) {
   return { ok: true };
 }
 
-export function checkResult(res, req) {
+export function checkResultOwned(res, req) {
   if (res === null || typeof res !== "object" || Array.isArray(res))
     return { ok: false, reason: "result-not-an-object" };
   const keys = Object.keys(res).sort();
@@ -792,7 +821,7 @@ export function footprintWithinGrant(fp, read_grants) {
    reader callable, which was the closure-authority shape this whole line of
    work exists to remove — in-process only, but the same species. Now the
    evaluator receives nothing but canonical data. */
-export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.13.0";
+export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.14.0";
 
 function readerFromGrants(read_grants) {
   return {
@@ -875,14 +904,14 @@ export function evaluate(ast, read_grants, inputs = {}) {
    the same bytes the executor had. Freshness against the LIVE world is a
    separate operation keyed on the footprint, which is exactly why the two
    records must not be collapsed. */
-export function deriveLocally(registry, req) {
+export function deriveLocallyOwned(registry, req) {
   // NO implementation parameter. v0.6.0 took one, defaulted to JS, and let a
   // caller stamp the JS evaluator's output "impl-c-derive-…" — after which the
   // authority compared the caller's expectation against the caller's own label
   // and agreed with itself. Frozen as P-1 in probe_execclaim_v07_repro.mjs.
   // An implementation's identity comes from the implementation.
   const implementationId = JS_IMPLEMENTATION_ID;
-  const rc = checkRequest(req);
+  const rc = checkRequestOwned(req);
   if (!rc.ok) return { ok: false, reason: rc.reason };
   if ("expected_implementation_id" in req && req.expected_implementation_id !== implementationId)
     return { ok: false, reason: "implementation-mismatch: want " + req.expected_implementation_id +
@@ -903,7 +932,7 @@ export function deriveLocally(registry, req) {
     },
     execution_evidence: { implementation_id: implementationId, read_trace: out.read_trace },
   };
-  const rr = checkResult(res, req);
+  const rr = checkResultOwned(res, req);
   if (!rr.ok) return { ok: false, reason: rr.reason };
   return { ok: true, result: res };
 }
@@ -917,8 +946,8 @@ export function deriveLocally(registry, req) {
  *       result and a JS result of the same program can agree
  *  implementation_id is checked against the caller's requirement if one was
  *  stated, and returned either way so the caller records who ran it. */
-export function validateForeignResult(registry, req, res) {
-  const rr = checkResult(res, req);
+export function validateForeignResultOwned(registry, req, res) {
+  const rr = checkResultOwned(res, req);
   if (!rr.ok) return { ok: false, reason: rr.reason };
   const fw = footprintWithinGrant(res.semantic_result.read_footprint, req.read_grants);
   if (!fw.ok) return { ok: false, reason: fw.reason };
@@ -931,7 +960,7 @@ export function validateForeignResult(registry, req, res) {
   // the local re-derivation is JS by definition, so the caller's requirement —
   // which may name a foreign executor — is dropped rather than applied to us
   const { expected_implementation_id: _requirement, ...localReq } = req;
-  const mine = deriveLocally(registry, localReq);
+  const mine = deriveLocallyOwned(registry, localReq);
   if (!mine.ok) return { ok: false, reason: mine.reason };
   const a = canonicalBytes(semanticProjection(mine.result));
   const b = canonicalBytes(semanticProjection(res));
@@ -946,6 +975,47 @@ export function validateForeignResult(registry, req, res) {
   // implementation_claimed, not implementation_id: this is what the result SAYS
   return { ok: true, semantic_agreement: true, trace_conforms: true, implementation_claimed: impl };
 }
+
+/* ── THE PUBLIC EDGE OF THE VALIDATORS ────────────────────────────────────
+   The five functions above end in `Owned`, and the suffix is a PRECONDITION
+   rather than a decoration: they read their arguments field by field, several
+   times, and they are only sound over structures the caller already owns.
+   `DerivationAuthority` satisfies that mechanically — every call site passes
+   `issued`, `ownRes` or `ownIntent` — which is why v0.13.0 has no forgery here.
+
+   They are also EXPORTED, and that is the hazard. Measured against a Proxy-
+   wrapped but otherwise valid request, one `checkRequestOwned` call touches
+
+       ownKeys 2 · getOwnPropertyDescriptor 10 · getPrototypeOf 1 · get 13 · has 1
+
+   so "a pure function over data the caller already owns" is only the second
+   half of a sentence whose first half is a precondition nothing was enforcing.
+   A second authority built on these exports would recreate P-7 without writing
+   a line of new trust logic.
+
+   So the reusable names snapshot once and delegate. The authority keeps calling
+   the `Owned` forms directly, because paying for a second canonicalisation of
+   something it just canonicalised would be ceremony, not safety. */
+export const checkRequest = (req) => {
+  try { return checkRequestOwned(ownCanonical(req)); }
+  catch (e) { return { ok: false, reason: "request-not-canonical: " + e.message }; }
+};
+export const checkResult = (res, req) => {
+  try { return checkResultOwned(ownCanonical(res), ownCanonical(req)); }
+  catch (e) { return { ok: false, reason: "result-not-canonical: " + e.message }; }
+};
+export const checkIntent = (intent) => {
+  try { return checkIntentOwned(ownCanonical(intent)); }
+  catch (e) { return { ok: false, reason: "intent-not-canonical: " + e.message }; }
+};
+export const deriveLocally = (registry, req) => {
+  try { return deriveLocallyOwned(registry, ownCanonical(req)); }
+  catch (e) { return { ok: false, reason: "request-not-canonical: " + e.message }; }
+};
+export const validateForeignResult = (registry, req, res) => {
+  try { return validateForeignResultOwned(registry, ownCanonical(req), ownCanonical(res)); }
+  catch (e) { return { ok: false, reason: "result-not-canonical: " + e.message }; }
+};
 
 /* ── FRESHNESS: a different question from containment ─────────────────────
    footprintWithinGrant answers a HISTORICAL question — was every claimed read
@@ -1007,7 +1077,7 @@ export function validateFootprintFresh(liveReader, footprint) {
 const INTENT_REQUIRED = ["intent_id", "program_sem_id", "canonical_inputs", "requested_resources"];
 const AUTHORIZE_OPTIONS = ["expected_implementation_id"];
 
-export function checkIntent(intent) {
+export function checkIntentOwned(intent) {
   if (intent === null || typeof intent !== "object" || Array.isArray(intent))
     return { ok: false, reason: "intent-not-an-object" };
   const keys = Object.keys(intent).sort();
@@ -1058,6 +1128,25 @@ export const DERIVE_EXEC_DOMAIN = "TRVM-DERIVE-EXEC-v1";
  *  that neither proof can arrive as an argument. */
 export class DerivationAuthority {
   #issued = new Map();
+  /** request_id → the canonical invocation bytes THIS authority actually sent,
+   *  one entry per distinct invocation.
+   *
+   *  WHY THIS EXISTS. Acceptance used to ask the observation table about a past
+   *  execution by REBUILDING the invocation out of `this.#registry.image()` —
+   *  that is, out of state as it stands now. `bindProgram()` is an explicit and
+   *  legitimate authority operation, and it grows that image, so installing an
+   *  unrelated program B silently made the provenance of an earlier, genuine
+   *  execution of A disappear:
+   *
+   *      execute(A) → accept → implementation_provenance "observed"
+   *      bindProgram(B)
+   *      accept(same request, same result) → implementation-provenance-unavailable
+   *
+   *  It fails closed, so it forges nothing. It is still wrong: unrelated future
+   *  configuration must not erase the evidence of what previously ran. A list
+   *  rather than one entry because executing the same request before and after
+   *  a bind produces two genuinely different invocations, and both happened. */
+  #executions = new Map();
   #registry = new ProgramRegistry();
   #host;
   #reader;
@@ -1110,7 +1199,7 @@ export class DerivationAuthority {
     catch (e) { return { ok: false, reason: "authorize-options-not-canonical: " + e.message }; }
     if (ownOptions === null || typeof ownOptions !== "object" || Array.isArray(ownOptions))
       return { ok: false, reason: "authorize-options-not-an-object" };
-    const c = checkIntent(ownIntent);
+    const c = checkIntentOwned(ownIntent);
     if (!c.ok) return { ok: false, reason: c.reason };
     const unknown = Object.keys(ownOptions).filter((k) => !AUTHORIZE_OPTIONS.includes(k)).sort();
     if (unknown.length)
@@ -1131,7 +1220,7 @@ export class DerivationAuthority {
     };
     const request_id = "req-" + H("TRVM-REQUEST-v1|" + ownIntent.intent_id + "|" + canonicalBytes(body));
     const req = ownCanonical({ request_id, ...body });
-    const rc = checkRequest(req);
+    const rc = checkRequestOwned(req);
     if (!rc.ok) return { ok: false, reason: rc.reason };
     // THE ISSUED REQUEST ITSELF IS KEPT, not only its identity. v0.12.0 stored
     // the semantic hash, which can answer "were these bytes issued?" and cannot
@@ -1178,6 +1267,13 @@ export class DerivationAuthority {
     const invocation = { init: { programs: this.#registry.image() }, message: issued };
     const r = await this.#host.run(family, DERIVE_EXEC_DOMAIN, invocation);
     if (!r.ok) return { ok: false, reason: r.reason };
+    // RECORD WHAT ACTUALLY CROSSED, in the host's own bytes rather than in a
+    // reconstruction of them. This is the historical fact acceptance needs.
+    if (typeof r.input_canonical === "string") {
+      const seen = this.#executions.get(issued.request_id) ?? [];
+      if (!seen.includes(r.input_canonical)) seen.push(r.input_canonical);
+      this.#executions.set(issued.request_id, seen);
+    }
     if (!r.output?.ok) return { ok: false, reason: r.output?.reason ?? "execution-returned-nothing" };
     return { ok: true, result: r.output.result,
       executor_session_id: r.executor_session_id,
@@ -1192,9 +1288,31 @@ export class DerivationAuthority {
     let ownReq, ownRes;
     try { ownReq = ownCanonical(req); ownRes = ownCanonical(res); }
     catch { return null; }
-    return this.#host.observationOf(DERIVE_EXEC_DOMAIN,
-      { init: { programs: this.#registry.image() }, message: ownReq },
-      { ok: true, result: ownRes });
+    // THE INVOCATIONS THIS AUTHORITY ACTUALLY SENT FOR THIS REQUEST, not one
+    // rebuilt from the registry as it stands now. A request this authority
+    // never executed has no entry and gets null, which is the honest answer:
+    // there is no execution of it for the authority to have observed.
+    const sent = this.#executions.get(ownReq?.request_id) ?? [];
+    const hits = [];
+    for (const ic of sent) {
+      const o = this.#host.observationOfCanonical(DERIVE_EXEC_DOMAIN, ic,
+        { ok: true, result: ownRes });
+      if (o) hits.push(o);
+    }
+    if (!hits.length) return null;
+    // MERGED, not first-hit, and for the round-24 reason. The same request run
+    // before and after a bindProgram() is two invocations; if both produced
+    // these bytes, both are things this authority observed, and returning the
+    // first would report one launch as though it were the only one. What is
+    // true is "these recorded sessions are known to have produced these
+    // request/result bytes", and where there are several they are all here.
+    const families = [...new Set(hits.flatMap((o) => o.implementation_families))];
+    return {
+      implementation_family_id: families.length === 1 ? families[0] : null,
+      implementation_families: families,
+      executable_artifact_id: hits[0].executable_artifact_id,
+      executor_sessions: [...new Set(hits.flatMap((o) => o.executor_sessions))],
+    };
   }
 
   /** Was THIS request — every field of it — issued by THIS authority?
@@ -1270,7 +1388,7 @@ export class DerivationAuthority {
     // so re-derivation ran against the program the CLAIMANT nominated and
     // agreed with itself (P-4). Nothing about re-derivation was wrong; what was
     // wrong was who chose the program it re-derived.
-    const v = validateForeignResult(this.#registry, issued, ownRes);
+    const v = validateForeignResultOwned(this.#registry, issued, ownRes);
     if (!v.ok) return v;
 
     // ── PROVENANCE, against an execution event this authority drove ───────

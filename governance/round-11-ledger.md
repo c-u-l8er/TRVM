@@ -788,7 +788,7 @@ freshness                                            → PASS
 
 **158. The repair is not a fresher hash, and the issuance table was the tell.** Hashing again would authenticate a *second* read and leave a third. `#issued` stored `request_id → request_sem_id`, which can answer *"were these bytes issued?"* and cannot answer *"what did I issue?"* — so every method that needed the second question had **no choice** but to re-read the caller. It now stores the request itself, `wasIssued` returns it, and `execute`/`accept` read that.
 
-GPT preferred the stronger form: `execute(request_id)` / `accept(request_id, result)`, operating only on the authority's copy. Taken the weaker-looking option deliberately, and not for ergonomics — **an id is a strictly weaker credential than the bytes.** Knowing the whole request implies knowing its id; the converse is false. Keeping `(req, res)` keeps full-bytes authentication *and* gets owned exercise; `execute(request_id)` would make the request_id a bearer token. One to argue if GPT sees it differently.
+GPT preferred the stronger form: `execute(request_id)` / `accept(request_id, result)`, operating only on the authority's copy. Taken the weaker-looking option deliberately, and not for ergonomics — **an id is a strictly weaker credential than the bytes.** Knowing the whole request implies knowing its id; the converse is false. Keeping `(req, res)` keeps full-bytes authentication *and* gets owned exercise; `execute(request_id)` would make the request_id a bearer token. One to argue if GPT sees it differently. **[Ruled in 27A.2, item 168: the API is right and this justification is not. Possession of the request is a stronger CONTENT WITNESS, not stronger authorization.]**
 
 **159. The result side was closed in the same round, one argument to the right.** `res` was live caller-owned input consulted by six checks in sequence — schema, footprint containment, re-derivation, trace conformance, the provenance lookup, freshness. No witness was written for it first. Seven rungs have each been found in the parameter beside the one just repaired, and waiting for the eighth to be demonstrated would be pretending not to know where it is. `authorize`'s `intent` and `options` were snapshotted at entry for the same reason.
 
@@ -858,3 +858,140 @@ The round-27A law *predicted* @7. It had simply not been applied to every author
 - **I-4 is the inverse of round 16.** Round 16: identity depended on a spelling that should not matter. I-4's danger: identity accidentally depends on an *allocation* that should not matter, while losing the *source name* that does. The quotient — internal target variable names are non-semantic/alpha-equivalent; source input keys are semantic. The port is `input-port("x")` at the canonical target-AST layer, before textual/ic32 variable allocation, so `_impl17` and `q93` reach the same `target_template_sem_id`. **Do not Unicode-normalize source input strings** — if the frozen core distinguishes two code-point sequences, the port identity must preserve that exact distinction; normalizing is itself a language-semantic change.
 - **Three falsifiers, not one:** different internal allocations + same source name → **same** `target_template_sem_id`; same allocation + different source names → **different**; x/y port binding swapped at instantiation → the term/outcome changes or refuses, and **must never validate under the correct instantiation receipt**.
 - **Fixture A = `church_exp_2_2`** (21 frames: DUP-LAM, both SUP cases, DUP-VAR, DUP-APP, APP-SUP, APP-LAM, all `t:`/`d:`/`v:` locus families). **Fixture B = a purpose-built DUP-ERA witness**, because `church_exp_2_2` does not exercise it and six rules claimed from one large term that happened to terminate is coverage by hope.
+
+## Round 27, pass A.2 — four cleanups GPT asked for, one of which was a real bug
+
+None of these is a forgery. GPT reviewed 27A.1, could not produce another P-style false verdict
+against v0.13, and ruled four changes before Pass B. All four are done; the round is deliberately
+small.
+
+**168. The credential claim in item 158 was wrong, and the correction is worth more than the claim.**
+I argued that keeping `execute(req)` was right because "an id is a strictly weaker credential than
+the bytes". GPT's ruling: **not necessarily.** Unless TRVM explicitly promises the request is secret,
+possession of the request is not authentication of the caller either — a request that is logged,
+transmitted or cached is bearer data too. The three things were being run together:
+
+```
+request_id            locator / identity
+whole request bytes   CONTENT WITNESS
+execution capability  AUTHORIZATION
+```
+
+The full request *is* a strictly stronger **content witness** — it lets the authority establish "you
+are talking about exactly the request I issued" rather than merely naming one. Neither should quietly
+become the security capability. **If TRVM ever needs *only party X may cause this issued request to
+execute*, that must be an explicit capability/delegation rule and not an emergent consequence of who
+happens to know a `request_id`.** The API is unchanged and correct; the justification for it is now
+the accurate one.
+
+**169. `bindProgram` erased the provenance of an earlier genuine execution.** GPT's find, reproduced
+here:
+
+```
+execute(A) · accept                     → implementation_provenance "observed"
+bindProgram(B)                            an unrelated program
+accept(same request, same result)       → implementation-provenance-unavailable
+observationOf(same request, same result)→ null
+```
+
+Acceptance asked the observation table about a past execution by **rebuilding** the invocation out of
+`this.#registry.image()` — that is, out of state as it stands *now*. `bindProgram()` is an explicit,
+legitimate authority operation and it grows that image, so the rebuilt invocation stopped matching
+the one the host had keyed. It fails closed and forges nothing. It is still wrong:
+
+> **Historical fact is not a function of current configuration.**
+
+`execute()` now records the canonical invocation bytes **the host itself keyed** (`run()` returns
+`input_canonical`), and acceptance looks those up. A **list** rather than one entry, because the same
+request run before and after a bind is two genuinely different invocations and both happened — and
+observations across them are **merged, not first-hit**, for the round-24 reason: reporting one launch
+as though it were the only one overclaims exactly the way `executor_session_id` singular did.
+
+**170. The exported validators were a boundary hazard, and the measurement is the argument.** GPT
+instrumented `checkRequest` with a Proxy around an otherwise valid request. One call:
+
+```
+ownKeys 2 · getOwnPropertyDescriptor 10 · getPrototypeOf 1 · get 13 · has 1
+```
+
+Reproduced exactly. So "a pure function over data the caller already owns" is the second half of a
+sentence whose first half was a **precondition nothing enforced**. No v0.14 forgery follows, because
+`DerivationAuthority` passes only `issued`/`ownRes`/`ownIntent` — but a second authority built on
+these exports would recreate P-7 without writing a line of new trust logic. So the implementations
+are `checkRequestOwned` / `checkIntentOwned` / `checkResultOwned` / `deriveLocallyOwned` /
+`validateForeignResultOwned`, where the suffix is a precondition; the exported names snapshot once
+and delegate; the authority keeps calling the `Owned` forms, because paying for a second
+canonicalisation of something it just canonicalised is ceremony rather than safety. Public
+`checkRequest` now touches the same surface as one `ownCanonical` traversal. **GPT explicitly
+declined to number this as P-8**, and that is right: it is a hazard the now-correct law predicts, not
+a false verdict.
+
+**171. The read-count enumeration is a regression detector and NOT a terminating proof.** Item 161
+oversold it. It counts `get`, and
+
+```js
+const x = { get a() { reads++; return 1; } };
+Object.keys(x); Object.keys(x);      // reads === 0, and the object was touched twice
+```
+
+A Proxy can put code behind `ownKeys`, `getOwnPropertyDescriptor`, `getPrototypeOf`, `has` and `get`;
+a field-read counter sees only the last. So case 20 stays, described accurately, and case 20b measures
+the rest: twelve entrypoints — including the reusable exports — each handed a **recursively**
+Proxy-wrapped argument, each required to touch the external object **exactly as much as one
+`ownCanonical()` traversal and never again** (e.g. `wasIssued/req gOPD:11 get:11 getPrototypeOf:6
+ownKeys:6`). The invariant being defended is architectural, not numeric: *after `ownCanonical()`
+returns, no code below it holds a reference to the external value.* The traps are the detector.
+
+**172. And the sharper statement about what canonicalisation does and does not prevent.** This module
+says in several places that `canonicalBytes` refuses a capability. True of a capability as a **value**
+— `{evil: () => …}` dies. Not true that canonicalisation never runs caller code: reading
+`{get x(){…}}` executes a function, and a Proxy runs traps while being serialised. The accurate claim:
+
+> `ownCanonical` prevents caller-owned **behaviour from surviving** the canonicalisation boundary.
+
+not
+
+> canonicalisation never invokes caller behaviour.
+
+**DECLARED OPEN.** No such behaviour participates in any authority decision, because every decision
+happens on the captured value afterwards — that is the invariant, and 20b detects regressions in it.
+But *no hostile same-realm code executes at ingestion* is a **stronger property no API whose boundary
+is an arbitrary JavaScript object can have.** Reaching it needs
+
+```
+canonical serialized text → parser owned by the authority → canonical data
+```
+
+because a primitive string has no getters and no traps. That is the future serialized-wire boundary,
+it is not built, and it is named here rather than discovered during Pass B.
+
+**173. One review-pack nit.** `lowering_check.mjs`'s skip text said `make gov-film builds both`. It
+does not — `gov-film` builds the film binary and `gov-lower` builds both, which is why GPT's first
+rebuild left `lowering_check` correctly refusing. Fixed.
+
+**174. Gate.** grid **v1.31.0** — 74 entries / 368 citations · `derive_protocol.mjs` **0.14.0** ·
+`observed_execution_host.mjs` **0.4.0** · negative battery **188/188** with six new forgeries and two
+repointed onto the `Owned` names · bridge 48/48 · native film 16/16 · lowering refinement 9/9
+film-evidenced · derive 45/45 · realm **23/23** · twelve paired probes · harness 9/9 · runner 3/3.
+`scheduler_certificate.json` byte-identical — **twenty-fifth** consecutive round.
+
+**175. The supplier-ladder line stops being the main development activity here.** GPT's judgment, and
+it is taken. The mechanism now reads:
+
+```
+external intent
+      │  ownCanonical
+      ▼
+owned snapshot
+      │
+      ▼
+authority-issued owned request
+      │
+      ├── authority-owned registry
+      ├── authority-owned execution host
+      ├── authority-owned World reader
+      └── authority-owned observation history   ← recorded, not reconstructed
+```
+
+with results snapshotted at acceptance. No proactive P-8 hunt. **Pass B is go**, and the next
+question is what interesting programs this authority can compile, execute and causally prove.

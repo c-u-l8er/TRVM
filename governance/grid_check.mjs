@@ -192,7 +192,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -770,7 +770,7 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         "grid lowering_spike must carry the two execution grades separately — an execution the host " +
         "observed and one the kernel replayed are different claims");
       ok(/#registry = new ProgramRegistry\(\)/.test(dnoc) &&
-         /validateForeignResult\(this\.#registry, issued, ownRes\)/.test(dnoc),
+         /validateForeignResultOwned\(this\.#registry, issued, ownRes\)/.test(dnoc),
         "acceptance must re-derive through the authority's OWN registry. Re-derivation was never the " +
         "defect: it re-derived against the program the CLAIMANT nominated and agreed with itself. " +
         "AND IT MUST RE-DERIVE OVER OWNED OPERANDS — `issued` is the authority's copy of what it " +
@@ -819,7 +819,7 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         "derivation.grant-issuance@1 no longer states that issuance binds the whole request and that " +
         "acceptance takes no proof from its caller");
       // ── v1.23: an execution claim is not provenance ───────────────────
-      ok(/export function deriveLocally\(registry, req\) \{/.test(dsrc),
+      ok(/export function deriveLocallyOwned\(registry, req\) \{/.test(dsrc),
         "deriveLocally must take NO implementation parameter — v0.6.0 took one and a caller could run " +
         "the JS evaluator while stamping its output impl-c-derive-… (P-1, probe_execclaim_v07_repro.mjs)");
       ok(/implementation-claim-contradicts-observation/.test(dsrc) &&
@@ -896,6 +896,27 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
       ok(/message: issued \}/.test(dnoc) && !/message: req \}/.test(dnoc),
         "the invocation the host runs must carry the ISSUED request. Passing the live argument is the " +
         "exact forgery: const(5) answered wasIssued and const(999) answered the host and the worker");
+      // the reusable exports must snapshot, and the internals must be ...Owned
+      for (const n of ["checkRequest", "checkIntent", "checkResult", "deriveLocally",
+        "validateForeignResult"])
+        ok(new RegExp("export function " + n + "Owned\\(").test(dnoc) &&
+           new RegExp("export const " + n + " = \\(").test(dnoc),
+          `${n} must exist as ${n}Owned (the implementation, whose precondition is that its argument ` +
+          "is already owned) and as a snapshotting public export. These rereading validators are " +
+          "exported, so a second authority built on them would recreate P-7 with no new trust logic");
+      // acceptance must not rebuild a historical invocation from present state
+      ok(/#executions = new Map\(\)/.test(dnoc) &&
+         /this\.#executions\.get\(ownReq\?\.request_id\)/.test(dnoc) &&
+         !/observationOf\(DERIVE_EXEC_DOMAIN,\s*$/m.test(dnoc.replace(/\s+/g, " ")) &&
+         /observationOfCanonical\(DERIVE_EXEC_DOMAIN, ic,/.test(dnoc),
+        "acceptance must ask the observation table about the invocation THAT ACTUALLY CROSSED, " +
+        "recorded at execute() time, rather than rebuilding one from this.#registry.image(). " +
+        "bindProgram() legitimately grows that image, so rebuilding made the provenance of an earlier " +
+        "genuine execution disappear — fail-closed, and still wrong: unrelated future installation " +
+        "must not erase evidence of what previously ran");
+      ok(/input_canonical: inputCanonical/.test(hostNoc),
+        "the host must return the invocation bytes it keyed, so a caller can record what crossed " +
+        "instead of reconstructing it later from state that has since moved");
       ok(/\? \{ ok: true, request: stored\.request \}/.test(dnoc),
         "wasIssued() must return the issued request and not only a boolean. 'Yes' forces its caller to " +
         "go on using the object it just authenticated, and an object that is authenticated is not " +
@@ -909,6 +930,21 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "derivation.entry-snapshot@1 must state the rule over AUTHORITY OPERATIONS, not over " +
           "constructors. The v1.29 law was already true and already written down when P-7 was found " +
           "underneath it; what was missing was its reach, not its content");
+        ok(!!es && /MAY INVOKE JavaScript accessor and Proxy behaviour/.test(es.statement ?? ""),
+          "derivation.entry-snapshot@1 must DECLARE OPEN that canonicalisation runs caller accessor " +
+          "and Proxy code while capturing its snapshot. 'canonicalBytes refuses a capability' is true " +
+          "of a capability as a VALUE and not of a getter, and the honest claim is that no such " +
+          "behaviour SURVIVES the boundary — the stronger one needs a serialized-wire ingestion this " +
+          "tree does not have");
+        ok(!!es && /REGRESSION DETECTOR AND NOT A TERMINATING PROOF/.test(es.statement ?? ""),
+          "derivation.entry-snapshot@1 must say that the read-count enumeration does not terminate the " +
+          "question. Object.keys(x) twice leaves an accessor's count at zero, so a field-read counter " +
+          "sees only the `get` category; calling it a proof would be the stale-instrument class with " +
+          "the instrument being the one this round added");
+        ok(!!es && /HISTORICAL FACT IS NOT A FUNCTION OF CURRENT CONFIGURATION/.test(es.statement ?? ""),
+          "derivation.entry-snapshot@1 must record that acceptance may not rebuild a past invocation " +
+          "from present state. bindProgram() legitimately grows the registry image, and rebuilding " +
+          "made a genuine execution's provenance vanish — fail-closed, and still wrong");
         ok(!!es && /ONE ARGUMENT TO THE RIGHT/.test(es.statement ?? ""),
           "derivation.entry-snapshot@1 must record why the RESULT side was closed in the same round " +
           "rather than waiting for its own witness — seven rungs have each been found in the parameter " +

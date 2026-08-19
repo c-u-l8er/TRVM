@@ -896,8 +896,8 @@ json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 run_case derive-caller-picks-implementation "deriveLocally must take NO implementation parameter" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('export function deriveLocally(registry, req) {',
-                  'export function deriveLocally(registry, req, caller_id) {')
+src = src.replace('export function deriveLocallyOwned(registry, req) {',
+                  'export function deriveLocallyOwned(registry, req, caller_id) {')
 open('derive_protocol.mjs','w').write(src)"
 
 run_case provenance-observation-removed "must observe what the host launched" "
@@ -1168,8 +1168,8 @@ open('derive_protocol.mjs','w').write(src)"
 
 run_case oracle-comes-from-outside "must re-derive through the authority" "
 src = open('derive_protocol.mjs').read()
-src = src.replace('validateForeignResult(this.#registry, issued, ownRes)',
-                  'validateForeignResult(arguments[2] ?? this.#registry, issued, ownRes)')
+src = src.replace('validateForeignResultOwned(this.#registry, issued, ownRes)',
+                  'validateForeignResultOwned(arguments[2] ?? this.#registry, issued, ownRes)')
 open('derive_protocol.mjs','w').write(src)"
 
 run_case worker-image-from-a-parameter "program image must be the AUTHORITY" "
@@ -1360,6 +1360,49 @@ run_case host-runs-the-presented-invocation "must launch the SNAPSHOT it keyed" 
 src = open('observed_execution_host.mjs').read()
 src = src.replace('runNodeWorker(entry, owned)', 'runNodeWorker(entry, invocation)')
 open('observed_execution_host.mjs','w').write(src)"
+
+# ── round 27A.2: GPT's four cleanups ───────────────────────────────────────
+run_case acceptance-rebuilds-the-invocation "invocation THAT ACTUALLY CROSSED" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('this.#executions.get(ownReq?.request_id)', '[]')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case host-hides-what-it-keyed "must return the invocation bytes it keyed" "
+src = open('observed_execution_host.mjs').read()
+src = src.replace('input_canonical: inputCanonical', 'input_canonical: undefined')
+open('observed_execution_host.mjs','w').write(src)"
+
+run_case validators-exported-unsnapshotted "must exist as checkRequestOwned" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('export const checkRequest = (req) => {', 'const checkRequest = (req) => {')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case accessor-execution-scope-dropped "must DECLARE OPEN that canonicalisation runs caller accessor" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.entry-snapshot':
+        e['statement'] = e['statement'].replace('MAY INVOKE JavaScript accessor and Proxy behaviour',
+                                                'never invokes caller behaviour')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case read-count-called-terminating "must say that the read-count enumeration does not terminate" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.entry-snapshot':
+        e['statement'] = e['statement'].replace('REGRESSION DETECTOR AND NOT A TERMINATING PROOF',
+                                                'a terminating proof')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case historical-fact-clause-dropped "must record that acceptance may not rebuild a past invocation" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.entry-snapshot':
+        e['statement'] = e['statement'].replace('HISTORICAL FACT IS NOT A FUNCTION OF CURRENT CONFIGURATION',
+                                                'state is state')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 run_case entry-snapshot-law-deleted "law derivation.entry-snapshot@1 missing" "
 import json

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   observed_execution_host.mjs — v0.3.0 — the only thing here that runs anything
+   observed_execution_host.mjs — v0.4.0 — the only thing here that runs anything
 
    P-3: THE AUTHORITY HASHED ONE THING AND EXECUTED ANOTHER.
 
@@ -70,7 +70,7 @@ import { basename, isAbsolute, resolve } from "node:path";
 import { Worker } from "node:worker_threads";
 import { execFile } from "node:child_process";
 
-export const HOST_VERSION = "0.3.0";
+export const HOST_VERSION = "0.4.0";
 
 /** H over an artifact CLOSURE, length-framed and keyed by BASENAME so the
  *  digest is a property of the bytes rather than of where they were extracted —
@@ -254,13 +254,29 @@ export class ObservedExecutionHost {
     list.push(Object.freeze({ family, executable_artifact_id, executor_session_id,
       kind: entry.kind, entrypoint: basename(entry.entrypoint) }));
     this.#observed.set(key, list);
-    return { ok: true, output, executable_artifact_id, executor_session_id };
+    // input_canonical is returned so a caller can record WHAT ACTUALLY CROSSED.
+    // Without it the only way to ask this table about a past execution is to
+    // rebuild the invocation from present state, and present state moves —
+    // bindProgram() grows the registry image, the rebuilt invocation stops
+    // matching, and a genuine observation vanishes. Historical fact is not a
+    // function of current configuration.
+    return { ok: true, output, executable_artifact_id, executor_session_id,
+      input_canonical: inputCanonical };
   }
 
   /** Provenance for an input/output pair, or null. Returns a COPY. */
   observationOf(domain, invocation, output) {
+    let ic;
+    try { ic = canonicalBytes(invocation); } catch { return null; }
+    return this.observationOfCanonical(domain, ic, output);
+  }
+
+  /** The same question asked with the invocation bytes THE HOST KEYED, for a
+   *  caller that recorded them at run() time rather than reconstructing them
+   *  from state that has moved since. */
+  observationOfCanonical(domain, inputCanonical, output) {
     let key;
-    try { key = ObservedExecutionHost.executionKey(domain, canonicalBytes(invocation), output); }
+    try { key = ObservedExecutionHost.executionKey(domain, inputCanonical, output); }
     catch { return null; }
     const list = this.#observed.get(key);
     if (!list?.length) return null;
