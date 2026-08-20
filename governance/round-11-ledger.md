@@ -1968,3 +1968,198 @@ on it is native-film transitions, not compiler grammar. GPT's reason is the righ
 mine: **the marginal value of seven more closed-template fixtures is simply lower than the first
 independently replayed native film containing real DUP/SUP transitions.** Sequence:
 `church_exp_2_2` → dedicated DUP-ERA (and now APP-ERA) → `EMISSION_CONFORMANCE-v1`.
+
+## Round 27, pass B3.1 — the native float plane, MEASURED before anything is asserted
+
+GPT's ruling on B2.1.2 was to make the C-side measurement the **first sub-pass of the substantive
+runtime round** rather than a round of its own: build the C relation, measure it, diff it against the
+independently measured JS relation, and only continue if they actually agree. This is that sub-pass.
+It adds no conformance assertion and no law. What it adds is a reducer, a way to read what the reducer
+does, and an instrument that can say the two implementations disagree.
+
+**275. `ic32_film` v0.3.0 implements the FLOAT PLANE, and exactly the six handlers the measurement
+required.** v0.2.0 enumerated tree applications only and refused any term where a dup rule became
+enabled. v0.3.0 enumerates the root tree **and every live dup cell**, constructs canonical `t:`/`d:`/
+`v:` loci, and fires **APP-SUP · DUP-LAM · DUP-SUP= · DUP-SUP! · DUP-VAR · DUP-APP**. Not "all nine
+rules" and not "all six DUP rules" — the six the `church_exp_2_2` measurement showed are actually
+exercised, which is GPT's list and not a superset of it.
+
+**276. THE TWO ERA RULES ARE ENUMERATED AND REFUSE TO FIRE, and that is a deliberate asymmetry.**
+Enumeration must include them or the terminal is a lie: a rule left out of the pool makes
+"no enabled work" mean "no work of the kinds I know about", which is exactly the false quiescence
+this fixture is the historical witness for. Firing them without a witness would be coverage by hope.
+So `film-era-rule-not-implemented`, by name, on both — `(* x)` and `!{a,b} = *; (a b)` each refuse.
+
+**277. THE BUDGET IS A TYPED REFUSAL, NEVER A TERMINAL.** `film-budget-exhausted`. Portable
+BUDGET_EXHAUSTED film evidence is a later witness; what is forbidden now is falling through to
+NORMAL_FORM with work remaining. The terminal is concluded only after a **fresh full-pool
+enumeration** returns empty — not from the loop ending, and not from the implemented rules being
+exhausted.
+
+**278. THE TWO TRAVERSAL ORDERS ARE NOT THE SAME ORDER, and both are load-bearing.** The kernel
+enumerates live cells with `liveHeap`, which pushes children FORWARD and therefore pops
+**right-to-left**; it indexes `d:`/`v:` loci with `liveDiscoveryOrder`, which pushes children REVERSED
+and pops **left-to-right**. One decides which redex is at position 0; the other decides what number
+that redex's locus carries. Collapsing either onto the other is the easiest way to produce a locus
+that names a real redex which is not the redex that fired, and the perturbation runs below measure
+exactly that.
+
+**279. ic32 CANNOT SUBSTITUTE A DUP BY NAME, and the cost is a lookup rather than a semantics.** The
+kernel's `FloatRt` keeps dups in a side table with the two projections as NAMES, so firing one is two
+substitutions and the occurrences never have to be found. ic32 has no such table: `heap[D]` is the
+cell's value before the rule fires and the OTHER side's substitution afterwards, so a dup can only be
+fired **from a demanded side** and the demanded projection replaced where it stands. `find_projections`
+walks every reachable slot — structural children, substitution slots, and live cell values — and
+**refuses (`film-projection-not-unique`) rather than choosing** if a projection is not unique. The
+rules themselves are ic32's own `fire()` and `app_sup()`, unedited: the rules are the runtime's, the
+scheduling and the addressing are the film's.
+
+**280. THE MEASUREMENT AGREES, ON THE WHOLE CORPUS AND NOT ONLY ON THE FIXTURE.**
+`bridge/measure_compare.mjs` runs both relations over all 24 conformance vectors plus the three film
+fixtures and diffs frame ordering, rule, plane, canonical locus, pre and post semantic ids, terminal
+class, steps, final state, normal form and `normal_form_id`, with enabled-count, rule tally,
+locus-family tally and signature length as declared DIAGNOSTIC fields. **27/27 agree.** The dup-plane
+coverage that comes with that is far past what the round needed: `church_exp_3_3` alone is **91 frames
+with 87 `d:`/`v:` loci**, and `church_exp_2_2` is 21 frames — `APP-LAM 6 · DUP-SUP= 4 · DUP-LAM 3 ·
+DUP-VAR 3 · APP-SUP 2 · DUP-APP 2 · DUP-SUP! 1`, `t: 4 · d: 13 · v: 4`, NORMAL_FORM at
+`λa.(S (S (S (S a))))`.
+
+**281. THE FIRST THING THE COMPARATOR FOUND WAS A DEFECT IN THE COMPARATOR.** It reported
+`lowered_add_2_3` DIFFER on `terminal final` and `signature length` (JS 40 vs C 65 — the `#`-prefixed
+§5 compaction marker) while **every one of the six frames matched exactly**. The C computes its final
+signature before calling `normal()`; my JS side read `semStateId`/`semStateSignature` inside an object
+literal evaluated **after** `readback`, which folds the live heap and FIRES RULES into the same
+runtime. So it was measuring a state the film never reached. `church_exp_2_2` hid it, because there
+the readback fires nothing at all (`interactFired 0 · collapseFired 0 · liveCount 0`) and the two
+reads coincide. **A fixture on which an instrument's bug is invisible is not a fixture that validates
+the instrument** — this is the whole reason the comparator runs the corpus and not the subject.
+
+**282. AGREEMENT IS WORTH NOTHING UNTIL THE COMPARATOR HAS BEEN SHOWN TO DIFFER**
+(`law:evidence.instrument-nonvacuity@1`). Three perturbed C builds, none committed:
+
+| perturbation | fixtures that DIFFER |
+|---|---|
+| enumeration order R2L → L2R (`liveHeap` collapsed onto the discovery order) | 8 |
+| locus index order L2R → R2L (discovery collapsed onto `liveHeap`) | 12 |
+| child push order in the app walk not reversed (arg visited before fun) | 2 |
+
+The second reports `frame 3 locus: JS d:0 vs C d:1` on `church_apply_3` — a **real dup, correctly
+enumerated, named by the wrong index**, which is precisely the failure GPT warned the round to be
+strict about and precisely the failure a count-only diagnostic would have missed.
+
+**283. NO EXPECTED TABLE EXISTS ANYWHERE IN THE C, AND NONE MAY.** `ic32_film.c` contains no frame
+count, no rule sequence and no locus for any fixture; neither does `measure_compare.mjs`. Both sides
+are measured and the comparator only reports whether the two measurements are the same measurement.
+GPT's sentence is the standard: otherwise a conformance theorem is a **transcription theorem**.
+
+**284. TWO STALE SCOPE RECORDS WERE RATCHETS THE MOMENT THE RULES WERE BUILT, and were corrected here
+rather than worked around.** `grid_check` required `ic32_film.c` to contain the literal
+`film-dup-rule-enabled`, and `film_check`'s out-of-scope case asserted that a DUP-SUP term is refused.
+Both were true at v0.2.0 and both would have **blocked the round that closed the gap** — the same
+species B1.2.1 named when `canonical-lowering@1` was held at "inputs model DEFERRED" three passes
+after B1 decided it. `lowering_check`'s "STILL NOT CLAIMED" sentence was hand-typed and is now
+**PROBED**: the check asks the emitter with a minimal APP-ERA term and a minimal DUP-ERA term and
+prints whatever it refuses, so a later round that implements them changes the sentence by implementing
+them.
+
+**285. And a fourth forgery had gone vacuous by version drift, caught by the harness rather than by
+me.** `film-emitter-version-drifts` forged the literal string `emitter_version":"0.2.0`; bumping the
+emitter to 0.3.0 turned it into a no-op and the non-vacuity detector said so on the first run. It is
+now a regex over the version field. **Third time a literal version inside a forgery has done this**
+(round 10's `version-lockstep-kernel`, and the `"1.0.2"` case before it): a forgery keyed on a value
+the round is about to change is a forgery that retires itself silently.
+
+**286. Gate at B3.1.** grid **v1.40.0** — 87 entries / 375 citations · `bridge/ic32_film.c` **0.3.0** ·
+negative battery **287/287** (2 new, 1 repointed off a drifted literal) · lowering **23/23** · film
+**16/16** · derive 45/45 · realm 24/24 · bridge **48/48** · harness 9/9 · runner 3/3 ·
+**measure-compare 27/27 (non-gating)**. `scheduler_certificate.json` byte-identical — **thirty-sixth**
+consecutive round. The measurement agrees, so B3.2 may write the conformance assertions.
+
+## Round 27, pass B3.2 — church_exp_2_2 originates natively, and every new surface is forged
+
+The measurement agreed, so the assertions may be written. `film.native-emission@2` supersedes `@1`;
+`@1` is kept as history because it is **not wrong about anything it claims** — it is narrower than
+what is now witnessed, and it carries the two scope corrections `@2` does not repeat.
+
+**287. THE FIRST NATIVE EVIDENCE FOR THE DYNAMICS THAT MAKE AN INTERACTION NET ONE.** `church_exp_2_2`
+emits **21 chained native frames** covering `APP-LAM · APP-SUP · DUP-LAM · DUP-SUP= · DUP-SUP! ·
+DUP-VAR · DUP-APP` across **`t:`, `d:` and `v:`** loci and **both semantic planes**, and the law
+kernel's own `replaySemFilm` accepts the whole chain on `FloatRt` and on the adversarial
+`DescFloatRt`. The endpoints are the corpus vector's own initial state and normal form, which the
+48/48 bridge agreed byte-for-byte long before this round — so the new claim is exactly the **21
+transitions between them**.
+
+**288. THE COVERAGE ASSERTION IS DERIVED FROM THE FILM, and every forgery index is FOUND.** The check
+asks which rules occur, which locus families occur and which planes occur in the film the emitter
+produced; it does not compare against a written-down sequence, and `firstFrame(f => …)` locates each
+forgery target rather than `frames[6]`. The one thing that IS pinned is the pair of endpoints, and
+those come from `golden_prehash_vectors.json` and an older gate.
+
+**289. SEVEN FORGERIES ON THE NEW SURFACES, each RE-COMMITTED so it dies on the calculus rather than
+on bookkeeping.** A mid-chain edit needs every later frame's `prev` and `frame_id` rebuilt, so the
+round added a multi-frame `rechain`; the single-frame `recommit` could not express any of these.
+
+| | forgery | refusal |
+|---|---|---|
+| D-1 | a `d:` index no live cell carries | `sem-locus-not-enabled` |
+| D-2 | a `v:` path extended past any application | `sem-locus-not-enabled` |
+| D-3 | `DUP-SUP=` relabelled as its sibling `DUP-SUP!` | `sem-rule-mismatch` |
+| D-4 | `APP-SUP` relabelled `APP-LAM` | `sem-rule-mismatch` |
+| D-5 | a COLLAPSE frame claiming INTERACT | `sem-plane-mismatch` |
+| D-6 | the honest film stopped one frame early, terminal honestly recomputed | `sem-false-normal-form` |
+| D-7 | a locus naming a **different redex that really is live and enabled** | `sem-post-mismatch` |
+
+**290. D-5 IS ONLY POSSIBLE NOW.** Every native frame before this round was INTERACT, so the `plane`
+field could not be forged into a lie — there was nothing else for it to say. A hybrid-plane film is
+the first one in which `law:plane.rule-partition@1` is checkable at all.
+
+**291. D-6 IS THE HISTORICAL DISEASE, MANUFACTURED AGAINST THE FIXTURE THAT CARRIED IT.**
+`l_prog_history.round_4_diagnosis` names `church_exp_2_2` at step 15 as the false-quiescence witness
+that falsified `law:sched.free.ast-term@1`. D-6 stops one frame early and recomputes `steps`,
+`last_frame` and `final_sem_id` for the state it really stops in, so **every bookkeeping check
+passes**. Replay refuses it because it re-enumerates the pool at the terminal and finds work. The
+disease is now refused by the contract rather than discovered by an audit.
+
+**292. D-7 IS THE ONLY ONE THAT DISTINGUISHES "THE LOCUS NAMES A REDEX" FROM "THE LOCUS NAMES THE
+REDEX."** Every other locus forgery dies on enabledness. D-7 replays the film's first *k* frames with
+the kernel's own machinery, enumerates the live redexes at that state, and picks one with the SAME
+rule at a DIFFERENT locus — frame 4 fired `APP-LAM` at `t:` while `t:arg` was equally live and equally
+`APP-LAM`. It gets past enabledness entirely and dies on the post-state. If a fixture ever has no such
+alternative the case **reports that it could not be built** rather than skipping: a forgery that could
+not be constructed is not a forgery that was refused.
+
+**293. A REFINEMENT WITNESS'S GRADE MAY NOT IMPROVE BECAUSE A NEIGHBOUR GREW.** `derivation.
+lowering-refinement@4` said the open item was "a fixture where a DUP-* rule actually becomes enabled".
+That is closed — **by `church_exp_2_2` under `film.native-emission@2`, and NOT by the refinement
+fixture**, which still fires no dup rule and still emits the same six APP-LAM frames. At v0.2.0 those
+six frames were the emitter's LIMIT; at v0.3.0 they are a fact about the TERM. Both records now say
+so, because a witness that gains a grade without its own fixture exercising the new capability has
+gained no evidence.
+
+**294. `film.native-emission@1`'s retained property was RE-HOMED, not dropped.** The grid assertion
+requiring the record of the readback interaction-count check now reads `@1` — where that v0.1.0 fact
+lives — rather than being deleted because the canonical statement stopped carrying the phrase, and
+independently `ic32_film.c` still carries it and is still checked. Deleting an assertion because a
+revision bump moved its subject is how a property is lost in a rename.
+
+**295. The catalog family id is `impl-c-ic32-film-v0.1.0` and the binary is v0.3.0.** Nothing is
+wrong today: artifact identity is the DIGEST, which moves, and the family is a catalog key. But a
+version inside a name that nothing checks is the exact shape that drifts, and this round has already
+caught one forgery that had retired itself on a version literal. **Flagged to GPT, not changed** —
+renaming it touches a frozen probe's era wording and the observation keys, and that is a ruling
+rather than a cleanup.
+
+**296. Three bounds that were assumptions, made into checks.** None of them is reachable by any corpus fixture, which is the point — a bound nothing currently violates is exactly the kind that gets discovered by the term that violates it. (a) `find_projections` now descends into a lambda's binder slot **unconditionally**, including a substituted one: the walk must be a SUPERSET of the reachability `live_cells` uses, because missing an occurrence is a wrong answer while finding one extra is caught by the uniqueness check — and a substituted binder slot is exactly where a projection hides, since APP-LAM writes its argument there and that argument can be a dup projection. (b) The budget is now checked **before** the frame-array bound, so with the default budget the refusal names the policy (`film-budget-exhausted`) rather than the array (`film-too-many-frames`). (c) A truncated `t:` path would be a **silently wrong locus** — two distinct redexes deep in one spine handed the same string, in a round whose entire subject is loci naming the right redex — so the path builder checks `snprintf`'s wanted length and refuses `film-locus-path-too-deep`. All three verified against the 27-fixture measurement, which still agrees.
+
+**297. Gate at B3.2.** grid **v1.41.0** — 88 entries / 379 citations · `bridge/ic32_film.c` **0.3.0** ·
+negative battery **295/295** (10 new since B2.1.2, 1 repointed off a drifted literal) · film **25/25**
+· lowering **23/23** · derive 45/45 · realm 24/24 · bridge **48/48** · harness 9/9 · runner 3/3 ·
+**measure-compare 27/27 (non-gating)**. `scheduler_certificate.json` byte-identical — **thirty-sixth**
+consecutive round.
+
+**298. STILL OPEN, and in GPT's order.** (1) The dedicated **ERA witnesses** — two fixtures, not one
+contrived term that happens to contain both: coverage by construction, not coverage by hope. (2)
+**BUDGET_EXHAUSTED** native film evidence, currently a typed refusal. (3) **`EMISSION_CONFORMANCE-v1`**
+over `{closed_template → target_term_sem_id}`, which becomes a good consolidation round once both
+adjacent relations carry independent evidence. (4) **C-side replay** — films flowing the other
+direction — unchanged and unclaimed.

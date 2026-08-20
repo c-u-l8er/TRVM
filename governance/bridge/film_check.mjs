@@ -55,6 +55,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   replaySemFilm, FloatRt, DescFloatRt, semFilmIdOf, frameId31, PLANE_POOL_FREE,
+  parse, extrude, findFloatRedexes, semLocusOf, liveDiscoveryOrder, fireFloat,
 } from "../trvm_law_kernel.mjs";
 import { ObservedExecutionHost, digestArtifactFiles } from "../observed_execution_host.mjs";
 
@@ -214,12 +215,107 @@ const F0 = FILM.frames[0];
     `whole chain on both runtime classes. The term CARRIES dup cells and not one dup rule ever fires: ` +
     `the blocker was never their presence, it was firing them, and v0.1.0 refused on the wrong ` +
     `predicate. Provenance ${acc.film_provenance}`);
-  R("dup-cells-tolerated-rules-refused",
+  R("dup-cells-carried-and-never-fired",
     m.ok && /!&/.test(LOWERED) && m.film.frames.every((f) => f.rule === "APP-LAM"),
     `every frame is APP-LAM even though the source term is full of !&L{…} dups — under the ` +
-    `leftmost-tree-app strategy the residual dups are simply dead by the end. A term where a DUP-* rule ` +
-    `DOES become enabled is refused by name (film-dup-rule-enabled); the six dup rules are still ` +
-    `unimplemented and the emitter says so rather than guessing`);
+    `leftmost-tree-app strategy the residual dups are simply dead by the end. This case is kept ` +
+    `unchanged now that the dup rules ARE implemented, and it means something different: at v0.2.0 it ` +
+    `showed the emitter's LIMIT, and at v0.3.0 it shows a property of the FIXTURE. The same six frames ` +
+    `either way, which is the regression half of the round — building the float plane moved nothing on ` +
+    `the terms that never needed it`);
+}
+
+/* ── V-5: THE DUP/SUP FRONTIER — church_exp_2_2 ──────────────────────────
+   Every native film before this one was APP-plane: applications of lambdas at
+   tree loci, which a term-rewriting relation models perfectly well. This is the
+   first native evidence for the dynamics that make an interaction net one —
+   duplication commuting through lambdas and superpositions, projections
+   collapsing on free variables and stuck applications, and redexes that live
+   INSIDE a floating dup cell rather than anywhere in the tree.
+
+   NOTHING BELOW IS A TRANSCRIBED TABLE. There is no frame count here and no
+   locus sequence; the emitter contains neither. What is asserted is derived
+   from the film the emitter produced — which rules occur in it, which locus
+   families occur in it, which planes occur in it — plus endpoints that come
+   from the corpus and were agreed by the 48/48 bridge long before this round.
+   The transition claim itself is made by replaySemFilm, which re-derives every
+   frame from a fresh runtime and would not care what this file expected. */
+const EXP22 = "((λf.λx.!&1001{c0,c1}=f;(c0 (c1 x)) λf.λx.!&1002{c0,c1}=f;(c0 (c1 x))) S)";
+const NEW_SURFACES = ["APP-SUP", "DUP-LAM", "DUP-SUP=", "DUP-SUP!", "DUP-VAR", "DUP-APP"];
+const e22 = await auth.emit(EXP22, C_FAMILY);
+if (!e22.ok) { console.log("FILM-CHECK: FAIL — exp_2_2 emitter refused: " + e22.reason); process.exit(1); }
+const FILM22 = e22.film;
+const RULES22 = new Set(FILM22.frames.map((f) => f.rule));
+const FAMS22 = new Set(FILM22.frames.map((f) => f.locus.slice(0, 2)));
+{
+  const acc = auth.accept(EXP22, e22.emission, FloatRt);
+  const b = replaySemFilm(EXP22, FILM22, DescFloatRt);
+  const planes = new Set(FILM22.frames.map((f) => f.plane));
+  const declared = new Set(FILM22.terminal.planes);
+  const golden = JSON.parse(readFileSync(join(ROOT, "golden_prehash_vectors.json"), "utf8"));
+  const gv = golden.per_term.find((t) => t.name === "church_exp_2_2");
+  const missing = NEW_SURFACES.filter((r) => !RULES22.has(r));
+  R("dup-plane-native-film",
+    acc.ok && b.ok && acc.film_provenance === "observed" && missing.length === 0
+      && FAMS22.has("t:") && FAMS22.has("d:") && FAMS22.has("v:")
+      && planes.has("INTERACT") && planes.has("COLLAPSE")
+      && FILM22.terminal.termination === "NORMAL_FORM"
+      && FILM22.frames[0].pre === gv.initial.sem_state_id
+      && FILM22.terminal.final_sem_id === gv.normal_form.sem_state_id
+      && FILM22.terminal.normal_form_id === gv.normal_form.nf_id,
+    `ic32 emits ${FILM22.terminal.steps} chained frames for church_exp_2_2 covering ` +
+    `${[...RULES22].sort().join(", ")} across locus families ${[...FAMS22].sort().join(" ")} and BOTH ` +
+    `semantic planes, and the kernel's own replaySemFilm accepts the whole chain on FloatRt and on ` +
+    `DescFloatRt. The endpoints are the corpus vector's own initial state and normal form, which the ` +
+    `48/48 bridge already agreed byte-for-byte, so the new claim is exactly the ${FILM22.terminal.steps} ` +
+    `TRANSITIONS between them. Provenance ${acc.film_provenance}`);
+  R("era-declared-in-pool-and-in-no-frame",
+    declared.has("APP-ERA") && declared.has("DUP-ERA")
+      && !RULES22.has("APP-ERA") && !RULES22.has("DUP-ERA"),
+    `both ERA rules are in the film's DECLARED pool and in none of its frames. The distinction is ` +
+    `load-bearing in one direction: a rule left OUT of the pool would make "no enabled work" mean "no ` +
+    `work of the kinds I implement", which is how a false normal form gets written down. So they are ` +
+    `enumerated for the terminal's sake and refused for the witness's. This fixture exercises neither ` +
+    `— APP-ERA was NOT expected to be missing and the measurement is what said so — and the dedicated ` +
+    `ERA fixtures are the next round, not a claim of this one`);
+}
+
+/* ── the multi-frame forgery kit ──────────────────────────────────────────
+   The single-frame `recommit` above cannot express a mid-chain edit: change
+   frame 9 and every frame after it needs its `prev` and `frame_id` rebuilt, or
+   the forgery dies on bookkeeping before it reaches the calculus. A forger who
+   cannot fix up the hashes is not the adversary worth defending against. */
+const rechain = (frames, tOver = {}) => {
+  let prev = "genesis";
+  const out = frames.map((f, i) => {
+    const g = { ...f, i, prev };
+    g.frame_id = frameId31(prev, g.pre, g.plane, g.rule, g.locus, g.post);
+    prev = g.frame_id;
+    return g;
+  });
+  const t = { ...FILM22.terminal, steps: out.length, last_frame: prev, ...tOver };
+  return { frames: out, terminal: t, film_id: semFilmIdOf(t) };
+};
+const mutate = (k, over, tOver = {}) =>
+  rechain(FILM22.frames.map((f, i) => (i === k ? { ...f, ...over } : f)), tOver);
+const firstFrame = (pred) => FILM22.frames.findIndex(pred);
+
+/* THE LIVE ENUMERATION AT FRAME k, from the kernel's own machinery. Needed for
+   the one forgery that is not "name something that is not there" but "name a
+   DIFFERENT REDEX THAT REALLY IS THERE" — the only forgery that can tell
+   whether the locus identifies THE redex or merely A redex. */
+function enabledAt(term, film, k) {
+  const frt = new FloatRt();
+  let root = extrude(frt, parse(frt, term));
+  for (let i = 0; i < k; i++) {
+    const rs = findFloatRedexes(frt, root, PLANE_POOL_FREE);
+    const order = liveDiscoveryOrder(frt, root);
+    const rx = rs.find((r) => String(semLocusOf(r, order)) === film.frames[i].locus);
+    root = fireFloat(frt, root, rx).root;
+  }
+  const order = liveDiscoveryOrder(frt, root);
+  return findFloatRedexes(frt, root, PLANE_POOL_FREE)
+    .map((r) => ({ locus: String(semLocusOf(r, order)), rule: r.rule }));
 }
 
 /* ── the forgeries. Each is RE-COMMITTED — frame_id and film_id recomputed —
@@ -275,6 +371,100 @@ forge("F-5 transition from another state",
     `editing a field without recomputing the commitments dies too (${r.reason}, ${r2.reason}) — the ` +
     `re-committed forgeries above are the interesting ones because they get past the bookkeeping and ` +
     `still fail on the calculus`);
+}
+
+/* ── D-1 … D-7: THE FORGERIES ON THE NEW SURFACES ────────────────────────
+   The F-series above forged the APP-plane frame. These forge the things this
+   round added and nothing else could have exercised: a discovery-index locus, a
+   redex living inside a dup cell, the six dup/sup rules, the COLLAPSE plane,
+   and a terminal on a fixture whose whole historical significance is false
+   quiescence. Every index below is FOUND from the film rather than written
+   down — `firstFrame(...)`, not `frames[6]`. */
+{
+  const kd = firstFrame((f) => f.locus.startsWith("d:"));
+  const kv = firstFrame((f) => f.locus.startsWith("v:"));
+  const kEq = firstFrame((f) => f.rule === "DUP-SUP=");
+  const kSup = firstFrame((f) => f.rule === "APP-SUP");
+  const kCol = firstFrame((f) => f.plane === "COLLAPSE");
+  const n = FILM22.frames.length;
+
+  forge("D-1 d: locus, index moved",
+    mutate(kd, { locus: "d:99" }), "sem-locus-not-enabled",
+    `frame ${kd + 1} really is ${FILM22.frames[kd].rule} at ${FILM22.frames[kd].locus}, renamed to a ` +
+    `discovery index no live cell carries. A d: locus is an INDEX INTO THE LIVE DISCOVERY ORDER, not a ` +
+    `heap address, which is exactly what lets the film replay on an allocator that lays the heap out ` +
+    `backwards — and it means a wrong index is refused by the enumeration rather than by a lookup`,
+    EXP22);
+
+  forge("D-2 v: locus, path moved",
+    mutate(kv, { locus: `${FILM22.frames[kv].locus}fun` }), "sem-locus-not-enabled",
+    `frame ${kv + 1} is an application redex INSIDE a live dup cell's value — ${FILM22.frames[kv].locus} ` +
+    `— with its structural path extended to a position where no application stands. A v: locus is a ` +
+    `discovery index AND a path, and both halves have to name the same thing`,
+    EXP22);
+
+  forge("D-3 dup rule mismatch",
+    mutate(kEq, { rule: "DUP-SUP!" }), "sem-rule-mismatch",
+    `a real DUP-SUP= at a real locus, relabelled as its own sibling rule. The two differ only by ` +
+    `whether the dup's label EQUALS the superposition's — annihilate versus commute — so this is the ` +
+    `closest possible lie about a dup interaction. Replay fires the redex and compares the rule that ` +
+    `ACTUALLY fired, so naming a permitted rule that is enabled elsewhere is not enough`,
+    EXP22);
+
+  forge("D-4 APP-SUP mismatch",
+    mutate(kSup, { rule: "APP-LAM" }), "sem-rule-mismatch",
+    `the application of a SUPERPOSITION to an argument, relabelled as the application of a lambda. ` +
+    `Both are INTERACT-plane and both are in the declared pool; what separates them is the chased head ` +
+    `of the application, which replay recomputes`,
+    EXP22);
+
+  forge("D-5 collapse frame claimed as interact",
+    mutate(kCol, { plane: "INTERACT" }), "sem-plane-mismatch",
+    `${FILM22.frames[kCol].rule} is a COLLAPSE-plane rule (law:plane.rule-partition@1) and this frame ` +
+    `says INTERACT. Until this round every native frame was INTERACT and the plane field could not be ` +
+    `forged into a lie; a hybrid-plane film is the first one where the partition is checkable — and ` +
+    `plane is part of the frame commitment, so the chain is rebuilt around the lie and it still dies`,
+    EXP22);
+
+  /* THE HISTORICAL ONE. l_prog_history.round_4_diagnosis names church_exp_2_2
+     as the FALSE QUIESCENCE witness that falsified law:sched.free.ast-term@1 —
+     the retracted AST relation reached a state it could neither fire nor
+     escape and called it done. This is that disease, manufactured against the
+     float-plane film and against the SAME fixture: stop one frame early and
+     declare a normal form, with the terminal honestly recomputed for the state
+     it really stopped in, so nothing bookkeeping-shaped catches it. */
+  forge("D-6 terminal false quiescence",
+    rechain(FILM22.frames.slice(0, n - 1), { final_sem_id: FILM22.frames[n - 2].post }),
+    "sem-false-normal-form",
+    `the honest film with its last frame removed and its terminal recomputed for the state it stops ` +
+    `in — steps, last_frame and final_sem_id all internally consistent, so every bookkeeping check ` +
+    `passes. Replay refuses it because it RE-ENUMERATES the pool at the terminal and finds work. This ` +
+    `is the same fixture that falsified the AST scheduling relation at step 15 for exactly this ` +
+    `disease, now refused by the contract rather than discovered by an audit`,
+    EXP22);
+
+  /* THE STRONGEST ONE, and the only one that distinguishes "the locus names A
+     redex" from "the locus names THE redex". Every forgery above names
+     something that is not enabled or misdescribes what is; this names a real,
+     live, enabled alternative that the emitter did not fire. */
+  const cand = FILM22.frames
+    .map((f, k) => ({ k, f, alts: enabledAt(EXP22, FILM22, k).filter((e) => e.locus !== f.locus && e.rule === f.rule) }))
+    .find((c) => c.alts.length > 0);
+  if (!cand) {
+    R("D-7 a different enabled redex", false,
+      "no frame of this film had a second enabled redex of the same rule, so the strongest locus " +
+      "forgery could not be built. That is a fact about the fixture and it must be reported, not " +
+      "quietly skipped — a forgery that could not be constructed is not a forgery that was refused");
+  } else {
+    const r = replaySemFilm(EXP22, mutate(cand.k, { locus: cand.alts[0].locus }), FloatRt);
+    R("D-7 a different enabled redex",
+      !r.ok && r.reason === "sem-post-mismatch",
+      `${r.ok ? "ACCEPTED" : r.reason} — frame ${cand.k + 1} fired ${cand.f.rule} at ${cand.f.locus}; ` +
+      `${cand.alts[0].locus} was ALSO live and ALSO ${cand.alts[0].rule} at that moment. Replay finds ` +
+      `the named redex, fires it, and lands somewhere else. Every other locus forgery here dies on ` +
+      `enabledness; this one gets past enabledness entirely and dies on the post-state, which is what ` +
+      `makes a canonical locus an IDENTIFICATION of a redex rather than a description of one`);
+  }
 }
 
 /* ── F-6 / F-7 / P-3F: THE PROVENANCE FORGERIES ──────────────────────────── */
@@ -351,23 +541,37 @@ forge("F-5 transition from another state",
 {
   const tryEmit = (t) => { try { execFileSync(BIN, [t], { maxBuffer: 1 << 26 }); return "ACCEPTED"; }
     catch (e) { try { return JSON.parse(e.stdout.toString()).reason; } catch { return "CRASH"; } } };
-  const dup = tryEmit("!{a,b} = {λx.x,λy.y}; (a b)");   // a DUP-SUP redex, enabled
+  const appEra = tryEmit("(* x)");                      // an APP-ERA redex, enabled
+  const dupEra = tryEmit("!{a,b} = *; (a b)");          // a DUP-ERA redex, enabled
   const nf = tryEmit("λx.x");
   R("emitter-refuses-out-of-scope",
-    dup === "film-dup-rule-enabled" && nf === "film-no-redex-at-source",
-    `a term where a DUP rule is ENABLED -> ${dup}; an already-normal term -> ${nf}. v0.2.0 handles ` +
-    `multi-frame APP-plane films over dup-CARRYING terms and says where it stops by refusing, rather ` +
-    `than by emitting a film whose scope a reader has to infer. v0.1.0's refusal was ` +
-    `film-dup-cell-present — the right refusal for the wrong reason`);
+    appEra === "film-era-rule-not-implemented" && dupEra === "film-era-rule-not-implemented"
+      && nf === "film-no-redex-at-source",
+    `an APP-ERA redex -> ${appEra}; a DUP-ERA redex -> ${dupEra}; an already-normal term -> ${nf}. ` +
+    `v0.3.0 fires the six rules church_exp_2_2 actually exercises and says where it stops by refusing ` +
+    `rather than by emitting a film whose scope a reader has to infer. BOTH ERA rules are out of ` +
+    `scope, not one: the measurement showed APP-ERA never fires on that fixture either, which nobody ` +
+    `had predicted. The scope predicate has been wrong once already — v0.1.0 refused on dup PRESENCE, ` +
+    `and the lowered add carries dups and fires none`);
 }
 
 console.log("═".repeat(96));
 console.log(fail
   ? `FILM-CHECK: FAIL — ${ran} cases ran, at least one failed`
-  : `FILM-CHECK: PASS — ${ran}/${ran}. The native ic32 runtime ORIGINATED a semantic-film frame ` +
-    `(${F0.rule} at "${F0.locus}", ${F0.pre.slice(0, 8)}… → ${F0.post.slice(0, 8)}…) and the law ` +
-    `kernel's own replaySemFilm accepted it on two runtime classes without translation. Every field ` +
-    `forged individually is refused, and the film's provenance is an execution the host drove rather ` +
-    `than a label anyone may attach. SCOPE: APP-plane rules over dup-CARRYING terms, multi-frame, C→JS only; a term where a DUP-* rule ` +
-    `becomes enabled is refused by name.`);
+  : `FILM-CHECK: PASS — ${ran}/${ran}. The native ic32 runtime ORIGINATED semantic-film evidence for ` +
+    `the DUP/SUP interaction-net dynamics themselves: church_exp_2_2 emits ${FILM22.terminal.steps} ` +
+    `chained frames covering ${[...RULES22].sort().join(", ")} across locus families ` +
+    `${[...FAMS22].sort().join(" ")} and both semantic planes, and the law kernel's own replaySemFilm ` +
+    `accepted the whole chain on two runtime classes without translation. Every field forged ` +
+    `individually is refused — including a locus naming a DIFFERENT LIVE ENABLED REDEX, which gets ` +
+    `past enabledness and dies on the post-state — and the film's provenance is an execution the host ` +
+    `drove rather than a label anyone may attach. ` +
+    // DERIVED from the film's own declared pool minus the rules it fired, so
+    // this sentence cannot outlive the gap it describes. Every hand-typed
+    // version of a "still open" list in this tree has gone stale in the
+    // flattering direction at least once.
+    `SCOPE: C→JS only, and of the ${FILM22.terminal.planes.length} declared rules the ones with no ` +
+    `native witness are ${FILM22.terminal.planes.filter((r) => !RULES22.has(r)).join(" and ")} — ` +
+    `enumerated so the terminal stays honest, REFUSED BY NAME rather than fired. BUDGET_EXHAUSTED is ` +
+    `a typed refusal, not a terminal.`);
 process.exit(fail ? 1 : 0);

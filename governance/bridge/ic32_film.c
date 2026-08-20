@@ -1,60 +1,79 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   ic32_film.c — v0.2.0 — the execution plane ORIGINATES evidence
+   ic32_film.c — v0.3.0 — the execution plane originates DUP/SUP evidence
 
-   Every semantic film in this tree so far was made by the law kernel. The C
-   runtime has been able to say what semantic STATE it is in since round 12
-   (ic32_canon.c, 48/48 byte-identical signatures), but a state is not a
-   transition, and the evidence for every transition was still JavaScript's.
+   v0.2.0 could emit multi-frame films but fired only APP-LAM: a term where any
+   DUP-* rule became enabled was refused by name. That refusal was honest and it
+   was also the whole frontier — the distinctive interaction-net dynamics, the
+   ones a tree-application relation cannot model, were still evidenced only by
+   JavaScript.
 
-   This emits one frame of the TRVM-SEMFILM-v1.1 contract from ic32's own
-   execution: the pre-state ic32 parsed, the redex ic32 found, the rule ic32
-   fired, the post-state ic32 reached, and the terminal ic32 verified. The
-   frame is then handed to the law kernel's OWN replaySemFilm — the same replay
-   that judges JS films, on a fresh runtime, with no translation of meaning in
-   between. A checker written for this occasion would be checking the occasion.
+   v0.3.0 implements the FLOAT PLANE: enumeration over the root tree AND every
+   live dup cell, canonical `t:` / `d:` / `v:` loci, and the six handlers the
+   church_exp_2_2 witness actually requires —
 
-   THE THEOREM IS DELIBERATELY NARROW, and every clause of it is a checked
-   precondition rather than an assumption about the fixture:
+       APP-SUP · DUP-LAM · DUP-SUP= · DUP-SUP! · DUP-VAR · DUP-APP
 
-       For a frozen one-step fixture, the native C runtime independently emits
-       a frame whose pre-state, enabled rule and canonical locus, post-state,
-       and terminal status are accepted by the existing semantic-film contract
-       without normalization or translation.
+   ERA IS DELIBERATELY NOT AMONG THEM. The JS measurement of church_exp_2_2
+   (governance/measure_exp22.mjs) established that neither APP-ERA nor DUP-ERA
+   fires on this fixture — two rules unexercised, not the one that was
+   anticipated. Both are ENUMERATED here, because enabledness feeds the terminal
+   and a rule left out of the pool would let a false NORMAL_FORM through; both
+   REFUSE TO FIRE, by name, because a handler with no witness is coverage by
+   hope. The dedicated ERA fixtures are the next round.
 
-   WHAT THIS DOES NOT DO, stated here rather than discovered later:
+   ── MEASURE BEFORE ASSERTING ───────────────────────────────────────────────
+   `--measure` prints what this runtime actually does — frame rows, rule and
+   locus tallies, the enabled set at every step, the terminal — and commits
+   NOTHING: no film id, no chain, no expected values. It exists so the C
+   relation can be compared against the JS oracle's independently measured
+   relation BEFORE any conformance assertion is written. Nothing in this file
+   contains a frame count, a rule sequence, or a locus for church_exp_2_2, and
+   nothing may: a conformance theorem whose expected table was transcribed from
+   the other implementation is a transcription theorem.
 
-     · v0.2.0 emits MULTI-FRAME films and TOLERATES dup cells, but fires only
-       APP-plane rules. A term where a DUP-* rule becomes enabled is REFUSED by
-       name (film-dup-rule-enabled), not silently skipped.
+   The measurement formatter and the film formatter run over ONE reducer. Two
+   separately written C transition engines would duplicate the mechanism to
+   manufacture an independence that is not where independence matters: the
+   independence that matters is C-under-test versus the JS semantic oracle.
 
-       That distinction was measured rather than assumed, and it is why v0.2.0
-       is a smaller change than "implement the six DUP rules". The lowered
-       add(const 2, const 3) CARRIES dup cells — Church addition duplicates its
-       function argument and ic32's net is linear — and under the leftmost-tree-
-       app strategy NOT ONE DUP RULE EVER FIRES: six APP-LAM frames at tree
-       loci, and the residual dups are dead by the end. v0.1.0 refused that
-       fixture on `film-dup-cell-present`, which was the right refusal for the
-       wrong reason: the blocker was never the presence of dups, it was firing
-       them. So the precondition moved from PRESENCE to ENABLEDNESS, which
-       still has to be computed — the emitter classifies every live dup cell to
-       decide quiescence honestly.
-     · It stops at POOL-QUIESCENCE, not at ic32's `normal()`. Those are
-       different states with the same readback: the film's terminal keeps
-       residual dups that normal() would resolve, and the semantic-film contract
-       is about the former. v0.1.0 got away with conflating them because its
-       one-step fixture had neither.
-     · BUDGET_EXHAUSTED terminals and the whole corpus are still later work.
-     · It does not replay. The C-side checker — films flowing the other
-       direction — is the next step and is not claimed here.
+   ── WHAT THE FLOAT PLANE COSTS IN ic32's REPRESENTATION ────────────────────
+   The law kernel's FloatRt holds dups in a side table keyed by id, with the two
+   projections as NAMES, so firing a dup is two substitutions by name and the
+   occurrences never have to be found. ic32 has no such table: a dup is a heap
+   cell reached through T_DP0/T_DP1 words, and `heap[D]` serves double duty —
+   the cell's value before the rule fires, the OTHER side's substitution after.
+   So ic32 can only fire a dup FROM A DEMANDED SIDE, and the demanded
+   projection must be replaced where it stands. `find_projections` is that
+   lookup, and it refuses rather than guesses if a projection is not unique.
+
+   That is a representational obligation, not a semantic one, and it is the
+   reason this file reuses ic32's own `fire()` and `app_sup()` rather than
+   reimplementing the rules: the rules are the runtime's, the scheduling and
+   the addressing are the film's.
+
+   THE TWO ORDERS ARE NOT THE SAME ORDER, and conflating them is the easiest
+   way to produce a locus that names the wrong redex. The kernel enumerates
+   live cells with `liveHeap`, which pushes children FORWARD and therefore pops
+   RIGHT-TO-LEFT; it indexes `d:`/`v:` loci with `liveDiscoveryOrder`, which
+   pushes children REVERSED and therefore pops LEFT-TO-RIGHT. One order decides
+   which redex is at position 0 of the enumeration, the other decides what
+   number that redex's locus carries. `live_cells(root, direction)` implements
+   both and the caller says which it wants.
+
+   ── WHAT IS STILL NOT CLAIMED ──────────────────────────────────────────────
+     · APP-ERA and DUP-ERA fire nowhere. Enumerated, refused.
+     · BUDGET_EXHAUSTED films are not emitted. The budget is a TYPED REFUSAL
+       (film-budget-exhausted); what is forbidden is falling through to
+       NORMAL_FORM with work remaining, and that cannot happen here because the
+       terminal re-enumerates the full pool before it is written.
+     · It does not replay. Films flow C → JS only.
 
    The canonicalizer is INCLUDED, not copied: ic32_canon.c is the same file the
-   bridge gate replays at 48/48, which in turn includes ic32.c verbatim. So the
-   pre and post ids this emits come from the same code that already agrees with
-   the JS oracle byte-for-byte, and the only new C in the pipeline is redex
-   enumeration and a single-step fire.
+   bridge gate replays at 48/48, which in turn includes ic32.c verbatim.
 
-   Usage:  ic32_film "<term>"      one term, as an argument
-           emits a TRVM-SEMFILM-v1.1 film as JSON on stdout, exit 0
+   Usage:  ic32_film "<term>"                emit a TRVM-SEMFILM-v1.1 film (JSON)
+           ic32_film --measure "<term>"      non-gating measurement, plain text
+           ic32_film --measure -v "<term>"   + the enabled set at every step
            on any unmet precondition: {"ok":false,"reason":"…"} and exit 1
    ═══════════════════════════════════════════════════════════════════════════ */
 #define IC32_CANON_NO_MAIN 1
@@ -65,68 +84,97 @@
    so a different order is a different film and replay says so. */
 #define PLANE_POOL "APP-LAM,APP-SUP,APP-ERA,DUP-LAM,DUP-SUP=,DUP-SUP!,DUP-ERA,DUP-VAR,DUP-APP"
 
+/* law:plane.rule-partition@1 — COLLAPSE is exactly DUP-VAR and DUP-APP. */
+static const char* plane_of(const char* rule){
+    if (!strcmp(rule, "DUP-VAR") || !strcmp(rule, "DUP-APP")) return "COLLAPSE";
+    return "INTERACT";
+}
+
+static int g_measure = 0;
 static void refuse(const char* reason){
-    printf("{\"ok\":false,\"reason\":\"%s\"}\n", reason);
+    if (g_measure) printf("REFUSED %s\n", reason);
+    else           printf("{\"ok\":false,\"reason\":\"%s\"}\n", reason);
     exit(1);
 }
 
-/* ── live dup cells, and whether any of them has an ENABLED rule ──────────
-   ic32 has no dup table: a dup is a heap cell reached through T_DP0/T_DP1
-   projections, so the live cells are the distinct addresses those projections
-   name. dupRule's classification, against the CHASED value:
+/* ── §2-equivalent stuck-application test ─────────────────────────────────
+   The kernel's isStuckApp: the head chases to a FREE variable through zero or
+   more stuck applications. Only these may be DUP-APP-copied under free
+   scheduling; a reducible or not-yet-bound head is a wire whose peer has not
+   arrived, and copying it early ties a knot the driver can never reach. */
+static int is_stuck_app(Term app){
+    for (int depth = 0; depth < 10000; depth++){
+        Term f = ccanon_chase(heap[ADDR(app)]);
+        if (TAG(f) == T_VAR) return is_free_var(f);
+        if (TAG(f) == T_APP){ app = f; continue; }
+        return 0;
+    }
+    return 0;
+}
 
-       Lam                       DUP-LAM
-       Sup, label equal/differ   DUP-SUP= / DUP-SUP!
-       Era                       DUP-ERA
-       free Var                  DUP-VAR
-       stuck App (head is free)  DUP-APP
-       anything else             no rule — a residual dup, which is legitimate
-                                 at pool-quiescence and is not work
-
-   The emitter needs this to say NORMAL_FORM honestly. Claiming quiescence
-   while a dup rule was enabled would be a terminal the kernel refuses as
-   sem-false-normal-form, and finding that out from the replay rather than from
-   the emitter would mean the emitter had asserted something it never checked. */
-static int dup_rule_enabled(uint32_t D){
+/* ── which rule, if any, is a dup cell ready to fire? ─────────────────────
+   dupRule, against the CHASED value. The label comes from the PROJECTION, not
+   from the cell — ic32 carries it in the DP word — so SUP-equality needs the
+   label the enumeration found the cell through. Chase, never whnf: chasing
+   costs no interaction, and a value that is still a live projection of another
+   cell is a WAIT rather than a redex. */
+static const char* dup_rule_name(uint32_t D, uint32_t L){
     Term v = ccanon_chase(heap[D]);
     switch (TAG(v)){
-        case T_LAM: case T_SUP: case T_ERA: return 1;
-        case T_VAR: return is_free_var(v);
-        case T_APP: {                       /* stuck iff the head chases to a free var */
-            Term f = ccanon_chase(heap[ADDR(v)]);
-            return TAG(f)==T_VAR && is_free_var(f);
-        }
-        default: return 0;
+        case T_LAM: return "DUP-LAM";
+        case T_SUP: return LAB(v) == L ? "DUP-SUP=" : "DUP-SUP!";
+        case T_ERA: return "DUP-ERA";
+        case T_VAR: return is_free_var(v) ? "DUP-VAR" : NULL;
+        case T_APP: return is_stuck_app(v) ? "DUP-APP" : NULL;
+        default:    return NULL;      /* a projection of an unfired cell: WAIT */
     }
 }
 
-static int any_dup_rule_enabled(Term root){
-    U64Map seen; map_init(&seen, 4096);
-    U64Map cells; map_init(&cells, 1024);
+/* ── live dup cells, in EITHER of the kernel's two traversal orders ───────
+   L2R (liveDiscoveryOrder) indexes the canonical `d:`/`v:` loci.
+   R2L (liveHeap)          orders the redex ENUMERATION.
+   A first-seen T_DP0/T_DP1 is the discovery of its cell; the cell's value is
+   pushed immediately, which is what makes the walk depth-first into the dup. */
+typedef struct { uint32_t D, lab; } Cell;
+typedef struct { Cell* a; size_t n, cap; } CellVec;
+static void cv_push(CellVec* v, uint32_t D, uint32_t lab){
+    if (v->n == v->cap){ v->cap = v->cap ? v->cap*2 : 32; v->a = (Cell*)realloc(v->a, v->cap*sizeof(Cell)); }
+    v->a[v->n].D = D; v->a[v->n].lab = lab; v->n++;
+}
+static void cv_free(CellVec* v){ free(v->a); v->a = NULL; v->n = v->cap = 0; }
+static int cv_index(const CellVec* v, uint32_t D){
+    for (size_t i = 0; i < v->n; i++) if (v->a[i].D == D) return (int)i;
+    return -1;
+}
+#define ORDER_L2R 1
+#define ORDER_R2L 0
+static void live_cells(Term root, int l2r, CellVec* out){
+    U64Map seenNode; map_init(&seenNode, 4096);
+    U64Map seenCell; map_init(&seenCell, 1024);
     TVec st = {0}; tpush(&st, root);
-    int found = 0;
-    while (st.n && !found){
+    while (st.n){
         Term t = ccanon_chase(st.a[--st.n]);
         uint64_t nk = (uint64_t)CLRSUB(t);
-        int* s = map_slot(&seen, nk);
+        int* s = map_slot(&seenNode, nk);
         if (*s == 1) continue; *s = 1;
         switch (TAG(t)){
             case T_DP0: case T_DP1: {
                 uint32_t D = ADDR(t);
-                int* c = map_slot(&cells, (uint64_t)D);
+                int* c = map_slot(&seenCell, (uint64_t)D);
                 if (*c == 1) break; *c = 1;
-                if (dup_rule_enabled(D)) { found = 1; break; }
-                tpush(&st, heap[D]);        /* the cell's value is reachable too */
+                cv_push(out, D, LAB(t));
+                tpush(&st, heap[D]);        /* the cell's value, depth-first */
                 break;
             }
             case T_LAM: tpush(&st, heap[ADDR(t)]); break;
-            case T_APP: tpush(&st, heap[ADDR(t)+1]); tpush(&st, heap[ADDR(t)]); break;
-            case T_SUP: tpush(&st, heap[ADDR(t)+1]); tpush(&st, heap[ADDR(t)]); break;
+            case T_APP: case T_SUP:
+                if (l2r){ tpush(&st, heap[ADDR(t)+1]); tpush(&st, heap[ADDR(t)]); }
+                else    { tpush(&st, heap[ADDR(t)]);   tpush(&st, heap[ADDR(t)+1]); }
+                break;
             default: break;
         }
     }
-    free(st.a); map_free(&seen); map_free(&cells);
-    return found;
+    free(st.a); map_free(&seenNode); map_free(&seenCell);
 }
 
 /* ── redex enumeration ────────────────────────────────────────────────────
@@ -142,7 +190,12 @@ static int any_dup_rule_enabled(Term root){
        reducing it — reducing the head would be taking more than one step.
 
    The path is a dot-joined list of the kernel's own field names, which is what
-   `t:<path>` means. Root is the empty path, so the locus is exactly "t:". */
+   `t:<path>` means. Root is the empty path, so the locus is exactly "t:".
+
+   Each call carries its OWN visited set, exactly as the kernel's separate
+   findAppRedexes(root) / findAppRedexes(d.val) calls do — a node reachable
+   both from the root and from inside a dup value is enumerated in both, and
+   collapsing that into one shared set would silently drop a `v:` redex. */
 #define MAXPATH 480
 #define MAXREDEX 4096
 typedef struct { char path[MAXPATH]; const char* rule; } Redex;
@@ -150,8 +203,9 @@ typedef struct { Term t; char path[MAXPATH]; } WalkItem;
 
 static int enumerate_app_redexes(Term root, Redex* out, int cap, int* overflow){
     U64Map seen; map_init(&seen, 4096);
-    WalkItem* st = (WalkItem*)malloc(sizeof(WalkItem) * 65536);
-    size_t sp = 0, stcap = 65536;
+    size_t stcap = 1024;
+    WalkItem* st = (WalkItem*)malloc(sizeof(WalkItem) * stcap);
+    size_t sp = 0;
     st[sp].t = root; st[sp].path[0] = 0; sp++;
     int n = 0; *overflow = 0;
 
@@ -189,8 +243,16 @@ static int enumerate_app_redexes(Term root, Redex* out, int cap, int* overflow){
         for (int i = nk2 - 1; i >= 0; i--){
             if (sp + 1 >= stcap){ stcap *= 2; st = (WalkItem*)realloc(st, sizeof(WalkItem) * stcap); }
             st[sp].t = ct[i];
-            if (it.path[0]) snprintf(st[sp].path, MAXPATH, "%s.%s", it.path, kids[i]);
-            else            snprintf(st[sp].path, MAXPATH, "%s", kids[i]);
+            /* A TRUNCATED PATH IS A WRONG LOCUS, and silently so: two distinct
+               redexes deep in one spine would be handed the same `t:` string,
+               and the emitter would be naming a redex it did not fire. Replay
+               would refuse it, but as "the emitter is broken" rather than as
+               "this term is deeper than the locus encoding". snprintf returns
+               the length it WANTED, so the bound is checkable. */
+            int need = it.path[0]
+              ? snprintf(st[sp].path, MAXPATH, "%s.%s", it.path, kids[i])
+              : snprintf(st[sp].path, MAXPATH, "%s", kids[i]);
+            if (need < 0 || need >= MAXPATH) refuse("film-locus-path-too-deep");
             sp++;
         }
     }
@@ -198,26 +260,177 @@ static int enumerate_app_redexes(Term root, Redex* out, int cap, int* overflow){
     return n;
 }
 
+/* The FLOAT-PLANE enumeration, in findFloatRedexes' exact construction order:
+   every tree app redex first, then — per live cell in liveHeap order — the
+   cell's own dup rule, then the app redexes inside the cell's VALUE. The
+   position of a redex in this list is what "leftmost" means; the locus it
+   carries is computed from the OTHER order. */
+#define K_APP    0
+#define K_DUP    1
+#define K_DUPVAL 2
+typedef struct {
+    int kind;
+    uint32_t D, lab;
+    char path[MAXPATH];
+    const char* rule;
+    char locus[MAXPATH + 32];
+} FRedex;
+
+static int enumerate_float_redexes(Term root, FRedex* out, int cap, int* overflow){
+    int n = 0; *overflow = 0;
+    Redex rs[MAXREDEX]; int ov = 0;
+
+    int na = enumerate_app_redexes(root, rs, MAXREDEX, &ov);
+    if (ov){ *overflow = 1; return n; }
+    for (int i = 0; i < na; i++){
+        if (n >= cap){ *overflow = 1; return n; }
+        out[n].kind = K_APP; out[n].D = 0; out[n].lab = 0;
+        snprintf(out[n].path, MAXPATH, "%s", rs[i].path);
+        out[n].rule = rs[i].rule; n++;
+    }
+
+    CellVec live = {0}; live_cells(root, ORDER_R2L, &live);
+    for (size_t c = 0; c < live.n; c++){
+        uint32_t D = live.a[c].D, L = live.a[c].lab;
+        const char* dr = dup_rule_name(D, L);
+        if (dr){
+            if (n >= cap){ *overflow = 1; cv_free(&live); return n; }
+            out[n].kind = K_DUP; out[n].D = D; out[n].lab = L;
+            out[n].path[0] = 0; out[n].rule = dr; n++;
+        }
+        int nb = enumerate_app_redexes(heap[D], rs, MAXREDEX, &ov);
+        if (ov){ *overflow = 1; cv_free(&live); return n; }
+        for (int i = 0; i < nb; i++){
+            if (n >= cap){ *overflow = 1; cv_free(&live); return n; }
+            out[n].kind = K_DUPVAL; out[n].D = D; out[n].lab = L;
+            snprintf(out[n].path, MAXPATH, "%s", rs[i].path);
+            out[n].rule = rs[i].rule; n++;
+        }
+    }
+    cv_free(&live);
+    return n;
+}
+
+/* semLocusOf: a structural path for tree apps, a DISCOVERY INDEX for heap
+   dups — allocation-independent by construction, which is the whole reason a
+   semantic film replays on an adversarial allocator. `?` where the kernel
+   writes `?`: a cell absent from the discovery order. */
+static void sem_locus_of(FRedex* r, const CellVec* order){
+    if (r->kind == K_APP){ snprintf(r->locus, sizeof(r->locus), "t:%s", r->path); return; }
+    int i = cv_index(order, r->D);
+    char ix[16]; if (i < 0) snprintf(ix, sizeof(ix), "?"); else snprintf(ix, sizeof(ix), "%d", i);
+    if (r->kind == K_DUP) snprintf(r->locus, sizeof(r->locus), "d:%s", ix);
+    else                  snprintf(r->locus, sizeof(r->locus), "v:%s:%s", ix, r->path);
+}
+
+/* ── finding a cell's projections ─────────────────────────────────────────
+   ic32 fires a dup from a demanded side and hands the result back to the
+   demand site, so the film has to BE the demand site. This walks every slot
+   reachable from the root — structural children, substitution slots, and the
+   values of live cells — and collects the slots whose stored word is a
+   projection of D. Substitution slots are reached explicitly (rather than
+   chased past) precisely because a projection can live in one: an APP-LAM
+   whose argument was a projection writes it into the binder's slot.
+
+   Uniqueness is CHECKED, not assumed. A linear net has exactly one occurrence
+   of each projection; if this ever finds two, the caller refuses rather than
+   picking one and hoping. */
+typedef struct { Term** a; size_t n, cap; } PVec;
+static void pv_push(PVec* v, Term* s){
+    if (v->n == v->cap){ v->cap = v->cap ? v->cap*2 : 64; v->a = (Term**)realloc(v->a, v->cap*sizeof(Term*)); }
+    v->a[v->n++] = s;
+}
+static void find_projections(Term* rootslot, uint32_t D, PVec* p0, PVec* p1){
+    U64Map seenSlot; map_init(&seenSlot, 4096);
+    U64Map seenCell; map_init(&seenCell, 1024);
+    PVec st = {0}; pv_push(&st, rootslot);
+    int rootdone = 0;
+    while (st.n){
+        Term* s = st.a[--st.n];
+        if (s == rootslot){ if (rootdone) continue; rootdone = 1; }
+        else {
+            int* seen = map_slot(&seenSlot, (uint64_t)(size_t)(s - heap));
+            if (*seen == 1) continue; *seen = 1;
+        }
+        Term w = CLRSUB(*s);
+        uint32_t A = ADDR(w);
+        switch (TAG(w)){
+            case T_VAR:
+                if (ISSUB(heap[A])) pv_push(&st, &heap[A]);
+                break;
+            case T_DP0: case T_DP1: {
+                if (ISSUB(heap[A])){ pv_push(&st, &heap[A]); break; }
+                if (A == D) pv_push(TAG(w) == T_DP0 ? p0 : p1, s);
+                int* c = map_slot(&seenCell, (uint64_t)A);
+                if (*c != 1){ *c = 1; pv_push(&st, &heap[A]); }
+                break;
+            }
+            case T_LAM:
+                /* UNCONDITIONALLY, including a substituted binder slot. This
+                   walk must be a SUPERSET of the reachability live_cells uses
+                   — missing an occurrence is a wrong answer, whereas finding
+                   one more is caught by the uniqueness check below. Skipping
+                   ISSUB here would have made the two walks disagree about a
+                   lambda whose binder was already consumed, which is exactly
+                   where a projection can be hiding: APP-LAM writes its
+                   argument into the binder's slot, and that argument can be a
+                   dup projection. */
+                pv_push(&st, &heap[A]);
+                break;
+            case T_APP: case T_SUP:
+                pv_push(&st, &heap[A]); pv_push(&st, &heap[A+1]);
+                break;
+            default: break;
+        }
+    }
+    free(st.a); map_free(&seenSlot); map_free(&seenCell);
+}
+
+/* ── fire one dup cell, using ic32's OWN rule implementation ──────────────
+   `fire(D,L,k)` is the shipped runtime's dup interaction, unedited. It opens
+   with whnf(heap[D]) — which costs NOTHING here, because dup_rule_name has
+   already established by CHASING that the value is a Lam, Sup, Era, free Var
+   or stuck App, and whnf returns each of those without an interaction. That is
+   not an assumption: the caller checks that exactly one interaction happened,
+   and a violated precondition shows up as a refusal rather than as a frame.
+
+   ERA refuses. Enumerated so the terminal is honest, unfired so no rule ships
+   without a witness. */
+static int fire_dup(Term* rootslot, uint32_t D, uint32_t L, const char** rule_out){
+    const char* rule = dup_rule_name(D, L);
+    if (!rule) return 0;
+    if (!strcmp(rule, "DUP-ERA")) refuse("film-era-rule-not-implemented");
+
+    PVec p0 = {0}, p1 = {0};
+    find_projections(rootslot, D, &p0, &p1);
+    if (p0.n > 1 || p1.n > 1){ free(p0.a); free(p1.a); refuse("film-projection-not-unique"); }
+    if (p0.n == 0 && p1.n == 0){ free(p0.a); free(p1.a); return 0; }
+
+    int k = p0.n ? 0 : 1;
+    Term* p = k == 0 ? p0.a[0] : p1.a[0];
+    int wassub = ISSUB(*p) ? 1 : 0;
+    free(p0.a); free(p1.a);
+
+    /* fire() writes the OTHER side's value into heap[D] with the sub bit set,
+       so the sibling projection resolves by chasing; this side is replaced
+       where it stands. */
+    Term h = fire(D, L, k);
+    *p = wassub ? SETSUB(h) : h;
+    *rule_out = rule;
+    return 1;
+}
+
 /* ── fire exactly one app redex, addressed by path ────────────────────────
    ic32's heap is mutable, so "rebuild the spine with the new child" is a slot
    write rather than a persistent-tree rebuild. The walk therefore descends by
-   SLOT POINTER. It refuses a path that passes through a substituted variable:
-   the node behind such a slot is shared, and writing the slot would relocate
-   somebody else's subterm. For the dup-free one-step fixtures this never
-   arises — the redex is the root — and refusing is the honest response to a
-   case this version does not implement. */
+   SLOT POINTER, chasing at each level exactly as the kernel does; the
+   difference is that the kernel REBUILDS the spine functionally while this
+   writes the slot, which is equivalent exactly because a spine node on the way
+   to a redex is uniquely referenced in a linear net. That equivalence is not
+   asserted here; it is CHECKED, by the post-state the kernel recomputes when
+   it replays the frame. */
 static int step_at(Term* slot, const char* path, const char** rule_out){
     if (path && *path){
-        // CHASE, then descend into the chased node's own slot. v0.1.0 refused a
-        // substituted variable here, which was right for a one-step fixture and
-        // wrong the moment a film has more than one frame: after an APP-LAM the
-        // spine holds vars pointing at the substituted values, and every path
-        // below the first frame runs through one. The kernel chases at each
-        // level too — the difference is that it REBUILDS the spine functionally
-        // while this writes the slot, which is equivalent exactly because a
-        // spine node on the way to a redex is uniquely referenced in a linear
-        // net. That equivalence is not asserted here; it is CHECKED, by the
-        // post-state the kernel recomputes when it replays the frame.
         Term t = ccanon_chase(*slot);
         char head[MAXPATH]; const char* dot = strchr(path, '.');
         size_t hl = dot ? (size_t)(dot - path) : strlen(path);
@@ -238,117 +451,186 @@ static int step_at(Term* slot, const char* path, const char** rule_out){
     if (TAG(t) != T_APP) return 0;
     uint32_t A = ADDR(t);
     Term f = ccanon_chase(heap[A]);
-    if (TAG(f) != T_LAM){
-        /* enumerated as APP-SUP or APP-ERA; firing those is not implemented in
-           v0.1.0 and pretending otherwise is how a film round produces a frame
-           nobody can replay */
-        return 0;
+    if (TAG(f) == T_LAM){
+        uint32_t Lv = ADDR(f);
+        Term arg = heap[A+1];
+        Term bod = heap[Lv];
+        heap[Lv] = SETSUB(arg);          /* APP-LAM: the binder becomes the argument */
+        interactions++;
+        FREE2(A);                        /* the consumed application node is dead */
+        *slot = bod;
+        *rule_out = "APP-LAM";
+        return 1;
     }
-    uint32_t Lv = ADDR(f);
-    Term arg = heap[A+1];
-    Term bod = heap[Lv];
-    heap[Lv] = SETSUB(arg);          /* APP-LAM: the binder becomes the argument */
-    interactions++;
-    FREE2(A);                        /* the consumed application node is dead */
-    *slot = bod;
-    *rule_out = "APP-LAM";
-    return 1;
+    if (TAG(f) == T_SUP){
+        /* (&L{a,b} c) -> !&L{c0,c1}=c; &L{(a c0),(b c1)} — ic32's own app_sup,
+           which allocates the dup cell the kernel's applyAppAt allocates. */
+        Term nt = app_sup(f, heap[A+1]);  /* interactions++ inside */
+        FREE2(A);
+        *slot = nt;
+        *rule_out = "APP-SUP";
+        return 1;
+    }
+    if (TAG(f) == T_ERA) refuse("film-era-rule-not-implemented");
+    return 0;
+}
+
+/* dispatch: the three redex kinds address three different slots. A `v:` redex
+   fires INSIDE a live cell's value, which in ic32 is the cell slot itself —
+   the kernel's `d.val = applyAppAt(d.val, path)`, one representation over. */
+static int fire_float(Term* rootslot, FRedex* r, const char** rule_out){
+    if (r->kind == K_APP)    return step_at(rootslot, r->path, rule_out);
+    if (r->kind == K_DUPVAL) return step_at(&heap[r->D], r->path, rule_out);
+    return fire_dup(rootslot, r->D, r->lab, rule_out);
 }
 
 static void sha_of(const char* s, char out[65]){ sha256_str(s, out); }
 
+/* ── rule / locus tallies, for the measurement only ──────────────────────── */
+#define NRULES 9
+static const char* RULE_NAMES[NRULES] = {
+    "APP-LAM","APP-SUP","APP-ERA","DUP-LAM","DUP-SUP=","DUP-SUP!","DUP-ERA","DUP-VAR","DUP-APP" };
+static int rule_index(const char* r){
+    for (int i = 0; i < NRULES; i++) if (!strcmp(RULE_NAMES[i], r)) return i;
+    return -1;
+}
+
 int main(int argc, char** argv){
-    if (argc < 2){ fprintf(stderr, "usage: ic32_film \"<term>\"\n"); return 2; }
+    int verbose = 0; const char* term_arg = NULL;
+    long budget = 4096;
+    for (int i = 1; i < argc; i++){
+        if      (!strcmp(argv[i], "--measure")) g_measure = 1;
+        else if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--verbose")) verbose = 1;
+        else if (!strcmp(argv[i], "--budget") && i + 1 < argc) budget = strtol(argv[++i], NULL, 10);
+        else term_arg = argv[i];
+    }
+    if (!term_arg){
+        fprintf(stderr, "usage: ic32_film [--measure] [-v] [--budget N] \"<term>\"\n");
+        return 2;
+    }
     heap = (Term*)calloc(HEAPCAP, sizeof(Term));
     if (!heap){ fprintf(stderr, "FATAL: heap alloc\n"); return 2; }
     reset_state();
 
-    P = argv[1];
+    P = term_arg;
     Term root = parse_term(); ws();
 
     /* ── the film loop. One frame per fired redex, chained, until the pool is
-          quiescent. The strategy is the kernel's: findFloatRedexes lists every
-          TREE app redex before any dup redex, so rs[0] is the leftmost tree app
-          whenever one exists, and the walk order here reproduces that exactly.
+          quiescent. The strategy is the kernel's LEFTMOST over the float-plane
+          enumeration: every tree app redex precedes every dup redex, so rs[0]
+          is the leftmost tree app whenever one exists and the leftmost live
+          dup otherwise. Stated rather than implied — a different strategy is a
+          different film, and replay judges the film it was handed.
           ─────────────────────────────────────────────────────────────────── */
 #define MAXFRAMES 4096
-    struct { char pre[65], post[65], locus[MAXPATH + 4], frame_id[65]; const char* rule; } fr[MAXFRAMES];
+    struct { char pre[65], post[65], locus[MAXPATH + 32], frame_id[65]; const char* rule; int enabled; } fr[MAXFRAMES];
     int nf = 0;
     char prev[65]; snprintf(prev, sizeof(prev), "genesis");
     char first_sig[1 << 14]; first_sig[0] = 0;
+    int rule_count[NRULES]; for (int i = 0; i < NRULES; i++) rule_count[i] = 0;
+    long locus_t = 0, locus_d = 0, locus_v = 0;
 
+    if (g_measure){
+        char* s0 = canonical_signature(root);
+        char h0[65]; sha_of(s0, h0);
+        printf("MEASURE ic32_film 0.3.0\n");
+        printf("TERM %s\n", term_arg);
+        printf("INITIAL %s\n", h0);
+        free(s0);
+    }
+
+    static FRedex rx[MAXREDEX];
     for (;;){
-        if (any_dup_rule_enabled(root)) refuse("film-dup-rule-enabled");
-
-        Redex rs[MAXREDEX]; int overflow = 0;
-        int n = enumerate_app_redexes(root, rs, MAXREDEX, &overflow);
+        int overflow = 0;
+        int n = enumerate_float_redexes(root, rx, MAXREDEX, &overflow);
         if (overflow) refuse("film-redex-enumeration-overflow");
         if (n == 0) break;                       /* pool-quiescent */
+        /* THE BUDGET IS A REFUSAL, NEVER A TERMINAL. Work remains; a
+           NORMAL_FORM here would be exactly the false quiescence this fixture
+           falsified an entire scheduling relation with. Checked BEFORE the
+           storage bound so the refusal names the reason a caller can act on:
+           with the default budget the two limits coincide, and
+           "film-too-many-frames" would have reported the array while the
+           budget was the actual policy. */
+        if (nf >= budget) refuse("film-budget-exhausted");
         if (nf >= MAXFRAMES) refuse("film-too-many-frames");
+
+        CellVec order = {0}; live_cells(root, ORDER_L2R, &order);
+        for (int i = 0; i < n; i++) sem_locus_of(&rx[i], &order);
 
         char* pre_sig = canonical_signature(root);
         if (!nf) snprintf(first_sig, sizeof(first_sig), "%s", pre_sig);
         sha_of(pre_sig, fr[nf].pre); free(pre_sig);
-        snprintf(fr[nf].locus, sizeof(fr[nf].locus), "t:%s", rs[0].path);
+        snprintf(fr[nf].locus, sizeof(fr[nf].locus), "%s", rx[0].locus);
+        fr[nf].enabled = n;
+
+        if (g_measure && verbose){
+            printf("ORDER %d cells=%zu\n", nf + 1, order.n);
+            for (int i = 0; i < n; i++)
+                printf("ENABLED %d %s %s\n", nf + 1, rx[i].locus, rx[i].rule);
+        }
+        cv_free(&order);
 
         long before = interactions;
         const char* rule = NULL;
-        if (!step_at(&root, rs[0].path, &rule)) refuse("film-rule-not-implemented");
-        if (strcmp(rule, rs[0].rule) != 0)      refuse("film-fired-rule-disagrees-with-enumeration");
+        if (!fire_float(&root, &rx[0], &rule)) refuse("film-rule-not-implemented");
+        if (strcmp(rule, rx[0].rule) != 0)      refuse("film-fired-rule-disagrees-with-enumeration");
         if (interactions - before != 1)         refuse("film-step-was-not-one-interaction");
         fr[nf].rule = rule;
+        { int ri = rule_index(rule); if (ri >= 0) rule_count[ri]++; }
+        if      (fr[nf].locus[0] == 't') locus_t++;
+        else if (fr[nf].locus[0] == 'd') locus_d++;
+        else                             locus_v++;
 
         char* post_sig = canonical_signature(root);
         sha_of(post_sig, fr[nf].post); free(post_sig);
 
-        char* chain = sfmt("%s|%s|INTERACT|%s|%s|%s", prev, fr[nf].pre, rule, fr[nf].locus, fr[nf].post);
+        char* chain = sfmt("%s|%s|%s|%s|%s|%s", prev, fr[nf].pre, plane_of(rule), rule,
+                           fr[nf].locus, fr[nf].post);
         sha_of(chain, fr[nf].frame_id); free(chain);
         snprintf(prev, sizeof(prev), "%s", fr[nf].frame_id);
+
+        if (g_measure)
+            printf("FRAME %d %s %s %s %s %s %d\n", nf + 1, rule, plane_of(rule),
+                   fr[nf].locus, fr[nf].pre, fr[nf].post, fr[nf].enabled);
         nf++;
     }
     if (nf == 0) refuse("film-no-redex-at-source");
 
-    /* ── READBACK, from POOL-QUIESCENCE and not from ic32's normal form.
-          Those are different states with the same readback: the film's terminal
-          keeps residual dups that normal() would resolve. The kernel's
-          normal_form_id is semId(readback(post).str), and its readback asserts
-          PURITY — from quiescence it must fire no INTERACT-plane rule. That is
-          a check here too, not a remark: if resolving the state costs an
-          interaction, this was not quiescent and the terminal was a lie.
-
-          ic32's show_iter does not chase substitutions, because nothing in
-          ic32's own flow ever hands it an unresolved one. v0.1.0 printed
-          "λa.(a b)" — a binder NAME where a TERM was bound — until normal() was
-          run first, which is a well-formed string asserting an identity that
-          does not hold. ──────────────────────────────────────────────────── */
     /* POOL-QUIESCENCE, asserted rather than inherited from the loop exit. The
-       loop stops when no tree app redex remains and no dup rule is enabled,
-       which is exactly sem-false-normal-form's condition, and re-checking it
-       here costs one walk and makes the terminal a measurement. */
-    { int ov = 0; Redex chk[MAXREDEX];
-      if (enumerate_app_redexes(root, chk, MAXREDEX, &ov) != 0 || ov)
-          refuse("film-not-quiescent-at-terminal");
-      if (any_dup_rule_enabled(root)) refuse("film-not-quiescent-at-terminal"); }
+       terminal is concluded only after a FRESH FULL-POOL enumeration returns
+       empty — not from "the loop ended", and not from "the rules I know how to
+       fire are exhausted". Both of those are how a false normal form gets
+       written down, and this fixture is the historical witness for the second:
+       church_exp_2_2 at step 15 is what falsified law:sched.free.ast-term@1. */
+    {
+        int ov = 0;
+        static FRedex chk[MAXREDEX];
+        int remaining = enumerate_float_redexes(root, chk, MAXREDEX, &ov);
+        if (remaining != 0 || ov) refuse("film-not-quiescent-at-terminal");
+    }
 
     char* final_sig = canonical_signature(root);
     char final_id[65]; sha_of(final_sig, final_id);
 
-    /* READBACK, from POOL-QUIESCENCE and not from ic32's normal form.
+    /* READBACK, from POOL-QUIESCENCE and not from ic32's normal form. Those
+       are different states with the same readback: the film's terminal keeps
+       residual dups that normal() would resolve, and the semantic-film
+       contract is about the former.
+
        v0.1.0 also asserted that the readback fired ZERO interactions, and that
        assertion was ACCIDENTALLY TRUE: on a one-step dup-free fixture resolving
        the state costs nothing at all, so a machine counter that never moved
        looked like a verified property. It is not one. The kernel's claim is
        that readback from quiescence fires no INTERACT-PLANE rule; ic32's
-       `interactions` is not plane-classified — it counts every fire(), app_sup
-       and APP-LAM alike — so comparing it against zero measures a different
-       quantity that happens to agree on the trivial case.
-
-       On the lowered add(const 2, const 3) it fires FOUR, resolving residual
-       projections the kernel's reference readback resolves by chasing without
-       counting. The states agree; the counters do not, and the counter was
-       never the claim. So the check is the one above — the pool is quiescent —
-       and the count is REPORTED rather than asserted. What a plane-classified
-       counter inside ic32 would buy is real and is declared open. */
+       `interactions` is not plane-classified — it counts every fire(), APP-LAM
+       and DUP-VAR alike — so comparing it against zero measures a different
+       quantity that happens to agree on the trivial case. On the lowered
+       add(const 2, const 3) it fires FOUR, resolving residual projections the
+       kernel's reference readback resolves by chasing without counting. The
+       states agree; the counters do not, and the counter was never the claim.
+       So the checked property is the quiescence above, and the count is
+       REPORTED rather than asserted. */
     long before_readback = interactions;
     Term rb = normal(root);
     long readback_steps = interactions - before_readback;
@@ -357,15 +639,32 @@ int main(int argc, char** argv){
     char nf_id[70]; snprintf(nf_id, sizeof(nf_id), "sem-%s", nf_hex);
     long film_interactions = before_readback;
 
+    if (g_measure){
+        printf("TERMINAL NORMAL_FORM %d %s 0\n", nf, final_id);
+        printf("NF %s\n", sb);
+        printf("NFID %s\n", nf_id);
+        printf("SIGLEN %zu\n", strlen(final_sig));
+        printf("INTERACTIONS %ld readback_steps=%ld\n", film_interactions, readback_steps);
+        for (int i = 0; i < NRULES; i++)
+            if (rule_count[i]) printf("FIRE %s %d\n", RULE_NAMES[i], rule_count[i]);
+        for (int i = 0; i < NRULES; i++)
+            if (!rule_count[i]) printf("NEVER %s\n", RULE_NAMES[i]);
+        printf("LOCUS t: %ld\n", locus_t);
+        printf("LOCUS d: %ld\n", locus_d);
+        printf("LOCUS v: %ld\n", locus_v);
+        free(final_sig);
+        return 0;
+    }
+
     char* fcommit = sfmt("TRVM-SEMFILM-v1.1|%s|NORMAL_FORM|%d|%s|%s|-|-|%s",
                          prev, nf, final_id, nf_id, PLANE_POOL);
     char film_id[65]; sha_of(fcommit, film_id); free(fcommit);
 
     printf("{\"ok\":true,");
-    printf("\"emitter\":\"ic32_film\",\"emitter_version\":\"0.2.0\",");
+    printf("\"emitter\":\"ic32_film\",\"emitter_version\":\"0.3.0\",");
     printf("\"domain\":\"TRVM-SEMFILM-v1.1\",");
     printf("\"source_term\":");
-    { printf("\""); for (const char* p = argv[1]; *p; p++){
+    { printf("\""); for (const char* p = term_arg; *p; p++){
         if (*p == '"' || *p == '\\') { putchar('\\'); putchar(*p); }
         else putchar(*p); } printf("\","); }
     printf("\"pre_sem_signature\":\"%s\",", first_sig);
@@ -377,7 +676,8 @@ int main(int argc, char** argv){
     printf("\"interactions\":%ld,\"readback_steps\":%ld,", film_interactions, readback_steps);
     printf("\"film\":{\"frames\":[");
     for (int i = 0; i < nf; i++){
-        printf("%s{\"i\":%d,\"plane\":\"INTERACT\",\"rule\":\"%s\",", i ? "," : "", i, fr[i].rule);
+        printf("%s{\"i\":%d,\"plane\":\"%s\",\"rule\":\"%s\",", i ? "," : "", i,
+               plane_of(fr[i].rule), fr[i].rule);
         printf("\"locus\":\"%s\",\"pre\":\"%s\",\"post\":\"%s\",", fr[i].locus, fr[i].pre, fr[i].post);
         printf("\"prev\":\"%s\",\"frame_id\":\"%s\"}",
                i ? fr[i-1].frame_id : "genesis", fr[i].frame_id);

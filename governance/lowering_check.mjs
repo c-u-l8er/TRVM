@@ -33,12 +33,13 @@
    strategy, NOT ONE DUP RULE EVER FIRES. Six APP-LAM frames, tree loci, and the
    residual dups dead by the end. The blocker was never their presence; it was
    firing them. So the precondition moved from PRESENCE to ENABLEDNESS and the
-   emitter now emits multi-frame films over dup-carrying terms, refusing by name
-   (`film-dup-rule-enabled`) where a dup rule actually becomes enabled.
+   emitter now emits multi-frame films over dup-carrying terms.
 
-   WHAT IS STILL NOT COVERED: the six DUP-* rules themselves, the `d:` and `v:`
-   loci, and BUDGET_EXHAUSTED terminals. A term needing any of them is refused,
-   not approximated.
+   WHAT IS STILL NOT COVERED, at v0.3.0: the two ERA rules and BUDGET_EXHAUSTED
+   terminals. The six DUP-* rules and the `d:`/`v:` loci left this list when
+   church_exp_2_2 was measured and built — and the list below is PROBED from
+   the emitter rather than typed here, because the typed version of it was
+   wrong for exactly as long as it took someone to notice.
 
    Run: node lowering_check.mjs   (exit 0 iff every case holds) */
 import { existsSync } from "node:fs";
@@ -664,9 +665,10 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
   // FILM-EVIDENCED AT B2.1. GPT passed this exact term to the existing
   // ic32_film and it already succeeds — so the input refinement witness gets
   // the same grade the no-input one has carried since round 26, without one
-  // line of new runtime semantics. It does NOT replace church_exp_2_2: every
-  // frame here is APP-LAM at tree loci, and the six DUP-* rules, the d:/v: loci
-  // and BUDGET_EXHAUSTED remain exactly as unexercised as they were.
+  // line of new runtime semantics. It did NOT replace church_exp_2_2 — every
+  // frame here is APP-LAM at tree loci — and that fixture has since been
+  // measured and built, so what this case shows is the INPUT half of the
+  // refinement carrying the film grade, not the runtime frontier.
   const fOk = await host.run(C_FILM, "TRVM-FILM-EXEC-v1", { argv: [okTerm] });
   const filmOk = fOk.ok && fOk.output?.ok ? fOk.output.film : null;
   const repOk = filmOk ? replaySemFilm(okTerm, filmOk, FloatRt) : { ok: false };
@@ -1023,8 +1025,22 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
     `kernel's own replaySemFilm accepts the whole chain on two runtime classes. So this leg is no ` +
     `longer OBSERVED-only: an execution the host drove AND a transition sequence an independent ` +
     `checker replayed are both present, and they were different claims all along. Every frame is ` +
-    `APP-LAM — the dups are carried, never fired — and a term where a DUP rule IS enabled is still ` +
-    `refused by name, which is where the six dup rules remain unbuilt`);
+    `APP-LAM — this fixture carries dups and fires none, which is a fact about the fixture and no ` +
+    `longer a limit of the emitter`);
+}
+
+/* ── 9b. WHAT THE NATIVE EMITTER STILL REFUSES, PROBED ───────────────────
+   This list was hand-typed for three rounds and the headline below printed it.
+   Hand-typed lists of what is unbuilt go stale in exactly one direction — the
+   flattering one is silence, and the unflattering one is a check that keeps
+   claiming a gap the round already closed, which is the RATCHET species B1.2.1
+   named. So the emitter is ASKED: a minimal APP-ERA term and a minimal DUP-ERA
+   term, and whatever it refuses is what is open. If a later round implements
+   them the probes stop refusing and this sentence changes itself. */
+const NATIVE_FILM_OPEN = [];
+for (const [label, probe] of [["APP-ERA", "(* x)"], ["DUP-ERA", "!{a,b} = *; (a b)"]]) {
+  const p = await host.run(C_FILM, "TRVM-FILM-EXEC-v1", { argv: [probe] });
+  if (!(p.ok && p.output?.ok)) NATIVE_FILM_OPEN.push(label);
 }
 
 console.log("═".repeat(96));
@@ -1049,8 +1065,11 @@ console.log(fail
       ? `; ${REFINEMENT_CHAIN.filter((n) => !n.exercised).map((n) => n.id).join(" and ")} are ` +
         `DECLARED and not exercised`
       : `, every one of them`) +
-    `. STILL NOT CLAIMED: the six DUP-* rules, the d:/v: loci and ` +
-    `BUDGET_EXHAUSTED terminals — a term needing any of them is refused by name, not approximated. ` +
+    `. STILL NOT CLAIMED, and PROBED rather than typed: ` +
+    `${NATIVE_FILM_OPEN.length
+      ? `${NATIVE_FILM_OPEN.join(" and ")} — a term needing either is refused by name, not ` +
+        `approximated — and BUDGET_EXHAUSTED terminals, which refuse rather than fall through`
+      : `no rule of the declared pool; every one has a native handler`}. ` +
     // DERIVED, because the hand-written version of this sentence said "stays
     // UNDECIDED" for a whole round after B1 decided it — green headline, green
     // cases, and the headline describing the world before the round that

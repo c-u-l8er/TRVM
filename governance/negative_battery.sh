@@ -996,12 +996,64 @@ for e in g['law_registry']['entries']:
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 # ── round 23: the execution plane originates evidence ───────────────────────
-run_case film-law-deleted "law film.native-emission@1 missing" "
+run_case film-law-deleted "law film.native-emission@2 missing" "
 import json
 g = json.load(open('invariant-grid.json'))
 g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
                                 if e['id'] != 'film.native-emission']
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case film-history-scrubbed "must stay on the record as history" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if not (e['id'] == 'film.native-emission' and e['revision'] == 1)]
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case film-orders-collapsed "ENUMERATION order and the LOCUS INDEX order are different" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'film.native-emission' and e['revision'] == 2:
+        e['statement'] = e['statement'].replace('BOTH ARE LOAD-BEARING', 'they are equivalent')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case film-measurement-unrecorded "measured before it was asserted" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'film.native-emission' and e['revision'] == 2:
+        e['statement'] = e['statement'].replace('TRANSCRIPTION THEOREM', 'weaker claim')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case film-terminal-by-loop-exit "concluded only after a fresh full-pool enumeration" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'film.native-emission' and e['revision'] == 2:
+        e['statement'] = e['statement'].replace('FRESH FULL-POOL ENUMERATION', 'loop exit')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case film-projection-guess "must REFUSE rather than choose when a dup cell" "
+src = open('bridge/ic32_film.c').read()
+src = src.replace('film-projection-not-unique', 'film-projection-picked')
+open('bridge/ic32_film.c','w').write(src)"
+
+run_case film-expected-table-in-emitter "contains the church_exp_2_2 fixture term" "
+src = open('bridge/ic32_film.c').read()
+src = src.replace('#define PLANE_POOL ',
+  '#define EXPECTED_FIXTURE \"((lf.lx.!&1001{c0,c1}=f;(c0 (c1 x)) X) S)\"\n#define PLANE_POOL ')
+open('bridge/ic32_film.c','w').write(src)"
+
+run_case film-expected-table-in-comparator "contains the church_exp_2_2 fixture term" "
+src = open('bridge/measure_compare.mjs').read()
+src = src.replace('const BUDGET = 4096;',
+  'const BUDGET = 4096;\nconst EXPECTED = { term: \"!&1001{c0,c1}\", frames: 21 };')
+open('bridge/measure_compare.mjs','w').write(src)"
+
+run_case film-comparator-absent "cites bridge/measure_compare.mjs, which is absent" "
+import os
+os.remove('bridge/measure_compare.mjs')"
 
 run_case film-scope-inflated "no longer states its scope as CHECKED refusals" "
 import json
@@ -1029,9 +1081,14 @@ src = open('bridge/ic32_film.c').read()
 src = src.replace('film-not-quiescent-at-terminal', 'film-terminal-noted')
 open('bridge/ic32_film.c','w').write(src)"
 
-run_case film-dup-scope-by-presence "must CHECK pool-quiescence at the terminal" "
+run_case film-era-scope-unnamed "must CHECK pool-quiescence at the terminal" "
 src = open('bridge/ic32_film.c').read()
-src = src.replace('film-dup-rule-enabled', 'film-dup-cell-present')
+src = src.replace('film-era-rule-not-implemented', 'film-rule-skipped')
+open('bridge/ic32_film.c','w').write(src)"
+
+run_case film-budget-untyped "must have a TYPED REFUSAL for the budget" "
+src = open('bridge/ic32_film.c').read()
+src = src.replace('film-budget-exhausted', 'film-stopped-early')
 open('bridge/ic32_film.c','w').write(src)"
 
 run_case accidental-check-unrecorded "must record why the readback INTERACTION-COUNT check" "
@@ -1982,7 +2039,8 @@ open('observed_execution_host.mjs','w').write(src)"
 
 run_case film-emitter-version-drifts "artifact_versions says" "
 src = open('bridge/ic32_film.c').read()
-src = src.replace('emitter_version\\\\\":\\\\\"0.2.0', 'emitter_version\\\\\":\\\\\"0.9.9')
+import re
+src = re.sub(r'(emitter_version\\\\\":\\\\\")[0-9.]+', r'\\g<1>9.9.9', src)
 open('bridge/ic32_film.c','w').write(src)"
 
 # ── B1.2.1: the three stale law statements ─────────────────────────────────

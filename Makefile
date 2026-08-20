@@ -152,6 +152,18 @@ gov-film: $(GOV)/bridge/ic32_film
 $(GOV)/bridge/ic32_film: $(GOV)/bridge/ic32_film.c $(GOV)/bridge/ic32_canon.c runtime/c/ic32.c
 	$(CC) $(CFLAGS) -o $@ $<
 
+# Round 27 B3, and DELIBERATELY NOT IN `governance`. The C↔JS float-plane
+# measurement diff: both relations run over the whole 24-vector corpus and the
+# film fixtures, and the tool reports whether they are the same measurement. It
+# is the instrument the conformance round was built ON, not the gate — measure
+# first, and only then write down what a test expects. It exits nonzero on
+# disagreement, because a comparator that cannot report a difference is a
+# display; putting it in the gate would be a different claim than the one it
+# makes, which is a measurement and not a theorem.
+gov-measure: $(GOV)/bridge/ic32_film
+	@echo "==== [governance] MEASUREMENT (non-gating) — native float plane vs the JS oracle ===="
+	@cd $(GOV) && $(NODE) bridge/measure_compare.mjs
+
 # Round 25. The source language reaches the governed runtime: canonical
 # lowering, native execution the host observes, structural decode, and the
 # refinement equality — three obligations, six identities, none collapsed. The

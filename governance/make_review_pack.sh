@@ -31,7 +31,12 @@ fs = list(m['case_inputs']) + list(m['tools'])
 fs += sorted(f for f in os.listdir('.') if re.match(m['ledgers_pattern'], f))
 fs += sorted(f for f in os.listdir('.') if re.match(m['probes_pattern'], f))
 print(' '.join(sorted(set(fs))))")
-for f in $FILES; do cp "$BASE/$f" "$OUT/governance/"; done
+# subdirectory-preserving, because artifacts.json now declares a tool inside
+# bridge/. The flat copy would have landed governance/bridge/measure_compare.mjs
+# at governance/measure_compare.mjs — present, manifested, and at a path the
+# pack's own verify.sh does not run. A manifest authenticates BYTES, not
+# LOCATION, which is round 21's lesson one directory level down.
+for f in $FILES; do mkdir -p "$OUT/governance/$(dirname "$f")"; cp "$BASE/$f" "$OUT/governance/$f"; done
 cp "$TRVM/Makefile" "$OUT/Makefile"
 mkdir -p "$OUT/runtime/c" "$OUT/governance/bridge" "$OUT/docs/spec/conformance/vectors"
 cp "$TRVM/runtime/c/ic32.c" "$OUT/runtime/c/" 2>/dev/null
@@ -137,6 +142,13 @@ else
   if gcc -O2 -o governance/bridge/ic32_film governance/bridge/ic32_film.c 2>/dev/null
   then run "native semantic film"   governance node bridge/film_check.mjs
        run "lowering refinement"    governance node lowering_check.mjs
+       # NON-GATING, and run anyway. measure_compare.mjs is the instrument the
+       # float-plane round was built on, not part of `make governance`; a
+       # reviewer should be able to re-derive the C-vs-JS agreement over the
+       # whole corpus rather than read that it held. It exits nonzero on
+       # disagreement, so `run` reports it honestly — but a difference here is a
+       # MEASUREMENT result and the verdict line below says so.
+       run "measurement (non-gating)" governance node bridge/measure_compare.mjs
   else skip "native semantic film" "ic32_film.c did not compile here"
        skip "lowering refinement"  "ic32_film.c did not compile here"; fi
 fi

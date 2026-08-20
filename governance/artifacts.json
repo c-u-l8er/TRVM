@@ -30,7 +30,8 @@
   "harness_selftest.sh",
   "runner_contract.sh",
   "make_review_pack.sh",
-  "measure_exp22.mjs"
+  "measure_exp22.mjs",
+  "bridge/measure_compare.mjs"
  ],
  "case_input_note": "derive_protocol.mjs and derive_worker.mjs moved from tools to case_inputs at v1.16: their SOURCE now carries invariants grid_check asserts (no __reads path, reads from read_grants, executor-asserted implementation_id), so they must be present in every scratch case for those assertions to run. The batteries stay tools \u2014 they are runners, not artifacts under test.",
  "probes_pattern": "^probe_.*\\.mjs$",
@@ -133,5 +134,5 @@
   "probe_reread_v13_repro.mjs"
  ],
  "gating_probes_note": "The PAIRED probes, and the only ones that gate: each must still BREACH against its verbatim frozen copy and be CONFINED against live, so it fails if a future edit repairs the frozen side instead of the live one. Every other probe_*_repro.mjs freezes a boundary that is DECLARED OPEN and exits NONZERO BY DESIGN \u2014 running those as gates makes a review pack report four failures for witnesses that are behaving correctly. Round 23 did exactly that, by replacing a hand-typed list in verify.sh with a glob; the list lives here now and grid_check checks the Makefile against it, so the two cannot drift and neither is a glob.",
- "measurement_tools_note": "measure_exp22.mjs is a MEASUREMENT, not a gate. It drives the reference kernel over the canonical church_exp_2_2 state and prints the frame count, rule sequence, locus sequence and pre/post ids so the next round builds only what the measurement requires. It asserts nothing and exits 0 regardless \u2014 round 26's lesson was that the film emitter's blocker had been mis-stated because nobody measured which rules actually FIRE, and this exists so that cannot happen twice. Declared as a tool so grid_check's present-but-undeclared refusal does not fire and so the negative battery's case trees carry it."
+ "measurement_tools_note": "TWO MEASUREMENT TOOLS, and neither is a gate. measure_exp22.mjs drives the reference kernel over the canonical church_exp_2_2 state and prints the frame count, rule sequence, locus sequence and pre/post ids; it asserts nothing and exits 0 regardless. bridge/measure_compare.mjs runs BOTH relations \u2014 the JS reference and `ic32_film --measure` \u2014 over the whole 24-vector corpus plus the film fixtures, and DIFFS them; it exits nonzero on disagreement, because a comparator that cannot report a difference is a display, but it is not part of `make governance`: it is the instrument the conformance round is built on, not the gate. NO EXPECTED TABLE LIVES IN EITHER \u2014 no frame count, no rule sequence and no locus for any fixture appears in measure_compare.mjs or in ic32_film.c, because a conformance theorem whose expected values were transcribed from the other implementation is a transcription theorem. Round 26's lesson was that the film emitter's blocker had been mis-stated because nobody measured which rules actually FIRE; round 27's is that agreement is worth nothing until the comparator has been shown to DIFFER, which three perturbed C builds do (law:evidence.instrument-nonvacuity@1). Declared as tools so grid_check's present-but-undeclared refusal does not fire and so the negative battery's case trees carry them."
 }
