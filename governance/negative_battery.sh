@@ -1810,6 +1810,40 @@ open('lowering_check.mjs','w').write(src)"
 # keeping it would have meant growing an embedded copy of the module inside its
 # own test. The three B2.1 cases above replace it.
 
+# ── B2.1.1: the verifier may not authenticate a second snapshot ────────────
+run_case verifier-resnapshots-the-template "verifiers must OWN what they authenticate" "
+src = open('lowering.mjs').read()
+src = src.replace('    [\"target_template_sem_id\", targetTemplateSemId(template)],',
+                  '    [\"target_template_sem_id\", targetTemplateSemId(ownCanonical(template))],')
+open('lowering.mjs','w').write(src)"
+
+run_case verifier-entry-unowned "verifiers must OWN what they authenticate" "
+src = open('lowering.mjs').read()
+src = src.replace('  return verifyInstantiationReceiptOwned(...owned);',
+                  '  return verifyInstantiationReceiptOwned(template, inputs, receipt);')
+open('lowering.mjs','w').write(src)"
+
+run_case emission-verifier-resnapshots "verifiers must OWN what they authenticate" "
+src = open('lowering.mjs').read()
+src = src.replace('  if (receipt.closed_template_sem_id !== closedTemplateSemId(closed_template))',
+                  '  if (receipt.closed_template_sem_id !== closedTemplateSemId(ownCanonical(closed_template)))')
+open('lowering.mjs','w').write(src)"
+
+run_case owned-verifier-unexported "verifiers must OWN what they authenticate" "
+src = open('lowering.mjs').read()
+src = src.replace('export function verifyInstantiationReceiptOwned', 'function verifyInstantiationReceiptOwned')
+open('lowering.mjs','w').write(src)"
+
+run_case verifier-witness-dropped "must carry verifiers-own-what-they-authenticate" "
+src = open('lowering_check.mjs').read()
+src = src.replace('verifiers-own-what-they-authenticate', 'verifiers-noted')
+open('lowering_check.mjs','w').write(src)"
+
+run_case grid-stops-importing-the-module "lowering.mjs could not be imported" "
+src = open('lowering.mjs').read()
+src = src.replace('export const LOWERING_VERSION', 'export const LOWERING_VERSION; syntax error here =')
+open('lowering.mjs','w').write(src)"
+
 # ── B2.1: the snapshot bug, the bare vocabulary, the emission split ────────
 run_case instantiate-reads-inputs-twice "must SNAPSHOT both arguments at entry" "
 src = open('lowering.mjs').read()
@@ -1906,7 +1940,7 @@ json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 run_case lowering-version-drifts "artifact_versions says" "
 src = open('lowering.mjs').read()
-src = src.replace('export const LOWERING_VERSION = \"0.7.0\";',
+src = src.replace('export const LOWERING_VERSION = \"0.7.1\";',
                   'export const LOWERING_VERSION = \"0.9.9\";')
 open('lowering.mjs','w').write(src)"
 

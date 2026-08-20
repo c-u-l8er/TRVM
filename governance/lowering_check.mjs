@@ -64,6 +64,7 @@ import {
   INSTANTIATION_RECEIPT_FIELDS, SUPERSEDED_PROSE_RULE_SEM_IDS, INPUT_PORT_SPEC,
   EMISSION_SEMANTICS, EMISSION_SEM_ID, EMISSION_RECEIPT_FIELDS, emissionReceipt,
   closedTemplateSemId, verifyInstantiationReceipt, verifyEmissionReceipt,
+  verifyInstantiationReceiptOwned, verifyEmissionReceiptOwned,
 } from "./lowering.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -851,6 +852,101 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
     `add(2,3) with {} the closed template's canonical bytes EQUAL the open template's ` +
     `(${sameBytes}) and their ids DIFFER (${differentIds}), because "what the compiler produced" and ` +
     `"what an invocation closed" are different things that happen to coincide when there are no ports`);
+}
+
+
+/* ── B2.1.1. THE VERIFIER MAY NOT AUTHENTICATE A SECOND SNAPSHOT ─────────
+      GPT's find against B2.1, and the same defect one layer up from the one
+      B2.1 fixed. B2.1 established that THE RELATION may not bind one snapshot
+      and identify another; its new verifiers then verified one snapshot and
+      authenticated another.
+
+      verifyInstantiationReceipt called instantiate() — which snapshots the
+      template internally — and then targetTemplateSemId(ownCanonical(template)),
+      a SECOND traversal of the caller's object. So a template answering "x" then
+      "y" satisfied a receipt claiming port("y") as the source template, {x:2} as
+      the inputs and church(2) as the result: three claims TRUE OF THREE
+      DIFFERENT TEMPLATES and of no single immutable one, because port("y") with
+      {x:2} refuses outright. verifyEmissionReceipt had it across its two
+      ownCanonical calls.
+
+      THE RECEIPT IS SNAPSHOT TOO. It arrives from whoever is asking to be
+      believed, so a receipt whose fields answer differently on successive reads
+      is the same attack wearing the other hat. */
+{
+  // ── the instantiation half ──
+  let n = 0;
+  const hostileTmpl = {};
+  Object.defineProperty(hostileTmpl, "t", { enumerable: true, value: "port" });
+  Object.defineProperty(hostileTmpl, "source_name", { enumerable: true, configurable: true,
+    get() { return ++n === 1 ? "x" : "y"; } });
+  const hybrid = instantiationReceipt(
+    targetTemplateSemId(T.port("y")),                                  // "the source was port(y)"
+    inputsSemId({ x: 2 }),                                             // "the inputs were {x:2}"
+    instantiate(T.port("x"), { x: 2 }).closed_template_sem_id);        // "the result was church(2)"
+  const vi = verifyInstantiationReceipt(hostileTmpl, { x: 2 }, hybrid);
+  // and port("y") with {x:2} refuses on its own, so nothing immutable satisfies it
+  const yAlone = instantiate(T.port("y"), { x: 2 });
+
+  // ── the emission half ──
+  let k = 0;
+  const hostileClosed = {};
+  Object.defineProperty(hostileClosed, "t", { enumerable: true, value: "church" });
+  Object.defineProperty(hostileClosed, "n", { enumerable: true, configurable: true,
+    get() { return ++k === 1 ? 2 : 3; } });
+  const fakeCanon = (t) => "canon:" + createHash("sha256").update(t).digest("hex");
+  const hybridE = emissionReceipt(
+    closedTemplateSemId(T.church(3)),                                  // "the closed template was 3"
+    fakeCanon(emit(T.church(2))));                                     // "the term was 2"
+  const ve = verifyEmissionReceipt(hostileClosed, hybridE, fakeCanon);
+
+  // ── the RECEIPT is snapshot too, and the honest claim about that is
+  //    narrower than the other two. No live exploit existed: no verifier reads
+  //    a receipt field twice today, so snapshotting it is DEFENCE IN DEPTH
+  //    rather than a defect being closed. What it buys is that the receipt is
+  //    PINNED to one read — a future verifier that does read a field twice
+  //    cannot be split, and the property is checkable now rather than assumed
+  //    later. Measured with the getter answering WRONG first: the snapshot
+  //    governs, so the second, honest answer is unreachable and the receipt is
+  //    refused on what it actually said when it was read.
+  const low2 = lower(PROGRAM);
+  const inst2 = instantiate(low2.template, {});
+  let r = 0;
+  const pinnedReceipt = { instantiation_sem_id: INSTANTIATION_SEM_ID,
+    inputs_sem_id: inst2.inputs_sem_id, closed_template_sem_id: inst2.closed_template_sem_id };
+  Object.defineProperty(pinnedReceipt, "target_template_sem_id", {
+    enumerable: true, configurable: true,
+    get() { return ++r === 1 ? "tmpl-something-else" : low2.target_template_sem_id; } });
+  const vr = verifyInstantiationReceipt(low2.template, {}, pinnedReceipt);
+
+  // ── and the HONEST paths must still verify, or this proves only that the
+  //    verifier says no to everything ──
+  const good = instantiationReceipt(low2.target_template_sem_id, inst2.inputs_sem_id,
+    inst2.closed_template_sem_id);
+  const goodE = emissionReceipt(inst2.closed_template_sem_id, fakeCanon(emit(inst2.closed_template)));
+
+  R("verifiers-own-what-they-authenticate",
+    !vi.ok && /^verify-instantiation-mismatch/.test(vi.reason)
+      && !ve.ok && /^verify-emission-mismatch/.test(ve.reason)
+      && !vr.ok && /^verify-instantiation-mismatch/.test(vr.reason) && r === 1
+      && n === 1 && k === 1
+      && !yAlone.ok && /^instantiate-missing-input: y/.test(yAlone.reason)
+      && verifyInstantiationReceipt(low2.template, {}, good).ok === true
+      && verifyEmissionReceipt(inst2.closed_template, goodE, fakeCanon).ok === true
+      && typeof verifyInstantiationReceiptOwned === "function"
+      && typeof verifyEmissionReceiptOwned === "function"
+      && verifyEmissionReceipt(inst2.closed_template, goodE, "not-a-function").reason
+         === "verify-emission-no-canonicaliser",
+    `a template answering "x" then "y" is traversed ONCE (${n}) and its hybrid receipt is ` +
+    `${vi.reason} — three claims each true of a different template and of no single immutable one, ` +
+    `since port("y") with {x:2} is ${yAlone.reason}. The emission half is ${ve.reason} after ` +
+    `${k} traversal. The RECEIPT is snapshot as well — no verifier reads a field twice today so nothing ` +
+    `was exploitable there, but it is now PINNED to one read (${r}) and answers on what it actually ` +
+    `said, which is checkable now instead of assumed when someone adds a second read. B2.1 ruled that the RELATION may not bind one snapshot and identify another; this ` +
+    `is the same rule for the PROOF CHECKER, which may not verify one snapshot and authenticate ` +
+    `another. Honest receipts still verify on both relations, so the verifier is not merely refusing ` +
+    `everything, and the canonicaliser stays a CAPABILITY the caller grants rather than an oracle ` +
+    `this module picks for itself`);
 }
 
 

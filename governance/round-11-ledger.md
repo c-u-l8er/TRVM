@@ -1791,3 +1791,91 @@ exercised APP-LAM. `exp_2_2` reaches DUP-LAM, both SUP cases, DUP-VAR, DUP-APP, 
 and `v:` loci; then the purpose-built **DUP-ERA** witness, because `exp_2_2` does not exercise it and
 six rules from one large term that happened to terminate is coverage by hope. Still declared open and
 unchanged: source-refusal ↔ instantiation-refusal preservation.
+
+---
+
+## Round 27, pass B2.1.1 — the verifier closure
+
+**GPT's find against B2.1, and it is the defect B2.1 itself closed, one layer up.** B2.1 established
+that *the relation may not bind one snapshot and identify another*, and then shipped verifiers that
+**verified one snapshot and authenticated another**.
+
+**258. Both false positives, reproduced before repair.** `verifyInstantiationReceipt` called
+`instantiate()` — which snapshots the template internally — and then
+`targetTemplateSemId(ownCanonical(template))`, a **second traversal of the caller's object**. So a
+template whose `source_name` answers `"x"` then `"y"` satisfied a receipt asserting:
+
+```
+target_template_sem_id = port("y")   inputs_sem_id = {x:2}   closed_template_sem_id = church(2)
+```
+
+**Three claims, each true of a different immutable template and true of no single one** — `port("x")`
+with `{x:2}` gives `church(2)`, and `port("y")` with `{x:2}` refuses outright as
+`instantiate-missing-input`. The verifier returned `ok: true` because the first traversal supplied the
+instantiation half and the second supplied the source-identity half. `verifyEmissionReceipt` had it
+across its two `ownCanonical` calls: a closed template answering `church(2)` then `church(3)` satisfied
+a receipt pairing the identity of 3 with the emitted term of 2.
+
+**259. The repair is round 27A.2's convention, and the RECEIPT is untrusted too.** Each verifier owns
+every untrusted argument once at entry — template, inputs or closed template, **and the receipt, which
+arrives from whoever is asking to be believed** — and delegates to an `*Owned` helper whose suffix is a
+**precondition** and which never reaches back to a caller object. The canonicaliser stays a
+**capability the caller grants** rather than data to snapshot, because the module defining a relation
+must not choose the oracle that judges it.
+
+**260. And the honest claim about the receipt is narrower than the other two, so it is stated that
+way.** No verifier reads a receipt field twice today, so snapshotting it closes **no live exploit** —
+it is defence in depth, and the witness measures what it actually buys: the receipt is **pinned** to
+one read, so a future verifier that does read a field twice cannot be split. My first draft of that
+case asserted a hostile receipt would be *refused*; it is not, and correctly so — the snapshot collapses
+it into whatever it said on the single read. **Claiming a defect there would have been an overclaim in
+the flattering direction**, and the case now measures pinning instead.
+
+**261. THE ASSERTION-STRENGTH HIERARCHY, GPT's ruling on the three-round pattern.**
+
+> **RUNTIME DATA > BEHAVIOURAL API > PARSED AST > RAW TEXT**, and raw-text matching may not stand in
+> for structure.
+
+`grid_check` now **imports** `lowering.mjs`. **Fourteen assertions** moved off regex: record contents
+are read as data, API shape by **calling** the functions. Text is reserved for properties that are
+genuinely textual — a version constant, a forbidden phrase, a NUL byte — or for code-shape obligations
+that would need a JS parser this tree does not have, and those are marked **TEXT-TIER** in place so a
+reader can see which rung they are on. GPT explicitly declined the larger option of parsing
+`lowering.mjs` into data, as too big for the problem; that judgment is taken.
+
+This kills the class for the converted assertions: `"ctmpl-"` was matched by
+`codomain_identity_domain` while the real constructor's prefix had been renamed, and **calling
+`closedTemplateSemId()` cannot be fooled that way**.
+
+**262. THE CONVERSION LOST TWO PROPERTIES, AND THE BATTERY CAUGHT BOTH IN ONE RUN.** `typeof f ===
+"function"` **cannot see a deleted parameter**: removing `canonicaliseTarget` from
+`verifyEmissionReceipt` leaves every behavioural probe passing, because `undefined` is not a function
+either way. The same for `emissionReceipt` losing its second parameter. Both now assert **arity on the
+function object**. *A stronger representation is not automatically a stronger assertion* — moving up
+the hierarchy has its own failure mode, and it is the one where the new form is silently weaker than
+the regex it replaced.
+
+**263. A stale comment, one relation behind.** The block above `instantiationReceipt` still drew
+instantiation producing "closed term BYTES" and needing the runtime canonicaliser — the pre-split
+world. The implementation was correct and its own explanation described the previous architecture.
+Third time for this file.
+
+**264. Gate.** grid **v1.40.0** — 87 entries / 374 citations · `lowering.mjs` **0.7.1** · negative
+battery **281/281** (6 new) · lowering **22/22** · derive 45/45 · realm 24/24 · bridge 48/48 · film
+16/16 · harness 9/9 · runner 3/3. `scheduler_certificate.json` byte-identical — **thirty-fourth**
+consecutive round. `derivation.instantiation-identity` is the **first** superseded revision in this
+line carrying `accepted_false_verdict: true` — the verifier genuinely returned `ok:true` for a receipt
+that does not hold, and the record says so rather than filing it as staleness.
+
+**265. Compiler governance stops here.** GPT's instruction, and it is the right call: the next work is
+`church_exp_2_2` — DUP-LAM, both SUP cases, DUP-VAR, DUP-APP, APP-SUP and the `d:`/`v:` loci — then the
+dedicated **DUP-ERA** witness. **Not** an `input_footprint_sem_id`: `consumed_inputs` is
+`templatePorts(target_template)` and therefore **statically derivable** from an id already committed,
+so a footprint identity today would be a second name for information the template already carries. It
+earns one when consumption becomes **execution-dependent** — a conditional or lazy read where two runs
+of one template consume different subsets — and at that point round 15's grant/footprint/trace
+distinction becomes exact rather than analogous. **And not** a relabelling of the 24 runtime vectors as
+emission vectors: they test a *runtime* and emission produces the *input* to one. A small
+`EMISSION_CONFORMANCE-v1` corpus over `{closed_template → target_term_sem_id}` composes with the
+existing runtime oracle downstream; I-4a is already evidence of the second, weaker emission property —
+different bytes, same normal form.

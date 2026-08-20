@@ -35,7 +35,7 @@
    Run: node grid_check.mjs   (exit 0 iff consistent) */
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 
 // ── ARTIFACT ROOT (v2.19) ─────────────────────────────────────────────────
@@ -225,7 +225,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0", "1.35.0", "1.36.0", "1.37.0", "1.38.0", "1.39.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0", "1.35.0", "1.36.0", "1.37.0", "1.38.0", "1.39.0", "1.40.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -1177,6 +1177,35 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
       }
       // ── v1.27: the source language reaches the governed runtime ───────
       {
+        /* ── B2.1.1: THE ASSERTION-STRENGTH HIERARCHY, GPT's ruling ────────
+           RUNTIME DATA  >  BEHAVIOURAL API  >  PARSED AST  >  RAW TEXT
+           and raw-text matching MAY NOT STAND IN FOR STRUCTURE.
+
+           Three consecutive rounds produced an assertion satisfied by a
+           coincidental second occurrence of its own search text: `implemented:
+           false` matched a COMMENT explaining the overbinding bug;
+           `consumed_inputs:` was answered by instantiate()'s RETURN FIELD rather
+           than the semantic record it guards; and `"ctmpl-"` matched
+           codomain_identity_domain while the real constructor's prefix had been
+           renamed. Each was caught by the negative battery, which is the
+           instrument working — but the battery should not be the only thing
+           standing between a regex and a coincidence.
+
+           So this block IMPORTS the module. A record's contents are read as
+           DATA; an API's shape is read by CALLING it; and text matching is
+           reserved for properties that are genuinely textual — a version
+           constant, a forbidden phrase, a NUL byte — or for code-shape
+           obligations that would need a JS parser this tree does not have, which
+           are marked TEXT-TIER below so a reader knows which rung they are on. */
+        let LOW = null, lowImport = null;
+        try { LOW = await import(pathToFileURL(A("lowering.mjs")).href); }
+        catch (e) { lowImport = e.message; }
+        ok(LOW !== null,
+          `lowering.mjs could not be imported, so every DATA and BEHAVIOURAL assertion below is ` +
+          `unmeasurable: ${lowImport}. An unimportable module is a failure, never a skip`);
+        // a no-op stand-in so one import failure reports once rather than
+        // throwing N times and hiding behind its own stack trace
+        const L = LOW ?? {};
         const lowSrc = existsSync(A("lowering.mjs")) ? readFileSync(A("lowering.mjs"), "utf8") : "";
         // COMMENT-STRIPPED, for assertions about what the CODE says. B1.1
         // wrote two comments containing the literal text `implemented: false`
@@ -1236,10 +1265,13 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         // "keep it DEFERRED" defect, one file over. `input` lowers now, so the
         // refusal is GONE rather than repointed, and neither of the two dead
         // refusal names may come back.
-        ok(/INPUTS_MODEL = Object\.freeze\(\{\s*decided: true,\s*implemented: true/.test(lowNoc) &&
+        // DATA + BEHAVIOURAL. The dead-refusal half stays TEXT-TIER on purpose:
+        // "this string appears nowhere" IS a text property.
+        ok(L.INPUTS_MODEL?.decided === true && L.INPUTS_MODEL?.implemented === true &&
+           L.IMPLEMENTED_LOWERED_OPS?.join() === "const,add,input" &&
+           L.lower?.({ op: "input", name: "x" })?.ok === true &&
            !/lower-input-not-implemented/.test(lowNoc) &&
-           !/lower-inputs-undecided/.test(lowNoc) &&
-           /IMPLEMENTED_LOWERED_OPS = Object\.freeze\(\["const", "add", "input"\]\)/.test(lowNoc),
+           !/lower-inputs-undecided/.test(lowNoc),
           "lowering.mjs must record the inputs model as DECIDED and IMPLEMENTED, with `input` in the " +
           "implemented op list and BOTH dead refusal names gone. lower-inputs-undecided could not " +
           "distinguish 'we have not ruled' from 'we have ruled and not written it'; " +
@@ -1265,7 +1297,8 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "the template encoding must record WHY allocation cannot be semantic: a template has no " +
           "binder names and no dup labels, so I-4a is a property of the data structure rather than a " +
           "convention the emitter is asked to respect");
-        ok(/lowered_ops: Object\.freeze\(\["const", "add", "input"\]\)/.test(lowNoc),
+        // DATA. Was a regex over source text for the exact literal.
+        ok(L.LOWERING_SEMANTICS?.lowered_ops?.join() === "const,add,input",
           "the hashed lowering semantics must include `input`. B1 left it out, so B2 adding it would " +
           "have moved LOWERING_SEM_ID — implementing a frozen rule re-identifying the relation, " +
           "which is the whole thing B1.1 set out to prevent");
@@ -1283,9 +1316,11 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         // changing the add combinator changed the executable term's bytes and
         // left INSTANTIATION_SEM_ID, the template id and the template-encoding
         // id all standing still. A semantic dependency behind a symbol name.
-        ok(/export const TARGET_EXECUTABLE_ENCODING_SEM_ID =/.test(lowNoc) &&
-           /TRVM-TARGET-EXECUTABLE-ENC-v1\|" \+ canonicalBytes\(TARGET_ENCODING\)/.test(lowNoc) &&
-           /codomain_encoding_sem_id: TARGET_EXECUTABLE_ENCODING_SEM_ID/.test(lowNoc),
+        // DATA for the bindings; TEXT-TIER for the one thing data cannot show —
+        // that the id is hashed over TARGET_ENCODING's BYTES rather than a label.
+        ok(L.TARGET_EXECUTABLE_ENCODING_SEM_ID?.startsWith("xenc-") &&
+           L.EMISSION_SEMANTICS?.codomain_encoding_sem_id === L.TARGET_EXECUTABLE_ENCODING_SEM_ID &&
+           /TRVM-TARGET-EXECUTABLE-ENC-v1\|" \+ canonicalBytes\(TARGET_ENCODING\)/.test(lowNoc),
           "the EXECUTABLE target encoding must be CONTENT-BOUND and named as instantiation's codomain " +
           "by id. Naming it 'TRVM-TERM-CANON-v1 … via emit()' in prose is a label anyone may claim — " +
           "the objection the primitive ruling already raised against a bare componentReachability — " +
@@ -1296,8 +1331,9 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         // LoweringReceipt ever issued, for a relation lowering does not perform.
         // Same class as the receipt still ending at target_term_sem_id, which
         // B1.2 fixed one declaration away and missed here.
-        ok(!/^\s*target_encoding: TARGET_ENCODING,/m.test(lowNoc) &&
-           /op_lowering_rules: Object\.freeze/.test(lowNoc),
+        // DATA.
+        ok(!("target_encoding" in (L.LOWERING_SEMANTICS ?? {})) &&
+           typeof L.LOWERING_SEMANTICS?.op_lowering_rules === "object",
           "LOWERING_SEMANTICS must NOT bind the executable encoding, and must state its per-op map " +
           "instead. Lowering's codomain is the TEMPLATE; binding it to an encoding two layers " +
           "downstream makes an emitter change re-identify a relation that did not change. Removing " +
@@ -1308,11 +1344,13 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         // `lower-*` source-fragment refusals that cannot arise while emitting,
         // and lowering claimed emit's two, neither reachable from lower().
         {
-          const encBlock = lowNoc.slice(lowNoc.indexOf("export const TARGET_ENCODING"),
-            lowNoc.indexOf("export const TARGET_EXECUTABLE_ENCODING_SEM_ID"));
-          const lowBlock = lowNoc.slice(lowNoc.indexOf("refusal_semantics"), lowNoc.indexOf("totality:"));
-          ok(!/"lower-/.test(encBlock) && /"emit-unbound-port"/.test(encBlock) &&
-             !/emit-unbound-port|template-malformed/.test(lowBlock),
+          // DATA. This was two hand-sliced source windows — the device that let
+          // consumed_inputs be answered by the wrong field one round later.
+          const encR = L.TARGET_ENCODING?.refusals ?? [];
+          const lowR = L.LOWERING_SEMANTICS?.refusal_semantics ?? [];
+          ok(!encR.some((r) => r.startsWith("lower-")) && encR.includes("emit-unbound-port") &&
+             !lowR.some((r) => r === "emit-unbound-port" || r === "template-malformed") &&
+             lowR.length > 0 && lowR.every((r) => r.startsWith("lower-")),
             "the refusal vocabularies must belong to the records that own them. The EXECUTABLE " +
             "encoding's refusals are EMISSION's; a source-fragment refusal such as lower-negative " +
             "cannot arise while emitting, and once these bytes carry an identity, renaming one would " +
@@ -1337,11 +1375,12 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         // the round that FIXED what it was guarding. Requiring an exercised
         // flag on EVERY node, and a why_not on every node that lacks one, holds
         // in both states and is what the check actually means.
-        ok(/export const REFINEMENT_CHAIN = Object\.freeze/.test(lowNoc) &&
-           (lowNoc.match(/exercised: (?:true|false)/g) ?? []).length ===
-             (lowNoc.match(/\{ id: "[a-z_]+_sem_id", kind:/g) ?? []).length &&
-           (lowNoc.match(/exercised: false/g) ?? []).length ===
-             (lowNoc.match(/why_not:/g) ?? []).length,
+        // DATA. Counting two regex families against each other was a proxy for
+        // "every node has a flag"; the array says so directly.
+        ok(Array.isArray(L.REFINEMENT_CHAIN) && L.REFINEMENT_CHAIN.length > 0 &&
+           L.REFINEMENT_CHAIN.every((n) => typeof n.id === "string" &&
+             typeof n.exercised === "boolean" &&
+             (n.exercised || typeof n.why_not === "string")),
           "the identity chain must be MACHINE-READABLE with an exercised flag per node, so the " +
           "anti-collapse set is derived rather than hand-typed. B1.2 added target_template_sem_id to " +
           "the chain and not to the set, and the check went on proving a six-way claim about a " +
@@ -1368,10 +1407,11 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         // file for `target_term: emit(` and matched instantiate()'s own
         // emission — a check that would have refused the correct architecture
         // while claiming lowering still had a shortcut.
-        ok(!/target_term/.test(lowNoc.slice(lowNoc.indexOf("export function lower(ast)"),
-             lowNoc.indexOf("export function loweringReceipt("))) &&
-           !/ports\.length \? out :/.test(lowNoc) &&
-           /export function instantiate\(template, inputs\)/.test(lowNoc),
+        // BEHAVIOURAL. Call it and look at what comes back, rather than slicing
+        // the source — the version that sliced the WHOLE file matched
+        // instantiate()'s own emission and would have refused the correct shape.
+        ok(!("target_term" in (L.lower?.({ op: "const", value: 1 }) ?? { target_term: 1 })) &&
+           typeof L.instantiate === "function",
           "lower() must not return a target_term. Once emission belongs to the instantiation " +
           "relation, a convenience field emitting closed templates is a SECOND PATH to an executable " +
           "term — the official one through instantiate() and a shortcut through lowering. That is how " +
@@ -1379,27 +1419,34 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "rather than in an API");
         // AND instantiate() MUST NOT MINT THE ID OF ITS OWN OUTPUT.
         {
-          const instBlock = lowNoc.slice(lowNoc.indexOf("export function instantiate("),
-            lowNoc.indexOf("export function instantiationReceipt("));
-          ok(!/target_term_sem_id/.test(instBlock) &&
-             /export function instantiationReceipt\(target_template_sem_id, inputs_sem_id, closed_template_sem_id\)/
-               .test(lowNoc) &&
-             /export function emissionReceipt\(closed_template_sem_id, target_term_sem_id\)/.test(lowNoc) &&
-             /instantiation-receipt-incomplete/.test(lowNoc),
+          // BEHAVIOURAL: instantiate a real template and inspect the result.
+          const probe = L.lower?.({ op: "const", value: 2 });
+          const inst = probe?.ok ? L.instantiate(probe.template, {}) : null;
+          ok(inst?.ok === true && !("target_term_sem_id" in inst) && !("target_term" in inst) &&
+             (L.INSTANTIATION_RECEIPT_FIELDS ?? []).join() ===
+               "target_template_sem_id,instantiation_sem_id,inputs_sem_id,closed_template_sem_id" &&
+             (L.EMISSION_RECEIPT_FIELDS ?? []).join() ===
+               "closed_template_sem_id,emission_sem_id,target_term_sem_id" &&
+             (() => { try { L.instantiationReceipt("a", "b", undefined); return false; }
+               catch (e) { return /^instantiation-receipt-incomplete/.test(e.message); } })() &&
+             // and the same obligation on EMISSION's receipt, which the first
+             // conversion left unmeasured — the battery found it immediately
+             L.emissionReceipt?.length === 2 &&
+             (() => { try { L.emissionReceipt("a", undefined); return false; }
+               catch (e) { return /^emission-receipt-incomplete/.test(e.message); } })(),
             "instantiate() must not compute target_term_sem_id. An instantiator that emitted bytes " +
             "AND certified their semantic id would produce the artifact and the certificate from one " +
             "source, so a wrong emission would carry a matching id and verify against itself. The " +
             "kernel canonicalises the bytes and the receipt is built around that id — the same " +
             "discipline that keeps a LoweringReceipt from minting the term's identity");
         }
-        ok(/emission_split_trigger:/.test(
-             lowNoc.slice(lowNoc.indexOf("INSTANTIATION_STATUS = Object.freeze"),
-               lowNoc.indexOf("INSTANTIATION_SPEC"))) &&
-           !/emission_split_trigger/.test(
-             lowNoc.slice(lowNoc.indexOf("INSTANTIATION_SEMANTICS = Object.freeze"),
-               lowNoc.indexOf("INSTANTIATION_STATUS = Object.freeze"))) &&
-           /independently VERSIONED or REPLACEABLE/.test(lowSrc) &&
-           /EXTERNALLY OBSERVED/.test(lowSrc),
+        // DATA for WHICH record holds it, TEXT-TIER for the four conditions it
+        // must name — those are normative prose and prose is a text property.
+        ok(typeof L.INSTANTIATION_STATUS?.emission_split_trigger === "string" &&
+           !("emission_split_trigger" in (L.INSTANTIATION_SEMANTICS ?? {})) &&
+           /independently VERSIONED or REPLACEABLE/.test(
+             L.INSTANTIATION_STATUS?.emission_split_trigger ?? "") &&
+           /EXTERNALLY OBSERVED/.test(L.INSTANTIATION_STATUS?.emission_split_trigger ?? ""),
           "the emission SPLIT TRIGGER must live in STATUS and carry all four conditions. B1.2.1 put a " +
           "two-condition version inside INSTANTIATION_SEMANTICS, which re-committed B1.1's own " +
           "finding: a governance note inside a relation identity re-identifies the relation when it " +
@@ -1416,21 +1463,32 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "getter answering 2 then 999 produced a term meaning x=2 beside an identity committing to " +
           "{x:999}. The relation misbound its own input identity while nothing about the runtime was " +
           "wrong: round 27A.1's entry-snapshot rule arriving in the compiler layer");
-        ok(/predicate_semantics: Object\.freeze/.test(lowNoc) &&
-           /kind: "number-is-integer"/.test(lowNoc) &&
-           /transform_semantics: Object\.freeze/.test(lowNoc) &&
-           /LOWERING_SEMANTICS\.predicate_semantics\[p\.holds\]/.test(lowNoc) &&
-           !/integer: \(v\) =>/.test(lowNoc),
+        // DATA for the vocabulary's shape, BEHAVIOURAL for the refusals it must
+        // still produce, TEXT-TIER for the one code-shape obligation — that the
+        // interpreter READS the record — which would need a JS parser.
+        ok(typeof L.LOWERING_SEMANTICS?.predicate_semantics === "object" &&
+           Object.values(L.LOWERING_SEMANTICS?.predicate_semantics ?? {})
+             .every((d) => typeof d === "object" && typeof d.kind === "string") &&
+           Object.values(L.LOWERING_SEMANTICS?.transform_semantics ?? {})
+             .every((d) => typeof d === "object" && typeof d.kind === "string") &&
+           L.lower?.({ op: "const", value: 1.5 })?.reason === "lower-non-integer-constant" &&
+           L.lower?.({ op: "const", value: -1 })?.reason === "lower-negative" &&
+           /LOWERING_SEMANTICS\.predicate_semantics\[p\.holds\]/.test(lowNoc),
           "the rule vocabulary's MEANING must be content-bound, not a table of bare names bound to " +
           "JavaScript functions. Redefining `integer` as always-true changed behaviour — const(1.5) " +
           "lowered instead of refusing — and moved no identity; `identity` could have been made to " +
           "normalize a source input name, silently undoing the port ruling. The vocabulary stays " +
           "CLOSED and its definitions are DATA");
-        ok(/export const EMISSION_SEMANTICS = Object\.freeze/.test(lowNoc) &&
-           /export const EMISSION_SEM_ID =/.test(lowNoc) &&
-           /export const closedTemplateSemId =/.test(lowNoc) &&
-           /closedTemplateSemId = \(closed\) => "ctmpl-"/.test(lowNoc) &&
-           /codomain_encoding_sem_id: TARGET_TEMPLATE_ENCODING_SEM_ID/.test(lowNoc),
+        // DATA + BEHAVIOURAL. The previous version tested for the STRING
+        // "ctmpl-", which also appears in codomain_identity_domain — so renaming
+        // the real constructor's prefix left it green. Calling the constructor
+        // cannot be fooled that way.
+        ok(typeof L.EMISSION_SEMANTICS === "object" &&
+           L.EMISSION_SEM_ID?.startsWith("esem-") &&
+           L.closedTemplateSemId?.(L.T.church(1))?.startsWith("ctmpl-") &&
+           L.closedTemplateSemId?.(L.T.church(1)) !== L.targetTemplateSemId?.(L.T.church(1)) &&
+           L.INSTANTIATION_SEMANTICS?.codomain_encoding_sem_id ===
+             L.TARGET_TEMPLATE_ENCODING_SEM_ID,
           "EMISSION must be its own relation with its own identity, and instantiation must END AT " +
           "THE CLOSED TEMPLATE. B1.2.1 declared four conditions for this split and B2 tripped all " +
           "four: emit() is independently reused, I-4a is a theorem about emission alone, the " +
@@ -1438,9 +1496,35 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "template to its caller. The closed template gets its OWN identity domain (ctmpl-) even " +
           "where its bytes equal an open template's, because what the compiler produced and what an " +
           "invocation closed are different things");
-        ok(/export function verifyInstantiationReceipt\(template, inputs, receipt\)/.test(lowNoc) &&
-           /export function verifyEmissionReceipt\(closed_template, receipt, canonicaliseTarget\)/
-             .test(lowNoc),
+        // BEHAVIOURAL, plus B2.1.1's owned entry points.
+        // B2.1.1: THE VERIFIER MAY NOT AUTHENTICATE A SECOND SNAPSHOT.
+        // TEXT-TIER, and marked as such: this is a code-shape obligation — "the
+        // owned verifier never reaches back to a caller object" — which needs a
+        // JS parser to assert properly. The behavioural half is the witness in
+        // lowering_check, which drives a hostile template through and requires
+        // one traversal.
+        ok(/return verifyInstantiationReceiptOwned\(\.\.\.owned\)/.test(lowNoc) &&
+           /export function verifyInstantiationReceiptOwned/.test(lowNoc) &&
+           /export function verifyEmissionReceiptOwned/.test(lowNoc) &&
+           !/targetTemplateSemId\(ownCanonical\(template\)\)/.test(lowNoc) &&
+           !/closedTemplateSemId\(ownCanonical\(closed_template\)\)/.test(lowNoc) &&
+           /ownCanonical\(receipt\)/.test(lowNoc),
+          "the verifiers must OWN what they authenticate. B2.1 fixed the RELATION binding one " +
+          "snapshot and identifying another, then shipped a verifier that verified one snapshot and " +
+          "authenticated another: instantiate() snapshots the template internally and the verifier " +
+          "then called targetTemplateSemId(ownCanonical(template)) on the caller's object again, so a " +
+          "template answering \"x\" then \"y\" satisfied a receipt no immutable template satisfies. " +
+          "The receipt is snapshot too — it arrives from whoever is asking to be believed");
+        ok(typeof L.verifyInstantiationReceipt === "function" &&
+           typeof L.verifyEmissionReceipt === "function" &&
+           typeof L.verifyInstantiationReceiptOwned === "function" &&
+           typeof L.verifyEmissionReceiptOwned === "function" &&
+           // ARITY, on the function object. Deleting the canonicaliser parameter
+           // leaves every behavioural probe passing — undefined is not a
+           // function either way — so `typeof` alone could not see it.
+           L.verifyEmissionReceipt?.length === 3 && L.verifyInstantiationReceipt?.length === 3 &&
+           L.verifyEmissionReceipt?.(L.T.church(1), {}, "not-a-function")?.reason ===
+             "verify-emission-no-canonicaliser",
           "receipt VERIFICATION must be a production function, not test code. A relation whose only " +
           "implementation of 'does this receipt hold?' lives in its own suite is a relation nobody " +
           "else can check. Verifying instantiation needs no runtime canonicaliser now that the " +
@@ -1491,6 +1575,10 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
             ["emission-is-its-own-relation",
               "an emitter change must move EMISSION's id and neither of the other two, and a " +
               "substitution change must move instantiation's and not emission's"],
+            ["verifiers-own-what-they-authenticate",
+              "a hostile template answering \"x\" then \"y\" must be traversed ONCE and its hybrid " +
+              "receipt refused. B2.1's verifiers verified one snapshot and authenticated another, " +
+              "which is the defect B2.1 itself closed one layer down"],
           ]) ok(new RegExp(id).test(lcSrc2), `lowering_check.mjs must carry ${id} — ${why}`);
         }
         // SCOPED TO THE SEMANTICS RECORD. Unscoped, this was satisfied by
@@ -1498,9 +1586,9 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         // assertion guards a semantic commitment and was being answered by an
         // implementation detail. Found by the battery: consumed-inputs-collapsed
         // renamed the semantics field and grid_check still passed.
-        ok(/consumed_inputs:/.test(lowSrc.slice(lowSrc.indexOf("export const INSTANTIATION_SEMANTICS"),
-             lowSrc.indexOf("export const INSTANTIATION_STATUS"))) &&
-           /grant-versus-footprint/.test(lowSrc),
+        // DATA for the field, TEXT-TIER for the phrase the record must keep.
+        ok(typeof L.INSTANTIATION_SEMANTICS?.consumed_inputs === "string" &&
+           L.INSTANTIATION_SEMANTICS.consumed_inputs.includes("grant-versus-footprint"),
           "instantiation must keep SUPPLIED and CONSUMED inputs distinct. That is grant-versus-" +
           "footprint from round 15 one layer down, and collapsing it now would lose the distinction " +
           "before the invocation environments get large enough to need it");
@@ -1597,9 +1685,12 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
             "loses that distinction re-creates the refusal-name problem one layer up");
         }
         {
-          const fals = (lowSrc.match(/id: "I-4[abc]"/g) ?? []).length;
-          ok(fals === 3 && /status: "WITNESSED"/.test(lowSrc) &&
-             !/status: "DECLARED"/.test(lowSrc),
+          // DATA.
+          const fals = (L.INSTANTIATION_FALSIFIERS ?? []).length;
+          ok(fals === 3 &&
+             (L.INSTANTIATION_FALSIFIERS ?? []).every((f) => f.status === "WITNESSED") &&
+             ["I-4a", "I-4b", "I-4c"].every((id) =>
+               (L.INSTANTIATION_FALSIFIERS ?? []).some((f) => f.id === id)),
             `INSTANTIATION_FALSIFIERS must declare all THREE port witnesses as data (found ${fals}). ` +
             "Allocation invariance and source-name sensitivity alone prove only that a label is " +
             "copied around; the swapped binding is what proves instantiation HONOURS the identity. A " +

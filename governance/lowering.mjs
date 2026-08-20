@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   lowering.mjs — v0.7.0 — the source language reaches the governed runtime
+   lowering.mjs — v0.7.1 — the source language reaches the governed runtime
 
    Three logically independent relations, which is the whole design and not a
    decomposition for tidiness. Each can fail while the others hold: a lowering
@@ -119,7 +119,7 @@ import { createHash } from "node:crypto";
 import { canonicalBytes, ownCanonical, CORE_SEM_ID, programSemId } from "./derive_protocol.mjs";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const LOWERING_VERSION = "0.7.0";
+export const LOWERING_VERSION = "0.7.1";
 
 /* ── THE EXECUTABLE TARGET ENCODING ───────────────────────────────────────
    ic32's interaction net is linear: a variable used twice needs an explicit
@@ -1025,15 +1025,23 @@ export function instantiate(template, inputs) {
  *  must be minted by the kernel's canonicaliser from the bytes, and only then
  *  does a receipt get built around it.
  *
- *      instantiate(template, inputs) ──▶ closed term BYTES
- *                                              │ independent canonicaliser
- *                                              ▼
- *                                        target_term_sem_id
+ *  THIS COMMENT WAS ONE RELATION BEHIND. It drew instantiation producing "closed
+ *  term BYTES" and needing the runtime canonicaliser — the pre-B2.1 world, before
+ *  the split trigger fired. The implementation was correct and its own
+ *  explanation described the previous architecture, which is the staleness class
+ *  this file has now been caught on three times. The current shape:
+ *
+ *      instantiate(template, inputs) ──▶ CLOSED TEMPLATE
+ *                                              │  this module owns and
+ *                                              │  canonicalises it, so it may
+ *                                              ▼  identify it
+ *                                        closed_template_sem_id
  *                                              │
  *                                              ▼  instantiationReceipt(…)
  *
- *  Verification re-instantiates, re-canonicalises independently, and compares —
- *  never asks the instantiator whether it agrees with itself. */
+ *  and the runtime canonicaliser is EMISSION's business, one relation down.
+ *  Verification re-instantiates and compares — never asks the instantiator
+ *  whether it agrees with itself, and no longer needs a runtime oracle at all. */
 export function instantiationReceipt(target_template_sem_id, inputs_sem_id, closed_template_sem_id) {
   const receipt = { target_template_sem_id, instantiation_sem_id: INSTANTIATION_SEM_ID,
     inputs_sem_id, closed_template_sem_id };
@@ -1067,14 +1075,54 @@ export function emissionReceipt(closed_template_sem_id, target_term_sem_id) {
    than importing a kernel — the module that defines the relation must not also
    choose the oracle that judges it. */
 
+/* ── THE VERIFIERS OWN THEIR ARGUMENTS, and B2.1's first version did not ──
+   GPT's find against B2.1, reproduced before repair. B2.1 fixed *the relation*
+   may not bind one snapshot and identify another, and then wrote a verifier
+   that did the same thing one layer up: **the proof checker may not verify one
+   snapshot and authenticate another.**
+
+   verifyInstantiationReceipt called instantiate(), which snapshots the template
+   internally, and then called targetTemplateSemId(ownCanonical(template)) — a
+   SECOND traversal of the caller's object. A template whose source_name answers
+   "x" then "y" therefore satisfied a receipt claiming
+
+       target_template_sem_id = identity of port("y")
+       inputs_sem_id          = identity of {x:2}
+       closed_template_sem_id = identity of church(2)
+
+   which NO single immutable template satisfies: port("x") with {x:2} gives
+   church(2), and port("y") with {x:2) refuses as instantiate-missing-input.
+   The verifier returned ok:true because the first traversal supplied the
+   instantiation half and the second supplied the source-identity half.
+   verifyEmissionReceipt had the identical defect across its two ownCanonical
+   calls.
+
+   THE RECEIPT IS UNTRUSTED TOO and is snapshot with the rest: it arrives from
+   whoever is asking to be believed, and a receipt whose fields answer
+   differently on successive reads is the same attack wearing the other hat.
+
+   The *Owned suffix is the round-27A.2 convention and it is a PRECONDITION:
+   those functions may only be handed authority-owned data, and they never reach
+   back to a caller object. A relation-verifier TOCTOU, not a supplier rung. */
+
 /** Re-instantiate independently and compare. No target canonicaliser needed. */
 export function verifyInstantiationReceipt(template, inputs, receipt) {
+  let owned;
+  try { owned = [ownCanonical(template), ownCanonical(inputs), ownCanonical(receipt)]; }
+  catch (e) { return { ok: false, reason: "verify-instantiation-not-canonical: " + e.message }; }
+  return verifyInstantiationReceiptOwned(...owned);
+}
+
+/** PRECONDITION: every argument is already an authority-owned snapshot. */
+export function verifyInstantiationReceiptOwned(template, inputs, receipt) {
   const again = instantiate(template, inputs);
   if (!again.ok) return { ok: false, reason: "verify-instantiation-refused: " + again.reason };
   if (receipt?.instantiation_sem_id !== INSTANTIATION_SEM_ID)
     return { ok: false, reason: "verify-instantiation-relation-mismatch" };
+  // the SAME owned template the instantiation above consumed — never a second
+  // ownCanonical of whatever the caller is still holding
   for (const [f, got] of [
-    ["target_template_sem_id", targetTemplateSemId(ownCanonical(template))],
+    ["target_template_sem_id", targetTemplateSemId(template)],
     ["inputs_sem_id", again.inputs_sem_id],
     ["closed_template_sem_id", again.closed_template_sem_id]])
     if (receipt[f] !== got) return { ok: false, reason: "verify-instantiation-mismatch: " + f };
@@ -1083,14 +1131,25 @@ export function verifyInstantiationReceipt(template, inputs, receipt) {
 
 /** Re-emit independently, canonicalise with a SUPPLIED oracle, and compare. */
 export function verifyEmissionReceipt(closed_template, receipt, canonicaliseTarget) {
+  // the canonicaliser is a CAPABILITY the caller grants, not data to snapshot —
+  // the module defining a relation must not choose the oracle that judges it
   if (typeof canonicaliseTarget !== "function")
     return { ok: false, reason: "verify-emission-no-canonicaliser" };
+  let owned;
+  try { owned = [ownCanonical(closed_template), ownCanonical(receipt)]; }
+  catch (e) { return { ok: false, reason: "verify-emission-not-canonical: " + e.message }; }
+  return verifyEmissionReceiptOwned(owned[0], owned[1], canonicaliseTarget);
+}
+
+/** PRECONDITION: closed_template and receipt are already owned snapshots. */
+export function verifyEmissionReceiptOwned(closed_template, receipt, canonicaliseTarget) {
   if (receipt?.emission_sem_id !== EMISSION_SEM_ID)
     return { ok: false, reason: "verify-emission-relation-mismatch" };
   let term;
-  try { term = emit(ownCanonical(closed_template)); }
+  try { term = emit(closed_template); }
   catch (e) { return { ok: false, reason: "verify-emission-refused: " + e.message }; }
-  if (receipt.closed_template_sem_id !== closedTemplateSemId(ownCanonical(closed_template)))
+  // ONE owned value behind both the emission and the identity
+  if (receipt.closed_template_sem_id !== closedTemplateSemId(closed_template))
     return { ok: false, reason: "verify-emission-mismatch: closed_template_sem_id" };
   if (receipt.target_term_sem_id !== canonicaliseTarget(term))
     return { ok: false, reason: "verify-emission-mismatch: target_term_sem_id" };
