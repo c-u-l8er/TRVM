@@ -1221,9 +1221,110 @@ FILM-EVIDENCED** · derive 45/45 · realm 24/24 · bridge 48/48 · film 16/16 ·
 harness 9/9 · runner 3/3. `scheduler_certificate.json` byte-identical — **twenty-eighth** consecutive
 round.
 
-**196. `law:derivation.instantiation-identity@1` is PROPERTY-TESTED FOR THE DECISION and claims
-nothing about behaviour.** Its evidence says so, and a `grid_check` assertion requires it to keep
+**196. `law:derivation.instantiation-identity@1` — SUPERSEDED at B1.1 by @2, kept as history —
+is PROPERTY-TESTED FOR THE DECISION and claims nothing about behaviour.** *(@1 shipped an
+overbound identity projection and an extra-input rule that contradicted the source; see item 198.)* Its evidence says so, and a `grid_check` assertion requires it to keep
 saying so. This is the one place a frozen architecture can quietly start reading as a working
 feature.
 
 **197. Next: B2, the three port witnesses.** Then `church_exp_2_2` and the dedicated DUP-ERA fixture.
+
+## Round 27, pass B1.1 — the preflight GPT asked for, and B1 was wrong twice
+
+GPT approved B1's architecture and refused to let B2 start on it. Two findings, both real, both in
+work this session shipped one commit earlier.
+
+**198. THE SEMANTIC IDS WERE OVERBOUND TO LIFECYCLE, which is round 16 inside the compiler
+specification.** `LOWERING_SEM_ID` hashed the whole `LOWERING_SPEC`, lifecycle fields included.
+Measured, and GPT's number reproduced to the digit:
+
+```
+implemented: false → true     lsem-5673108765b4…  →  lsem-63f98923ed13…
+decided_at reworded           lsem-5673108765b4…  →  lsem-1e69c64c5c4a…
+conformance-status reworded   isem-c6b793933e30…  →  isem-60b7eb6d2d0a…
+```
+
+Not one rule changed in any of those. **B2 becoming BUILT would have re-identified a relation B1
+froze.** The split:
+
+```
+SEMANTICS   what the relation DOES — changing it changes emitted terms
+            or accepted inputs.                             HASHED
+STATUS      rounds, evidence grades, whether code exists.   NOT HASHED
+```
+
+under new `TRVM-*-SEM-v2` tags. And the dual property is asserted, because an id that stopped tracking
+semantics would be the same defect facing the other way: dropping `add` from `lowered_ops` moves the
+**lowering** id; changing extra-input semantics or making the source name non-semantic moves the
+**instantiation** id and *not* lowering's. That is the two-relation ruling **measured** rather than
+asserted.
+
+**DECLARED OPEN, because the split is real and not total.** The semantic records are still English:
+rewording normative prose like `dup_label_policy` or `substitution` still moves an id. That is
+correct-but-brittle rather than solved, and closing it needs a formal target-AST grammar that is not
+written. What has been removed is the class GPT measured — lifecycle and evidence status can no longer
+re-identify a relation.
+
+The B1 ids are kept as `OVERBOUND_TRANSITIONAL_SEM_IDS`, and `derivation.instantiation-identity@1`
+stays on the record as non-canonical history with a `revision_note` saying what it got wrong. A record
+that quietly replaced them would be doing the thing this correction is about.
+
+**199. THE EXTRA-INPUT RULE CONTRADICTED THE SOURCE LANGUAGE, and the argument for it was false.**
+B1 froze extras as `instantiate-extra-input`, justified by: accepting them would let `inputs_sem_id`
+vary while `target_term_sem_id` did not, *"so the receipt would stop being a function."*
+
+**That is simply wrong about functions.** A function may be many-to-one; `(template, {x:2})` and
+`(template, {x:2, unused:999})` mapping to one term *is* a function. And the rule contradicted the
+source, which was checkable in one line and was not checked:
+
+```
+evaluate({op:"input", name:"x"}, {}, {x:2, y:999})   →   2
+```
+
+The source **ignores** unused inputs. Refusing them at the target would have broken refinement **by
+construction** on the first program carrying a spare input — a compiler and a language disagreeing
+because the compiler invented a rule. Extras are ignored now. `inputs_sem_id` still hashes the whole
+canonical record, so invocations stay distinguishable as requests; *different `inputs_sem_id` → same
+`target_term_sem_id`* is not an identity defect but the correct statement that **executable semantics
+do not depend on unused data**. Narrowing the source's input discipline is a source-language change
+needing a new `CORE_SEM_ID`, and the instantiator may not impose it unilaterally.
+
+**200. The refinement claim is scoped BEFORE anything is built.** `REFINEMENT_SCOPE` says it holds
+over canonical, **fully bound** input environments in which instantiation succeeds. Missing inputs are
+refused on both sides but at different layers under different codes — `program-input-missing` during
+source *evaluation*, `instantiate-missing-input` *before a target term exists* — so refusal
+preservation is a separate theorem and is **DECLARED OPEN**. Claiming it on the strength of the
+positive witness would be the two-grades-of-evidence mistake round 26 made about films.
+
+**201. I-4c now MANDATES an asymmetric fixture.** The obvious witness cannot fail:
+
+```
+add(input x, input y)   x=2 y=3   →  5      swapped  →  5     ← proves nothing
+add(input x, add(input x, input y))         →  7      swapped  →  8     ← mandated
+```
+
+Both verified against the real source evaluator. `2+3 == 3+2`, so a symmetric witness is green whether
+or not the binding was honoured — a test whose output cannot reveal the defect it is named for. The
+fixture is recorded in the falsifier so B2 cannot quietly write the easy one.
+
+**202. And the check I wrote to defend all this was reading its own comment.** The grid assertion for
+`implemented: false` matched the *explanatory comments* about the overbinding bug — so every real
+field could flip to `true` and the check still passed. Fixed with a comment-stripped `lowNoc`, the
+same device `derive_protocol`'s assertions have used since v1.18. **A check reading the prose that
+documents a defect, instead of the field the defect is in, is the species this file exists to catch**
+— found here by the negative battery, which is what it is for.
+
+**203. The stale headline.** `LOWERING-CHECK`'s summary still printed *"The inputs model stays
+UNDECIDED and `input` is refused until it is ruled"* — green cases, green headline, and the headline
+describing the world before the round that produced it. Derived from `INPUTS_MODEL` now, alongside the
+refinement scope and its open item.
+
+**204. Gate.** grid **v1.35.0** — 77 entries / 372 citations · `lowering.mjs` **0.3.0** · negative
+battery **215/215** with eight new B1.1 forgeries and one repointed at the history entry · lowering
+**11/11**, refinement unchanged and still FILM-EVIDENCED · derive 45/45 · realm 24/24 · bridge 48/48 ·
+film 16/16 · twelve paired probes · harness 9/9 · runner 3/3. `scheduler_certificate.json`
+byte-identical — **twenty-ninth** consecutive round.
+
+**205. B2 is unblocked.** Templates for every program including input-free ones, `input-port("x")`
+before allocation, `instantiate()`, the `InstantiationReceipt` verified by re-instantiation, and the
+three falsifiers with I-4c asymmetric. Then `church_exp_2_2` and the DUP-ERA fixture.

@@ -225,7 +225,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0", "1.35.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -1156,6 +1156,13 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
       // ── v1.27: the source language reaches the governed runtime ───────
       {
         const lowSrc = existsSync(A("lowering.mjs")) ? readFileSync(A("lowering.mjs"), "utf8") : "";
+        // COMMENT-STRIPPED, for assertions about what the CODE says. B1.1
+        // wrote two comments containing the literal text `implemented: false`
+        // to explain the overbinding bug, and the assertion below then
+        // matched THOSE while every real field had been flipped to true.
+        // A check reading the prose that documents a defect, instead of the
+        // field the defect is in, is the species this file exists to catch.
+        const lowNoc = lowSrc.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
         ok(lowSrc !== "", "lowering.mjs absent — three laws cite it");
         for (const [id, want] of [["derivation.canonical-lowering", "PROPERTY-TESTED"],
           ["derivation.target-decoding", "PROPERTY-TESTED"],
@@ -1177,10 +1184,10 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         // This required `decided: false` until B1. Two levels, two identities,
         // and — separately — two states: "not ruled" and "ruled, not written"
         // are different, and the refusal must be able to say which.
-        ok(/INPUTS_MODEL = Object\.freeze\(\{\s*decided: true/.test(lowSrc) &&
-           /implemented: false/.test(lowSrc) &&
-           /lower-input-not-implemented/.test(lowSrc) &&
-           !/lower-inputs-undecided"/.test(lowSrc),
+        ok(/INPUTS_MODEL = Object\.freeze\(\{\s*decided: true/.test(lowNoc) &&
+           /implemented: false/.test(lowNoc) &&
+           /lower-input-not-implemented/.test(lowNoc) &&
+           !/lower-inputs-undecided"/.test(lowNoc),
           "lowering.mjs must record the inputs model as DECIDED and NOT IMPLEMENTED, and refuse the " +
           "input op as lower-input-not-implemented. The old lower-inputs-undecided cannot distinguish " +
           "'we have not ruled' from 'we have ruled and not written it', and a refusal that conflates " +
@@ -1192,9 +1199,68 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "inputs_sem_id for the invocation data and portSemId for the source-name-bound port. A " +
           "correct template can be instantiated with \"x\" bound to the port for \"y\", so the two " +
           "relations are independently falsifiable and must be independently identifiable");
-        ok(/It does NOT contain x=5; that is inputs_sem_id/.test(lowSrc),
-          "INSTANTIATION_SPEC must say that it identifies the RELATION and not the invocation — the " +
-          "moment `x=5` is inside the relation id, every invocation is a different relation");
+        // ── B1.1: SEMANTICS ARE HASHED, LIFECYCLE IS NOT ──────────────────
+        // B1 hashed the whole spec: flipping `implemented` moved
+        // LOWERING_SEM_ID from lsem-5673108765b4… to lsem-63f98923ed13…, so B2
+        // becoming BUILT would have re-identified a relation B1 froze. Round 16
+        // inside the compiler specification. These are structural rather than
+        // prose assertions on purpose — checking English is what the severity
+        // invariant was corrected for two rounds ago.
+        ok(/export const LOWERING_SEMANTICS = Object\.freeze/.test(lowSrc) &&
+           /export const LOWERING_STATUS = Object\.freeze/.test(lowSrc) &&
+           /export const INSTANTIATION_SEMANTICS = Object\.freeze/.test(lowSrc) &&
+           /export const INSTANTIATION_STATUS = Object\.freeze/.test(lowSrc),
+          "lowering.mjs must separate SEMANTICS (what the relation does) from STATUS (what the " +
+          "project has done about it). One record hashed into an identity and one not");
+        ok(/canonicalBytes\(LOWERING_SEMANTICS\)/.test(lowSrc) &&
+           /canonicalBytes\(INSTANTIATION_SEMANTICS\)/.test(lowSrc) &&
+           !/canonicalBytes\(LOWERING_SPEC\)/.test(lowSrc) &&
+           !/canonicalBytes\(INSTANTIATION_SPEC\)/.test(lowSrc),
+          "the semantic ids must hash the SEMANTICS records and never the combined spec. Hashing " +
+          "the spec puts `implemented`, round numbers and evidence grades inside a relation's " +
+          "identity, so implementing a frozen relation re-identifies it");
+        ok(/TRVM-LOWERING-SEM-v2/.test(lowSrc) && /TRVM-INSTANTIATION-SEM-v2/.test(lowSrc),
+          "the corrected projections must carry a NEW domain tag. Reusing v1 over different bytes " +
+          "would make two different projections indistinguishable by their own labels");
+        ok(/export const OVERBOUND_TRANSITIONAL_SEM_IDS/.test(lowSrc) &&
+           /lsem-5673108765b400bc9abff5a7b7b8fcb4375cf9894c5dbd50201efec3df79ccbc/.test(lowSrc),
+          "the overbound B1 identities must be KEPT, not erased. They were the honest ids of the " +
+          "projection B1 shipped, and quietly replacing them is the record-rewriting this correction " +
+          "is about");
+        {
+          // structural, not prose: no invocation data may appear in the relation id
+          const inv = ["inputs_sem_id", "canonical_inputs", "x=5", "invocation"];
+          const semBlock = lowSrc.slice(lowSrc.indexOf("export const INSTANTIATION_SEMANTICS"),
+            lowSrc.indexOf("export const INSTANTIATION_STATUS"));
+          ok(!inv.some((k) => new RegExp("^\\s*" + k + ":", "m").test(semBlock)) &&
+             /export const inputsSemId =/.test(lowSrc),
+            "INSTANTIATION_SEMANTICS must carry no invocation data — the moment `x=5` is inside the " +
+            "relation id, every invocation is a different relation. The invocation gets its own " +
+            "inputsSemId");
+        }
+        // ── B1.1: extras are IGNORED, because the source ignores them ─────
+        ok(/extra_input: "IGNORED\./.test(lowSrc) && /many-to-one/.test(lowSrc) &&
+           /BY CONSTRUCTION/.test(lowSrc),
+          "extra canonical inputs must be IGNORED by instantiation. The SOURCE evaluator returns 2 " +
+          "for input(\"x\") with {x:2, y:999}, so refusing extras at the target breaks refinement BY " +
+          "CONSTRUCTION on the first program with a spare input. B1's justification — that a " +
+          "many-to-one map would stop the receipt 'being a function' — is false about functions, and " +
+          "the record must say so rather than quietly changing the rule");
+        ok(!/instantiate-extra-input"/.test(lowSrc.slice(
+             lowSrc.indexOf("semantic_refusals"), lowSrc.indexOf("INSTANTIATION_STATUS"))),
+          "instantiate-extra-input must not be a SEMANTIC refusal — it was removed because it " +
+          "contradicted the source language, and an instantiator may not narrow the source's input " +
+          "discipline unilaterally. Doing so would need a new CORE_SEM_ID");
+        ok(/REFINEMENT_SCOPE = Object\.freeze/.test(lowSrc) &&
+           /program-input-missing/.test(lowSrc) && /instantiate-missing-input/.test(lowSrc),
+          "the refinement claim must state its DOMAIN before B2 builds anything: fully bound input " +
+          "environments, with source-refusal <-> instantiation-refusal DECLARED OPEN. The source " +
+          "refuses a missing input during evaluation and instantiation refuses it before a term " +
+          "exists — different layers, different codes, and refusal preservation is a separate theorem");
+        ok(/fixture_is_mandatory:/.test(lowSrc) && /2\+3 == 3\+2/.test(lowSrc),
+          "I-4c must MANDATE an asymmetric fixture. add(input x, input y) with x=2,y=3 gives 5 under " +
+          "the correct binding and 5 under the swap, so a symmetric witness is green whether or not " +
+          "the binding was honoured — a test whose output cannot reveal the defect it is named for");
         ok(/no_normalization:/.test(lowSrc) && /NOT Unicode-normalized/.test(lowSrc),
           "the port spec must refuse Unicode normalization of source input names. If the frozen core " +
           "distinguishes two code-point sequences, normalizing at the encoding layer is a " +
@@ -1228,9 +1294,9 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
             "count, a case count and a rung count");
         }
         {
-          const ii = entries.find((x) => x.id === "derivation.instantiation-identity" && x.revision === 1);
+          const ii = entries.find((x) => x.id === "derivation.instantiation-identity" && x.revision === 2);
           ok(!!ii && ii.canonical === true && ii.status === "PROPERTY-TESTED",
-            "law derivation.instantiation-identity@1 missing, non-canonical, or not PROPERTY-TESTED (v1.34)");
+            "law derivation.instantiation-identity@2 missing, non-canonical, or not PROPERTY-TESTED (v1.35)");
           ok(!!ii && /FALSE CHOICE/.test(ii.statement ?? ""),
             "instantiation-identity@1 must record that PARAMETERIZED versus INSTANTIATED was a false " +
             "choice — the template is parameterized AND the executed term is necessarily closed. A " +

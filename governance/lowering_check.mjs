@@ -44,8 +44,9 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
+import { createHash } from "node:crypto";
 import {
-  ProgramRegistry, deriveLocally, DerivationAuthority, canonicalBytes,
+  ProgramRegistry, deriveLocally, DerivationAuthority, canonicalBytes, evaluate,
 } from "./derive_protocol.mjs";
 import { ObservedExecutionHost } from "./observed_execution_host.mjs";
 import { parse, extrude, FloatRt, DescFloatRt, semStateId, semStateSignature, replaySemFilm }
@@ -53,7 +54,9 @@ import { parse, extrude, FloatRt, DescFloatRt, semStateId, semStateSignature, re
 import {
   lower, loweringReceipt, decode, outcomeSemId, sourceOutcome, programSemId,
   LOWERING_SEM_ID, DECODE_SEM_ID, LOWERING_SPEC, INPUTS_MODEL,
-  INSTANTIATION_SEM_ID, INSTANTIATION_FALSIFIERS,
+  INSTANTIATION_SEM_ID, INSTANTIATION_FALSIFIERS, LOWERING_SEMANTICS,
+  INSTANTIATION_SEMANTICS, LOWERING_STATUS, INSTANTIATION_STATUS,
+  OVERBOUND_TRANSITIONAL_SEM_IDS,
 } from "./lowering.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -218,6 +221,70 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
     `falsifiers are DECLARED and none is written; B2 writes them`);
 }
 
+/* ── 7b. THE SEMANTIC IDS DO NOT MOVE WHEN THE PROJECT DOES ──────────────
+      B1 hashed the whole spec, lifecycle included, so `implemented: false ->
+      true` re-identified a relation whose meaning had not changed — B2 becoming
+      BUILT would have moved an id B1 froze. That is round 16 inside the
+      compiler specification. Measured in both directions here, because an id
+      that stopped tracking semantics would be the same defect facing the other
+      way, and this tree has shipped that version too. */
+{
+  const semId = (tag, o) => "x-" + createHash("sha256")
+    .update(tag + "|" + canonicalBytes(o)).digest("hex");
+  const L = (over = {}) => semId("TRVM-LOWERING-SEM-v2", { ...LOWERING_SEMANTICS, ...over });
+  const I = (over = {}) => semId("TRVM-INSTANTIATION-SEM-v2", { ...INSTANTIATION_SEMANTICS, ...over });
+  const baseL = L(), baseI = I();
+
+  // lifecycle facts are NOT in either projection at all
+  const statusFields = Object.keys(LOWERING_STATUS).concat(Object.keys(INSTANTIATION_STATUS));
+  const leaked = statusFields.filter((k) => k in LOWERING_SEMANTICS || k in INSTANTIATION_SEMANTICS);
+
+  // …and genuine semantic change still moves the RIGHT id and only that one
+  const opsChanged = L({ lowered_ops: ["const"] });
+  const extraChanged = I({ extra_input: "REFUSED." });
+  const portChanged = I({ port_identity: { ...INSTANTIATION_SEMANTICS.port_identity,
+    source_name_semantic: false } });
+
+  R("semantic-ids-track-semantics-only",
+    leaked.length === 0
+      && LOWERING_SEM_ID.startsWith("lsem-") && INSTANTIATION_SEM_ID.startsWith("isem-")
+      && opsChanged !== baseL && extraChanged !== baseI && portChanged !== baseI
+      && LOWERING_SPEC.status.implemented === false
+      && OVERBOUND_TRANSITIONAL_SEM_IDS.lowering_sem_id_v1 !== LOWERING_SEM_ID,
+    `no lifecycle field (${statusFields.length} of them: implemented, decided_at, evidence grades, ` +
+    `conformance status) appears in either semantic projection, so B2 becoming BUILT cannot re-` +
+    `identify a relation B1 froze. And the projections are not inert: dropping \`add\` from ` +
+    `lowered_ops moves the LOWERING id, while changing extra-input semantics or making the source ` +
+    `name non-semantic moves the INSTANTIATION id and NOT lowering's — which is the two-relation ` +
+    `ruling measured rather than asserted. The overbound B1 ids are kept in ` +
+    `OVERBOUND_TRANSITIONAL_SEM_IDS rather than erased`);
+}
+
+/* ── 7c. extra inputs are IGNORED, because the SOURCE ignores them ───────── */
+{
+  const P2 = { op: "input", name: "x" };
+  const G = { exact: {}, predicates: {} };
+  const bound = (() => { try { return evaluate(P2, G, { x: 2 }).value; } catch (e) { return e.message; } })();
+  const extra = (() => { try { return evaluate(P2, G, { x: 2, y: 999 }).value; } catch (e) { return e.message; } })();
+  const missing = (() => { try { return evaluate(P2, G, {}).value; } catch (e) { return e.message; } })();
+  R("extra-inputs-ignored-by-the-source",
+    bound === 2 && extra === 2 && String(missing).startsWith("program-input-missing")
+      && /^IGNORED\./.test(INSTANTIATION_SEMANTICS.extra_input)
+      // the open item must NAME both codes it is open about, which is a
+      // property of the record rather than of its wording
+      && "declared_open" in LOWERING_SPEC.status.refinement_scope
+      && LOWERING_SPEC.status.refinement_scope.declared_open.includes("program-input-missing")
+      && LOWERING_SPEC.status.refinement_scope.declared_open.includes("instantiate-missing-input")
+      && !INSTANTIATION_SEMANTICS.semantic_refusals.includes("instantiate-extra-input"),
+    `the SOURCE evaluator returns ${JSON.stringify(extra)} for input("x") with {x:2, y:999} — the ` +
+    `unused input is ignored — so instantiation IGNORES extras too. B1 froze this as a REFUSAL, ` +
+    `which would have broken refinement by construction on the first program with a spare input, ` +
+    `and justified it by claiming a many-to-one map would stop the receipt "being a function". That ` +
+    `is simply false about functions. Missing inputs stay a refusal on both sides (${missing}) but ` +
+    `under DIFFERENT codes at different layers, so refusal-preservation is DECLARED OPEN rather ` +
+    `than assumed, and the refinement claim is scoped to fully bound environments`);
+}
+
 /* ── 8. the decoder's own boundary is a refusal too ──────────────────────── */
 {
   const notChurch = decode("A(N0,N1)");
@@ -269,5 +336,14 @@ console.log(fail
     `structurally to {status:"value",value:5}; and its outcome identity EQUALS the source evaluator's. ` +
     `Six identities stay distinct. STILL NOT CLAIMED: the six DUP-* rules, the d:/v: loci and ` +
     `BUDGET_EXHAUSTED terminals — a term needing any of them is refused by name, not approximated. ` +
-    `The inputs model stays UNDECIDED and \`input\` is refused until it is ruled.`);
+    // DERIVED, because the hand-written version of this sentence said "stays
+    // UNDECIDED" for a whole round after B1 decided it — green headline, green
+    // cases, and the headline describing the world before the round that
+    // produced it. The same class as the four-rung print and the UNDECIDED
+    // spike status, in the check that exists to report this exact distinction.
+    `The inputs model is ${INPUTS_MODEL.decided ? "DECIDED" : "UNDECIDED"} and ` +
+    `${INPUTS_MODEL.implemented ? "IMPLEMENTED" : "NOT IMPLEMENTED"}: \`input\` is refused as ` +
+    `lower-input-not-implemented, and the refinement claim above holds over ` +
+    `${LOWERING_SPEC.status.refinement_scope.holds_over}. DECLARED OPEN: ` +
+    `${LOWERING_SPEC.status.refinement_scope.declared_open.split(".")[0]}.`);
 process.exit(fail ? 1 : 0);

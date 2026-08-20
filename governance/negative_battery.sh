@@ -1506,6 +1506,50 @@ src = open('lowering.mjs').read()
 src = src.replace('NOT Unicode-normalized', 'Unicode-normalized (NFC)')
 open('lowering.mjs','w').write(src)"
 
+# ── B1.1: semantics are hashed, lifecycle is not ───────────────────────────
+run_case semantic-id-hashes-lifecycle "must hash the SEMANTICS records and never the combined spec" "
+src = open('lowering.mjs').read()
+src = src.replace('canonicalBytes(LOWERING_SEMANTICS)', 'canonicalBytes(LOWERING_SPEC)')
+open('lowering.mjs','w').write(src)"
+
+run_case semantics-status-merged "must separate SEMANTICS" "
+src = open('lowering.mjs').read()
+src = src.replace('export const LOWERING_STATUS = Object.freeze', 'const LOWERING_STATUS = Object.freeze')
+open('lowering.mjs','w').write(src)"
+
+run_case transitional-ids-erased "overbound B1 identities must be KEPT" "
+src = open('lowering.mjs').read()
+src = src.replace('export const OVERBOUND_TRANSITIONAL_SEM_IDS', 'const OVERBOUND_TRANSITIONAL_SEM_IDS')
+open('lowering.mjs','w').write(src)"
+
+run_case sem-v2-tag-reverted "corrected projections must carry a NEW domain tag" "
+src = open('lowering.mjs').read()
+src = src.replace('TRVM-LOWERING-SEM-v2', 'TRVM-LOWERING-v1')
+open('lowering.mjs','w').write(src)"
+
+run_case extras-refused-again "extra canonical inputs must be IGNORED" "
+src = open('lowering.mjs').read()
+src = src.replace('extra_input: \"IGNORED.', 'extra_input: \"REFUSED.')
+open('lowering.mjs','w').write(src)"
+
+run_case refinement-scope-dropped "must state its DOMAIN before B2 builds anything" "
+src = open('lowering.mjs').read()
+src = src.replace('export const REFINEMENT_SCOPE = Object.freeze', 'const REFINEMENT_SCOPE_UNUSED = Object.freeze')
+open('lowering.mjs','w').write(src)"
+
+run_case i4c-fixture-unmandated "I-4c must MANDATE an asymmetric fixture" "
+src = open('lowering.mjs').read()
+src = src.replace('fixture_is_mandatory:', 'fixture_note:')
+open('lowering.mjs','w').write(src)"
+
+run_case instantiation-law-v2-deleted "law derivation.instantiation-identity@2 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if not (e['id'] == 'derivation.instantiation-identity'
+                                        and e['revision'] == 2)]
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
 run_case spike-record-contradicts-source "still says the inputs model is UNDECIDED" "
 import json
 g = json.load(open('invariant-grid.json'))
@@ -1518,11 +1562,12 @@ g = json.load(open('invariant-grid.json'))
 g['lowering_spike']['inputs_model']['implemented'] = True
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
-run_case instantiation-law-deleted "law derivation.instantiation-identity@1 missing" "
+run_case instantiation-history-erased "cites unknown law derivation.instantiation-identity@1" "
 import json
 g = json.load(open('invariant-grid.json'))
 g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
-                                if e['id'] != 'derivation.instantiation-identity']
+                                if not (e['id'] == 'derivation.instantiation-identity'
+                                        and e['revision'] == 1)]
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 run_case instantiation-law-picks-a-side "must record that PARAMETERIZED versus INSTANTIATED was a false choice" "

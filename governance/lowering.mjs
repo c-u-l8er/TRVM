@@ -56,7 +56,7 @@ import { createHash } from "node:crypto";
 import { canonicalBytes, CORE_SEM_ID, programSemId } from "./derive_protocol.mjs";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const LOWERING_VERSION = "0.2.0";
+export const LOWERING_VERSION = "0.3.0";
 
 /* ── the target encoding ──────────────────────────────────────────────────
    ic32's interaction net is linear: a variable used twice needs an explicit
@@ -137,35 +137,103 @@ export const INPUT_PORT_SPEC = Object.freeze({
     "encoding — and a quotient introduced at the encoding layer is invisible to the source.",
 });
 
-export const INSTANTIATION_SPEC = Object.freeze({
+/* ── WHAT IS HASHED, AND WHAT IS MERELY TRUE ──────────────────────────────
+   B1's first cut hashed the WHOLE spec, lifecycle fields included, so
+   `implemented: false -> true` moved LOWERING_SEM_ID from lsem-5673108765b4…
+   to lsem-63f98923ed13… without one line of the relation's meaning changing.
+   B2 becoming built would have re-identified a relation B1 froze. `decided_at`
+   did the same, and INSTANTIATION_SEM_ID moved when the conformance-test STATUS
+   sentence was reworded.
+
+   That is round 16 arriving inside the compiler specification: an identity
+   depending on something that should not matter. The split:
+
+       SEMANTICS   what the relation DOES — changing it changes emitted terms
+                   or accepted inputs.  HASHED.
+       STATUS      what the project has done about it — rounds, evidence
+                   grades, whether code exists yet.  NOT HASHED.
+
+   DECLARED OPEN, because the split is real and not total: the semantic records
+   below are still English. `dup_label_policy` and `substitution` are NORMATIVE
+   prose — there is no formal encoding of them in this tree today — so rewording
+   them still moves the id, and that is correct-but-brittle rather than solved.
+   What has been removed is the class GPT measured: lifecycle and evidence
+   status can no longer re-identify a relation. A formal target-AST grammar
+   would close the rest, and it is not written.
+
+   The B1 ids are kept below as OVERBOUND_TRANSITIONAL_SEM_IDS rather than
+   erased: they were the honest identities of the overbound projection, and a
+   record that quietly replaces them would be doing what this round is fixing. */
+export const INSTANTIATION_SEMANTICS = Object.freeze({
   relation: "target_template + inputs -> closed target term",
-  port_spec: INPUT_PORT_SPEC,
-  identifies: "THE RELATION, NOT THE INVOCATION. This id commits to the port namespace and version, " +
-    "the source-name-to-port rule, missing- and extra-input semantics, the canonical embedding of an " +
-    "input value, template substitution semantics, the refusal vocabulary and the conformance " +
-    "vectors. It does NOT contain x=5; that is inputs_sem_id.",
+  port_namespace: INPUT_PORT_SPEC.namespace,
+  port_identity: Object.freeze({
+    source_name_semantic: true,
+    target_allocation_semantic: false,
+    unicode_normalization: false,
+    rule: INPUT_PORT_SPEC.identity_rule,
+    canonical_form: INPUT_PORT_SPEC.canonical_form,
+  }),
   substitution: "each {op:\"input-port\", source_name:N} node is replaced by the canonical target " +
     "encoding of the value bound to N. Substitution is simultaneous and capture-free: an embedded " +
     "value's own binders are alpha-renamed away from the template's, because a value that captured a " +
     "template binder would make the term depend on the emitter's naming, which is exactly the " +
     "allocation dependence the port rule exists to remove.",
   missing_input: "REFUSED by name — instantiate-missing-input:<source_name>. Not defaulted: a default " +
-    "is a value nobody supplied appearing inside an identity.",
-  extra_input: "REFUSED by name — instantiate-extra-input:<source_name>. An input the template has no " +
-    "port for cannot affect the term, so accepting it would let inputs_sem_id vary while " +
-    "target_term_sem_id does not, and the receipt would stop being a function.",
+    "is a value nobody supplied appearing inside an identity. NOTE that the SOURCE evaluator refuses " +
+    "the same situation as program-input-missing:<name>, at a different layer and under a different " +
+    "code; refusal-preservation between the two is DECLARED OPEN and is named in " +
+    "REFINEMENT_SCOPE below rather than assumed.",
+  // REVISED AT B1.1, and the first version was wrong twice over.
+  extra_input: "IGNORED. An input the template has no port for does not participate in the term. " +
+    "B1 froze this as a refusal on the argument that accepting it would let inputs_sem_id vary while " +
+    "target_term_sem_id did not, 'so the receipt would stop being a function'. That argument is " +
+    "FALSE — a function may be many-to-one, and (template, {x:2}) and (template, {x:2, unused:999}) " +
+    "mapping to the same term is exactly such a function. And the rule contradicted the SOURCE: " +
+    "evaluate({op:\"input\",name:\"x\"}, {}, {x:2, y:999}) returns 2, so refusing extras at the " +
+    "target would have broken refinement BY CONSTRUCTION on the first program that had one. " +
+    "different inputs_sem_id -> same target_term_sem_id is not an identity defect; it is the correct " +
+    "statement that executable semantics do not depend on unused data. Making extras invalid would " +
+    "be a SOURCE-LANGUAGE change requiring a new CORE_SEM_ID, and the instantiator may not impose it " +
+    "unilaterally.",
   input_value_embedding: "a supplied value is embedded by the SAME target encoding lowering uses for " +
     "a constant of that type. A value the encoding cannot express is REFUSED by name rather than " +
     "approximated, on the same rule that makes lowering total-or-refusing on its fragment.",
-  refusals: ["instantiate-missing-input", "instantiate-extra-input", "instantiate-unencodable-input",
-    "instantiate-not-implemented"],
-  conformance_vectors: "DECLARED OPEN until B2. The three falsifiers are named in INSTANTIATION_" +
-    "FALSIFIERS below and none of them is written yet; this spec is frozen so that they can be " +
-    "written against something rather than alongside it.",
+  semantic_refusals: ["instantiate-missing-input", "instantiate-unencodable-input"],
+});
+
+/** NOT hashed into INSTANTIATION_SEM_ID. Everything here is a fact about the
+ *  project rather than about the relation, and B2 will change all of it. */
+export const INSTANTIATION_STATUS = Object.freeze({
+  decided_at: "round 27, pass B1",
+  semantics_corrected_at: "round 27, pass B1.1 — extra_input and the semantic/status split",
+  implemented: false,
+  operational_refusals: ["instantiate-not-implemented"],
+  conformance_vectors: "DECLARED OPEN until B2. The three falsifiers are named in " +
+    "INSTANTIATION_FALSIFIERS and none of them is written yet.",
   no_film: "instantiation gets NO FILM. It is a deterministic RELATION, not a transition system, so " +
     "its instrument is independent RE-INSTANTIATION — the same argument that gives lowering " +
-    "re-lowering rather than a film. A film here would be evidence about the target runtime's steps, " +
-    "which is a different claim about a different object.",
+    "re-lowering rather than a film. This is a statement about the INSTRUMENT, not about the " +
+    "relation's meaning, which is why it lives here and is not hashed.",
+});
+
+/** A reader's view. Not hashed; the two halves above are the sources. */
+export const INSTANTIATION_SPEC = Object.freeze({
+  semantics: INSTANTIATION_SEMANTICS, status: INSTANTIATION_STATUS });
+
+/** THE DOMAIN OF THE REFINEMENT CLAIM, stated before anything is built so that
+ *  B2's first green witness cannot quietly be read as more than it is. */
+export const REFINEMENT_SCOPE = Object.freeze({
+  holds_over: "canonical, fully bound input environments — every port the template declares has a " +
+    "value in canonical_inputs, and instantiation succeeds",
+  extra_inputs: "IN SCOPE: unused canonical inputs are ignored by both source and target, and the " +
+    "witness includes one",
+  declared_open: "SOURCE-REFUSAL <-> INSTANTIATION-REFUSAL. The source refuses a missing input as " +
+    "program-input-missing:<name> during EVALUATION; instantiation refuses it as " +
+    "instantiate-missing-input:<name> before any target term exists. Those are different layers, " +
+    "different codes and different moments, and refinement over refusals is a separate theorem that " +
+    "is not attempted here. Claiming refusal preservation without it would be the two-grades-of-" +
+    "evidence mistake round 26 made about films.",
 });
 
 /** The three falsifiers that must hold before `input` becomes executable
@@ -186,59 +254,109 @@ export const INSTANTIATION_FALSIFIERS = Object.freeze([
     claim: "x/y port binding swapped during instantiation -> the target term or outcome changes, or " +
       "is refused; and it must NEVER validate under the correct instantiation receipt",
     proves: "instantiation HONOURS the port identity rather than carrying it decoratively — " +
-      "without this one, a and b prove only that a label is being copied around" }),
+      "without this one, a and b prove only that a label is being copied around",
+    // THE FIXTURE IS MANDATED, because the obvious one cannot fail. add(x, y)
+    // with x=2, y=3 gives 5 under the correct binding and 5 under the swap:
+    // addition is commutative, so a symmetric witness is green whether or not
+    // the binding was honoured. That is a test whose output cannot reveal the
+    // defect it is named for — the species this tree has caught four times.
+    fixture: "add(input(\"x\"), add(input(\"x\"), input(\"y\"))) with x=2, y=3. Correct binding " +
+      "evaluates to 7 and the x/y swap to 8, verified against the SOURCE evaluator, so the witness " +
+      "reaches a different target term, a different native result and a different " +
+      "target_outcome_sem_id rather than merely different target bytes.",
+    fixture_is_mandatory: "a symmetric fixture such as add(input(\"x\"), input(\"y\")) is REFUSED " +
+      "for this falsifier: 2+3 == 3+2, so it would pass under a swapped binding and prove nothing" }),
 ]);
 
-export const INPUTS_MODEL = Object.freeze({
-  decided: true,
-  decided_at: "round 27, pass B1",
-  ruling: "TWO LEVELS, TWO IDENTITIES. Lowering produces a PARAMETERIZED target TEMPLATE whose " +
-    "identity is a function of the program alone; instantiation closes that template against " +
-    "canonical inputs and produces the executable TERM. 'Parameterized versus instantiated' was a " +
-    "false choice — the template is parameterized AND the executed term is necessarily closed.",
-  why_two_relations: "a template can be perfectly lowered while instantiation binds \"x\" to the port " +
-    "for \"y\". Merged, a target failure is ambiguous between a mistranslated program and correctly " +
-    "translated code with miswired inputs. Separated, each is independently falsifiable.",
-  template_identity: "target_template_sem_id — a function of program_sem_id and lowering_sem_id, " +
-    "reusable across invocations and independent of invocation data",
-  term_identity: "target_term_sem_id — a function of target_template_sem_id, instantiation_sem_id " +
-    "and inputs_sem_id",
-  receipt: "InstantiationReceipt {target_template_sem_id, instantiation_sem_id, inputs_sem_id, " +
-    "target_term_sem_id}, verified by INDEPENDENTLY RE-INSTANTIATING, the way LoweringReceipt is " +
-    "verified by re-lowering",
-  implemented: false,
-  why_decided_before_implemented: "an unstated variable inside target_term_sem_id is the round-16 " +
-    "hidden-identity bug class. Deciding this while writing `input` is how it gets in. The first " +
-    "lowering witness used inputs={} and therefore decided nothing, which is why the decision is a " +
-    "separate act rather than a consequence of the next commit.",
-});
-
-export const LOWERING_SPEC = Object.freeze({
+/* ── LOWERING: the same split ────────────────────────────────────────────── */
+export const LOWERING_SEMANTICS = Object.freeze({
   language: "TRVM-DERIVE-CORE",
   source_core_sem_id: CORE_SEM_ID,
   target_encoding: TARGET_ENCODING,
   lowered_ops: LOWERED_OPS,
-  inputs_model: INPUTS_MODEL,
+  inputs: Object.freeze({
+    model: "template-then-instantiation",
+    ruling: "TWO LEVELS, TWO IDENTITIES. Lowering produces a PARAMETERIZED target TEMPLATE whose " +
+      "identity is a function of the program alone; instantiation closes that template against " +
+      "canonical inputs and produces the executable TERM. 'Parameterized versus instantiated' was a " +
+      "false choice — the template is parameterized AND the executed term is necessarily closed.",
+    template_identity_rule: "target_template_sem_id — a function of program_sem_id and " +
+      "lowering_sem_id, reusable across invocations and independent of invocation data",
+    executable_term_identity_rule: "target_term_sem_id — a function of target_template_sem_id, " +
+      "instantiation_sem_id and inputs_sem_id",
+    instantiation_sem_id_is_separate: true,
+  }),
+  refusal_semantics: TARGET_ENCODING.refusals,
   totality: "lowering is TOTAL on the lowered fragment and REFUSES by name outside it. A lowering " +
     "that silently emitted something for an op it does not encode would make the refinement theorem " +
     "a statement about whatever it happened to emit.",
 });
 
+/** NOT hashed. Rounds, evidence grades, and whether the code exists. */
+export const LOWERING_STATUS = Object.freeze({
+  decided_at: "round 27, pass B1",
+  semantics_corrected_at: "round 27, pass B1.1",
+  implemented: false,
+  why_decided_before_implemented: "an unstated variable inside target_term_sem_id is the round-16 " +
+    "hidden-identity bug class. Deciding this while writing `input` is how it gets in. The first " +
+    "lowering witness used inputs={} and therefore decided nothing, which is why the decision is a " +
+    "separate act rather than a consequence of the next commit.",
+  falsifiers: "INSTANTIATION_FALSIFIERS — three, all DECLARED, none written",
+  refinement_scope: REFINEMENT_SCOPE,
+});
+
+/** The inputs model, as the batteries and the grid read it. Semantics live in
+ *  LOWERING_SEMANTICS.inputs; the two lifecycle flags live here and are the
+ *  reason this object is NOT hashed into any identity. */
+export const INPUTS_MODEL = Object.freeze({
+  decided: true,
+  implemented: false,
+  semantics: LOWERING_SEMANTICS.inputs,
+  status: LOWERING_STATUS,
+  why_two_relations: "a template can be perfectly lowered while instantiation binds \"x\" to the port " +
+    "for \"y\". Merged, a target failure is ambiguous between a mistranslated program and correctly " +
+    "translated code with miswired inputs. Separated, each is independently falsifiable.",
+  receipt: "InstantiationReceipt {target_template_sem_id, instantiation_sem_id, inputs_sem_id, " +
+    "target_term_sem_id}, verified by INDEPENDENTLY RE-INSTANTIATING, the way LoweringReceipt is " +
+    "verified by re-lowering",
+});
+
+/** A reader's view. NOT hashed — LOWERING_SEMANTICS is what the id commits to. */
+export const LOWERING_SPEC = Object.freeze({
+  semantics: LOWERING_SEMANTICS, status: LOWERING_STATUS });
+
 /** The identity of the RELATION. Content-bound, like every other id here: a
  *  bare "TRVM-LOWERING-v1" label would be a name anyone could claim, which the
  *  primitive ruling already refuses for `componentReachability`.
  *
- *  IT MOVED AT B1, AND THAT IS THE POINT. LOWERING_SPEC carries inputs_model,
- *  so deciding the inputs model changes the lowering relation and therefore its
- *  identity. A lowering_sem_id that survived this ruling unchanged would be
- *  claiming the decision was not part of the relation, and the refinement
- *  receipt is re-cut rather than re-pointed. */
-export const LOWERING_SEM_ID = "lsem-" + H("TRVM-LOWERING-v1|" + canonicalBytes(LOWERING_SPEC));
+ *  IT MOVED AT B1, AND THAT WAS RIGHT: deciding the inputs model changed what
+ *  the relation MEANS, and an id surviving that ruling unchanged would claim the
+ *  decision was not part of the relation.
+ *
+ *  IT MOVED AGAIN AT B1.1, AND THAT IS A FIX. v1 hashed the whole spec including
+ *  lifecycle, so `implemented: false -> true` re-identified the relation. v2
+ *  hashes LOWERING_SEMANTICS only, so B2 becoming BUILT cannot move it. */
+export const LOWERING_SEM_ID =
+  "lsem-" + H("TRVM-LOWERING-SEM-v2|" + canonicalBytes(LOWERING_SEMANTICS));
 
 /** The identity of the INSTANTIATION relation — separate from lowering's,
- *  because they are separate relations. See INPUTS_MODEL.why_two_relations. */
+ *  because they are separate relations. See INPUTS_MODEL.why_two_relations.
+ *  Semantics only, for the reason above. */
 export const INSTANTIATION_SEM_ID =
-  "isem-" + H("TRVM-INSTANTIATION-v1|" + canonicalBytes(INSTANTIATION_SPEC));
+  "isem-" + H("TRVM-INSTANTIATION-SEM-v2|" + canonicalBytes(INSTANTIATION_SEMANTICS));
+
+/** THE OVERBOUND B1 IDENTITIES, kept rather than erased. They were the honest
+ *  ids of the projection B1 shipped, and a record that silently replaced them
+ *  would be doing the thing this correction is about. Anything citing them cites
+ *  a relation whose id was a function of round numbers and evidence prose. */
+export const OVERBOUND_TRANSITIONAL_SEM_IDS = Object.freeze({
+  note: "B1 (round 27) hashed the full spec, lifecycle fields included. Superseded at B1.1 by the " +
+    "TRVM-*-SEM-v2 projections above, which hash semantics only.",
+  lowering_sem_id_v1: "lsem-5673108765b400bc9abff5a7b7b8fcb4375cf9894c5dbd50201efec3df79ccbc",
+  instantiation_sem_id_v1: "isem-c6b793933e30c1e6ad29dfd1cd1cc04c42c06858bea816bbe7750806626435a5",
+  measured: "flipping only `implemented` moved lowering to lsem-63f98923ed13…; rewording only the " +
+    "conformance-test STATUS sentence moved instantiation. Neither changed a rule.",
+});
 
 /** The identity of a particular INVOCATION's inputs. This is where `x=5` lives,
  *  and it is deliberately not inside INSTANTIATION_SEM_ID: one names the rule,
