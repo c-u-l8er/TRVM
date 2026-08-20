@@ -225,7 +225,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0", "1.35.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0", "1.35.0", "1.36.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -1192,6 +1192,43 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "input op as lower-input-not-implemented. The old lower-inputs-undecided cannot distinguish " +
           "'we have not ruled' from 'we have ruled and not written it', and a refusal that conflates " +
           "two states is a stale instrument with a delay fuse");
+        // ── B1.2: the template layer, which B1 presumed and did not have ──
+        ok(/export const TARGET_TEMPLATE_ENCODING = Object\.freeze/.test(lowNoc) &&
+           /export const TARGET_TEMPLATE_ENCODING_SEM_ID =/.test(lowNoc) &&
+           /export function emit\(template\)/.test(lowNoc) &&
+           /export const targetTemplateSemId =/.test(lowNoc),
+          "lowering must have a TARGET TEMPLATE layer. B1 ruled that a port lives at the canonical " +
+          "target-AST layer BEFORE variable allocation, and lower() emitted an ic32 STRING — so a " +
+          "port could only have been a placeholder like $input_x, putting spelling back into " +
+          "semantics. The template is that layer and emit() is the allocation step");
+        ok(/target_template_sem_id: targetTemplateSemId\(template\)/.test(lowNoc) &&
+           /export function loweringReceipt\(program_sem_id, target_template_sem_id\)/.test(lowNoc) &&
+           !/lowering_sem_id: LOWERING_SEM_ID, target_term_sem_id/.test(lowNoc),
+          "lowering's codomain is the TEMPLATE and the LoweringReceipt must end there. A receipt " +
+          "ending in target_term_sem_id keeps asserting that lowering produced the executable term, " +
+          "which is exactly what the two-level ruling denies");
+        ok(/no_names_no_labels:/.test(lowSrc) &&
+           /there is no field it could occupy/.test(lowSrc),
+          "the template encoding must record WHY allocation cannot be semantic: a template has no " +
+          "binder names and no dup labels, so I-4a is a property of the data structure rather than a " +
+          "convention the emitter is asked to respect");
+        ok(/lowered_ops: Object\.freeze\(\["const", "add", "input"\]\)/.test(lowNoc),
+          "the hashed lowering semantics must include `input`. B1 left it out, so B2 adding it would " +
+          "have moved LOWERING_SEM_ID — implementing a frozen rule re-identifying the relation, " +
+          "which is the whole thing B1.1 set out to prevent");
+        ok(/input_lowering_rule:/.test(lowSrc) && /carried through UNCHANGED/.test(lowSrc),
+          "the `input` lowering rule must be frozen in the SEMANTICS even though the implementation " +
+          "is absent — that is what makes 'decided, not built' a checkable state rather than a " +
+          "sentence");
+        ok(!/"lower-input-not-implemented"/.test(
+             lowNoc.slice(lowNoc.indexOf("refusal_semantics"), lowNoc.indexOf("totality:"))),
+          "lower-input-not-implemented must NOT be a semantic refusal. It says the code is unwritten, " +
+          "not that the language refuses the op, and hashing it makes writing the frozen rule a " +
+          "semantic event");
+        ok(/consumed_inputs:/.test(lowSrc) && /grant-versus-footprint/.test(lowSrc),
+          "instantiation must keep SUPPLIED and CONSUMED inputs distinct. That is grant-versus-" +
+          "footprint from round 15 one layer down, and collapsing it now would lose the distinction " +
+          "before the invocation environments get large enough to need it");
         ok(/export const INSTANTIATION_SEM_ID =/.test(lowSrc) &&
            /export const inputsSemId =/.test(lowSrc) &&
            /export const portSemId =/.test(lowSrc),

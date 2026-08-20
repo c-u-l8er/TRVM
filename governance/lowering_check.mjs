@@ -56,7 +56,8 @@ import {
   LOWERING_SEM_ID, DECODE_SEM_ID, LOWERING_SPEC, INPUTS_MODEL,
   INSTANTIATION_SEM_ID, INSTANTIATION_FALSIFIERS, LOWERING_SEMANTICS,
   INSTANTIATION_SEMANTICS, LOWERING_STATUS, INSTANTIATION_STATUS,
-  OVERBOUND_TRANSITIONAL_SEM_IDS,
+  OVERBOUND_TRANSITIONAL_SEM_IDS, T, emit, templatePorts, targetTemplateSemId,
+  TARGET_TEMPLATE_ENCODING_SEM_ID,
 } from "./lowering.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -103,13 +104,18 @@ const PROGRAM_SEM_ID = programSemId(PROGRAM);
 const low = lower(PROGRAM);
 const kernelSemId = (term) => { const frt = new FloatRt(); return semStateId(frt, extrude(frt, parse(frt, term))); };
 const TARGET_TERM_SEM_ID = low.ok ? kernelSemId(low.target_term) : null;
-const receipt = low.ok ? loweringReceipt(PROGRAM_SEM_ID, TARGET_TERM_SEM_ID) : null;
+// THE RECEIPT ENDS AT THE TEMPLATE. Lowering's codomain is the template after
+// B1/B1.2; a receipt ending in target_term_sem_id would keep asserting that
+// lowering produced the executable term, which the two-level ruling denies.
+const receipt = low.ok ? loweringReceipt(PROGRAM_SEM_ID, low.target_template_sem_id) : null;
 {
   R("lowering-is-deterministic",
     low.ok && lower(PROGRAM).target_term === low.target_term
       && receipt.lowering_sem_id === LOWERING_SEM_ID
       && receipt.program_sem_id === PROGRAM_SEM_ID
-      && receipt.lowering_receipt_id.startsWith("lrec-"),
+      && receipt.lowering_receipt_id.startsWith("lrec-")
+      && receipt.target_template_sem_id === low.target_template_sem_id
+      && receipt.target_term_sem_id === undefined,
     `add(const 2, const 3) lowers to ${low.ok && low.target_term.length} characters of ic32, the same ` +
     `string twice. The RELATION is ${LOWERING_SEM_ID.slice(0, 16)}… and the APPLICATION is a receipt ` +
     `${receipt?.lowering_receipt_id.slice(0, 16)}… binding {program_sem_id, lowering_sem_id, ` +
@@ -122,10 +128,13 @@ const receipt = low.ok ? loweringReceipt(PROGRAM_SEM_ID, TARGET_TERM_SEM_ID) : n
   const againId = again.ok ? kernelSemId(again.target_term) : null;
   const other = lower({ op: "add", a: { op: "const", value: 3 }, b: { op: "const", value: 2 } });
   R("re-lowering-verifies",
-    againId === receipt.target_term_sem_id && again.target_term === low.target_term
-      && other.ok && kernelSemId(other.target_term) !== receipt.target_term_sem_id,
+    againId === TARGET_TERM_SEM_ID && again.target_term === low.target_term
+      && again.target_template_sem_id === low.target_template_sem_id
+      && other.ok && kernelSemId(other.target_term) !== TARGET_TERM_SEM_ID
+      && other.target_template_sem_id !== low.target_template_sem_id,
     `lowering the program again independently reaches the same target_term_sem_id ` +
-    `(${String(receipt.target_term_sem_id).slice(0, 12)}…), which is the whole verification — no film. ` +
+    `(${String(TARGET_TERM_SEM_ID).slice(0, 12)}…) and the same target_template_sem_id ` +
+    `(${String(low.target_template_sem_id).slice(0, 12)}…), which is the whole verification — no film. ` +
     `A film is evidence for a TRANSITION SYSTEM and lowering is a relation; filming it would invent ` +
     `internal compiler steps and make implementation strategy semantic, which is the mistake the ` +
     `read-order ruling refused. add(3,2) lowers to a DIFFERENT target term, so the id is not vacuous`);
@@ -136,7 +145,7 @@ const initial = await runCanon(low.target_term, []);
 const nf = await runCanon(low.target_term, ["--nf"]);
 {
   R("native-execution-observed",
-    initial.ok && nf.ok && initial.id === receipt.target_term_sem_id
+    initial.ok && nf.ok && initial.id === TARGET_TERM_SEM_ID
       && nf.observed?.implementation_family_id === C_CANON,
     `the host hashed the catalogued binary and then ran it: the C side's canonical id for the LOWERED ` +
     `term is ${initial.id?.slice(0, 12)}… and equals the kernel's target_term_sem_id, so the two planes ` +
@@ -183,7 +192,7 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
 
 /* ── 6. six identities, and none of them is another one ──────────────────── */
 {
-  const ids = { PROGRAM_SEM_ID, LOWERING_SEM_ID, TARGET_TERM_SEM_ID: receipt.target_term_sem_id,
+  const ids = { PROGRAM_SEM_ID, LOWERING_SEM_ID, TARGET_TERM_SEM_ID,
     TARGET_NF_SEM_ID, DECODE_SEM_ID, OUTCOME_SEM_ID: SOURCE_OUTCOME_SEM_ID };
   const vals = Object.values(ids);
   R("six-identities-stay-distinct",
@@ -258,6 +267,42 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
     `name non-semantic moves the INSTANTIATION id and NOT lowering's — which is the two-relation ` +
     `ruling measured rather than asserted. The overbound B1 ids are kept in ` +
     `OVERBOUND_TRANSITIONAL_SEM_IDS rather than erased`);
+}
+
+/* ── 7d. THE TARGET TEMPLATE EXISTS, and allocation cannot reach it ──────
+      B1 ruled that a port lives "at the canonical target-AST layer, before any
+      variable allocation" and there was no such layer — lower() built an ic32
+      string, so a port would have had to be a placeholder like `$input_x` and
+      spelling would be semantics again. The template is that layer, and the
+      reason I-4a holds is STRUCTURAL: a template has nowhere to put a binder
+      name or a dup label, because emit() invents both from its shape. */
+{
+  const t = low.template;
+  const emitted = emit(t);
+  const ports = templatePorts(t);
+  // a template that still has a port is not a term, and emit says so by name
+  const withPort = T.add(T.port("x"), T.church(3));
+  const refused = (() => { try { emit(withPort); return "EMITTED"; }
+    catch (e) { return e.message; } })();
+  // two structurally equal templates have one identity; a different one differs
+  const rebuilt = T.add(T.church(2), T.church(3));
+  const different = T.add(T.church(3), T.church(2));
+  const noNames = !JSON.stringify(t).includes("λ") && !/"[a-z]+\d"/.test(JSON.stringify(t));
+  R("target-template-is-the-pre-allocation-layer",
+    ports.length === 0 && emitted === low.target_term
+      && targetTemplateSemId(rebuilt) === low.target_template_sem_id
+      && targetTemplateSemId(different) !== low.target_template_sem_id
+      && targetTemplateSemId(withPort) !== low.target_template_sem_id
+      && /^emit-unbound-port: x/.test(refused) && noNames
+      && low.target_template_sem_id.startsWith("tmpl-")
+      && TARGET_TEMPLATE_ENCODING_SEM_ID.startsWith("tenc-"),
+    `lowering's codomain is ${JSON.stringify(t)} — no binder names, no dup labels, ports structural. ` +
+    `emit() allocates both from the template's shape and reproduces the SAME ${emitted.length} ` +
+    `characters of ic32 the pre-template lowering produced, so introducing the layer changed neither ` +
+    `the executable term nor its outcome. A template still holding a port is ${refused.split(":")[0]} ` +
+    `rather than emitted, because a template with a free port is not a term. Structural equality is ` +
+    `identity (${low.target_template_sem_id.slice(0, 14)}…) and add(3,2) differs — and the template's ` +
+    `id lives in its own domain from the term's even here, where there are zero ports`);
 }
 
 /* ── 7c. extra inputs are IGNORED, because the SOURCE ignores them ───────── */

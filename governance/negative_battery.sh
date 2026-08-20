@@ -1587,6 +1587,40 @@ for e in g['law_registry']['entries']:
                                               'establishes instantiation behaviour')
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
+# ── B1.2: the template layer ───────────────────────────────────────────────
+run_case template-layer-removed "must have a TARGET TEMPLATE layer" "
+src = open('lowering.mjs').read()
+src = src.replace('export function emit(template)', 'function emit(template)')
+open('lowering.mjs','w').write(src)"
+
+run_case receipt-ends-at-the-term "LoweringReceipt must end there" "
+src = open('lowering.mjs').read()
+src = src.replace('export function loweringReceipt(program_sem_id, target_template_sem_id)',
+                  'export function loweringReceipt(program_sem_id, target_term_sem_id)')
+open('lowering.mjs','w').write(src)"
+
+run_case input-dropped-from-semantics "hashed lowering semantics must include" "
+src = open('lowering.mjs').read()
+src = src.replace('lowered_ops: Object.freeze([\"const\", \"add\", \"input\"])',
+                  'lowered_ops: Object.freeze([\"const\", \"add\"])')
+open('lowering.mjs','w').write(src)"
+
+run_case status-refusal-made-semantic "must NOT be a semantic refusal" "
+src = open('lowering.mjs').read()
+src = src.replace('\"lower-reads-undecided\", \"emit-unbound-port\"',
+                  '\"lower-reads-undecided\", \"lower-input-not-implemented\", \"emit-unbound-port\"')
+open('lowering.mjs','w').write(src)"
+
+run_case consumed-inputs-collapsed "must keep SUPPLIED and CONSUMED inputs distinct" "
+src = open('lowering.mjs').read()
+src = src.replace('  consumed_inputs:', '  consumed_inputs_removed:')
+open('lowering.mjs','w').write(src)"
+
+run_case template-allows-allocation "must record WHY allocation cannot be semantic" "
+src = open('lowering.mjs').read()
+src = src.replace('  no_names_no_labels:', '  binder_naming:')
+open('lowering.mjs','w').write(src)"
+
 run_case entry-snapshot-law-deleted "law derivation.entry-snapshot@1 missing" "
 import json
 g = json.load(open('invariant-grid.json'))

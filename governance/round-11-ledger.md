@@ -1328,3 +1328,86 @@ byte-identical — **twenty-ninth** consecutive round.
 **205. B2 is unblocked.** Templates for every program including input-free ones, `input-port("x")`
 before allocation, `instantiate()`, the `InstantiationReceipt` verified by re-instantiation, and the
 three falsifiers with I-4c asymmetric. Then `church_exp_2_2` and the DUP-ERA fixture.
+
+## Round 27, pass B1.2 — the layer B1 presumed and did not have
+
+GPT approved B1.1 and stopped B2 again, for a better reason than the last one.
+
+**206. B1 froze an architecture the compiler could not express.** The ruling says a port lives at
+`{op:"input-port", source_name:"x"}` *"at the canonical target-AST layer, BEFORE any textual or ic32
+variable allocation."* There was no such layer. `lower()` built an ic32 **string**:
+
+```js
+return { ok: true, target_term: go(ast) };
+```
+
+So a port would have had to be a placeholder like `$input_x` — **spelling as semantics, the exact
+defect the ruling forbids, reintroduced by the absence of the representation it presumes.** GPT saw
+that before a line of B2 was written; it is the kind of thing that only shows up when someone asks
+*where would this actually live.*
+
+**207. `TRVM-TARGET-TEMPLATE-v1`**, minimal on purpose — exactly today's fragment:
+
+```
+Template := church(n) | add(Template, Template) | port(source_name)
+```
+
+with its own content-bound encoding identity. Lowering's codomain is now the template; `emit()` is a
+separate deterministic serialization to ic32.
+
+**208. And the reason I-4a holds is now STRUCTURAL rather than promised.** A template contains **no
+binder names and no dup labels.** `emit()` invents both from the template's shape by the declared
+depth-first policy. Two implementations that allocate `_impl17` and `q93` cannot differ in the
+template, because *there is no field an allocation could occupy.* That is a much better answer than
+asking an emitter to be well-behaved. `emit()` refuses a template still holding a port
+(`emit-unbound-port`), because a template with a free port is not an executable term.
+
+**209. THE REGRESSION THEOREM, which is why this was safe to do before B2.**
+
+```
+pre-B1.2  lower(add(2,3)).target_term   129 characters
+post-B1.2 emit(template)                129 characters      BYTE-IDENTICAL
+```
+
+Introducing the compiler phase changed **neither the executable term nor its outcome** — same six-frame
+film, same normal form, same value 5, refinement still FILM-EVIDENCED. Verified against the previous
+commit's `lower()`, and on a nested fixture too.
+
+**210. `LoweringReceipt` ends at the template now.** It bound `{program_sem_id, lowering_sem_id,
+target_term_sem_id}` — the **pre-B1 relation**, still asserting that lowering produces the executable
+term, which the two-level ruling denies. It ends at `target_template_sem_id`; the closed term's
+identity belongs to the `InstantiationReceipt`.
+
+**211. And the hashed semantics were still incomplete, which is B1.1's own defect surviving one round.**
+`LOWERED_OPS` was `["const","add"]`, so **B2 adding `input` would have moved `LOWERING_SEM_ID`** —
+implementing a frozen rule re-identifying the relation, precisely what B1.1 set out to make
+impossible. The whole fragment including `input` is in the semantics now, with its rule frozen:
+
+```
+{op:"input", name:N}  →  {t:"port", source_name:N}     N carried through UNCHANGED
+```
+
+and `lower-input-not-implemented` moved to `LOWERING_STATUS` as an operational refusal. **Measured:
+implementing the rule *and* flipping both lifecycle flags moves neither semantic id.** The B1.1
+promise is finally true rather than nearly true.
+
+**212. `consumed_inputs` is named so it cannot be erased.** Instantiation substitutes only the ports
+the template declares; the inputs **supplied** and the inputs **consumed** are different sets. That is
+**grant-versus-footprint from round 15, one layer down** — GPT's observation, and it is the right
+frame. No `input_footprint` is emitted yet and that is named rather than implied.
+
+**213. The file header had been contradicting its own body for a round.** It still drew
+`program_sem_id → target_term_sem_id` and still said the inputs model was undecided, while the
+sections below said the opposite. Fixed — a file contradicting itself is the record-staleness class
+this tree does not tolerate anywhere else.
+
+**214. Gate.** grid **v1.36.0** — 77 entries / 372 citations · `lowering.mjs` **0.4.0** · negative
+battery **221/221** with six new B1.2 forgeries · lowering **12/12**, refinement unchanged and still
+FILM-EVIDENCED · derive 45/45 · realm 24/24 · bridge 48/48 · film 16/16 · twelve paired probes ·
+harness 9/9 · runner 3/3. `scheduler_certificate.json` byte-identical — **thirtieth** consecutive
+round.
+
+**215. B2 is now genuinely unblocked**, and it is small: delete one refusal line so `input` lowers to
+`T.port(name)`, write `instantiate()` over the template, and write I-4a/I-4b/I-4c with the mandated
+asymmetric fixture. The identities will not move when it lands, and that is checkable rather than
+hoped for.

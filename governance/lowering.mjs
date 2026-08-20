@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   lowering.mjs — v0.1.0 — the source language reaches the governed runtime
+   lowering.mjs — v0.4.0 — the source language reaches the governed runtime
 
    Three logically independent relations, which is the whole design and not a
    decomposition for tidiness. Each can fail while the others hold: a lowering
@@ -9,18 +9,24 @@
    into separating claims that felt like one claim, so they get three
    obligations, three laws, and six identities that may not collapse.
 
-       program_sem_id  ──lowering_sem_id──▶  target_term_sem_id
-                                                    │
-                                             native ic32 execution
-                                                    ▼
-                                              target_nf_sem_id
-                                                    │
-                                              decode_sem_id
-                                                    ▼
-                                           target_outcome_sem_id
-       source evaluator ─────────────────▶ source_outcome_sem_id
+       program_sem_id
+             │  lowering_sem_id
+             ▼
+       target_template_sem_id        ← TRVM-TARGET-TEMPLATE-v1, ports structural
+             │  instantiation_sem_id + inputs_sem_id
+             ▼
+       target_term_sem_id            ← the closed executable ic32 term
+             │  native ic32 execution
+             ▼
+       target_nf_sem_id
+             │  decode_sem_id
+             ▼
+       target_outcome_sem_id
+       source evaluator ──────────▶  source_outcome_sem_id
 
        REFINEMENT:  source_outcome_sem_id == target_outcome_sem_id
+                    over canonical, FULLY BOUND input environments; see
+                    REFINEMENT_SCOPE for what is declared open
 
    THE LOWERING GETS NO FILM, and that is a ruling rather than an omission. A
    semantic film is evidence for a TRANSITION SYSTEM; lowering is a relation
@@ -36,27 +42,34 @@
    not silently answer both "which lowering semantics is this?" and "what
    happened when we lowered this particular program?":
 
-       lowering_sem_id      the RELATION — H over the source core identity, the
-                            target encoding, the canonical specification
+       lowering_sem_id      the RELATION — H over LOWERING_SEMANTICS alone
        LoweringReceipt      the APPLICATION — {program_sem_id, lowering_sem_id,
-                            target_term_sem_id}, itself content-addressed
+                            target_template_sem_id}, itself content-addressed
 
-   DEFERRED, AND NAMED SO IT IS NOT DISCOVERED. `add(const 2, const 3)` has
-   inputs = {}, so this does not decide PARAMETERIZED lowering (program → target
-   term with input ports, inputs arriving at execution, target_term_sem_id a
-   function of the program alone) versus INSTANTIATED lowering (program +
-   canonical_inputs → closed target term, where the identity must say so). Both
-   are coherent and they are different systems. That decision comes BEFORE the
-   `input` op, because an unstated variable inside target_term_sem_id is exactly
-   the hidden-identity bug class round 16 exists to prevent. `INPUTS_MODEL`
-   below records that it is undecided, and lowering REFUSES any program whose
-   evaluation would consult an input.
+   DECIDED AT B1, COMPLETED AT B1.2. The inputs model is TWO LEVELS: lowering
+   produces a parameterized TEMPLATE whose identity is a function of the program
+   alone, and instantiation closes it against canonical inputs to produce the
+   executable TERM. 'Parameterized versus instantiated' was a false choice — the
+   template is parameterized AND the executed term is necessarily closed.
+
+   B1 stated that and had no template: lower() emitted an ic32 STRING, so
+   `input-port` had nowhere structural to live. B1.2 added
+   TRVM-TARGET-TEMPLATE-v1, moved lowering's codomain onto it, and put the
+   whole source fragment INCLUDING `input` into the hashed semantics so that
+   implementing the frozen rule cannot move an identity. `input` still refuses,
+   as lower-input-not-implemented — a STATUS refusal, deliberately not part of
+   LOWERING_SEMANTICS.refusal_semantics.
+
+   THIS HEADER WAS STALE FOR A ROUND. It described the pre-B1 chain
+   program_sem_id → target_term_sem_id and said the inputs model was undecided,
+   while the sections below said the opposite — a file contradicting itself,
+   which is the record-staleness class this tree does not tolerate elsewhere.
    ═══════════════════════════════════════════════════════════════════════════ */
 import { createHash } from "node:crypto";
 import { canonicalBytes, CORE_SEM_ID, programSemId } from "./derive_protocol.mjs";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const LOWERING_VERSION = "0.3.0";
+export const LOWERING_VERSION = "0.4.0";
 
 /* ── the target encoding ──────────────────────────────────────────────────
    ic32's interaction net is linear: a variable used twice needs an explicit
@@ -77,9 +90,116 @@ export const TARGET_ENCODING = Object.freeze({
     "and part of this encoding's identity: a different assignment is a different encoding, because " +
     "the label reaches the canonical signature through Sn(…) and would otherwise be an allocation " +
     "detail hiding inside a semantic id.",
+  // SEMANTIC refusals of the ENCODING. `lower-input-not-implemented` was here
+  // until B1.2 and is now a STATUS refusal in LOWERING_STATUS: it says the code
+  // is unwritten, not that the encoding refuses the op, and hashing it into an
+  // encoding identity would make writing the frozen rule a semantic event.
   refusals: ["lower-unsupported-op", "lower-non-integer-constant", "lower-negative",
-    "lower-input-not-implemented", "lower-reads-undecided"],
+    "lower-reads-undecided"],
 });
+
+/* ── B1.2: THE TARGET TEMPLATE, which is the layer B1 talked about and did
+      not have ─────────────────────────────────────────────────────────────
+   B1 ruled that a port is `{op:"input-port", source_name:"x"}` "at the
+   canonical target-AST layer, BEFORE any textual or ic32 variable allocation".
+   There was no such layer: lower() built an ic32 STRING directly. A port would
+   therefore have had to be a string placeholder like `$input_x`, and spelling
+   would have become semantics again — the exact defect the ruling forbids,
+   reintroduced by the absence of the representation it presumes.
+
+   So the codomain of lowering is a TEMPLATE, and emitting the executable term
+   is a separate, deterministic serialization:
+
+       source AST  ──lowering──▶  TRVM-TARGET-TEMPLATE-v1
+                                        │  emit (allocates)
+                                        ▼
+                                  TRVM-TERM-CANON-v1 / ic32 text
+                                        │  native execution
+                                        ▼
+                                  SEMSTATE-CANONICAL-v1
+
+   WHY ALLOCATION CANNOT BE SEMANTIC, structurally rather than by promise: the
+   template contains NO binder names and NO dup labels. Both are produced by
+   emit(), from the template's shape, by the documented depth-first walk. Two
+   implementations that allocate `_impl17` and `q93` do not differ in the
+   template because the template has nowhere to put a name. I-4a is then a
+   property of the data structure rather than a convention the emitter is asked
+   to respect.
+
+   MINIMAL ON PURPOSE — exactly the nodes today's fragment needs. It is not a
+   general compiler IR and does not pretend to be; `read`, `scope` and `cite`
+   have no nodes because they have no lowering. */
+export const TARGET_TEMPLATE_ENCODING = Object.freeze({
+  encoding: "TRVM-TARGET-TEMPLATE-v1",
+  grammar: "Template := church(n) | add(Template, Template) | port(source_name)",
+  nodes: Object.freeze({
+    church: "{t:\"church\", n} — a non-negative integer literal, expanded to a LINEAR Church numeral " +
+      "by emit() per TARGET_ENCODING.numbers. The expansion is the ENCODING's, not the template's, " +
+      "which is why n stays a number here.",
+    add: "{t:\"add\", a, b} — the TARGET add combinator applied to two templates. Target-side, not " +
+      "the source `add` op: it names the combinator in TARGET_ENCODING.add. Operand order is a then " +
+      "b, the core's own evaluation order.",
+    port: "{t:\"port\", source_name} — an INPUT PORT, structural. Instantiation replaces it; emit() " +
+      "REFUSES a template that still contains one, because a template with a free port is not an " +
+      "executable term and silently emitting something for it would be the fragment-totality " +
+      "violation one layer down.",
+  }),
+  no_names_no_labels: "A TEMPLATE CONTAINS NO BINDER NAMES AND NO DUP LABELS. emit() allocates both " +
+    "from the template's shape by TARGET_ENCODING.dup_label_policy — a counter from 0, depth-first, " +
+    "operands in declared field order. Allocation is therefore not merely declared non-semantic; " +
+    "there is no field it could occupy. This is what makes I-4a structural.",
+  determinism: "emit() is a function: the same template always produces the same ic32 text, labels " +
+    "included. Two templates with equal canonical bytes emit equal terms.",
+  refusals: ["emit-unbound-port", "template-malformed"],
+});
+export const TARGET_TEMPLATE_ENCODING_SEM_ID =
+  "tenc-" + H("TRVM-TARGET-TEMPLATE-ENC-v1|" + canonicalBytes(TARGET_TEMPLATE_ENCODING));
+
+/** Template constructors. Frozen plain data — canonicalBytes refuses anything
+ *  else, so a template carrying a capability dies at its own identity. */
+export const T = Object.freeze({
+  church: (n) => Object.freeze({ t: "church", n }),
+  add: (a, b) => Object.freeze({ t: "add", a, b }),
+  port: (source_name) => Object.freeze({ t: "port", source_name }),
+});
+
+/** The identity of a TEMPLATE. A different domain tag from target_term_sem_id
+ *  even when the template has zero ports, because "the parameterized thing
+ *  lowering produced" and "the closed thing the runtime executed" are different
+ *  objects that happen to coincide in shape when there are no inputs. */
+export const targetTemplateSemId = (template) => "tmpl-" +
+  H("TRVM-TARGET-TEMPLATE-v1|" + TARGET_TEMPLATE_ENCODING_SEM_ID + "|" + canonicalBytes(template));
+
+/** Every source input name the template actually consumes, in canonical order.
+ *  NOT the same as the inputs supplied — that distinction is grant-vs-footprint
+ *  from round 15, one layer down, and instantiation must not erase it. */
+export function templatePorts(template) {
+  const out = new Set();
+  const walk = (n) => {
+    if (!n || typeof n !== "object") throw new Error("template-malformed");
+    if (n.t === "port") { out.add(n.source_name); return; }
+    if (n.t === "church") return;
+    if (n.t === "add") { walk(n.a); walk(n.b); return; }
+    throw new Error("template-malformed: " + String(n.t));
+  };
+  walk(template);
+  return [...out].sort();
+}
+
+/** TEMPLATE → ic32 text. The ONLY place binder names and dup labels are
+ *  invented, which is the whole point of the layer. */
+export function emit(template) {
+  const labels = { n: 0, next() { return this.n++; } };
+  const go = (n) => {
+    if (!n || typeof n !== "object") throw new Error("template-malformed");
+    if (n.t === "church") return church(n.n, labels);
+    if (n.t === "add") { const a = go(n.a), b = go(n.b);
+      return `((${ADD_COMBINATOR(labels.next())} ${a}) ${b})`; }
+    if (n.t === "port") throw new Error("emit-unbound-port: " + String(n.source_name));
+    throw new Error("template-malformed: " + String(n.t));
+  };
+  return go(template);
+}
 
 /* WHICH ops lower. Deliberately the smallest set that makes the refinement
    theorem non-trivial, and everything else is a NAMED refusal rather than a
@@ -166,6 +286,16 @@ export const INPUT_PORT_SPEC = Object.freeze({
    record that quietly replaces them would be doing what this round is fixing. */
 export const INSTANTIATION_SEMANTICS = Object.freeze({
   relation: "target_template + inputs -> closed target term",
+  // BOTH ENCODINGS NAMED, because instantiation is the map between them and a
+  // relation that does not commit to its own domain and codomain is a relation
+  // whose id cannot distinguish two different maps.
+  domain_encoding_sem_id: TARGET_TEMPLATE_ENCODING_SEM_ID,
+  codomain_encoding: "TRVM-TERM-CANON-v1 / ic32 executable text, via emit()",
+  consumed_inputs: "instantiation substitutes ONLY the ports the template declares. The inputs " +
+    "SUPPLIED and the inputs CONSUMED are different sets and the difference is not erased: it is " +
+    "grant-versus-footprint from round 15, one layer down. inputs_sem_id commits to the whole " +
+    "supplied record; the executable term depends only on the consumed part. No input_footprint is " +
+    "emitted yet and that is named rather than implied.",
   port_namespace: INPUT_PORT_SPEC.namespace,
   port_identity: Object.freeze({
     source_name_semantic: true,
@@ -208,7 +338,7 @@ export const INSTANTIATION_STATUS = Object.freeze({
   decided_at: "round 27, pass B1",
   semantics_corrected_at: "round 27, pass B1.1 — extra_input and the semantic/status split",
   implemented: false,
-  operational_refusals: ["instantiate-not-implemented"],
+  operational_refusals: ["instantiate-not-implemented", "lower-input-not-implemented"],
   conformance_vectors: "DECLARED OPEN until B2. The three falsifiers are named in " +
     "INSTANTIATION_FALSIFIERS and none of them is written yet.",
   no_film: "instantiation gets NO FILM. It is a deterministic RELATION, not a transition system, so " +
@@ -273,9 +403,21 @@ export const LOWERING_SEMANTICS = Object.freeze({
   language: "TRVM-DERIVE-CORE",
   source_core_sem_id: CORE_SEM_ID,
   target_encoding: TARGET_ENCODING,
-  lowered_ops: LOWERED_OPS,
+  // THE CODOMAIN IS THE TEMPLATE, and naming its encoding here is what makes
+  // that a semantic commitment rather than a sentence in a header.
+  codomain: "TRVM-TARGET-TEMPLATE-v1",
+  target_template_encoding_sem_id: TARGET_TEMPLATE_ENCODING_SEM_ID,
+  // THE FULL SOURCE FRAGMENT, `input` INCLUDED. B1 left `input` out of the
+  // hashed semantics, so B2 adding it would have moved LOWERING_SEM_ID — which
+  // is precisely what B1.1 set out to make impossible. The rule is frozen here
+  // and the implementation is absent; those are different facts and only the
+  // first one is hashed.
+  lowered_ops: Object.freeze(["const", "add", "input"]),
   inputs: Object.freeze({
     model: "template-then-instantiation",
+    input_lowering_rule: "{op:\"input\", name:N} lowers to the structural template node " +
+      "{t:\"port\", source_name:N}. N is carried through UNCHANGED — not normalized, not renamed, " +
+      "not indexed — because the source key is semantic and the target's own naming is not.",
     ruling: "TWO LEVELS, TWO IDENTITIES. Lowering produces a PARAMETERIZED target TEMPLATE whose " +
       "identity is a function of the program alone; instantiation closes that template against " +
       "canonical inputs and produces the executable TERM. 'Parameterized versus instantiated' was a " +
@@ -286,7 +428,12 @@ export const LOWERING_SEMANTICS = Object.freeze({
       "instantiation_sem_id and inputs_sem_id",
     instantiation_sem_id_is_separate: true,
   }),
-  refusal_semantics: TARGET_ENCODING.refusals,
+  // SEMANTIC refusals only. `lower-input-not-implemented` is a STATUS refusal
+  // and lives in LOWERING_STATUS: it says the code is unwritten, not that the
+  // language refuses the op, and hashing it here would make implementing a
+  // frozen rule a semantic event.
+  refusal_semantics: Object.freeze(["lower-unsupported-op", "lower-non-integer-constant",
+    "lower-negative", "lower-reads-undecided", "emit-unbound-port", "template-malformed"]),
   totality: "lowering is TOTAL on the lowered fragment and REFUSES by name outside it. A lowering " +
     "that silently emitted something for an op it does not encode would make the refinement theorem " +
     "a statement about whatever it happened to emit.",
@@ -409,10 +556,14 @@ const ADD_COMBINATOR = (L) => `λm.λn.λf.λx.!&${L}{f0,f1}=f;((m f0) ((n f1) x
 /** program AST → canonical target term, or a NAMED refusal. Deterministic: the
  *  same AST always produces the same string, including its dup labels. */
 export function lower(ast) {
-  const labels = { n: 0, next() { return this.n++; } };
   const go = (node) => {
     if (!node || typeof node !== "object") throw new Error("lower-unsupported-op");
     if (!LOWERED_OPS.includes(node.op)) {
+      // `input` HAS a frozen lowering rule (LOWERING_SEMANTICS.inputs.
+      // input_lowering_rule: it becomes T.port(node.name)) and no
+      // implementation. That is a STATUS refusal, not a semantic one, which is
+      // why it does not appear in LOWERING_SEMANTICS.refusal_semantics — B2
+      // deleting this line adds no meaning and must not move LOWERING_SEM_ID.
       if (["input"].includes(node.op)) throw new Error("lower-input-not-implemented");
       if (["read", "scope", "cite"].includes(node.op)) throw new Error("lower-reads-undecided");
       throw new Error("lower-unsupported-op: " + String(node.op));
@@ -420,26 +571,38 @@ export function lower(ast) {
     if (node.op === "const") {
       if (!Number.isInteger(node.value)) throw new Error("lower-non-integer-constant");
       if (node.value < 0) throw new Error("lower-negative");
-      return church(node.value, labels);
+      return T.church(node.value);
     }
     // `add`: operands in DECLARED FIELD ORDER, a before b, which is the core's
-    // own evaluation order — so the label counter advances the same way the
-    // source evaluator would have walked the tree.
-    const a = go(node.a), b = go(node.b);
-    return `((${ADD_COMBINATOR(labels.next())} ${a}) ${b})`;
+    // own evaluation order — so emit()'s label counter later advances the same
+    // way the source evaluator would have walked the tree.
+    return T.add(go(node.a), go(node.b));
   };
-  try { return { ok: true, target_term: go(ast) }; }
-  catch (e) { return { ok: false, reason: e.message }; }
+  try {
+    const template = go(ast);
+    const ports = templatePorts(template);
+    // THE EXECUTABLE TERM IS A CONVENIENCE, and only for a CLOSED template.
+    // Lowering's codomain is the template; a template with ports is not a term
+    // and must go through instantiation to become one.
+    const out = { ok: true, template, target_template_sem_id: targetTemplateSemId(template), ports };
+    return ports.length ? out : { ...out, target_term: emit(template) };
+  } catch (e) { return { ok: false, reason: e.message }; }
 }
 
-/** The APPLICATION record. target_term_sem_id is supplied by the caller because
- *  it is a SEMANTIC identity of the target term — the ic32 canonical state id —
- *  and computing it is the kernel's job, not the lowering's. A lowering that
- *  minted the identity of its own output would be grading its own homework. */
-export function loweringReceipt(program_sem_id, target_term_sem_id) {
-  const receipt = { program_sem_id, lowering_sem_id: LOWERING_SEM_ID, target_term_sem_id };
+/** The APPLICATION record. It ends at the TEMPLATE, because that is what
+ *  lowering produces after B1: saying it produced the executable term is the
+ *  pre-B1 relation, and a receipt that keeps claiming it would be asserting the
+ *  thing the two-level ruling denies. The closed term's identity belongs to the
+ *  InstantiationReceipt.
+ *
+ *  target_template_sem_id is computed here rather than supplied because it is a
+ *  property of a structure this module owns and canonicalises. The TERM's id
+ *  stays the kernel's to mint — a lowering that minted the identity of the
+ *  thing the runtime executes would be grading its own homework. */
+export function loweringReceipt(program_sem_id, target_template_sem_id) {
+  const receipt = { program_sem_id, lowering_sem_id: LOWERING_SEM_ID, target_template_sem_id };
   return Object.freeze({ ...receipt,
-    lowering_receipt_id: "lrec-" + H("TRVM-LOWERING-RECEIPT-v1|" + canonicalBytes(receipt)) });
+    lowering_receipt_id: "lrec-" + H("TRVM-LOWERING-RECEIPT-v2|" + canonicalBytes(receipt)) });
 }
 
 /* ── the decoder ──────────────────────────────────────────────────────────
