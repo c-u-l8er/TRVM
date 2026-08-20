@@ -225,7 +225,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0", "1.35.0", "1.36.0", "1.37.0", "1.38.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0", "1.35.0", "1.36.0", "1.37.0", "1.38.0", "1.39.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -1382,8 +1382,9 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           const instBlock = lowNoc.slice(lowNoc.indexOf("export function instantiate("),
             lowNoc.indexOf("export function instantiationReceipt("));
           ok(!/target_term_sem_id/.test(instBlock) &&
-             /export function instantiationReceipt\(target_template_sem_id, inputs_sem_id, target_term_sem_id\)/
+             /export function instantiationReceipt\(target_template_sem_id, inputs_sem_id, closed_template_sem_id\)/
                .test(lowNoc) &&
+             /export function emissionReceipt\(closed_template_sem_id, target_term_sem_id\)/.test(lowNoc) &&
              /instantiation-receipt-incomplete/.test(lowNoc),
             "instantiate() must not compute target_term_sem_id. An instantiator that emitted bytes " +
             "AND certified their semantic id would produce the artifact and the certificate from one " +
@@ -1405,6 +1406,51 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "is reworded. GPT added independently-versionable and externally-observed-intermediate at " +
           "B2, and those are the two that fire first — the moment two emitters are compared over one " +
           "closed template, an emitter upgrade re-cutting the identity of PORT SUBSTITUTION is wrong");
+        // ── B2.1: the split trigger fired, and two defects behind it ──────
+        ok(/entry_snapshot:/.test(lowNoc) &&
+           /const own = ownCanonical\(inputs\)/.test(lowNoc) &&
+           /const tmpl = ownCanonical\(template\)/.test(lowNoc) &&
+           /inputsSemId\(own\)/.test(lowNoc),
+          "instantiate() must SNAPSHOT both arguments at entry and read only the snapshot. It read " +
+          "the caller's inputs twice — once to bind values and once to compute inputs_sem_id — so a " +
+          "getter answering 2 then 999 produced a term meaning x=2 beside an identity committing to " +
+          "{x:999}. The relation misbound its own input identity while nothing about the runtime was " +
+          "wrong: round 27A.1's entry-snapshot rule arriving in the compiler layer");
+        ok(/predicate_semantics: Object\.freeze/.test(lowNoc) &&
+           /kind: "number-is-integer"/.test(lowNoc) &&
+           /transform_semantics: Object\.freeze/.test(lowNoc) &&
+           /LOWERING_SEMANTICS\.predicate_semantics\[p\.holds\]/.test(lowNoc) &&
+           !/integer: \(v\) =>/.test(lowNoc),
+          "the rule vocabulary's MEANING must be content-bound, not a table of bare names bound to " +
+          "JavaScript functions. Redefining `integer` as always-true changed behaviour — const(1.5) " +
+          "lowered instead of refusing — and moved no identity; `identity` could have been made to " +
+          "normalize a source input name, silently undoing the port ruling. The vocabulary stays " +
+          "CLOSED and its definitions are DATA");
+        ok(/export const EMISSION_SEMANTICS = Object\.freeze/.test(lowNoc) &&
+           /export const EMISSION_SEM_ID =/.test(lowNoc) &&
+           /export const closedTemplateSemId =/.test(lowNoc) &&
+           /closedTemplateSemId = \(closed\) => "ctmpl-"/.test(lowNoc) &&
+           /codomain_encoding_sem_id: TARGET_TEMPLATE_ENCODING_SEM_ID/.test(lowNoc),
+          "EMISSION must be its own relation with its own identity, and instantiation must END AT " +
+          "THE CLOSED TEMPLATE. B1.2.1 declared four conditions for this split and B2 tripped all " +
+          "four: emit() is independently reused, I-4a is a theorem about emission alone, the " +
+          "executable encoding is independently versioned, and instantiate() returns the closed " +
+          "template to its caller. The closed template gets its OWN identity domain (ctmpl-) even " +
+          "where its bytes equal an open template's, because what the compiler produced and what an " +
+          "invocation closed are different things");
+        ok(/export function verifyInstantiationReceipt\(template, inputs, receipt\)/.test(lowNoc) &&
+           /export function verifyEmissionReceipt\(closed_template, receipt, canonicaliseTarget\)/
+             .test(lowNoc),
+          "receipt VERIFICATION must be a production function, not test code. A relation whose only " +
+          "implementation of 'does this receipt hold?' lives in its own suite is a relation nobody " +
+          "else can check. Verifying instantiation needs no runtime canonicaliser now that the " +
+          "relation ends at a structure this module owns; emission TAKES one as a parameter, because " +
+          "the module defining a relation must not also choose the oracle that judges it");
+        ok(/export const SUPERSEDED_B2_SEM_IDS/.test(lowNoc) &&
+           /lsem-2014bdc8add9981442b9bbf42672a00bc477eb2b23c38918b93fdc8d9f1a99a2/.test(lowSrc),
+          "the B2 identities must be kept. The witness that used to reproduce them was retired when " +
+          "its premise expired, and a generation whose only evidence was a deleted test should at " +
+          "least name its values");
         ok(/export const SUPERSEDED_PROSE_RULE_SEM_IDS/.test(lowNoc) &&
            /NOT A DEFECT/.test(lowSrc) &&
            /lsem-84c9344790a0403975430d270e6d567f4124cf7f848761cf19e4f997bc330244/.test(lowSrc),
@@ -1429,9 +1475,22 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
             ["I-4c-binding-has-force",
               "I-4c must run the ASYMMETRIC fixture end to end — 7 against 8 through native execution — " +
               "and the correct receipt must accept only the 7-producing term"],
-            ["implementing-moved-neither-id",
-              "B2 must MEASURE that becoming built moved no semantic id, by putting back only the " +
-              "fields it changed and requiring the B1.2.1 identities to return exactly"],
+            // implementing-moved-neither-id was required here until B2.1, when
+            // its premise expired: it reverted the two fields B2 changed, and
+            // B2.1 changed more, so keeping it would have meant growing an
+            // embedded copy of the module inside its own test. The live
+            // property is measured by semantic-ids-track-semantics-only.
+            ["instantiation-snapshots-its-inputs",
+              "instantiate() must read its arguments ONCE. Reading the caller's inputs twice let a " +
+              "getter bind x=2 into the term while inputs_sem_id committed to x=999 — the relation " +
+              "misbinding its own input identity, with the runtime blameless"],
+            ["rule-vocabulary-is-content-bound",
+              "redefining what `integer` or `identity` MEANS must move LOWERING_SEM_ID. A closed set " +
+              "of bare names left the meaning in a JavaScript function body, where changing it " +
+              "changed behaviour and moved nothing"],
+            ["emission-is-its-own-relation",
+              "an emitter change must move EMISSION's id and neither of the other two, and a " +
+              "substitution change must move instantiation's and not emission's"],
           ]) ok(new RegExp(id).test(lcSrc2), `lowering_check.mjs must carry ${id} — ${why}`);
         }
         // SCOPED TO THE SEMANTICS RECORD. Unscoped, this was satisfied by

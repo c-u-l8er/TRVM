@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   lowering.mjs — v0.6.0 — the source language reaches the governed runtime
+   lowering.mjs — v0.7.0 — the source language reaches the governed runtime
 
    Three logically independent relations, which is the whole design and not a
    decomposition for tidiness. Each can fail while the others hold: a lowering
@@ -116,10 +116,10 @@
                      the TEMPLATE encoding and to its own per-op rules.
    ═══════════════════════════════════════════════════════════════════════════ */
 import { createHash } from "node:crypto";
-import { canonicalBytes, CORE_SEM_ID, programSemId } from "./derive_protocol.mjs";
+import { canonicalBytes, ownCanonical, CORE_SEM_ID, programSemId } from "./derive_protocol.mjs";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const LOWERING_VERSION = "0.6.0";
+export const LOWERING_VERSION = "0.7.0";
 
 /* ── THE EXECUTABLE TARGET ENCODING ───────────────────────────────────────
    ic32's interaction net is linear: a variable used twice needs an explicit
@@ -229,6 +229,62 @@ export const TARGET_TEMPLATE_ENCODING = Object.freeze({
 });
 export const TARGET_TEMPLATE_ENCODING_SEM_ID =
   "tenc-" + H("TRVM-TARGET-TEMPLATE-ENC-v1|" + canonicalBytes(TARGET_TEMPLATE_ENCODING));
+
+/* ── B2.1: EMISSION IS ITS OWN RELATION, because the trigger FIRED ────────
+   B1.2.1 wrote down four conditions under which emission stops being part of
+   instantiation and earns its own identity, and B2 tripped all four at once
+   without noticing — which is the trigger working exactly as intended, and the
+   reason it was written before it was needed rather than after.
+
+       REUSED INDEPENDENTLY          emit() is exported and callable without
+                                     instantiate()
+       THEOREM-BEARING INDEPENDENTLY I-4a compares TWO emitters over one
+                                     template and proves they reach the same
+                                     normal form — a theorem about emission
+                                     alone
+       VERSIONED INDEPENDENTLY       the executable encoding already carries its
+                                     own content identity (xenc-), and B2
+                                     deliberately ran an alternate emitter
+       INTERMEDIATE OBSERVED         instantiate() RETURNS closed_template to
+                                     its caller
+
+   The one that settles it is the second: once two emitters are compared over
+   one closed template, an emitter upgrade re-cutting the semantic identity of
+   PORT SUBSTITUTION is plainly wrong, and that is precisely what a merged
+   relation does.
+
+   THE CLOSED TEMPLATE GETS ITS OWN IDENTITY DOMAIN even when its bytes equal an
+   open template's — `ctmpl-` against `tmpl-`. For add(2,3) with {} the two
+   structures are byte-identical and they are not the same thing: one is what
+   the COMPILER produced, the other is what an INVOCATION closed. Letting them
+   share an id would make "this was instantiated" and "this needed no
+   instantiation" indistinguishable, which is the collapse the whole chain
+   exists to prevent. */
+export const EMISSION_SEMANTICS = Object.freeze({
+  relation: "closed target template -> executable ic32 term",
+  domain_encoding_sem_id: TARGET_TEMPLATE_ENCODING_SEM_ID,
+  domain_restriction: "the PORT-FREE subset. A template still holding a port is refused by name; " +
+    "emission is total on closed templates and refusing outside them, the same discipline lowering " +
+    "has on its fragment.",
+  codomain_encoding_sem_id: TARGET_EXECUTABLE_ENCODING_SEM_ID,
+  allocation: "binder names and dup labels are INVENTED HERE, from the template's shape, by " +
+    "TARGET_ENCODING.dup_label_policy. This is the only place in the chain where an allocation " +
+    "exists, which is what makes allocation-invariance a property of everything upstream.",
+  determinism: "a function: equal closed templates emit equal terms, labels included. Two emitters " +
+    "may differ in the bytes they produce and must agree on what those bytes MEAN — that is a " +
+    "theorem about this relation and it is why the relation is separate.",
+  semantic_refusals: ["emit-unbound-port", "template-malformed"],
+});
+export const EMISSION_SEM_ID =
+  "esem-" + H("TRVM-EMISSION-SEM-v1|" + canonicalBytes(EMISSION_SEMANTICS));
+
+/** The identity of a CLOSED template — a different domain from an open one's,
+ *  deliberately, even at equal bytes. */
+export const closedTemplateSemId = (closed) => "ctmpl-" +
+  H("TRVM-CLOSED-TEMPLATE-v1|" + TARGET_TEMPLATE_ENCODING_SEM_ID + "|" + canonicalBytes(closed));
+
+export const EMISSION_RECEIPT_FIELDS = Object.freeze([
+  "closed_template_sem_id", "emission_sem_id", "target_term_sem_id"]);
 
 /** Template constructors. Frozen plain data — canonicalBytes refuses anything
  *  else, so a template carrying a capability dies at its own identity. */
@@ -373,7 +429,7 @@ export const INPUT_PORT_SPEC = Object.freeze({
    erased: they were the honest identities of the overbound projection, and a
    record that quietly replaces them would be doing what this round is fixing. */
 export const INSTANTIATION_SEMANTICS = Object.freeze({
-  relation: "target_template + inputs -> closed target term",
+  relation: "target_template + inputs -> CLOSED target template",
   // BOTH ENCODINGS NAMED **BY IDENTITY**, because instantiation is the map
   // between them and a relation that does not commit to its own domain and
   // codomain is a relation whose id cannot distinguish two different maps.
@@ -383,8 +439,15 @@ export const INSTANTIATION_SEMANTICS = Object.freeze({
   // characters "emit()" inside an English sentence, so the whole executable
   // encoding was a semantic dependency hiding behind a symbol name.
   domain_encoding_sem_id: TARGET_TEMPLATE_ENCODING_SEM_ID,
-  codomain_encoding: "TRVM-TERM-CANON-v1 / ic32 executable text",
-  codomain_encoding_sem_id: TARGET_EXECUTABLE_ENCODING_SEM_ID,
+  // THE CODOMAIN MOVED AT B2.1, when the emission trigger fired. Instantiation
+  // ends at a CLOSED TEMPLATE; turning that into executable bytes is EMISSION's
+  // relation. Same encoding as the domain — a closed template is a template —
+  // restricted to the port-free subset, and carrying its own identity domain
+  // (ctmpl-) because "what the compiler produced" and "what an invocation
+  // closed" are different things at equal bytes.
+  codomain_encoding: "TRVM-TARGET-TEMPLATE-v1, PORT-FREE subset",
+  codomain_encoding_sem_id: TARGET_TEMPLATE_ENCODING_SEM_ID,
+  codomain_identity_domain: "ctmpl-",
   // EMISSION IS INSIDE THIS RELATION, and that is a ruling with a stated
   // condition for being revisited rather than a convenience. Instantiation is
   // substitution THEN emission: ports are replaced by canonically encoded
@@ -403,10 +466,17 @@ export const INSTANTIATION_SEMANTICS = Object.freeze({
   // does, and keeping governance prose in a hashed record is how rewording a
   // note re-identifies a relation — B1.1's whole finding, which this record was
   // quietly re-committing.
-  emission: "substitution THEN emission, both inside this relation. Ports are replaced by canonically " +
-    "encoded values and the resulting CLOSED template is serialized by codomain_encoding_sem_id. " +
-    "Emission is DETERMINISTIC: equal closed templates emit equal terms, binder names and dup labels " +
-    "included. It carries no identity of its own.",
+  emission: "NOT PART OF THIS RELATION as of B2.1. Instantiation is SUBSTITUTION ALONE: ports are " +
+    "replaced by canonically encoded values and the result is a closed template. Emission has its own " +
+    "relation and its own identity (EMISSION_SEM_ID) because B2 tripped every condition the split " +
+    "trigger declared — emit() is independently reused, I-4a is a theorem about emission alone, the " +
+    "executable encoding is independently versioned, and the closed template is returned to callers.",
+  entry_snapshot: "BOTH ARGUMENTS ARE CANONICALLY SNAPSHOT AT ENTRY and everything downstream reads " +
+    "the snapshot. The bytes inputs_sem_id identifies are exactly the bytes every substituted value " +
+    "was derived from. B2 read the caller's inputs twice — once to bind and once to identify — so a " +
+    "getter returning 2 then 999 produced a term meaning x=2 beside an identity committing to " +
+    "{x:999}: the relation misbinding its own input identity while the runtime was blameless. That is " +
+    "the entry-snapshot rule arriving in the compiler layer.",
   consumed_inputs: "instantiation substitutes ONLY the ports the template declares. The inputs " +
     "SUPPLIED and the inputs CONSUMED are different sets and the difference is not erased: it is " +
     "grant-versus-footprint from round 15, one layer down. inputs_sem_id commits to the whole " +
@@ -533,6 +603,12 @@ export const REFINEMENT_CHAIN = Object.freeze([
   Object.freeze({ id: "inputs_sem_id", kind: "data", exercised: true,
     of: "one invocation's canonical inputs. EXERCISED AT B2, and it is what makes extras checkable: " +
       "{x:2,y:3} and {x:2,y:3,unused:999} have DIFFERENT inputs_sem_id and reach the SAME term." }),
+  Object.freeze({ id: "closed_template_sem_id", kind: "object", exercised: true,
+    of: "the invocation-CLOSED template. ADDED AT B2.1 when the emission split fired: its own " +
+      "identity domain (ctmpl-) even where its bytes equal the open template's, because what the " +
+      "compiler produced and what an invocation closed are different things" }),
+  Object.freeze({ id: "emission_sem_id", kind: "relation", exercised: true,
+    of: "closed template -> executable ic32 term. The only place an allocation exists" }),
   Object.freeze({ id: "target_term_sem_id", kind: "object", exercised: true,
     of: "the closed executable ic32 term, minted by the kernel and agreed by C" }),
   Object.freeze({ id: "target_nf_sem_id", kind: "object", exercised: true,
@@ -615,6 +691,33 @@ export const LOWERING_SEMANTICS = Object.freeze({
   // no longer move an identity when reworded, because there is no prose left in
   // them to reword. It does NOT close all of it — `substitution` and
   // `dup_label_policy` are still English elsewhere.
+  // THE VOCABULARY'S MEANING, CONTENT-BOUND. B2 gave rules a CLOSED set of
+  // predicate and transform NAMES and stopped there, which left exactly the
+  // defect B1.2.1 removed from emit(): a semantic dependency behind a symbol.
+  // GPT measured it — change `integer` from Number.isInteger to () => true and
+  // const(1.5) lowers successfully instead of refusing, with LOWERING_SEM_ID
+  // UNCHANGED. `identity` was worse: it could have been made to normalize a
+  // source input name, silently undoing the no-normalization ruling.
+  //
+  // So the vocabulary stays closed AND its definitions are data. A rule names
+  // `integer`; `integer` IS {kind:"number-is-integer"}; the interpreter
+  // implements a handful of kinds. Changing what a name means now means editing
+  // these bytes, which moves the id.
+  //
+  // WHERE THE TRUST BOUNDARY NOW SITS, stated rather than implied: the KIND
+  // INTERPRETER is trusted code, like canonicalBytes and emit(). What has been
+  // removed is the rule LANGUAGE's ability to hide meaning; what remains is the
+  // ordinary trust every implementation of a specification requires. A rule may
+  // NOT name a predicate by JavaScript reference or by a bare string resolved
+  // elsewhere. When the core exports reusable semantic predicates, a rule
+  // references one by its predicate_sem_id and this record commits to that id.
+  predicate_semantics: Object.freeze({
+    integer: Object.freeze({ kind: "number-is-integer" }),
+    nonnegative: Object.freeze({ kind: "number-compare", operator: ">=", rhs: 0 }),
+  }),
+  transform_semantics: Object.freeze({
+    identity: Object.freeze({ kind: "identity" }),
+  }),
   op_lowering_rules: Object.freeze({
     const: Object.freeze({
       source_op: "const",
@@ -722,8 +825,10 @@ export const INPUTS_MODEL = Object.freeze({
     "for \"y\". Merged, a target failure is ambiguous between a mistranslated program and correctly " +
     "translated code with miswired inputs. Separated, each is independently falsifiable.",
   receipt: "InstantiationReceipt {target_template_sem_id, instantiation_sem_id, inputs_sem_id, " +
-    "target_term_sem_id}, verified by INDEPENDENTLY RE-INSTANTIATING, the way LoweringReceipt is " +
-    "verified by re-lowering",
+    "closed_template_sem_id} then EmissionReceipt {closed_template_sem_id, emission_sem_id, " +
+    "target_term_sem_id}, each verified by INDEPENDENT RECOMPUTATION of its own relation — and " +
+    "verifying instantiation needs no runtime canonicaliser at all now that it ends at a structure " +
+    "this module owns",
 });
 
 /** A reader's view. NOT hashed — LOWERING_SEMANTICS is what the id commits to. */
@@ -809,6 +914,27 @@ export const SUPERSEDED_PROSE_RULE_SEM_IDS = Object.freeze({
     "and flipping every lifecycle flag move nothing, and lowering_check measures exactly that.",
 });
 
+/** THE B2 IDENTITIES. Kept because the revert-and-compare witness that used to
+ *  reproduce them was retired at B2.1 when its premise expired, and a record
+ *  whose only evidence was a deleted test should at least name the values.
+ *
+ *  NO DEFECT IS CLAIMED, on the same footing as the B1.2.1 generation: B2's ids
+ *  were correctly bound. They moved because B2.1 content-bound the predicate
+ *  vocabulary, split emission out into its own relation, and added the entry
+ *  snapshot — three changes to what the relations MEAN, each ruled before it
+ *  was made. */
+export const SUPERSEDED_B2_SEM_IDS = Object.freeze({
+  note: "B2 (round 27) hashed a lowering record whose predicate and transform vocabulary was a set " +
+    "of bare NAMES, and an instantiation record whose relation included emission and permitted two " +
+    "reads of the caller's inputs. Superseded at B2.1.",
+  lowering_sem_id_b2: "lsem-2014bdc8add9981442b9bbf42672a00bc477eb2b23c38918b93fdc8d9f1a99a2",
+  instantiation_sem_id_b2: "isem-481a1fbda7d5c2d0a0d5c9947bc8d56c29d5de2006d3fc31cb88bf94a630cfc2",
+  why_each_moved: "lsem because predicate_semantics and transform_semantics were added — `integer` " +
+    "was a name whose meaning lived in a JavaScript function body, so redefining it changed behaviour " +
+    "and moved no id. isem because emission left the relation and the entry-snapshot obligation " +
+    "joined it. Both are changes to MEANING, not to lifecycle.",
+});
+
 /** The identity of a particular INVOCATION's inputs. This is where `x=5` lives,
  *  and it is deliberately not inside INSTANTIATION_SEM_ID: one names the rule,
  *  the other names the data the rule was applied to. Same shape as programSemId
@@ -826,27 +952,44 @@ export const portSemId = (source_name) =>
  *  than a tuple because a receipt whose positions carry meaning is a receipt
  *  that can be read wrong. */
 export const INSTANTIATION_RECEIPT_FIELDS = Object.freeze([
-  "target_template_sem_id", "instantiation_sem_id", "inputs_sem_id", "target_term_sem_id"]);
+  "target_template_sem_id", "instantiation_sem_id", "inputs_sem_id", "closed_template_sem_id"]);
 
-/** BUILT AT B2. The receipt is minted by `instantiationReceipt` BELOW, from an
- *  id this function never computes — see the comment there. */
+/** INSTANTIATION, which now ENDS AT THE CLOSED TEMPLATE. Emission is a separate
+ *  relation from B2.1 — see EMISSION_SEMANTICS.
+ *
+ *  BOTH ARGUMENTS ARE SNAPSHOT AT ENTRY, and B2 did not do this. GPT's find,
+ *  reproduced here: `instantiate` read the caller's `inputs` twice — once to
+ *  bind values into the term and once to compute `inputs_sem_id` — so a getter
+ *  returning 2 and then 999 produced a term meaning x=2 beside an identity
+ *  committing to {x:999}. The relation misbound its own input identity while
+ *  nothing about the runtime was wrong.
+ *
+ *  That is round 27A.1's entry-snapshot rule arriving in the compiler layer, and
+ *  the mechanism is the same one: ONE canonical snapshot at entry, everything
+ *  downstream reads the snapshot. The template is snapshot too, because this
+ *  function is exported and walks it three times.
+ *
+ *  THE INVARIANT: the bytes `inputs_sem_id` identifies are exactly the bytes
+ *  from which every substituted value was derived. */
 export function instantiate(template, inputs) {
   try {
     if (!inputs || typeof inputs !== "object" || Array.isArray(inputs))
       throw new Error("instantiate-inputs-not-canonical");
+    const tmpl = ownCanonical(template);
+    const own = ownCanonical(inputs);
     // CONSUMED, not SUPPLIED. The port set comes from the TEMPLATE, so an input
     // the template has no port for cannot participate — which is how extras are
     // ignored structurally rather than by a filtering step someone could forget.
-    const consumed = templatePorts(template);
+    const consumed = templatePorts(tmpl);
     const bound = Object.create(null);
     for (const name of consumed) {
-      if (!Object.prototype.hasOwnProperty.call(inputs, name))
+      if (!Object.prototype.hasOwnProperty.call(own, name))
         throw new Error("instantiate-missing-input: " + name);
       // A VALUE IS EMBEDDED BY THE SAME ENCODING A CONSTANT OF ITS TYPE GETS.
       // Not a second encoding for inputs: a value that lowered differently from
       // the constant it equals would make refinement depend on where a number
       // entered the program.
-      const v = inputs[name];
+      const v = own[name];
       if (!Number.isInteger(v) || v < 0)
         throw new Error("instantiate-unencodable-input: " + name);
       bound[name] = T.church(v);
@@ -857,13 +1000,17 @@ export function instantiate(template, inputs) {
     // they can.)
     const subst = (n) => {
       if (n.t === "port") return bound[n.source_name];
-      if (n.t === "church") return n;
+      if (n.t === "church") return T.church(n.n);
       if (n.t === "add") return T.add(subst(n.a), subst(n.b));
       throw new Error("template-malformed: " + String(n.t));
     };
-    const closed = subst(template);
-    return { ok: true, target_term: emit(closed), closed_template: closed,
-      inputs_sem_id: inputsSemId(inputs), consumed_inputs: consumed };
+    const closed = subst(tmpl);
+    // The CLOSED TEMPLATE's id is computed here, and the TERM's is not. A
+    // structure this module owns and canonicalises may be identified by it; the
+    // bytes a runtime executes may not. Same line lower() draws.
+    return { ok: true, closed_template: closed,
+      closed_template_sem_id: closedTemplateSemId(closed),
+      inputs_sem_id: inputsSemId(own), consumed_inputs: consumed };
   } catch (e) { return { ok: false, reason: e.message }; }
 }
 
@@ -887,13 +1034,67 @@ export function instantiate(template, inputs) {
  *
  *  Verification re-instantiates, re-canonicalises independently, and compares —
  *  never asks the instantiator whether it agrees with itself. */
-export function instantiationReceipt(target_template_sem_id, inputs_sem_id, target_term_sem_id) {
+export function instantiationReceipt(target_template_sem_id, inputs_sem_id, closed_template_sem_id) {
   const receipt = { target_template_sem_id, instantiation_sem_id: INSTANTIATION_SEM_ID,
-    inputs_sem_id, target_term_sem_id };
+    inputs_sem_id, closed_template_sem_id };
   for (const f of INSTANTIATION_RECEIPT_FIELDS)
     if (receipt[f] === undefined) throw new Error("instantiation-receipt-incomplete: " + f);
   return Object.freeze({ ...receipt,
     instantiation_receipt_id: "irec-" + H("TRVM-INSTANTIATION-RECEIPT-v1|" + canonicalBytes(receipt)) });
+}
+
+/** THE APPLICATION RECORD FOR EMISSION. Unlike instantiation's, this one takes
+ *  `target_term_sem_id` from OUTSIDE, because it is the identity of bytes a
+ *  runtime executes and emission may not certify its own output. */
+export function emissionReceipt(closed_template_sem_id, target_term_sem_id) {
+  const receipt = { closed_template_sem_id, emission_sem_id: EMISSION_SEM_ID, target_term_sem_id };
+  for (const f of EMISSION_RECEIPT_FIELDS)
+    if (receipt[f] === undefined) throw new Error("emission-receipt-incomplete: " + f);
+  return Object.freeze({ ...receipt,
+    emission_receipt_id: "erec-" + H("TRVM-EMISSION-RECEIPT-v1|" + canonicalBytes(receipt)) });
+}
+
+/* ── THE VERIFIERS, as production functions ───────────────────────────────
+   B2 verified receipts inside lowering_check and nowhere else, so the only
+   implementation of "does this receipt hold?" was test code — a relation whose
+   verification procedure exists only in its own test suite is a relation
+   nobody else can check. GPT's find.
+
+   AND THE SPLIT MADE THEM CLEANER, which is an argument for the split rather
+   than a consequence of it: verifying instantiation needs NO runtime
+   canonicaliser at all, because the relation now ends at a structure this
+   module owns. Only emission needs one, and it takes it as a parameter rather
+   than importing a kernel — the module that defines the relation must not also
+   choose the oracle that judges it. */
+
+/** Re-instantiate independently and compare. No target canonicaliser needed. */
+export function verifyInstantiationReceipt(template, inputs, receipt) {
+  const again = instantiate(template, inputs);
+  if (!again.ok) return { ok: false, reason: "verify-instantiation-refused: " + again.reason };
+  if (receipt?.instantiation_sem_id !== INSTANTIATION_SEM_ID)
+    return { ok: false, reason: "verify-instantiation-relation-mismatch" };
+  for (const [f, got] of [
+    ["target_template_sem_id", targetTemplateSemId(ownCanonical(template))],
+    ["inputs_sem_id", again.inputs_sem_id],
+    ["closed_template_sem_id", again.closed_template_sem_id]])
+    if (receipt[f] !== got) return { ok: false, reason: "verify-instantiation-mismatch: " + f };
+  return { ok: true, closed_template: again.closed_template };
+}
+
+/** Re-emit independently, canonicalise with a SUPPLIED oracle, and compare. */
+export function verifyEmissionReceipt(closed_template, receipt, canonicaliseTarget) {
+  if (typeof canonicaliseTarget !== "function")
+    return { ok: false, reason: "verify-emission-no-canonicaliser" };
+  if (receipt?.emission_sem_id !== EMISSION_SEM_ID)
+    return { ok: false, reason: "verify-emission-relation-mismatch" };
+  let term;
+  try { term = emit(ownCanonical(closed_template)); }
+  catch (e) { return { ok: false, reason: "verify-emission-refused: " + e.message }; }
+  if (receipt.closed_template_sem_id !== closedTemplateSemId(ownCanonical(closed_template)))
+    return { ok: false, reason: "verify-emission-mismatch: closed_template_sem_id" };
+  if (receipt.target_term_sem_id !== canonicaliseTarget(term))
+    return { ok: false, reason: "verify-emission-mismatch: target_term_sem_id" };
+  return { ok: true, target_term: term };
 }
 
 /* ── the lowering ─────────────────────────────────────────────────────────── */
@@ -916,21 +1117,30 @@ function church(n, labels) {
 
 const ADD_COMBINATOR = (L) => `λm.λn.λf.λx.!&${L}{f0,f1}=f;((m f0) ((n f1) x))`;
 
-/* ── THE RULE INTERPRETER ─────────────────────────────────────────────────
-   The predicates and transforms a rule may name. Small and CLOSED on purpose:
-   an open set would let a rule name a transform that is really a function
-   somewhere else, and the point of the table is that reading it tells you what
-   lowering does. An unknown name is a refusal, not a default. */
-const PRECONDITION = Object.freeze({
-  integer: (v) => Number.isInteger(v),
-  nonnegative: (v) => typeof v === "number" && v >= 0,
-});
-const TRANSFORM = Object.freeze({
-  // The ONLY transform, and the no-normalization ruling made structural: a
-  // source input name reaches the port unchanged because there is nothing else
-  // it could be put through.
-  identity: (v) => v,
-});
+/* ── THE KIND INTERPRETER ─────────────────────────────────────────────────
+   The small fixed set of KINDS the rule vocabulary's definitions may use. This
+   replaces two tables of bare JavaScript functions, which is where B2 left a
+   name with no content behind it: `integer` meant whatever the function said,
+   and the function could say anything without moving an identity.
+
+   Now the MEANING is in LOWERING_SEMANTICS.predicate_semantics — hashed — and
+   this dispatches on it. An unknown kind is a NAMED refusal, never a default:
+   a vocabulary that silently accepts an entry it cannot evaluate would be
+   exactly the "specification and implementation are two things" problem the
+   structural rules were introduced to end. */
+const evalPredicate = (spec, v) => {
+  if (spec?.kind === "number-is-integer") return Number.isInteger(v);
+  if (spec?.kind === "number-compare") {
+    if (typeof v !== "number") return false;
+    if (spec.operator === ">=") return v >= spec.rhs;
+    throw new Error("lowering-rule-malformed: unknown operator " + String(spec.operator));
+  }
+  throw new Error("lowering-rule-malformed: unknown predicate kind " + String(spec?.kind));
+};
+const evalTransform = (spec, v) => {
+  if (spec?.kind === "identity") return v;
+  throw new Error("lowering-rule-malformed: unknown transform kind " + String(spec?.kind));
+};
 
 /** program AST → target TEMPLATE, or a NAMED refusal, by INTERPRETING
  *  LOWERING_SEMANTICS.op_lowering_rules. There is no second hand-coded copy of
@@ -945,18 +1155,18 @@ export function lower(ast) {
       throw new Error("lower-unsupported-op: " + String(node.op));
     }
     for (const p of rule.preconditions) {
-      const holds = PRECONDITION[p.holds];
-      if (!holds) throw new Error("lowering-rule-malformed: unknown precondition " + String(p.holds));
-      if (!holds(node[p.field])) throw new Error(p.refusal);
+      const spec = LOWERING_SEMANTICS.predicate_semantics[p.holds];
+      if (!spec) throw new Error("lowering-rule-malformed: unknown predicate " + String(p.holds));
+      if (!evalPredicate(spec, node[p.field])) throw new Error(p.refusal);
     }
     const out = {};
     for (const [key, spec] of Object.entries(rule.target)) {
       if (typeof spec === "string") { out[key] = spec; continue; }          // t: "church"
       if ("recurse_field" in spec) { out[key] = go(node[spec.recurse_field]); continue; }
       if ("from_field" in spec) {
-        const tf = TRANSFORM[spec.transform ?? "identity"];
+        const tf = LOWERING_SEMANTICS.transform_semantics[spec.transform ?? "identity"];
         if (!tf) throw new Error("lowering-rule-malformed: unknown transform " + String(spec.transform));
-        out[key] = tf(node[spec.from_field]);
+        out[key] = evalTransform(tf, node[spec.from_field]);
         continue;
       }
       throw new Error("lowering-rule-malformed: " + key);

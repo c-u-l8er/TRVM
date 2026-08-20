@@ -1694,3 +1694,100 @@ instantiation-refusal preservation** — the source refuses a missing input as `
 during evaluation, instantiation as `instantiate-missing-input` before a term exists, and refinement
 over refusals is a separate theorem nobody has attempted. Also unchanged: the six DUP-* rules, the
 `d:`/`v:` loci and BUDGET_EXHAUSTED terminals are refused by name rather than approximated.
+
+---
+
+## Round 27, pass B2.1 — the emission split fires, and two defects behind it
+
+**GPT's review of B2 found a real compiler-layer defect, a hidden vocabulary, and ruled that B2 had
+tripped every condition of the split trigger B1.2.1 wrote down.** The trigger firing is the good news
+in the round: it was declared before it was needed and it told us when the composition had become too
+interesting to stay one relation.
+
+**248. THE INSTANTIATOR READ ITS INPUTS TWICE — reproduced before repair.** `instantiate()` read the
+caller's object once to **bind** values into the term and again to compute `inputs_sem_id`. A getter
+answering 2 and then 999 gives:
+
+```
+reads: 2 · term: Church 2 · inputs_sem_id: inputsSemId({x:999})
+```
+
+An application record asserting *"these inputs were {x:999}"* above *"this term represents x=2"*.
+**Nothing about the runtime was wrong — the RELATION misbound its own input identity.** That is
+`derivation.entry-snapshot@1` arriving in the compiler layer, and the repair is the same mechanism the
+authority layer already had: **one canonical `ownCanonical` snapshot of BOTH arguments at entry**,
+everything downstream reading the snapshot. The template is snapshot too, because `instantiate()` is
+exported and walks it three times. **The invariant: the bytes `inputs_sem_id` identifies are exactly
+the bytes every substituted value was derived from.** Not a supplier rung — a compiler-relation TOCTOU,
+and GPT was right to decline to number it.
+
+**249. A CLOSED VOCABULARY OF BARE NAMES STILL HIDES SEMANTICS.** B2 gave rules a closed set of
+predicate and transform **names** bound to JavaScript functions and called it structural. GPT changed
+`integer` from `Number.isInteger` to `() => true`: `const(1.5)` **lowered successfully instead of
+refusing**, with `LOWERING_SEM_ID` **unchanged**. `identity` was worse — it could have been made to
+NFC-normalize a source input name, silently undoing the port ruling three passes after it was made.
+The vocabulary stays **closed** and its *definitions* are now data in the hashed record. **Where the
+trust boundary sits is stated rather than implied:** the kind interpreter is trusted code like
+`canonicalBytes`; what has been removed is the rule **language's** ability to hide meaning.
+
+**250. THE SPLIT TRIGGER FIRED — all four conditions, at once, without my noticing.** B1.2.1 wrote
+them down and B2 tripped every one: `emit()` is exported and independently reused · **I-4a is a
+theorem about emission alone**, comparing two emitters over one template · the executable encoding
+carries its own content identity and an alternate emitter was deliberately run against it ·
+`instantiate()` **returned** the closed template to its caller. *The second settles it:* once two
+emitters are compared over one closed template, an emitter upgrade re-cutting the semantic identity of
+**port substitution** is plainly wrong, and that is exactly what a merged relation does.
+
+**251. Three relations now, and the closed template gets its OWN identity domain.**
+
+```
+program → template → CLOSED TEMPLATE → term → nf → outcome
+  lowering   instantiation   emission     film   decode
+```
+
+`ctmpl-` against `tmpl-` **even where the bytes are equal**. For `add(2,3)` with `{}` the two
+structures are byte-identical and they are **not the same thing**: one is what the *compiler* produced,
+the other is what an *invocation* closed. Sharing an id would make "this was instantiated" and "this
+needed no instantiation" indistinguishable — the collapse the whole chain exists to prevent.
+
+**252. The split made the verifiers cleaner, which is an argument FOR it rather than a consequence.**
+Verifying instantiation now needs **no runtime canonicaliser at all**, because the relation ends at a
+structure this module owns. Only emission needs one — and it **takes it as a parameter**, because the
+module that defines a relation must not also choose the oracle that judges it. Both are exported
+production functions: at B2 the only implementation of *"does this receipt hold?"* lived in the test
+suite, and **a relation whose verification procedure exists only in its own tests is a relation nobody
+else can check.**
+
+**253. I-4c is FILM-EVIDENCED, and it cost nothing.** GPT passed the B2 `x + (x + y)` term to the
+existing `ic32_film` and it already succeeded: **12 frames, all APP-LAM, terminal NORMAL_FORM**.
+Reproduced here and wired in, so the **input** refinement witness now carries the grade the no-input
+one has had since round 26 — without one line of new runtime semantics. **It does NOT advance the
+frontier and is not a substitute for `church_exp_2_2`:** every frame is APP-LAM at tree loci, and the
+six DUP-* rules, the `d:`/`v:` loci and BUDGET_EXHAUSTED remain exactly as unexercised as before.
+
+**254. A falsifier was RETIRED rather than repaired, for the third time in this pass.**
+`implementing-moved-neither-id` reverted the two fields B2 changed and required the B1.2.1 identities
+to return exactly — true and worth measuring at B2. B2.1 ended its premise: the delta is no longer two
+fields, and keeping it would have meant **growing an embedded copy of the module inside its own test**,
+at which point it stops being an independent check. The live property it protected is still measured by
+`semantic-ids-track-semantics-only`. The B2 ids are kept in `SUPERSEDED_B2_SEM_IDS`.
+
+**255. And two of my own instruments were answering with the wrong thing.** The grid assertion for the
+closed-template domain tested for the **string** `"ctmpl-"`, which also appears in
+`INSTANTIATION_SEMANTICS.codomain_identity_domain` — so renaming the actual constructor's prefix left
+it green. Found by the battery going `exit=0`. Bound to the constructor now. *This is the third round
+running in which an assertion was satisfied by a coincidental second occurrence of the text it was
+looking for* — after `consumed_inputs` answered by the implementation field and the `implemented:
+false` assertion answered by a comment.
+
+**256. Gate.** grid **v1.39.0** — 86 entries / 374 citations · `lowering.mjs` **0.7.0** · negative
+battery **275/275** (16 new; 1 deleted for a dead premise, 3 repointed) · lowering **21/21**, **eleven**
+chain nodes all exercised, I-4c film-evidenced · derive 45/45 · realm 24/24 · bridge 48/48 · film 16/16
+· harness 9/9 · runner 3/3. `scheduler_certificate.json` byte-identical — **thirty-third** consecutive
+round.
+
+**257. NEXT IS `church_exp_2_2`, and that is where the real frontier is.** Not I-4c — it only ever
+exercised APP-LAM. `exp_2_2` reaches DUP-LAM, both SUP cases, DUP-VAR, DUP-APP, APP-SUP and the `d:`
+and `v:` loci; then the purpose-built **DUP-ERA** witness, because `exp_2_2` does not exercise it and
+six rules from one large term that happened to terminate is coverage by hope. Still declared open and
+unchanged: source-refusal ↔ instantiation-refusal preservation.

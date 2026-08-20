@@ -62,6 +62,8 @@ import {
   SUPERSEDED_CODOMAIN_SEM_IDS, IMPLEMENTED_LOWERED_OPS,
   instantiate, instantiationReceipt, inputsSemId, portSemId,
   INSTANTIATION_RECEIPT_FIELDS, SUPERSEDED_PROSE_RULE_SEM_IDS, INPUT_PORT_SPEC,
+  EMISSION_SEMANTICS, EMISSION_SEM_ID, EMISSION_RECEIPT_FIELDS, emissionReceipt,
+  closedTemplateSemId, verifyInstantiationReceipt, verifyEmissionReceipt,
 } from "./lowering.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -112,7 +114,10 @@ const kernelSemId = (term) => { const frt = new FloatRt(); return semStateId(frt
 // relation to reach native code — which is what makes instantiation_sem_id and
 // inputs_sem_id EXERCISED rather than merely declared.
 const INST0 = instantiate(low.template, {});
-const TARGET_TERM = INST0.ok ? INST0.target_term : null;
+// AND EMISSION IS A SEPARATE STEP as of B2.1 — instantiate() ends at the closed
+// template, so reaching executable bytes takes a second, independently
+// identified relation.
+const TARGET_TERM = INST0.ok ? emit(INST0.closed_template) : null;
 // AND THE ID IS MINTED BY THE KERNEL, never by instantiate(). GPT's B2
 // constraint: an instantiator that certified the semantic id of its own output
 // would emit the artifact and the certificate from one source, so a wrong
@@ -148,13 +153,13 @@ const receipt = low.ok ? loweringReceipt(PROGRAM_SEM_ID, low.target_template_sem
 {
   const again = lower(PROGRAM);
   const againInst = again.ok ? instantiate(again.template, {}) : { ok: false };
-  const againId = againInst.ok ? kernelSemId(againInst.target_term) : null;
+  const againId = againInst.ok ? kernelSemId(emit(againInst.closed_template)) : null;
   const other = lower({ op: "add", a: { op: "const", value: 3 }, b: { op: "const", value: 2 } });
   const otherInst = other.ok ? instantiate(other.template, {}) : { ok: false };
   R("re-lowering-verifies",
-    againId === TARGET_TERM_SEM_ID && againInst.target_term === TARGET_TERM
+    againId === TARGET_TERM_SEM_ID && emit(againInst.closed_template) === TARGET_TERM
       && again.target_template_sem_id === low.target_template_sem_id
-      && otherInst.ok && kernelSemId(otherInst.target_term) !== TARGET_TERM_SEM_ID
+      && otherInst.ok && kernelSemId(emit(otherInst.closed_template)) !== TARGET_TERM_SEM_ID
       && other.target_template_sem_id !== low.target_template_sem_id,
     `lowering the program again independently reaches the same target_term_sem_id ` +
     `(${String(TARGET_TERM_SEM_ID).slice(0, 12)}…) and the same target_template_sem_id ` +
@@ -229,6 +234,8 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
     target_template_sem_id: low.ok ? low.target_template_sem_id : null,
     instantiation_sem_id: INSTANTIATION_SEM_ID,
     inputs_sem_id: INST0.ok ? INST0.inputs_sem_id : null,
+    closed_template_sem_id: INST0.ok ? INST0.closed_template_sem_id : null,
+    emission_sem_id: EMISSION_SEM_ID,
     target_term_sem_id: TARGET_TERM_SEM_ID,
     target_nf_sem_id: TARGET_NF_SEM_ID,
     decode_sem_id: DECODE_SEM_ID,
@@ -255,9 +262,10 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
     `a RENAMING, which is the failure this chain exists to avoid. ` +
     (open.length
       ? `DECLARED AND NOT EXERCISED: ${open.map((n) => n.id).join(", ")} — scope, not coverage`
-      : `EVERY NODE IS NOW EXERCISED: B2 removed lower()'s convenience emission, so the witness ` +
-        `reaches native code THROUGH instantiate(), and instantiation_sem_id and inputs_sem_id ` +
-        `stopped being declared architecture`));
+      : `EVERY NODE IS EXERCISED: B2 removed lower()'s convenience emission so the witness reaches ` +
+        `native code THROUGH instantiate(), and B2.1 split emission out again — the chain grew to ` +
+        `${declared.length} nodes because the composition became too interesting to stay one relation, ` +
+        `and the set grew with it WITHOUT anyone editing a count`));
 }
 
 /* ── 7. the refusals are named, and the fragment's edges are checked ─────── */
@@ -389,17 +397,23 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
   const baseL = L(), baseI = I();
 
   // 1. THE EMITTER: three different rules, each changing the emitted term
+  // AT B2.1 THE EMITTER'S HOME MOVED. These mutations used to be applied to
+  // INSTANTIATION_SEMANTICS.codomain_encoding_sem_id; emission is its own
+  // relation now, so they belong to EMISSION_SEMANTICS and the property being
+  // measured is that they move THAT id and neither of the other two.
+  const E = (over = {}) => semId("TRVM-EMISSION-SEM-v1", { ...EMISSION_SEMANTICS, ...over });
+  const baseE = E();
   const emitterMoves = [
     { ...TARGET_ENCODING, add: "λm.λn.λf.λx.!&L{f0,f1}=f;((n f1) ((m f0) x))" },
     { ...TARGET_ENCODING, dup_label_policy: "labels count DOWN from 1000, breadth-first." },
     { ...TARGET_ENCODING, numbers: "binary naturals rather than Church numerals." },
-  ].map((mut) => ({ l: L(), i: I({ codomain_encoding_sem_id: XE(mut) }) }));
+  ].map((mut) => ({ l: L(), i: I(), e: E({ codomain_encoding_sem_id: XE(mut) }) }));
 
   // 2. A LOWERING RULE: the source -> template map, which is lowering's alone
   const ruleMoves = [
     { ...LOWERING_SEMANTICS.op_lowering_rules, const: "{op:\"const\", value:n} lowers to church(n+1)." },
     { ...LOWERING_SEMANTICS.op_lowering_rules, add: "{op:\"add\", a, b} lowers to add(b', a') — SWAPPED." },
-  ].map((mut) => ({ l: L({ op_lowering_rules: mut }), i: I() }));
+  ].map((mut) => ({ l: L({ op_lowering_rules: mut }), i: I(), e: E() }));
 
   // 3. THE TEMPLATE GRAMMAR: the shared boundary, so BOTH must move
   const gMut = { ...TARGET_TEMPLATE_ENCODING,
@@ -420,10 +434,10 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
   });
 
   R("emit-is-not-a-hidden-relation",
-    emitterMoves.every((m) => m.i !== baseI && m.l === baseL)
-      && ruleMoves.every((m) => m.l !== baseL && m.i === baseI)
+    emitterMoves.every((m) => m.e !== baseE && m.i === baseI && m.l === baseL)
+      && ruleMoves.every((m) => m.l !== baseL && m.i === baseI && m.e === baseE)
       && shared.l !== baseL && shared.i !== baseI && shared.t !== TARGET_TEMPLATE_ENCODING_SEM_ID
-      && INSTANTIATION_SEMANTICS.codomain_encoding_sem_id === TARGET_EXECUTABLE_ENCODING_SEM_ID
+      && EMISSION_SEMANTICS.codomain_encoding_sem_id === TARGET_EXECUTABLE_ENCODING_SEM_ID
       && TARGET_EXECUTABLE_ENCODING_SEM_ID.startsWith("xenc-")
       && !("target_encoding" in LOWERING_SEMANTICS)
       && reachable
@@ -432,7 +446,8 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
       && SUPERSEDED_CODOMAIN_SEM_IDS.lowering_sem_id_b12 !== LOWERING_SEM_ID
       && SUPERSEDED_CODOMAIN_SEM_IDS.instantiation_sem_id_b12 !== INSTANTIATION_SEM_ID,
     `changing the add combinator, the dup label policy or the Church expansion moves the ` +
-    `INSTANTIATION id and NOT lowering's — the executable encoding is content-bound at ` +
+    `EMISSION id and NEITHER of the other two — at B1.2.1 it moved instantiation's, and B2.1 split ` +
+    `emission out so it moves emission's. The executable encoding is content-bound at ` +
     `${TARGET_EXECUTABLE_ENCODING_SEM_ID.slice(0, 16)}… instead of named as "via emit()" in prose. ` +
     `Changing a per-op lowering rule moves LOWERING's id and NOT instantiation's, and those rules had ` +
     `to be WRITTEN DOWN: removing the leftover target_encoding binding exposed that nothing in the ` +
@@ -475,7 +490,7 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
       which carried the semantics. That is how a hidden second mechanism comes
       back. The equality survives as a THEOREM rather than an API. */
 {
-  const viaInstantiation = INST0.ok ? INST0.target_term : null;
+  const viaInstantiation = INST0.ok ? emit(INST0.closed_template) : null;
   const viaEmitDirect = emit(low.template);           // what the shortcut used to do
   R("migration-preserves-the-old-bytes",
     INST0.ok && viaInstantiation === viaEmitDirect && viaInstantiation.length === 129
@@ -500,26 +515,33 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
 {
   const returned = Object.keys(INST0).sort();
   const mintsItsOwnId = returned.includes("target_term_sem_id");
-  const rec = instantiationReceipt(low.target_template_sem_id, INST0.inputs_sem_id, TARGET_TERM_SEM_ID);
+  const rec = instantiationReceipt(low.target_template_sem_id, INST0.inputs_sem_id,
+    INST0.closed_template_sem_id);
   // VERIFICATION: re-instantiate independently, re-canonicalise independently,
   // and compare — never ask the instantiator whether it agrees with itself.
   const again = instantiate(lower(PROGRAM).template, {});
-  const verified = again.ok && kernelSemId(again.target_term) === rec.target_term_sem_id
+  const verified = again.ok && again.closed_template_sem_id === rec.closed_template_sem_id
     && again.inputs_sem_id === rec.inputs_sem_id;
   // and a receipt built over a DIFFERENT term must not verify against this one
   const otherTerm = instantiate(lower({ op: "add", a: { op: "const", value: 3 },
     b: { op: "const", value: 2 } }).template, {});
-  const forged = kernelSemId(otherTerm.target_term) === rec.target_term_sem_id;
+  const forged = otherTerm.closed_template_sem_id === rec.closed_template_sem_id;
   const incomplete = (() => { try { instantiationReceipt(low.target_template_sem_id,
     INST0.inputs_sem_id, undefined); return "BUILT"; } catch (e) { return e.message; } })();
+  const emRec = emissionReceipt(INST0.closed_template_sem_id, TARGET_TERM_SEM_ID);
   R("receipt-is-not-self-certified",
     !mintsItsOwnId && verified && !forged
+      && verifyInstantiationReceipt(low.template, {}, rec).ok === true
+      && verifyEmissionReceipt(INST0.closed_template, emRec, kernelSemId).ok === true
+      && emRec.emission_sem_id === EMISSION_SEM_ID
+      && EMISSION_RECEIPT_FIELDS.every((f) => emRec[f] !== undefined)
       && rec.instantiation_sem_id === INSTANTIATION_SEM_ID
       && rec.instantiation_receipt_id.startsWith("irec-")
       && INSTANTIATION_RECEIPT_FIELDS.every((f) => rec[f] !== undefined)
-      && /^instantiation-receipt-incomplete: target_term_sem_id/.test(incomplete),
-    `instantiate() returns {${returned.join(", ")}} and NOT target_term_sem_id — it hands over bytes ` +
-    `and the kernel canonicalises them, so the certificate and the artifact do not come from one ` +
+      && /^instantiation-receipt-incomplete: closed_template_sem_id/.test(incomplete),
+    `instantiate() returns {${returned.join(", ")}} and NOT target_term_sem_id — it hands over a ` +
+    `closed template and the kernel canonicalises the EMITTED bytes, so the certificate and the ` +
+    `artifact do not come from one ` +
     `source. The receipt ${rec.instantiation_receipt_id.slice(0, 16)}… is built AFTER that id exists, ` +
     `and verification RE-INSTANTIATES and RE-CANONICALISES independently rather than asking the ` +
     `instantiator to agree with itself. add(3,2)'s term does not verify against it, and a receipt ` +
@@ -619,8 +641,9 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
   const SWAPPED = { x: 3, y: 2, unused: 999 };
   const ok = instantiate(lp.template, RIGHT);
   const sw = instantiate(lp.template, SWAPPED);
-  const nfOk = await runCanon(ok.target_term, ["--nf"]);
-  const nfSw = await runCanon(sw.target_term, ["--nf"]);
+  const okTerm = emit(ok.closed_template), swTerm = emit(sw.closed_template);
+  const nfOk = await runCanon(okTerm, ["--nf"]);
+  const nfSw = await runCanon(swTerm, ["--nf"]);
   const decOk = decode(nfOk.signature), decSw = decode(nfSw.signature);
 
   const G = { exact: {}, predicates: {} };
@@ -628,22 +651,39 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
 
   // THE RECEIPT MUST ACCEPT ONLY THE 7-PRODUCING TERM
   const recOk = instantiationReceipt(lp.target_template_sem_id, ok.inputs_sem_id,
-    kernelSemId(ok.target_term));
-  const swapVerifiesAgainstIt = kernelSemId(sw.target_term) === recOk.target_term_sem_id;
+    ok.closed_template_sem_id);
+  const swapVerifiesAgainstIt = sw.closed_template_sem_id === recOk.closed_template_sem_id
+    || verifyInstantiationReceipt(lp.template, SWAPPED, recOk).ok;
 
   // extras: a different inputs_sem_id reaching the SAME term
   const noExtra = instantiate(lp.template, { x: 2, y: 3 });
-  const extrasIgnored = noExtra.ok && noExtra.target_term === ok.target_term
+  const extrasIgnored = noExtra.ok && noExtra.closed_template_sem_id === ok.closed_template_sem_id
     && noExtra.inputs_sem_id !== ok.inputs_sem_id;
 
+  // FILM-EVIDENCED AT B2.1. GPT passed this exact term to the existing
+  // ic32_film and it already succeeds — so the input refinement witness gets
+  // the same grade the no-input one has carried since round 26, without one
+  // line of new runtime semantics. It does NOT replace church_exp_2_2: every
+  // frame here is APP-LAM at tree loci, and the six DUP-* rules, the d:/v: loci
+  // and BUDGET_EXHAUSTED remain exactly as unexercised as they were.
+  const fOk = await host.run(C_FILM, "TRVM-FILM-EXEC-v1", { argv: [okTerm] });
+  const filmOk = fOk.ok && fOk.output?.ok ? fOk.output.film : null;
+  const repOk = filmOk ? replaySemFilm(okTerm, filmOk, FloatRt) : { ok: false };
+  const repOkB = filmOk ? replaySemFilm(okTerm, filmOk, DescFloatRt) : { ok: false };
+
   R("I-4c-binding-has-force",
-    ok.ok && sw.ok && ok.target_term !== sw.target_term
+    ok.ok && sw.ok && okTerm !== swTerm
+      && repOk.ok === true && repOkB.ok === true
+      && filmOk.frames.every((fr) => fr.rule === "APP-LAM")
+      && filmOk.terminal.termination === "NORMAL_FORM"
       && decOk.ok && decSw.ok && decOk.outcome.value === 7 && decSw.outcome.value === 8
       && srcOk === 7 && srcSw === 8
       && outcomeSemId(decOk.outcome) === outcomeSemId({ status: "value", value: srcOk })
       && !swapVerifiesAgainstIt && extrasIgnored
       && ok.consumed_inputs.join() === "x,y",
-    `x + (x + y) with x=2,y=3 runs NATIVELY to ${decOk.outcome?.value} and the x/y swap to ` +
+    `x + (x + y) with x=2,y=3 runs NATIVELY to ${decOk.outcome?.value} through a ` +
+    `${filmOk?.terminal?.steps}-frame semantic film the kernel replays on two runtime classes, and ` +
+    `the x/y swap reaches ` +
     `${decSw.outcome?.value} — different terms, different normal forms, different outcome identities, ` +
     `and the SOURCE evaluator independently gives ${srcOk} and ${srcSw}. The swapped term does NOT ` +
     `verify against the correct receipt ${recOk.instantiation_receipt_id.slice(0, 14)}…, which is the ` +
@@ -653,77 +693,166 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
     `term, and consumed_inputs is [${ok.consumed_inputs}] — supplied and consumed stay distinct`);
 }
 
-/* ── B2-6. BUILDING IT MOVED NEITHER SEMANTIC ID ─────────────────────────
-      The property B1.1 set out to make possible, and B2 is the first round able
-      to exercise it: `implemented` went false -> true, `input` became
-      executable, instantiate() was written, the falsifiers went DECLARED ->
-      WITNESSED, and none of that may have moved a relation id. Both ids DID
-      move this round, for two changes that are NOT the implementation, and the
-      point of this case is that the two causes are separable. */
+/* ── B2-6 was here until B2.1, and its premise expired ───────────────────
+      It reverted the two fields B2 changed and required the B1.2.1 identities
+      to return EXACTLY, which proved that implementing `input`, writing
+      instantiate(), removing lower()'s target_term and flipping every lifecycle
+      flag moved no semantic id. That was true and worth measuring at B2.
+
+      B2.1 ended the premise: predicate_semantics and transform_semantics were
+      added to the lowering record, instantiation's codomain moved to the closed
+      template, and entry_snapshot is new — so the delta is no longer two fields
+      and the embedded copy would have to grow into a second implementation of
+      the module to keep up. A falsifier maintained that way stops being an
+      independent check.
+
+      RETIRED, not repaired, on the precedent this suite has now set twice. The
+      live property it was protecting is still measured, by
+      semantic-ids-track-semantics-only above: no lifecycle field appears in
+      either hashed record, so becoming built cannot re-identify a relation. The
+      B2 identities are kept in SUPERSEDED_B2_SEM_IDS. */
+
+/* ── B2.1-1. THE INSTANTIATOR MAY NOT READ ITS INPUTS TWICE ──────────────
+      GPT's find against B2, reproduced here before it was fixed. instantiate()
+      read the caller's object once to BIND values and again to compute
+      inputs_sem_id, so a getter returning 2 and then 999 produced a term
+      meaning x=2 beside an identity committing to {x:999} — the relation
+      misbinding its own input identity while nothing about the runtime was
+      wrong. Round 27A.1's entry-snapshot rule, arriving in the compiler layer.
+
+      THE INVARIANT: the bytes inputs_sem_id identifies are exactly the bytes
+      every substituted value was derived from. */
 {
-  const semId2 = (prefix, tag, o) => prefix + createHash("sha256")
-    .update(tag + "|" + canonicalBytes(o)).digest("hex");
+  const lp = lower({ op: "add", a: { op: "input", name: "x" }, b: { op: "const", value: 0 } });
+  let reads = 0;
+  const hostile = {};
+  Object.defineProperty(hostile, "x", { enumerable: true, configurable: true,
+    get() { return ++reads === 1 ? 2 : 999; } });
+  const r = instantiate(lp.template, hostile);
+  const term = r.ok ? emit(r.closed_template) : null;
+  const asTwo = emit(instantiate(lp.template, { x: 2 }).closed_template);
+  const asNineNineNine = emit(instantiate(lp.template, { x: 999 }).closed_template);
 
-  // THE EXACT CHECK, not a simulation. Spreading STATUS onto SEMANTICS was the
-  // first version of this case and it was meaningless: STATUS keys are not IN
-  // the hashed object, so adding them produces a different object and a
-  // different hash, measuring nothing about lifecycle. (Case 7b already proves
-  // no status KEY leaks into either semantic record.)
-  //
-  // What B2 has to show is stronger and is stated as an equation: the ONLY
-  // fields of the hashed records that B2 touched are op_lowering_rules and
-  // emission. Put the B1.2.1 values of exactly those two back, and the B1.2.1
-  // identities must return EXACTLY — which proves that implementing `input`,
-  // writing instantiate(), removing lower()'s target_term and flipping every
-  // lifecycle flag changed no hashed rule at all. This is the same device the
-  // pack uses to prove a version bump additive by cert_id rather than by
-  // assertion.
-  const B121_OP_RULES = Object.freeze({
-    const: "{op:\"const\", value:n} lowers to {t:\"church\", n} for a non-negative integer n, with n " +
-      "carried through UNCHANGED. The expansion of that node into interaction-net text belongs to the " +
-      "EXECUTABLE encoding and is deliberately not stated here — that is the boundary whose absence " +
-      "made emit() a hidden relation.",
-    add: "{op:\"add\", a, b} lowers to {t:\"add\", a', b'} where a' and b' are the lowerings of a and " +
-      "b. Operand order is PRESERVED, a then b, the core's own evaluation order; the target `add` " +
-      "node names the combinator, and which combinator that is belongs to the executable encoding.",
-    input: "see inputs.input_lowering_rule — {op:\"input\", name:N} lowers to {t:\"port\", " +
-      "source_name:N}. Stated there rather than duplicated here, because a rule written twice in one " +
-      "hashed record is a rule that can disagree with itself.",
-  });
-  const B121_EMISSION =
-    "substitution THEN emission, both inside this relation. Ports are replaced by canonically " +
-    "encoded values and the closed template is serialized by codomain_encoding_sem_id. Emission is " +
-    "DETERMINISTIC: equal closed templates emit equal terms, binder names and dup labels included. " +
-    "It carries no identity of its own because it is neither independently reused nor independently " +
-    "theorem-bearing; if it becomes either, it earns an emission_sem_id and this relation's codomain " +
-    "becomes the closed TEMPLATE rather than the executable term.";
+  // the template is snapshot too — instantiate() is exported and walks it three
+  // times, so a hostile template could otherwise declare one port set and
+  // substitute against another
+  let tReads = 0;
+  const hostileTmpl = { t: "add", b: T.church(0) };
+  Object.defineProperty(hostileTmpl, "a", { enumerable: true, configurable: true,
+    get() { return ++tReads === 1 ? T.port("x") : T.church(41); } });
+  const rt = instantiate(hostileTmpl, { x: 7 });
+  const stable = rt.ok && emit(rt.closed_template) === emit(instantiate(
+    { t: "add", a: T.port("x"), b: T.church(0) }, { x: 7 }).closed_template);
 
-  const backL = semId2("lsem-", "TRVM-LOWERING-SEM-v2",
-    { ...LOWERING_SEMANTICS, op_lowering_rules: B121_OP_RULES });
-  const backI = semId2("isem-", "TRVM-INSTANTIATION-SEM-v2",
-    { ...INSTANTIATION_SEMANTICS, emission: B121_EMISSION });
-
-  R("implementing-moved-neither-id",
-    backL === SUPERSEDED_PROSE_RULE_SEM_IDS.lowering_sem_id_b121
-      && backI === SUPERSEDED_PROSE_RULE_SEM_IDS.instantiation_sem_id_b121
-      && backL !== LOWERING_SEM_ID && backI !== INSTANTIATION_SEM_ID
-      && LOWERING_STATUS.implemented === true && INSTANTIATION_STATUS.implemented === true
-      && INPUTS_MODEL.implemented === true
-      && INSTANTIATION_FALSIFIERS.every((f) => f.status === "WITNESSED")
-      && IMPLEMENTED_LOWERED_OPS.join() === LOWERING_SEMANTICS.lowered_ops.join()
-      && !("emission_split_trigger" in INSTANTIATION_SEMANTICS)
-      && "emission_split_trigger" in INSTANTIATION_STATUS,
-    `putting back ONLY op_lowering_rules and ONLY emission returns the B1.2.1 identities EXACTLY ` +
-    `(${backL.slice(0, 16)}… and ${backI.slice(0, 16)}…), so those two fields are the ONLY hashed ` +
-    `bytes B2 touched. Everything the round actually BUILT — \`input\` lowering, instantiate(), the ` +
-    `removal of lower().target_term, three falsifiers going DECLARED -> WITNESSED and every lifecycle ` +
-    `flag flipping — moved NO semantic id. That is the property B1.1 split the records to make ` +
-    `possible and B2 is the first round able to exercise it. The two changes that DID move an id are ` +
-    `record changes GPT ruled: the rules became STRUCTURAL, and the emission SPLIT TRIGGER left the ` +
-    `relation for STATUS, where B1.2.1 should have put it — it was re-committing the very defect B1.1 ` +
-    `found. Specified and implemented op lists now COINCIDE (${IMPLEMENTED_LOWERED_OPS.join(" · ")}), ` +
-    `which is a fact about this moment and not a reason to merge the names`);
+  R("instantiation-snapshots-its-inputs",
+    r.ok && term === asTwo && term !== asNineNineNine
+      && r.inputs_sem_id === inputsSemId({ x: 2 })
+      && r.inputs_sem_id !== inputsSemId({ x: 999 })
+      && reads === 1 && stable,
+    `a getter that answers 2 then 999 is read ONCE (${reads}), so the term means x=2 and ` +
+    `inputs_sem_id commits to {x:2} — the two agree. Before B2.1 the same object produced the x=2 ` +
+    `term beside inputsSemId({x:999}): an application record saying "these inputs were {x:999}" ` +
+    `above "this term represents x=2". Nothing was wrong with the runtime; the RELATION had ` +
+    `misbound its own input identity. The template is snapshot too, because instantiate() is ` +
+    `exported and walks it three times — a hostile one could otherwise declare one port set and be ` +
+    `substituted against another`);
 }
+
+/* ── B2.1-2. THE RULE VOCABULARY'S MEANING IS CONTENT-BOUND ──────────────
+      B2 gave rules a closed set of predicate NAMES and stopped. GPT changed
+      `integer` from Number.isInteger to () => true: const(1.5) lowered
+      successfully instead of refusing, and LOWERING_SEM_ID did not move. A
+      semantic dependency behind a symbol — the defect B1.2.1 removed from
+      emit(), one layer in. `identity` was worse: it could have been made to
+      normalize a source input name, silently undoing the port ruling. */
+{
+  const semId3 = (o) => createHash("sha256")
+    .update("TRVM-LOWERING-SEM-v2|" + canonicalBytes(o)).digest("hex");
+  const base = semId3(LOWERING_SEMANTICS);
+  // changing what a name MEANS now moves the relation id, because the meaning
+  // is in the hashed record rather than in a function body
+  const loosened = semId3({ ...LOWERING_SEMANTICS,
+    predicate_semantics: { ...LOWERING_SEMANTICS.predicate_semantics,
+      integer: { kind: "always-true" } } });
+  const shifted = semId3({ ...LOWERING_SEMANTICS,
+    predicate_semantics: { ...LOWERING_SEMANTICS.predicate_semantics,
+      nonnegative: { kind: "number-compare", operator: ">=", rhs: -1 } } });
+  const normalizing = semId3({ ...LOWERING_SEMANTICS,
+    transform_semantics: { identity: { kind: "unicode-nfc" } } });
+  // and the interpreter REFUSES a kind it does not implement, rather than
+  // defaulting — a vocabulary that silently accepts an entry it cannot evaluate
+  // is the two-artifacts problem returning
+  const vocabClosed = Object.values(LOWERING_SEMANTICS.predicate_semantics)
+    .every((p) => typeof p.kind === "string")
+    && Object.values(LOWERING_SEMANTICS.transform_semantics).every((t) => typeof t.kind === "string");
+  const noFunctions = !Object.values(LOWERING_SEMANTICS.predicate_semantics)
+    .concat(Object.values(LOWERING_SEMANTICS.transform_semantics))
+    .some((x) => Object.values(x).some((v) => typeof v === "function"));
+  R("rule-vocabulary-is-content-bound",
+    loosened !== base && shifted !== base && normalizing !== base
+      && vocabClosed && noFunctions
+      && lower({ op: "const", value: 1.5 }).reason === "lower-non-integer-constant"
+      && lower({ op: "const", value: -1 }).reason === "lower-negative"
+      && lower({ op: "const", value: 0 }).ok === true,
+    `predicate_semantics is DATA — ${JSON.stringify(LOWERING_SEMANTICS.predicate_semantics)} — so ` +
+    `redefining \`integer\` as always-true, shifting nonnegative's rhs to -1, or making \`identity\` ` +
+    `NFC-normalize each moves LOWERING_SEM_ID. Before B2.1 all three were edits to a JavaScript ` +
+    `function body: behaviour changed and no identity did. The vocabulary stays CLOSED and carries ` +
+    `no functions, and the interpreter refuses a kind it does not implement rather than defaulting. ` +
+    `WHERE THE TRUST BOUNDARY SITS is now stated rather than implied: the kind interpreter is trusted ` +
+    `code like canonicalBytes: what has been removed is the rule LANGUAGE's ability to hide meaning`);
+}
+
+/* ── B2.1-3. THE EMISSION SPLIT, and the trigger that called it ──────────
+      B1.2.1 wrote four conditions under which emission stops being part of
+      instantiation. B2 tripped ALL FOUR without noticing, which is the trigger
+      working as intended rather than a surprise: emit() is independently
+      reused, I-4a is a theorem about emission alone, the executable encoding is
+      independently versioned, and instantiate() returns the closed template to
+      its caller. The one that settles it is the second — once two emitters are
+      compared over one closed template, an emitter upgrade re-cutting the
+      identity of PORT SUBSTITUTION is plainly wrong. */
+{
+  const semId4 = (tag, o) => createHash("sha256")
+    .update(tag + "|" + canonicalBytes(o)).digest("hex");
+  const baseI = semId4("TRVM-INSTANTIATION-SEM-v2", INSTANTIATION_SEMANTICS);
+  const baseE = semId4("TRVM-EMISSION-SEM-v1", EMISSION_SEMANTICS);
+  // an EMITTER change now moves emission's id and NOT instantiation's
+  const mutEnc = { ...TARGET_ENCODING, add: "λm.λn.λf.λx.!&L{f0,f1}=f;((n f1) ((m f0) x))" };
+  const xe = "xenc-" + createHash("sha256")
+    .update("TRVM-TARGET-EXECUTABLE-ENC-v1|" + canonicalBytes(mutEnc)).digest("hex");
+  const emitterMovedE = semId4("TRVM-EMISSION-SEM-v1",
+    { ...EMISSION_SEMANTICS, codomain_encoding_sem_id: xe }) !== baseE;
+  const emitterMovedI = semId4("TRVM-INSTANTIATION-SEM-v2",
+    { ...INSTANTIATION_SEMANTICS }) !== baseI;
+  // a SUBSTITUTION change moves instantiation's id and NOT emission's
+  const substMovedI = semId4("TRVM-INSTANTIATION-SEM-v2",
+    { ...INSTANTIATION_SEMANTICS, extra_input: "REFUSED." }) !== baseI;
+  const substMovedE = semId4("TRVM-EMISSION-SEM-v1", { ...EMISSION_SEMANTICS }) !== baseE;
+
+  // ctmpl- is a DIFFERENT DOMAIN from tmpl- even at equal bytes
+  const closed = INST0.closed_template;
+  const sameBytes = canonicalBytes(closed) === canonicalBytes(low.template);
+  const differentIds = closedTemplateSemId(closed) !== low.target_template_sem_id;
+  R("emission-is-its-own-relation",
+    emitterMovedE && !emitterMovedI && substMovedI && !substMovedE
+      && EMISSION_SEM_ID.startsWith("esem-")
+      && INST0.closed_template_sem_id.startsWith("ctmpl-")
+      && INST0.target_term === undefined
+      && sameBytes && differentIds
+      && EMISSION_SEMANTICS.codomain_encoding_sem_id === TARGET_EXECUTABLE_ENCODING_SEM_ID
+      && INSTANTIATION_SEMANTICS.codomain_encoding_sem_id === TARGET_TEMPLATE_ENCODING_SEM_ID
+      && /^emit-unbound-port/.test((() => { try { emit(T.port("x")); return "EMITTED"; }
+        catch (e) { return e.message; } })()),
+    `an emitter change now moves EMISSION's id (${EMISSION_SEM_ID.slice(0, 16)}…) and NOT ` +
+    `instantiation's; a substitution change moves instantiation's and NOT emission's. Three relations, ` +
+    `three identities, each moving for its own reasons. instantiate() no longer returns a term at all ` +
+    `— it ends at ${INST0.closed_template_sem_id.slice(0, 18)}…, and THAT ID IS IN ITS OWN DOMAIN: for ` +
+    `add(2,3) with {} the closed template's canonical bytes EQUAL the open template's ` +
+    `(${sameBytes}) and their ids DIFFER (${differentIds}), because "what the compiler produced" and ` +
+    `"what an invocation closed" are different things that happen to coincide when there are no ports`);
+}
+
 
 /* ── 8. the decoder's own boundary is a refusal too ──────────────────────── */
 {

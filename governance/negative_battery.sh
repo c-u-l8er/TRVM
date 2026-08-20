@@ -1729,8 +1729,8 @@ open('lowering.mjs','w').write(src)"
 
 run_case instantiate-mints-its-own-id "must not compute target_term_sem_id" "
 src = open('lowering.mjs').read()
-src = src.replace('    return { ok: true, target_term: emit(closed), closed_template: closed,',
-                  '    return { ok: true, target_term: emit(closed), target_term_sem_id: \"self-certified\", closed_template: closed,')
+src = src.replace('    return { ok: true, closed_template: closed,',
+                  '    return { ok: true, target_term_sem_id: \"self-certified\", closed_template: closed,')
 open('lowering.mjs','w').write(src)"
 
 run_case receipt-completeness-unchecked "must not compute target_term_sem_id" "
@@ -1805,9 +1805,96 @@ src = open('lowering_check.mjs').read()
 src = src.replace('I-4c-binding-has-force', 'I-4c-noted')
 open('lowering_check.mjs','w').write(src)"
 
-run_case implementing-id-case-dropped "must carry implementing-moved-neither-id" "
+# implementing-id-case-dropped was here until B2.1, when the case it guarded was
+# RETIRED — its premise (only two fields changed since B1.2.1) expired, and
+# keeping it would have meant growing an embedded copy of the module inside its
+# own test. The three B2.1 cases above replace it.
+
+# ── B2.1: the snapshot bug, the bare vocabulary, the emission split ────────
+run_case instantiate-reads-inputs-twice "must SNAPSHOT both arguments at entry" "
+src = open('lowering.mjs').read()
+src = src.replace('inputs_sem_id: inputsSemId(own),', 'inputs_sem_id: inputsSemId(inputs),')
+open('lowering.mjs','w').write(src)"
+
+run_case instantiate-template-unsnapshotted "must SNAPSHOT both arguments at entry" "
+src = open('lowering.mjs').read()
+src = src.replace('const tmpl = ownCanonical(template);', 'const tmpl = template;')
+open('lowering.mjs','w').write(src)"
+
+run_case entry-snapshot-rule-unstated "must SNAPSHOT both arguments at entry" "
+src = open('lowering.mjs').read()
+src = src.replace('  entry_snapshot:', '  entry_note:')
+open('lowering.mjs','w').write(src)"
+
+run_case vocabulary-back-to-bare-names "vocabulary's MEANING must be content-bound" "
+src = open('lowering.mjs').read()
+src = src.replace('  predicate_semantics: Object.freeze', '  predicate_names: Object.freeze')
+open('lowering.mjs','w').write(src)"
+
+run_case predicate-kind-hardcoded "vocabulary's MEANING must be content-bound" "
+src = open('lowering.mjs').read()
+src = src.replace('const spec = LOWERING_SEMANTICS.predicate_semantics[p.holds];',
+                  'const spec = {kind: \"number-is-integer\"};')
+open('lowering.mjs','w').write(src)"
+
+run_case predicate-becomes-a-function "vocabulary's MEANING must be content-bound" "
+src = open('lowering.mjs').read()
+src = src.replace('    integer: Object.freeze({ kind: \"number-is-integer\" }),',
+                  '    integer: (v) => Number.isInteger(v),')
+open('lowering.mjs','w').write(src)"
+
+run_case emission-not-split-out "EMISSION must be its own relation" "
+src = open('lowering.mjs').read()
+src = src.replace('export const EMISSION_SEM_ID =', 'const EMISSION_SEM_ID =')
+open('lowering.mjs','w').write(src)"
+
+run_case closed-template-shares-the-open-domain "EMISSION must be its own relation" "
+src = open('lowering.mjs').read()
+src = src.replace('export const closedTemplateSemId = (closed) => \"ctmpl-\" +',
+                  'export const closedTemplateSemId = (closed) => \"tmpl-\" +')
+open('lowering.mjs','w').write(src)"
+
+run_case instantiation-keeps-the-executable-codomain "EMISSION must be its own relation" "
+src = open('lowering.mjs').read()
+src = src.replace('  codomain_encoding_sem_id: TARGET_TEMPLATE_ENCODING_SEM_ID,\n  codomain_identity_domain',
+                  '  codomain_encoding_sem_id: TARGET_EXECUTABLE_ENCODING_SEM_ID,\n  codomain_identity_domain')
+open('lowering.mjs','w').write(src)"
+
+run_case verifiers-stay-test-only "receipt VERIFICATION must be a production function" "
+src = open('lowering.mjs').read()
+src = src.replace('export function verifyInstantiationReceipt', 'function verifyInstantiationReceipt')
+open('lowering.mjs','w').write(src)"
+
+run_case emission-verifier-imports-its-own-oracle "receipt VERIFICATION must be a production function" "
+src = open('lowering.mjs').read()
+src = src.replace('export function verifyEmissionReceipt(closed_template, receipt, canonicaliseTarget)',
+                  'export function verifyEmissionReceipt(closed_template, receipt)')
+open('lowering.mjs','w').write(src)"
+
+run_case b2-ids-erased "B2 identities must be kept" "
+src = open('lowering.mjs').read()
+src = src.replace('export const SUPERSEDED_B2_SEM_IDS', 'const SUPERSEDED_B2_SEM_IDS')
+open('lowering.mjs','w').write(src)"
+
+run_case emission-receipt-missing "must not compute target_term_sem_id" "
+src = open('lowering.mjs').read()
+src = src.replace('export function emissionReceipt(closed_template_sem_id, target_term_sem_id)',
+                  'export function emissionReceipt(closed_template_sem_id)')
+open('lowering.mjs','w').write(src)"
+
+run_case snapshot-case-dropped "must carry instantiation-snapshots-its-inputs" "
 src = open('lowering_check.mjs').read()
-src = src.replace('implementing-moved-neither-id', 'implementing-noted')
+src = src.replace('instantiation-snapshots-its-inputs', 'instantiation-notes-its-inputs')
+open('lowering_check.mjs','w').write(src)"
+
+run_case vocabulary-case-dropped "must carry rule-vocabulary-is-content-bound" "
+src = open('lowering_check.mjs').read()
+src = src.replace('rule-vocabulary-is-content-bound', 'rule-vocabulary-noted')
+open('lowering_check.mjs','w').write(src)"
+
+run_case emission-split-case-dropped "must carry emission-is-its-own-relation" "
+src = open('lowering_check.mjs').read()
+src = src.replace('emission-is-its-own-relation', 'emission-noted')
 open('lowering_check.mjs','w').write(src)"
 
 # ── B1.2.1: the version map had three entries no check read ────────────────
@@ -1819,7 +1906,7 @@ json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 run_case lowering-version-drifts "artifact_versions says" "
 src = open('lowering.mjs').read()
-src = src.replace('export const LOWERING_VERSION = \"0.6.0\";',
+src = src.replace('export const LOWERING_VERSION = \"0.7.0\";',
                   'export const LOWERING_VERSION = \"0.9.9\";')
 open('lowering.mjs','w').write(src)"
 
