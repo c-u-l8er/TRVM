@@ -1,6 +1,6 @@
 {
   "record": "invariant-grid",
-  "version": "1.33.0",
+  "version": "1.34.0",
   "date": "2026-08-18",
   "v1_criteria": {
     "scope": "v1.0.0 covers the CALCULUS LAYER only. WORLD and EFFECT planes, the sigma profile, CP5-CP7 PhaseSpan, and Warrant v3 (with the shared support/footprint concept adopted in round 5) are TRVM/WRL layers above this kernel: named here, built next, not debt of the kernel.",
@@ -617,7 +617,7 @@
   },
   "law_registry": {
     "note": "Citation form 'law:<id>@<rev>' is the load-bearing reference everywhere (kernel, kappa witnesses, this grid, scheduler certificate, ledgers); grid_check v2 resolves every citation against this registry and fails the build on unknown ids, unknown revisions, or citations of non-canonical entries outside superseded/history context. Lineage fields (supersedes / superseded_by) use bare '<id>@<rev>' — registry-internal pointers, not citations.",
-    "grid_version": "1.33.0",
+    "grid_version": "1.34.0",
     "entries": [
       {
         "id": "kappa.monotonicity.unrestricted",
@@ -1219,6 +1219,17 @@
         "evidence": "lowering_check.mjs 9/9, the first end-to-end witness: add(const 2, const 3) with inputs={} lowers to one canonical ic32 term whose identity the kernel and ic32_canon agree on; the host launches the catalogued binary and observes the canonical normal form L0(L1(A(N0,A(N0,A(N0,A(N0,A(N0,N1))))))); that decodes structurally to {status:'value', value:5}; and its outcome id EQUALS the source evaluator's, whose result was itself accepted by an authority owning every oracle it consulted (derivation.acceptance-authority@1). six-identities-stay-distinct asserts all six values differ. native-film-absent-by-refusal asserts the film emitter REFUSES this exact fixture with film-dup-cell-present — the gap is measured at the fixture the refinement runs on rather than described in the abstract."
       },
       {
+        "id": "derivation.instantiation-identity",
+        "revision": 1,
+        "status": "PROPERTY-TESTED",
+        "canonical": true,
+        "defect_class": "record-staleness",
+        "accepted_false_verdict": false,
+        "underlying_observations_genuine": true,
+        "statement": "INSTANTIATION IS A SEPARATE RELATION FROM LOWERING AND CARRIES ITS OWN IDENTITY. A target template can be perfectly lowered while instantiation binds \"x\" to the port for \"y\". Merge the two relations and a target failure becomes ambiguous between A MISTRANSLATED PROGRAM and CORRECTLY TRANSLATED CODE WITH MISWIRED INPUTS, which is the class of ambiguity this record has spent twenty-seven rounds removing. So: program_sem_id -(lowering_sem_id)-> target_template_sem_id, reusable and independent of invocation data; then target_template_sem_id + inputs_sem_id -(instantiation_sem_id)-> target_term_sem_id, the closed executable term. The earlier framing, PARAMETERIZED versus INSTANTIATED, was a FALSE CHOICE: the template is parameterized AND the executed term is necessarily closed. instantiation_sem_id IDENTIFIES THE RELATION AND NOT THE INVOCATION -- it commits to the input-port namespace and version, the source-name-to-port rule, missing- and extra-input semantics, the canonical embedding of an input value, template substitution semantics, the refusal vocabulary and the conformance vectors, and it does NOT contain x=5, which is inputs_sem_id. THE PORT IS BOUND TO THE SOURCE NAME: port identity is H(namespace | canonicalBytes(source_input_name)), taken at the canonical target-AST layer as {op:\"input-port\", source_name:N} BEFORE any textual or ic32 variable allocation, so two implementations that internally allocate _impl17 and q93 reach the SAME target_template_sem_id. The quotient is exact and it is the INVERSE OF ROUND 16: internal target variable names are non-semantic and alpha-equivalent, source input keys are semantic. Round 16's bug was identity depending on a spelling that should not matter; the danger here is identity depending on an ALLOCATION that should not matter while losing the SOURCE NAME that must. SOURCE INPUT NAMES ARE NOT UNICODE-NORMALIZED: if the frozen core distinguishes two code-point sequences as different names, port identity preserves that exact distinction, because normalizing at the encoding layer is a language-semantic change made where the source cannot see it. INSTANTIATION GETS NO FILM -- it is a deterministic relation, not a transition system, so its instrument is independent RE-INSTANTIATION against an InstantiationReceipt {target_template_sem_id, instantiation_sem_id, inputs_sem_id, target_term_sem_id}, the same argument that gives lowering re-lowering. DECIDED, NOT BUILT, and the two states are distinguishable by name: `input` refuses as lower-input-not-implemented rather than lower-inputs-undecided, because a refusal that conflates 'we have not ruled' with 'we have ruled and not written it' is a stale instrument with a delay fuse.",
+        "evidence": "lowering.mjs 0.2.0 freezes INPUT_PORT_SPEC, INSTANTIATION_SPEC, INSTANTIATION_SEM_ID, inputsSemId, portSemId and INSTANTIATION_RECEIPT_FIELDS, with instantiate() throwing instantiate-not-implemented. LOWERING_SEM_ID MOVED as a consequence and that is the point: LOWERING_SPEC carries inputs_model, so deciding the model changes the lowering relation, and an id that survived the ruling unchanged would be claiming the decision was not part of the relation. lowering_check.mjs case 'out-of-fragment-refused' asserts decided true, implemented false, three DECLARED falsifiers, and INSTANTIATION_SEM_ID distinct from LOWERING_SEM_ID; 9/9 with the refinement witness unchanged and still FILM-EVIDENCED. THE THREE FALSIFIERS ARE DECLARED AND NONE IS WRITTEN -- I-4a allocation-invariance, I-4b source-name-sensitivity, I-4c binding-has-force -- so this law is PROPERTY-TESTED for the DECISION and its refusal surface, and carries NO claim about instantiation behaviour, which does not exist yet. B2 writes the three."
+      },
+      {
         "id": "derivation.host-ownership",
         "revision": 1,
         "status": "PROPERTY-TESTED",
@@ -1550,7 +1561,7 @@
     "trvm_world.mjs": "0.12.0",
     "derive_protocol.mjs": "0.15.0",
     "observed_execution_host.mjs": "0.5.1",
-    "lowering.mjs": "0.1.0",
+    "lowering.mjs": "0.2.0",
     "bridge/ic32_film.c": "0.2.0"
   },
   "world": {
@@ -1847,7 +1858,7 @@
     "lowering_spike RESTORED after being lost in the round-16 split, with TRVM-TERM-CANON-v1, the three properties, the decision rule, and the fourth identity (outcome_sem_id under TRVM-DERIVE-OUTCOME-v1, because refusal is also semantics). The round-16/17/18 review brief claimed this section was recorded while the extract shipped beside it read null."
   ],
   "lowering_spike": {
-    "status": "EXECUTED-PARTIAL. Pure fragment const/add only · execution grade FILM-EVIDENCED (round 26) · film scope: APP-plane rules over dup-CARRYING terms, multi-frame; the six DUP-* rules and the d:/v: loci remain OPEN · inputs model UNDECIDED. Was 'DECLARED, not built.' and stayed that way through the round that built it — the same prose-versus-record drift the record_correction below is about, one section later and in the same file. The three laws derivation.canonical-lowering@1, derivation.target-decoding@1 and derivation.lowering-refinement@1 are PROPERTY-TESTED in the registry above; a machine-readable state saying 'not built' beside them is exactly the contradiction grid_check exists to catch, and it did not, so it does now.",
+    "status": "EXECUTED-PARTIAL. Pure fragment const/add only · execution grade FILM-EVIDENCED (round 26) · film scope: APP-plane rules over dup-CARRYING terms, multi-frame; the six DUP-* rules and the d:/v: loci remain OPEN · inputs model DECIDED at B1 (two levels, two identities) and `input` NOT IMPLEMENTED — two states, and the refusal now distinguishes them by name. Was 'DECLARED, not built.' and stayed that way through the round that built it — the same prose-versus-record drift the record_correction below is about, one section later and in the same file. The three laws derivation.canonical-lowering@1, derivation.target-decoding@1 and derivation.lowering-refinement@1 are PROPERTY-TESTED in the registry above; a machine-readable state saying 'not built' beside them is exactly the contradiction grid_check exists to catch, and it did not, so it does now.",
     "record_correction": "This section was LOST between drafts. The combined round-16 draft carried it; when that draft was split into rounds 16/17/18 the grid was rebuilt from the round-15 base and this section was not re-added. The round-16/17/18 review brief nonetheless stated that TRVM-TERM-CANON-v1 was 'recorded in lowering_spike', while the machine-readable extract shipped alongside it contained lowering_spike: null. The brief was wrong and the extract was right. Restored here, in round 21, together with the fourth identity the review then supplied.",
     "scope": "the PURE fragment only — const and add first, then input/sub/mul/len. NOT read/scope/cite: authority-sensitive operations carry footprint semantics that would muddy the question the spike exists to answer. If add(const 2, const 3) already gives an ugly lowering, that is valuable information before a compiler is built around the idea.",
     "target_encoding": {
@@ -1875,7 +1886,19 @@
     "executed_in_round": 25,
     "execution_grade": "FILM-EVIDENCED — six chained APP-LAM frames the kernel's own replaySemFilm accepts on two runtime classes, on top of an execution the ObservedExecutionHost drove. Was OBSERVED in round 25.",
     "film_grade": "COVERED for this fixture. Round 25 recorded it OPEN because ic32_film v0.1.0 refused on film-dup-cell-present; measuring the kernel's film for the same term showed the refusal was right about the fixture and wrong about the reason — the lowered term carries dup cells and fires no dup rule. The precondition moved from PRESENCE to ENABLEDNESS. STILL OPEN: the six DUP-* rules themselves, the d:/v: loci, BUDGET_EXHAUSTED terminals.",
-    "inputs_model": "UNDECIDED — parameterized vs instantiated, ruled BEFORE the input op, not during it"
+    "inputs_model": {
+      "decided": true,
+      "decided_at": "round 27, pass B1",
+      "implemented": false,
+      "ruling": "TWO LEVELS, TWO IDENTITIES. lowering: program -> parameterized target TEMPLATE, identity a function of the program alone. instantiation: template + inputs -> closed target TERM. 'Parameterized versus instantiated' was a false choice: the template is parameterized AND the executed term is necessarily closed.",
+      "chain": "program_sem_id -(lowering_sem_id)-> target_template_sem_id -(instantiation_sem_id + inputs_sem_id)-> target_term_sem_id -(native film)-> target_nf_sem_id -(decode_sem_id)-> target_outcome_sem_id, with source_outcome_sem_id == target_outcome_sem_id",
+      "falsifiers": [
+        "I-4a allocation-invariance",
+        "I-4b source-name-sensitivity",
+        "I-4c binding-has-force"
+      ],
+      "falsifier_status": "DECLARED, none written; B2 writes them"
+    }
   },
   "changelog_from_1_22_0": [
     "derivation.implementation-provenance@1 SUPERSEDED by @2, and @1 is kept as the record of a FALSE claim shipped for seven rounds: it said impersonation was closed while deriveLocally took the implementation identity as a caller-supplied parameter. Reproduced as P-1.",
@@ -1958,5 +1981,13 @@
     "derivation.observation-multiplicity@1 is provenance-shape / accepted_false_verdict false / underlying_observations_genuine true. derivation.entry-snapshot@1 and derivation.owned-snapshot@1 are authority-forgery / true / false, so the distinction is expressed in data rather than asserted in prose.",
     "grid_check scans every governance source file for literal NUL bytes. The A.1 fix documented the hazard and the A.3 grouping key reintroduced it in the same file four commits later; a rule that must be remembered is a rule that will be forgotten.",
     "observed_execution_host.mjs 0.5.0 -> 0.5.1 (the grouping separator is the \\u0000 escape again; identical string, visible module)."
+  ],
+  "changelog_from_1_33_0": [
+    "B1: law:derivation.instantiation-identity@1 added. The inputs model is DECIDED -- two levels, two identities. Lowering produces a parameterized target TEMPLATE; instantiation closes it against canonical inputs. 'Parameterized versus instantiated' was a false choice.",
+    "instantiation_sem_id identifies the RELATION, not the invocation; inputs_sem_id carries x=5. Port identity is bound to the SOURCE NAME at the canonical target-AST layer, before variable allocation, and source input names are NOT Unicode-normalized.",
+    "DECIDED, NOT BUILT: instantiate() throws instantiate-not-implemented and `input` refuses as lower-input-not-implemented rather than lower-inputs-undecided, because 'not ruled' and 'ruled, not written' are different states.",
+    "The three port falsifiers I-4a/I-4b/I-4c are DECLARED AS DATA in INSTANTIATION_FALSIFIERS and none is written. B2 writes them.",
+    "LOWERING_SEM_ID moved, because LOWERING_SPEC carries inputs_model and deciding the model changes the relation. lowering.mjs 0.1.0 -> 0.2.0.",
+    "lowering_spike.status no longer says 'inputs model UNDECIDED'; grid_check binds that record to INPUTS_MODEL.decided in the source so the two cannot drift."
   ]
 }

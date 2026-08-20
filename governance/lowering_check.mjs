@@ -53,6 +53,7 @@ import { parse, extrude, FloatRt, DescFloatRt, semStateId, semStateSignature, re
 import {
   lower, loweringReceipt, decode, outcomeSemId, sourceOutcome, programSemId,
   LOWERING_SEM_ID, DECODE_SEM_ID, LOWERING_SPEC, INPUTS_MODEL,
+  INSTANTIATION_SEM_ID, INSTANTIATION_FALSIFIERS,
 } from "./lowering.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -192,7 +193,7 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
 /* ── 7. the refusals are named, and the fragment's edges are checked ─────── */
 {
   const cases = [
-    [{ op: "input", name: "x" }, "lower-inputs-undecided"],
+    [{ op: "input", name: "x" }, "lower-input-not-implemented"],
     [{ op: "read", resource: "fb" }, "lower-reads-undecided"],
     [{ op: "sub", a: { op: "const", value: 1 }, b: { op: "const", value: 1 } }, "lower-unsupported-op"],
     [{ op: "const", value: 1.5 }, "lower-non-integer-constant"],
@@ -202,12 +203,19 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
     const r = lower(ast);
     return !r.ok && String(r.reason).startsWith(want);
   });
-  R("out-of-fragment-refused", got.every(Boolean) && INPUTS_MODEL.decided === false,
-    `${cases.map(([, w]) => w).join(" · ")} — each a NAMED refusal. \`input\` is refused because the ` +
-    `inputs model is UNDECIDED (parameterized vs instantiated), and that decision belongs before the ` +
-    `op rather than during it: target_term_sem_id is a function of the program alone under one model ` +
-    `and of the program AND the inputs under the other, and an unstated variable inside an identity is ` +
-    `the round-16 bug class`);
+  R("out-of-fragment-refused",
+    got.every(Boolean) && INPUTS_MODEL.decided === true && INPUTS_MODEL.implemented === false
+      && INSTANTIATION_FALSIFIERS.length === 3
+      && INSTANTIATION_FALSIFIERS.every((f) => f.status === "DECLARED")
+      && INSTANTIATION_SEM_ID !== LOWERING_SEM_ID,
+    `${cases.map(([, w]) => w).join(" · ")} — each a NAMED refusal. The inputs model is now DECIDED ` +
+    `(${INPUTS_MODEL.decided}) and NOT IMPLEMENTED (${INPUTS_MODEL.implemented}), and \`input\` is ` +
+    `refused as lower-input-not-implemented rather than lower-inputs-undecided, because "not ruled" ` +
+    `and "ruled, not written" are different states. The ruling is TWO LEVELS: lowering makes a ` +
+    `parameterized TEMPLATE and instantiation closes it, so instantiation carries its own relation id ` +
+    `(${INSTANTIATION_SEM_ID.slice(0, 16)}…, distinct from lowering's ${LOWERING_SEM_ID.slice(0, 16)}…) ` +
+    `— a template can be perfectly lowered while "x" is bound to the port for "y". The three port ` +
+    `falsifiers are DECLARED and none is written; B2 writes them`);
 }
 
 /* ── 8. the decoder's own boundary is a refusal too ──────────────────────── */

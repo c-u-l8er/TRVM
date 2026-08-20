@@ -225,7 +225,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -1173,10 +1173,87 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "canonical-lowering@1 must keep the inputs model DEFERRED AND NAMED. target_term_sem_id is a " +
           "function of the program alone under one model and of the program AND the inputs under the " +
           "other; deciding it while implementing `input` is how an unstated variable enters an identity");
-        ok(/INPUTS_MODEL = Object\.freeze\(\{\s*decided: false/.test(lowSrc) &&
-           /lower-inputs-undecided/.test(lowSrc),
-          "lowering.mjs must record the inputs model as UNDECIDED and REFUSE the input op by name — a " +
-          "lowering that quietly emitted something for `input` would decide the question by accident");
+        // ── B1: the model is DECIDED, and `input` is still not built ──────
+        // This required `decided: false` until B1. Two levels, two identities,
+        // and — separately — two states: "not ruled" and "ruled, not written"
+        // are different, and the refusal must be able to say which.
+        ok(/INPUTS_MODEL = Object\.freeze\(\{\s*decided: true/.test(lowSrc) &&
+           /implemented: false/.test(lowSrc) &&
+           /lower-input-not-implemented/.test(lowSrc) &&
+           !/lower-inputs-undecided"/.test(lowSrc),
+          "lowering.mjs must record the inputs model as DECIDED and NOT IMPLEMENTED, and refuse the " +
+          "input op as lower-input-not-implemented. The old lower-inputs-undecided cannot distinguish " +
+          "'we have not ruled' from 'we have ruled and not written it', and a refusal that conflates " +
+          "two states is a stale instrument with a delay fuse");
+        ok(/export const INSTANTIATION_SEM_ID =/.test(lowSrc) &&
+           /export const inputsSemId =/.test(lowSrc) &&
+           /export const portSemId =/.test(lowSrc),
+          "instantiation must have its OWN relation identity, separate from lowering's, with " +
+          "inputs_sem_id for the invocation data and portSemId for the source-name-bound port. A " +
+          "correct template can be instantiated with \"x\" bound to the port for \"y\", so the two " +
+          "relations are independently falsifiable and must be independently identifiable");
+        ok(/It does NOT contain x=5; that is inputs_sem_id/.test(lowSrc),
+          "INSTANTIATION_SPEC must say that it identifies the RELATION and not the invocation — the " +
+          "moment `x=5` is inside the relation id, every invocation is a different relation");
+        ok(/no_normalization:/.test(lowSrc) && /NOT Unicode-normalized/.test(lowSrc),
+          "the port spec must refuse Unicode normalization of source input names. If the frozen core " +
+          "distinguishes two code-point sequences, normalizing at the encoding layer is a " +
+          "language-semantic change made where the source cannot see it");
+        // THE RECORD MUST NOT CONTRADICT THE CODE. lowering_spike.status said
+        // "inputs model UNDECIDED" for as long as it took to notice, which is
+        // the same prose-versus-record drift its own record_correction is
+        // about. Bound to the source now, in both directions.
+        {
+          const decidedInSrc = /INPUTS_MODEL = Object\.freeze\(\{\s*decided: true/.test(lowSrc);
+          const st = g.lowering_spike?.status ?? "";
+          ok(decidedInSrc === (g.lowering_spike?.inputs_model?.decided === true),
+            "grid lowering_spike.inputs_model.decided must agree with INPUTS_MODEL.decided in " +
+            "lowering.mjs — a machine-readable state contradicting the mechanism in the same tree is " +
+            "the class this section's own record_correction is about");
+          ok(!(decidedInSrc && /inputs model UNDECIDED/.test(st)),
+            "grid lowering_spike.status still says the inputs model is UNDECIDED while lowering.mjs " +
+            "records it as decided. That sentence outlived the round that decided it");
+          ok(g.lowering_spike?.inputs_model?.implemented === false,
+            "grid lowering_spike.inputs_model.implemented must stay false until the three port " +
+            "falsifiers are written — B1 decided the model and built none of it, and a record that " +
+            "loses that distinction re-creates the refusal-name problem one layer up");
+        }
+        {
+          const fals = (lowSrc.match(/id: "I-4[abc]"/g) ?? []).length;
+          ok(fals === 3 && /status: "DECLARED"/.test(lowSrc),
+            `INSTANTIATION_FALSIFIERS must declare all THREE port witnesses as data (found ${fals}). ` +
+            "Allocation invariance and source-name sensitivity alone prove only that a label is " +
+            "copied around; the swapped binding is what proves instantiation HONOURS the identity. A " +
+            "prose list would drift from the suite, which this tree has watched happen to a law " +
+            "count, a case count and a rung count");
+        }
+        {
+          const ii = entries.find((x) => x.id === "derivation.instantiation-identity" && x.revision === 1);
+          ok(!!ii && ii.canonical === true && ii.status === "PROPERTY-TESTED",
+            "law derivation.instantiation-identity@1 missing, non-canonical, or not PROPERTY-TESTED (v1.34)");
+          ok(!!ii && /FALSE CHOICE/.test(ii.statement ?? ""),
+            "instantiation-identity@1 must record that PARAMETERIZED versus INSTANTIATED was a false " +
+            "choice — the template is parameterized AND the executed term is necessarily closed. A " +
+            "law that picks one of them re-opens the question the next time inputs are discussed");
+          ok(!!ii && /IDENTIFIES THE RELATION AND NOT THE INVOCATION/.test(ii.statement ?? ""),
+            "instantiation-identity@1 must separate the relation id from the invocation data. The " +
+            "moment x=5 is inside instantiation_sem_id, every invocation is a different relation and " +
+            "the receipt stops being able to say anything general");
+          ok(!!ii && /INVERSE OF ROUND 16/.test(ii.statement ?? ""),
+            "instantiation-identity@1 must state the quotient as round 16's inverse: there, identity " +
+            "depended on a spelling that should not matter; here the danger is depending on an " +
+            "allocation that should not matter while losing the source name that must");
+          ok(!!ii && /NOT UNICODE-NORMALIZED/.test(ii.statement ?? ""),
+            "instantiation-identity@1 must refuse Unicode normalization of source input names — a " +
+            "quotient introduced at the encoding layer is a language-semantic change made where the " +
+            "source cannot see it");
+          ok(!!ii && /NO CLAIM ABOUT INSTANTIATION BEHAVIOUR|NO claim about instantiation behaviour/
+            .test(ii.evidence ?? ""),
+            "instantiation-identity@1's evidence must say that the three falsifiers are DECLARED and " +
+            "none is written, so the law is PROPERTY-TESTED for the DECISION and claims nothing about " +
+            "behaviour that does not exist yet. This is the one place a frozen architecture can " +
+            "quietly start reading as a working feature");
+        }
         const lr = entries.find((x) => x.id === "derivation.lowering-refinement");
         ok(!!lr && /TWO GRADES OF EVIDENCE FOR THE EXECUTION LEG/.test(lr.statement ?? ""),
           "lowering-refinement@1 must separate OBSERVED execution from FILM-EVIDENCED execution and " +

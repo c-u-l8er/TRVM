@@ -1231,10 +1231,12 @@ for e in g['law_registry']['entries']:
         e['statement'] = e['statement'].replace('PARAMETERIZED', 'the obvious model')
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
-run_case inputs-silently-lowered "must record the inputs model as UNDECIDED" "
-src = open('lowering.mjs').read()
-src = src.replace('decided: false', 'decided: true')
-open('lowering.mjs','w').write(src)"
+# inputs-silently-lowered was here until B1: it flipped decided:false -> true and
+# asserted "must record the inputs model as UNDECIDED". B1 decided the model, so
+# its perturbation became the live state and the case went VACUOUS -- it changed
+# no artifact and tested nothing. DELETED rather than repointed, because its
+# premise is what the round reversed; inputs-model-reverted above is the same
+# guard for the new state, in the new direction.
 
 run_case execution-grades-collapsed "must separate OBSERVED execution from FILM-EVIDENCED" "
 import json
@@ -1477,6 +1479,68 @@ run_case literal-nul-in-source "contains a literal NUL byte" "
 b = open('observed_execution_host.mjs','rb').read()
 b = b.replace(b'\\\\u0000', b'\\x00')
 open('observed_execution_host.mjs','wb').write(b)"
+
+# ── B1: the inputs model, decided and not built ────────────────────────────
+run_case inputs-model-reverted "must record the inputs model as DECIDED" "
+src = open('lowering.mjs').read()
+src = src.replace('  decided: true,', '  decided: false,')
+open('lowering.mjs','w').write(src)"
+
+run_case decided-reads-as-implemented "must record the inputs model as DECIDED and NOT IMPLEMENTED" "
+src = open('lowering.mjs').read()
+src = src.replace('  implemented: false,', '  implemented: true,')
+open('lowering.mjs','w').write(src)"
+
+run_case instantiation-id-merged-into-lowering "instantiation must have its OWN relation identity" "
+src = open('lowering.mjs').read()
+src = src.replace('export const INSTANTIATION_SEM_ID =', 'const INSTANTIATION_SEM_ID =')
+open('lowering.mjs','w').write(src)"
+
+run_case falsifier-dropped "must declare all THREE port witnesses" "
+src = open('lowering.mjs').read()
+src = src.replace('id: \"I-4c\"', 'id: \"I-4c-disabled\"')
+open('lowering.mjs','w').write(src)"
+
+run_case port-names-normalized "must refuse Unicode normalization" "
+src = open('lowering.mjs').read()
+src = src.replace('NOT Unicode-normalized', 'Unicode-normalized (NFC)')
+open('lowering.mjs','w').write(src)"
+
+run_case spike-record-contradicts-source "still says the inputs model is UNDECIDED" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['lowering_spike']['status'] = g['lowering_spike']['status'] + ' Also: inputs model UNDECIDED.'
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case spike-record-claims-implemented "inputs_model.implemented must stay false" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['lowering_spike']['inputs_model']['implemented'] = True
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case instantiation-law-deleted "law derivation.instantiation-identity@1 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if e['id'] != 'derivation.instantiation-identity']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case instantiation-law-picks-a-side "must record that PARAMETERIZED versus INSTANTIATED was a false choice" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.instantiation-identity':
+        e['statement'] = e['statement'].replace('FALSE CHOICE', 'settled question')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case instantiation-law-overclaims "evidence must say that the three falsifiers are DECLARED" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.instantiation-identity':
+        e['evidence'] = e['evidence'].replace('carries NO claim about instantiation behaviour',
+                                              'establishes instantiation behaviour')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 run_case entry-snapshot-law-deleted "law derivation.entry-snapshot@1 missing" "
 import json

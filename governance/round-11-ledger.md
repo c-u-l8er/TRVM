@@ -1124,3 +1124,106 @@ forgeries and one that rewrites the escape back into a raw byte · realm 24/24 �
 `scheduler_certificate.json` byte-identical — **twenty-seventh** consecutive round.
 
 **186. Pass A stays closed. B1 begins.**
+
+## Round 27, pass B1 — the inputs model, decided and not built
+
+The first Pass-B round. It decides an architecture and implements none of it, which is the whole
+point: an unstated variable inside `target_term_sem_id` is the round-16 hidden-identity bug class,
+and deciding this *while* writing `input` is how it gets in.
+
+**187. "Parameterized versus instantiated" was a FALSE CHOICE.** The template is parameterized **and**
+the executed term is necessarily closed. They are two relations, they compose, and they get two
+identities:
+
+```
+program_sem_id
+      │  lowering_sem_id
+      ▼
+target_template_sem_id        reusable, independent of invocation data
+      │  instantiation_sem_id + inputs_sem_id
+      ▼
+target_term_sem_id            the closed executable term
+      │  native semantic film
+      ▼
+target_nf_sem_id  ──decode_sem_id──▶  target_outcome_sem_id  ==  source_outcome_sem_id
+```
+
+**188. Why they may not be merged, which is the whole of the ruling.** A template can be *perfectly
+lowered* while instantiation binds `"x"` to the port for `"y"`. Merge the relations and a target
+failure becomes ambiguous between **the program was translated incorrectly** and **correctly
+translated code had its inputs miswired**. Twenty-seven rounds have gone into removing exactly that
+species of ambiguity; this one is cheap to keep out and expensive to retrofit.
+
+**189. `instantiation_sem_id` identifies the RELATION, not the invocation.** It commits to the port
+namespace and version, the source-name→port rule, missing- and extra-input semantics, the canonical
+embedding of an input value, substitution semantics, the refusal vocabulary and the conformance
+vectors. It does **not** contain `x=5` — that is `inputs_sem_id`. The moment the invocation data is
+inside the relation id, every invocation is a different relation and the receipt can say nothing
+general.
+
+**190. The port is bound to the SOURCE NAME, and this is the inverse of round 16.** Port identity is
+`H(namespace | canonicalBytes(source_input_name))`, taken at the canonical target-AST layer as
+`{op:"input-port", source_name:N}` **before** any textual or ic32 variable allocation — so two
+implementations that internally allocate `_impl17` and `q93` reach the same
+`target_template_sem_id`. The quotient, stated exactly:
+
+```
+internal target variable names   NON-SEMANTIC, alpha-equivalent
+source input keys               SEMANTIC
+```
+
+Round 16's bug was identity depending on **a spelling that should not matter**. The danger here is
+identity depending on **an allocation that should not matter, while losing the source name that
+must.** Same axis, opposite direction.
+
+**And source input names are NOT Unicode-normalized.** If the frozen core distinguishes two code-point
+sequences as different names, port identity preserves that distinction exactly. Normalizing at the
+encoding layer would be a language-semantic change made where the source cannot see it — a quotient
+introduced by the compiler on the language's behalf.
+
+**191. No film for instantiation.** It is a deterministic relation, not a transition system, so its
+instrument is independent **re-instantiation** against an `InstantiationReceipt {target_template_sem_id,
+instantiation_sem_id, inputs_sem_id, target_term_sem_id}` — the same argument that gave lowering
+re-lowering rather than a film. A film here would be evidence about the target runtime's steps, which
+is a different claim about a different object.
+
+**192. DECIDED, NOT BUILT — and the refusal can now say which.** `input` still does not lower.
+`instantiate()` throws `instantiate-not-implemented`. The lowering refusal was renamed
+`lower-inputs-undecided` → **`lower-input-not-implemented`**, because *"we have not ruled"* and *"we
+have ruled and not written it"* are different states, and a refusal that conflates them is a stale
+instrument with a delay fuse. The three port falsifiers are **declared as data** —
+`INSTANTIATION_FALSIFIERS`, I-4a allocation-invariance, I-4b source-name-sensitivity, I-4c
+binding-has-force — with `status: "DECLARED"` and none written. B2 writes them. Declared as data and
+not prose because a hand-maintained list drifts from its suite, which this tree has now watched happen
+to a law count, a case count and a rung count.
+
+**193. `LOWERING_SEM_ID` moved, and that is the point.** `LOWERING_SPEC` carries `inputs_model`, so
+deciding the model changes the lowering relation and therefore its identity. An id that survived this
+ruling unchanged would be claiming the decision was not part of the relation. The refinement receipt
+is re-cut rather than re-pointed, and the 9/9 witness is unchanged and still FILM-EVIDENCED.
+
+**194. Two records were about to contradict the code, and one already did.**
+`lowering_spike.status` still read *"inputs model UNDECIDED"* — the same prose-versus-record drift its
+own `record_correction` field is about, in the same file. `grid_check` now binds
+`lowering_spike.inputs_model.decided` to `INPUTS_MODEL.decided` in the source **in both directions**,
+and refuses a status string that says UNDECIDED while the code says otherwise.
+
+And a negative-battery case was **deleted rather than repointed**: `inputs-silently-lowered` flipped
+`decided: false → true` and asserted *"must record the inputs model as UNDECIDED"*. B1 made its
+perturbation the live state, so it went VACUOUS — changed no artifact, tested nothing. Its premise is
+what the round reversed, so `inputs-model-reverted` guards the new state in the new direction and the
+old case is gone with a comment saying why. **A falsifier outliving its premise is a falsifier that
+has stopped measuring**, which is the species this battery exists to catch.
+
+**195. Gate.** grid **v1.34.0** — 76 entries / 371 citations · `lowering.mjs` **0.2.0** · negative
+battery **207/207** with ten new B1 forgeries and one deleted · lowering refinement **9/9, still
+FILM-EVIDENCED** · derive 45/45 · realm 24/24 · bridge 48/48 · film 16/16 · twelve paired probes ·
+harness 9/9 · runner 3/3. `scheduler_certificate.json` byte-identical — **twenty-eighth** consecutive
+round.
+
+**196. `law:derivation.instantiation-identity@1` is PROPERTY-TESTED FOR THE DECISION and claims
+nothing about behaviour.** Its evidence says so, and a `grid_check` assertion requires it to keep
+saying so. This is the one place a frozen architecture can quietly start reading as a working
+feature.
+
+**197. Next: B2, the three port witnesses.** Then `church_exp_2_2` and the dedicated DUP-ERA fixture.
