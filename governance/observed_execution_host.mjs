@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   observed_execution_host.mjs — v0.5.0 — the only thing here that runs anything
+   observed_execution_host.mjs — v0.5.1 — the only thing here that runs anything
 
    P-3: THE AUTHORITY HASHED ONE THING AND EXECUTED ANOTHER.
 
@@ -70,7 +70,7 @@ import { basename, isAbsolute, resolve } from "node:path";
 import { Worker } from "node:worker_threads";
 import { execFile } from "node:child_process";
 
-export const HOST_VERSION = "0.5.0";
+export const HOST_VERSION = "0.5.1";
 
 /** H over an artifact CLOSURE, length-framed and keyed by BASENAME so the
  *  digest is a property of the bytes rather than of where they were extracted —
@@ -172,7 +172,7 @@ function checkEntry(family, e) {
 export function summariseObservations(tuples) {
   const groups = new Map();
   for (const t of tuples) {
-    const k = t.implementation_family_id + " " + t.executable_artifact_id;
+    const k = t.implementation_family_id + "\u0000" + t.executable_artifact_id;
     const g = groups.get(k) ?? { implementation_family_id: t.implementation_family_id,
       executable_artifact_id: t.executable_artifact_id, executor_sessions: [] };
     for (const s of t.executor_sessions)

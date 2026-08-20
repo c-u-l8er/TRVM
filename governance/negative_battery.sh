@@ -1440,14 +1440,43 @@ for e in g['law_registry']['entries']:
             'the artifact id must be reported too and must not be collapsed')
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
-run_case multiplicity-called-a-forgery "must be honest that nothing false was accepted" "
+run_case multiplicity-severity-inflated "must carry its severity as STRUCTURED metadata" "
 import json
 g = json.load(open('invariant-grid.json'))
 for e in g['law_registry']['entries']:
     if e['id'] == 'derivation.observation-multiplicity':
-        e['statement'] = e['statement'].replace('not a forgery but a PROVENANCE SHAPE defect',
-                                                'a forgery of execution provenance')
+        e['defect_class'] = 'authority-forgery'
+        e['accepted_false_verdict'] = True
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case severity-contrast-erased "must be expressed in DATA" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.entry-snapshot':
+        e['accepted_false_verdict'] = False
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case defect-class-off-vocabulary "not in defect_class_vocabulary" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.observation-multiplicity':
+        e['defect_class'] = 'mild-oopsie'
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case defect-class-without-answers "declares a defect_class without answering both severity questions" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.observation-multiplicity':
+        del e['underlying_observations_genuine']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case literal-nul-in-source "contains a literal NUL byte" "
+b = open('observed_execution_host.mjs','rb').read()
+b = b.replace(b'\\\\u0000', b'\\x00')
+open('observed_execution_host.mjs','wb').write(b)"
 
 run_case entry-snapshot-law-deleted "law derivation.entry-snapshot@1 missing" "
 import json

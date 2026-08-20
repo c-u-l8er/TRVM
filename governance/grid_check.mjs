@@ -191,8 +191,41 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
   for (const b of BANNED) ok(!txt.includes(b), `${f} contains banned phrase: ${b}`);
 }
 
+// v1.33: NO SOURCE FILE MAY CONTAIN A LITERAL NUL BYTE.
+// Twice now a separator has been written as the raw byte rather than the
+// six-character escape, and both times file(1) reclassified the whole module as
+// `data` and every text tool — grep included — skipped it in silence. A grep
+// over that file returns nothing and reads exactly like an answer. Round 27A.1
+// fixed the first occurrence and DOCUMENTED the hazard; round 27A.3's new
+// grouping key reintroduced it four commits later, in the same file. A rule
+// that has to be remembered is a rule that will be forgotten, so it is checked.
+// The string values are unaffected: "\u0000" and a raw 0x00 are the same string
+// and only one of them is visible to the instruments that audit this tree.
+{
+  const SCAN = [".mjs", ".js", ".sh", ".json", ".md", ".c", ".h", ".py"];
+  const dirs = ["", "bridge"];
+  let scanned = 0;
+  for (const d of dirs) {
+    const dir = d ? A(d) : ROOT;
+    if (!existsSync(dir)) continue;
+    for (const name of readdirSync(dir)) {
+      if (!SCAN.some((x) => name.endsWith(x))) continue;
+      const rel = d ? d + "/" + name : name;
+      const buf = readFileSync(A(rel));
+      if (buf.includes(0)) {
+        const at = buf.indexOf(0);
+        ok(false, `${rel} contains a literal NUL byte at offset ${at} (line ` +
+          `${buf.subarray(0, at).toString("utf8").split("\n").length}) — file(1) reports the module ` +
+          `as \`data\` and grep skips it silently. Write "\\u0000", which is the same string`);
+      }
+      scanned++;
+    }
+  }
+  ok(scanned > 0, "NUL scan found no source files, so nothing was scanned");
+}
+
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -999,10 +1032,36 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "derivation.observation-multiplicity@1 must state the general rule. 'Report the artifact id " +
           "as well' would be the instance without the principle, and the principle is what stops the " +
           "next pair of correlated fields being averaged into a sentence");
-        ok(!!om && /not a forgery but a PROVENANCE SHAPE defect/.test(om.statement ?? ""),
-          "derivation.observation-multiplicity@1 must be honest that nothing false was accepted here. " +
-          "Both executions happened and both produced these bytes; what overclaimed was the SHAPE, " +
-          "and filing it as a forgery would misdescribe the severity in the flattering direction");
+        // SEVERITY IS A FIELD, NOT A SENTENCE. This asserted the presence of the
+        // exact English phrase "not a forgery but a PROVENANCE SHAPE defect"
+        // until v1.33, which made editorial wording load-bearing: the prose
+        // could not be improved without the checker reading it as a change of
+        // meaning. The distinction is worth mechanising and the sentence is not
+        // the mechanism.
+        ok(!!om && om.defect_class === "provenance-shape" &&
+           om.accepted_false_verdict === false && om.underlying_observations_genuine === true,
+          "derivation.observation-multiplicity@1 must carry its severity as STRUCTURED metadata: " +
+          "defect_class provenance-shape, accepted_false_verdict false, " +
+          "underlying_observations_genuine true. Both executions happened and both produced these " +
+          "bytes; what overclaimed was the SHAPE, and filing it as a forgery would misdescribe the " +
+          "severity in the flattering direction");
+        const es2 = entries.find((x) => x.id === "derivation.entry-snapshot" && x.revision === 1);
+        ok(!!es2 && es2.defect_class === "authority-forgery" &&
+           es2.accepted_false_verdict === true,
+          "and the contrast must be expressed in DATA: derivation.entry-snapshot@1 is an " +
+          "authority-forgery where a false verdict really was reachable. A severity distinction that " +
+          "exists only in one law's prose is not a distinction the record can be queried about");
+      }
+      // every entry that declares a defect_class must declare a KNOWN one, and
+      // must answer both severity questions rather than one of them
+      for (const e of entries) {
+        if (e.defect_class === undefined) continue;
+        ok((g.defect_class_vocabulary ?? []).includes(e.defect_class),
+          `defect_class '${e.defect_class}' of ${e.id}@${e.revision} not in defect_class_vocabulary`);
+        ok(typeof e.accepted_false_verdict === "boolean" &&
+           typeof e.underlying_observations_genuine === "boolean",
+          `${e.id}@${e.revision} declares a defect_class without answering both severity questions — ` +
+          "a class name alone re-creates the prose problem with fewer characters");
       }
       {
         const ip4 = entries.find((x) => x.id === "derivation.implementation-provenance" && x.revision === 4);

@@ -1080,3 +1080,47 @@ whether the machinery can truthfully say what program, what authority, what exec
 what dependencies, what execution and what evidence are being talked about. Pass B asks what useful
 language can be run through it. **No proactive P-8 hunt.** Future boundary work is driven by concrete
 counterexamples.
+
+## Round 27, pass A.4 — severity is a field, and the NUL came back
+
+Two small corrections from GPT's A.3 review. No new mechanism.
+
+**183. The severity invariant was checking English, and that is over-engineering of the wrong kind.**
+Item 180 made `grid_check` require the exact sentence *"not a forgery but a PROVENANCE SHAPE defect"*
+in the law statement. GPT's ruling: **the distinction is worth mechanising and the sentence is not the
+mechanism.** Requiring a phrase makes editorial wording load-bearing — the prose cannot be improved
+without the checker reading it as a change of meaning, which is the record-staleness trap approached
+from the other side. Entries now carry structured metadata against a declared
+`defect_class_vocabulary`:
+
+```json
+{ "defect_class": "provenance-shape",
+  "accepted_false_verdict": false,
+  "underlying_observations_genuine": true }
+```
+
+and the contrast is expressed in **data** rather than in one law's prose: `derivation.entry-snapshot@1`
+and `derivation.owned-snapshot@1` are `authority-forgery` with `accepted_false_verdict: true`. Any
+entry declaring a `defect_class` must declare a known one and must answer **both** severity questions
+— a class name alone re-creates the prose problem with fewer characters.
+
+**184. And the literal NUL came back, in the file that documents why it must not.** A.1 found a raw
+`0x00` separator in `observed_execution_host.mjs`, fixed it, and wrote a comment explaining that
+`file(1)` reclassifies the module as `data` and every text tool skips it in silence. **A.3's new
+grouping key reintroduced the same byte in the same file, four commits later** — this session's own
+error, not an inherited one. So it is checked rather than remembered: `grid_check` scans every
+governance `.mjs/.js/.sh/.json/.md/.c/.h/.py` file, in the root and in `bridge/`, and fails on any
+literal NUL, naming the file, offset and line.
+
+The check caught its author on its first run. `grid_check.mjs` itself contained a NUL — in the comment
+explaining the hazard, where the escape had been pasted as the byte it describes. Three occurrences in
+one round, across three files, every one of them invisible to `grep`. That is the argument for the
+check, made by the check.
+
+**185. Gate.** grid **v1.33.0** — 75 entries / 370 citations · `observed_execution_host.mjs`
+**0.5.1** · negative battery **198/198**, with the prose forgery replaced by four structured-severity
+forgeries and one that rewrites the escape back into a raw byte · realm 24/24 · derive 45/45 · bridge
+48/48 · film 16/16 · lowering 9/9 · twelve paired probes · harness 9/9 · runner 3/3.
+`scheduler_certificate.json` byte-identical — **twenty-seventh** consecutive round.
+
+**186. Pass A stays closed. B1 begins.**
