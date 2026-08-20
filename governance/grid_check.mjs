@@ -225,7 +225,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0", "1.35.0", "1.36.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0", "1.35.0", "1.36.0", "1.37.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -236,11 +236,33 @@ ok(Array.isArray(g[clKey]) && g[clKey].length > 0, `latest changelog ${clKey} mi
 // version. grid.version is the record's lineage, not any single artifact's.
 {
   const av = g.artifact_versions ?? {};
+  // THREE OF SIX ENTRIES WERE UNREAD BY ANY CHECK. artifact_versions carried
+  // lowering.mjs, observed_execution_host.mjs and bridge/ic32_film.c, and this
+  // list named only the first three — so half the map was a hand-maintained
+  // record with no instrument behind it, and a version bumped in one place and
+  // not the other passed. Found at B1.2.1 by bumping lowering.mjs and watching
+  // grid_check say PASS with the grid still declaring the previous version;
+  // the same commit had also moved the file's HEADER to v0.5.0 while leaving
+  // its LOWERING_VERSION constant at 0.4.0, which is the same defect inside one
+  // file. A declared version with nothing reading it is the instrument-vacuity
+  // species this file exists to catch, sitting in the checker's own map.
+  //
+  // ic32_film.c is C and declares its version in the JSON it emits rather than
+  // as a constant, so it is matched on that string — the version a consumer
+  // actually receives, which is the one worth binding.
   const declared = [
     ["trvm_law_kernel.mjs", /const KERNEL_VERSION = "([^"]+)";/],
     ["trvm_world.mjs", /const WORLD_VERSION = "([^"]+)";/],
     ["derive_protocol.mjs", /const PROTOCOL_VERSION = "([^"]+)";/],
+    ["lowering.mjs", /const LOWERING_VERSION = "([^"]+)";/],
+    ["observed_execution_host.mjs", /const HOST_VERSION = "([^"]+)";/],
+    ["bridge/ic32_film.c", /emitter_version\\":\\"([^\\"]+)\\"/],
   ];
+  // every entry in the map must be READ by this loop, not merely present
+  for (const file of Object.keys(av))
+    ok(declared.some(([f]) => f === file),
+      `artifact_versions declares ${file} and no check reads it — a version record with no ` +
+      `instrument behind it is a hand-maintained number that drifts silently`);
   for (const [file, rx] of declared) {
     ok(av[file] != null, `artifact_versions missing ${file}`);
     if (!existsSync(A(file))) { ok(false, `artifact_versions declares ${file}, which is absent`); continue; }
@@ -1164,22 +1186,45 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         // field the defect is in, is the species this file exists to catch.
         const lowNoc = lowSrc.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
         ok(lowSrc !== "", "lowering.mjs absent — three laws cite it");
-        for (const [id, want] of [["derivation.canonical-lowering", "PROPERTY-TESTED"],
-          ["derivation.target-decoding", "PROPERTY-TESTED"],
-          ["derivation.lowering-refinement", "PROPERTY-TESTED"]]) {
-          const e = entries.find((x) => x.id === id && x.revision === 1);
-          ok(!!e && e.canonical === true && e.status === want,
-            `law ${id}@1 missing, non-canonical, or not ${want} (v1.27)`);
+        // BY CANONICAL, NOT BY REVISION NUMBER. These pinned `revision === 1`
+        // and `cl` took the FIRST entry with a matching id, so the assertions
+        // below read whichever revision happened to sit earliest in the array
+        // — which is how a check keeps testing a superseded statement without
+        // saying so. Two of these three were revised at B1.2.1.
+        const canonical = (id) => entries.find((x) => x.id === id && x.canonical === true);
+        for (const id of ["derivation.canonical-lowering", "derivation.target-decoding",
+          "derivation.lowering-refinement"]) {
+          const e = canonical(id);
+          ok(!!e && e.status === "PROPERTY-TESTED",
+            `law ${id} has no canonical PROPERTY-TESTED revision (v1.27)`);
         }
-        const cl = entries.find((x) => x.id === "derivation.canonical-lowering");
+        const cl = canonical("derivation.canonical-lowering");
         ok(!!cl && /THE INSTRUMENT IS RE-LOWERING, NOT A FILM/.test(cl.statement ?? ""),
-          "canonical-lowering@1 must rule that lowering gets NO film. A film is evidence for a " +
+          "canonical-lowering must rule that lowering gets NO film. A film is evidence for a " +
           "TRANSITION SYSTEM; lowering is a relation, and filming it would invent internal compiler " +
           "steps and make implementation strategy semantic — the mistake the read-order ruling refused");
-        ok(!!cl && /PARAMETERIZED/.test(cl.statement ?? "") && /INSTANTIATED/.test(cl.statement ?? ""),
-          "canonical-lowering@1 must keep the inputs model DEFERRED AND NAMED. target_term_sem_id is a " +
-          "function of the program alone under one model and of the program AND the inputs under the " +
-          "other; deciding it while implementing `input` is how an unstated variable enters an identity");
+        // WAS: "must keep the inputs model DEFERRED AND NAMED", requiring only
+        // that the words PARAMETERIZED and INSTANTIATED appear. B1 decided the
+        // model and B1.1 ruled the framing a FALSE CHOICE, and this assertion
+        // went on requiring the deferred wording for three passes — a check
+        // that had become a ratchet holding a stale record in place. It now
+        // requires the DECISION, and refuses the statement that defers it.
+        ok(!!cl && /FALSE CHOICE/.test(cl.statement ?? "") &&
+           !/DEFERRED AND NAMED: whether lowering is/.test(cl.statement ?? "") &&
+           /LoweringReceipt \{program_sem_id, lowering_sem_id, target_template_sem_id\}/
+             .test(cl.statement ?? ""),
+          "canonical-lowering must record the inputs model as DECIDED and print the CURRENT " +
+          "LoweringReceipt shape. Revision 1 called parameterized-versus-instantiated DEFERRED three " +
+          "passes after B1 decided it, and printed the pre-B1.2 receipt ending at target_term_sem_id " +
+          "— the domain B1.2 moved onto the template — while this very assertion required the stale " +
+          "wording to stay");
+        ok(!!cl && (cl.statement ?? "").includes(
+             "A RELATION'S IDENTITY MUST COMMIT, BY CONTENT AND NOT BY NAME, TO EXACTLY THE " +
+             "ENCODINGS OF ITS OWN DOMAIN AND CODOMAIN"),
+          "canonical-lowering must state the B1.2.1 rule: a relation's identity commits BY CONTENT to " +
+          "exactly its own domain and codomain encodings, no more and no fewer. Under-binding hides a " +
+          "semantic dependency behind a symbol name; over-binding re-identifies a relation when " +
+          "something it does not perform changes. Both were present at B1.2, facing opposite ways");
         // ── B1: the model is DECIDED, and `input` is still not built ──────
         // This required `decided: false` until B1. Two levels, two identities,
         // and — separately — two states: "not ruled" and "ruled, not written"
@@ -1225,6 +1270,65 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "lower-input-not-implemented must NOT be a semantic refusal. It says the code is unwritten, " +
           "not that the language refuses the op, and hashing it makes writing the frozen rule a " +
           "semantic event");
+        // ── B1.2.1: emit() must not be a HIDDEN semantic relation ─────────
+        // B1.2 named instantiation's codomain in PROSE ("… via emit()"), so
+        // changing the add combinator changed the executable term's bytes and
+        // left INSTANTIATION_SEM_ID, the template id and the template-encoding
+        // id all standing still. A semantic dependency behind a symbol name.
+        ok(/export const TARGET_EXECUTABLE_ENCODING_SEM_ID =/.test(lowNoc) &&
+           /TRVM-TARGET-EXECUTABLE-ENC-v1\|" \+ canonicalBytes\(TARGET_ENCODING\)/.test(lowNoc) &&
+           /codomain_encoding_sem_id: TARGET_EXECUTABLE_ENCODING_SEM_ID/.test(lowNoc),
+          "the EXECUTABLE target encoding must be CONTENT-BOUND and named as instantiation's codomain " +
+          "by id. Naming it 'TRVM-TERM-CANON-v1 … via emit()' in prose is a label anyone may claim — " +
+          "the objection the primitive ruling already raised against a bare componentReachability — " +
+          "and it let the rule deciding how church(n) and add(a,b) become interaction-net terms change " +
+          "with the identity of the relation that produces them intact");
+        // …AND THE DUAL. Lowering carried the whole TARGET_ENCODING, a
+        // pre-template leftover: an emitter change re-identified every
+        // LoweringReceipt ever issued, for a relation lowering does not perform.
+        // Same class as the receipt still ending at target_term_sem_id, which
+        // B1.2 fixed one declaration away and missed here.
+        ok(!/^\s*target_encoding: TARGET_ENCODING,/m.test(lowNoc) &&
+           /op_lowering_rules: Object\.freeze/.test(lowNoc),
+          "LOWERING_SEMANTICS must NOT bind the executable encoding, and must state its per-op map " +
+          "instead. Lowering's codomain is the TEMPLATE; binding it to an encoding two layers " +
+          "downstream makes an emitter change re-identify a relation that did not change. Removing " +
+          "the binding exposed that the map was never written down — `lowered_ops` says WHICH ops " +
+          "lower and the template encoding says what the nodes ARE, but nothing said a const becomes " +
+          "a church node, so const(n) -> church(n+1) contradicted no sentence in the hashed semantics");
+        // THE REFUSAL VOCABULARIES WERE CROSSED. TARGET_ENCODING listed four
+        // `lower-*` source-fragment refusals that cannot arise while emitting,
+        // and lowering claimed emit's two, neither reachable from lower().
+        {
+          const encBlock = lowNoc.slice(lowNoc.indexOf("export const TARGET_ENCODING"),
+            lowNoc.indexOf("export const TARGET_EXECUTABLE_ENCODING_SEM_ID"));
+          const lowBlock = lowNoc.slice(lowNoc.indexOf("refusal_semantics"), lowNoc.indexOf("totality:"));
+          ok(!/"lower-/.test(encBlock) && /"emit-unbound-port"/.test(encBlock) &&
+             !/emit-unbound-port|template-malformed/.test(lowBlock),
+            "the refusal vocabularies must belong to the records that own them. The EXECUTABLE " +
+            "encoding's refusals are EMISSION's; a source-fragment refusal such as lower-negative " +
+            "cannot arise while emitting, and once these bytes carry an identity, renaming one would " +
+            "move the executable encoding's id without touching the encoding. Symmetrically lowering " +
+            "may not claim emit-unbound-port or template-malformed: lower() emits only zero-port " +
+            "templates it built itself, so neither is reachable from it");
+        }
+        ok(/export const SUPERSEDED_CODOMAIN_SEM_IDS/.test(lowNoc) &&
+           /lsem-d95ee1cbc0e8f37806adf8fc9db377afc1e448ac05087254841e920651d76814/.test(lowSrc),
+          "the B1.2 identities must be KEPT, like B1.1's. They were bound to the wrong CODOMAIN " +
+          "rather than to lifecycle — the same family, not the same instance — and a record that " +
+          "quietly replaced them would be the record-rewriting these corrections are about");
+        ok(/export const IMPLEMENTED_LOWERED_OPS/.test(lowNoc) && !/\bLOWERED_OPS\b/.test(
+             lowNoc.replace(/IMPLEMENTED_LOWERED_OPS/g, "").replace(/lowered_ops/g, "")),
+          "the implemented op list must be named IMPLEMENTED_LOWERED_OPS. `LOWERED_OPS` read as the " +
+          "fragment itself while sitting beside LOWERING_SEMANTICS.lowered_ops holding a DIFFERENT " +
+          "and larger list — and distinguishing SPECIFIED from IMPLEMENTED is the whole conceptual " +
+          "content of B1.2, so the one name that blurred them was the wrong name to keep");
+        ok(/export const REFINEMENT_CHAIN = Object\.freeze/.test(lowNoc) &&
+           /exercised: false/.test(lowNoc) && /why_not:/.test(lowNoc),
+          "the identity chain must be MACHINE-READABLE with an exercised flag per node, so the " +
+          "anti-collapse set is derived rather than hand-typed. B1.2 added target_template_sem_id to " +
+          "the chain and not to the set, and the check went on proving a six-way claim about a " +
+          "seven-node chain — green, and one node short of its own name");
         ok(/consumed_inputs:/.test(lowSrc) && /grant-versus-footprint/.test(lowSrc),
           "instantiation must keep SUPPLIED and CONSUMED inputs distinct. That is grant-versus-" +
           "footprint from round 15 one layer down, and collapsing it now would lose the distinction " +
@@ -1331,9 +1435,9 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
             "count, a case count and a rung count");
         }
         {
-          const ii = entries.find((x) => x.id === "derivation.instantiation-identity" && x.revision === 2);
+          const ii = canonical("derivation.instantiation-identity");
           ok(!!ii && ii.canonical === true && ii.status === "PROPERTY-TESTED",
-            "law derivation.instantiation-identity@2 missing, non-canonical, or not PROPERTY-TESTED (v1.35)");
+            "derivation.instantiation-identity has no canonical PROPERTY-TESTED revision (v1.35)");
           ok(!!ii && /FALSE CHOICE/.test(ii.statement ?? ""),
             "instantiation-identity@1 must record that PARAMETERIZED versus INSTANTIATED was a false " +
             "choice — the template is parameterized AND the executed term is necessarily closed. A " +
@@ -1357,7 +1461,7 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
             "behaviour that does not exist yet. This is the one place a frozen architecture can " +
             "quietly start reading as a working feature");
         }
-        const lr = entries.find((x) => x.id === "derivation.lowering-refinement");
+        const lr = canonical("derivation.lowering-refinement");
         ok(!!lr && /TWO GRADES OF EVIDENCE FOR THE EXECUTION LEG/.test(lr.statement ?? ""),
           "lowering-refinement@1 must separate OBSERVED execution from FILM-EVIDENCED execution and " +
           "claim only the first. An execution the host observed and one the kernel replayed are " +
@@ -1370,9 +1474,20 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "lowering_check.mjs must assert the execution leg's evidence grade at the fixture the " +
           "refinement runs on, whichever grade it is. Round 25 asserted the film REFUSAL there; round " +
           "26 asserts the film REPLAY. What must never happen is the grade being stated only in prose");
-        ok(/six-identities-stay-distinct/.test(lcSrc),
-          "lowering_check.mjs must assert the six identities differ — collapsing any pair turns a " +
-          "refinement statement into a renaming");
+        // WAS `six-identities-stay-distinct`, and the number in the name was
+        // itself the bug: the chain grew a seventh node at B1.2 and the set did
+        // not. The assertion now requires the DERIVATION, not a count.
+        ok(/chain-identities-stay-distinct/.test(lcSrc) &&
+           /REFINEMENT_CHAIN\.filter\(\(n\) => n\.exercised\)/.test(lcSrc) &&
+           !/six-identities/.test(lcSrc),
+          "lowering_check.mjs must assert the chain's identities differ and DERIVE the set from " +
+          "REFINEMENT_CHAIN. Collapsing any pair turns a refinement statement into a renaming — and a " +
+          "hand-typed count is how the set fell a node behind the chain it was counting");
+        ok(/emit-is-not-a-hidden-relation/.test(lcSrc),
+          "lowering_check.mjs must MEASURE the three-way separation: an emitter change moves the " +
+          "instantiation id alone, a per-op lowering-rule change moves lowering's alone, and a " +
+          "template-grammar change moves both because it is the boundary they share. The two-relation " +
+          "ruling is worth nothing if the ids do not sort changes between the relations");
       }
       // ── v1.24: a skipped gate is not a green one ──────────────────────
       {

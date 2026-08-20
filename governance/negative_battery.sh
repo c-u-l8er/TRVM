@@ -1206,7 +1206,7 @@ run_case lowering-module-deleted "lowering.mjs absent" "
 import os
 os.remove('lowering.mjs')"
 
-run_case lowering-law-downgraded "law derivation.canonical-lowering@1 missing" "
+run_case lowering-law-downgraded "derivation.canonical-lowering has no canonical" "
 import json
 g = json.load(open('invariant-grid.json'))
 for e in g['law_registry']['entries']:
@@ -1223,13 +1223,14 @@ for e in g['law_registry']['entries']:
                                                 'lowering emits a film per pass')
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
-run_case inputs-model-decided-by-accident "must keep the inputs model DEFERRED AND NAMED" "
-import json
-g = json.load(open('invariant-grid.json'))
-for e in g['law_registry']['entries']:
-    if e['id'] == 'derivation.canonical-lowering':
-        e['statement'] = e['statement'].replace('PARAMETERIZED', 'the obvious model')
-json.dump(g, open('invariant-grid.json','w'), indent=1)"
+# inputs-model-decided-by-accident was here until B1.2.1. It required
+# canonical-lowering to KEEP the wording "DEFERRED AND NAMED: whether lowering
+# is PARAMETERIZED or INSTANTIATED", and B1.2.1 revised the law to record the
+# DECISION instead — B1 decided the model and B1.1 ruled the framing a false
+# choice, so for three passes both the law and this case were defending a
+# question that had been answered. The assertion it perturbs no longer exists,
+# so the case had stopped having a subject. DELETED, not repointed, on the B1
+# precedent below. Its live replacement is inputs-model-deferred-again.
 
 # inputs-silently-lowered was here until B1: it flipped decided:false -> true and
 # asserted "must record the inputs model as UNDECIDED". B1 decided the model, so
@@ -1261,9 +1262,9 @@ src = open('lowering_check.mjs').read()
 src = src.replace('execution-leg-is-film-evidenced', 'execution-leg-noted')
 open('lowering_check.mjs','w').write(src)"
 
-run_case identities-may-collapse "must assert the six identities differ" "
+run_case identities-may-collapse "must assert the chain's identities differ" "
 src = open('lowering_check.mjs').read()
-src = src.replace('six-identities-stay-distinct', 'six-identities-listed')
+src = src.replace('chain-identities-stay-distinct', 'chain-identities-listed')
 open('lowering_check.mjs','w').write(src)"
 
 
@@ -1542,12 +1543,12 @@ src = open('lowering.mjs').read()
 src = src.replace('fixture_is_mandatory:', 'fixture_note:')
 open('lowering.mjs','w').write(src)"
 
-run_case instantiation-law-v2-deleted "law derivation.instantiation-identity@2 missing" "
+run_case instantiation-law-head-deleted "derivation.instantiation-identity has no canonical" "
 import json
 g = json.load(open('invariant-grid.json'))
 g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
                                 if not (e['id'] == 'derivation.instantiation-identity'
-                                        and e['revision'] == 2)]
+                                        and e['revision'] == 3)]
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 run_case spike-record-contradicts-source "still says the inputs model is UNDECIDED" "
@@ -1607,8 +1608,8 @@ open('lowering.mjs','w').write(src)"
 
 run_case status-refusal-made-semantic "must NOT be a semantic refusal" "
 src = open('lowering.mjs').read()
-src = src.replace('\"lower-reads-undecided\", \"emit-unbound-port\"',
-                  '\"lower-reads-undecided\", \"lower-input-not-implemented\", \"emit-unbound-port\"')
+src = src.replace('\"lower-negative\", \"lower-reads-undecided\"]),',
+                  '\"lower-negative\", \"lower-reads-undecided\", \"lower-input-not-implemented\"]),')
 open('lowering.mjs','w').write(src)"
 
 run_case consumed-inputs-collapsed "must keep SUPPLIED and CONSUMED inputs distinct" "
@@ -1620,6 +1621,142 @@ run_case template-allows-allocation "must record WHY allocation cannot be semant
 src = open('lowering.mjs').read()
 src = src.replace('  no_names_no_labels:', '  binder_naming:')
 open('lowering.mjs','w').write(src)"
+
+# ── B1.2.1: emit() is not a hidden semantic relation ───────────────────────
+# GPT's find. B1.2 named instantiation's codomain in PROSE, so changing the add
+# combinator changed the executable term and moved no id that owns it.
+run_case executable-encoding-unbound "must be CONTENT-BOUND and named as instantiation's codomain" "
+src = open('lowering.mjs').read()
+src = src.replace('  codomain_encoding_sem_id: TARGET_EXECUTABLE_ENCODING_SEM_ID,', '')
+open('lowering.mjs','w').write(src)"
+
+run_case executable-encoding-id-is-a-label "must be CONTENT-BOUND" "
+src = open('lowering.mjs').read()
+src = src.replace('H(\"TRVM-TARGET-EXECUTABLE-ENC-v1|\" + canonicalBytes(TARGET_ENCODING))',
+                  'H(\"TRVM-TARGET-EXECUTABLE-ENC-v1\")')
+open('lowering.mjs','w').write(src)"
+
+# THE DUAL: lowering re-bound to the emitter two layers downstream.
+run_case lowering-rebound-to-the-emitter "must NOT bind the executable encoding" "
+src = open('lowering.mjs').read()
+src = src.replace('  codomain: \"TRVM-TARGET-TEMPLATE-v1\",',
+                  '  target_encoding: TARGET_ENCODING,\n  codomain: \"TRVM-TARGET-TEMPLATE-v1\",')
+open('lowering.mjs','w').write(src)"
+
+run_case per-op-lowering-rules-dropped "must state its per-op map instead" "
+src = open('lowering.mjs').read()
+src = src.replace('  op_lowering_rules: Object.freeze', '  op_lowering_notes: Object.freeze')
+open('lowering.mjs','w').write(src)"
+
+# THE REFUSAL VOCABULARIES, crossed back the way B1.2 had them.
+run_case source-refusals-in-the-encoding "refusal vocabularies must belong to the records that own them" "
+src = open('lowering.mjs').read()
+src = src.replace('refusals: [\"emit-unbound-port\", \"template-malformed\"],',
+                  'refusals: [\"lower-unsupported-op\", \"lower-negative\"],', 1)
+open('lowering.mjs','w').write(src)"
+
+run_case lowering-claims-emit-refusals "may not claim emit-unbound-port" "
+src = open('lowering.mjs').read()
+src = src.replace('\"lower-negative\", \"lower-reads-undecided\"]),',
+                  '\"lower-negative\", \"lower-reads-undecided\", \"emit-unbound-port\"]),')
+open('lowering.mjs','w').write(src)"
+
+run_case b12-ids-erased "B1.2 identities must be KEPT" "
+src = open('lowering.mjs').read()
+src = src.replace('export const SUPERSEDED_CODOMAIN_SEM_IDS', 'const SUPERSEDED_CODOMAIN_SEM_IDS')
+open('lowering.mjs','w').write(src)"
+
+run_case implemented-ops-name-blurred "must be named IMPLEMENTED_LOWERED_OPS" "
+src = open('lowering.mjs').read()
+src = src.replace('IMPLEMENTED_LOWERED_OPS', 'LOWERED_OPS')
+open('lowering.mjs','w').write(src)"
+
+run_case chain-not-machine-readable "identity chain must be MACHINE-READABLE" "
+src = open('lowering.mjs').read()
+src = src.replace('export const REFINEMENT_CHAIN = Object.freeze',
+                  'const REFINEMENT_CHAIN_UNUSED = Object.freeze')
+open('lowering.mjs','w').write(src)"
+
+run_case unexercised-node-unexplained "identity chain must be MACHINE-READABLE" "
+src = open('lowering.mjs').read()
+src = src.replace('    why_not:', '    unexplained:')
+open('lowering.mjs','w').write(src)"
+
+run_case identity-set-hand-counted "must assert the chain's identities differ and DERIVE the set" "
+src = open('lowering_check.mjs').read()
+src = src.replace('chain-identities-stay-distinct', 'six-identities-stay-distinct')
+open('lowering_check.mjs','w').write(src)"
+
+run_case identity-set-stops-deriving "DERIVE the set from REFINEMENT_CHAIN" "
+src = open('lowering_check.mjs').read()
+src = src.replace('REFINEMENT_CHAIN.filter((n) => n.exercised)', 'REFINEMENT_CHAIN.slice(0, 6)')
+open('lowering_check.mjs','w').write(src)"
+
+run_case three-way-separation-unmeasured "must MEASURE the three-way separation" "
+src = open('lowering_check.mjs').read()
+src = src.replace('emit-is-not-a-hidden-relation', 'emit-is-documented')
+open('lowering_check.mjs','w').write(src)"
+
+# ── B1.2.1: the version map had three entries no check read ────────────────
+run_case version-map-entry-unread "and no check reads it" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['artifact_versions']['grid_v170.py'] = '1.7.0'
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case lowering-version-drifts "artifact_versions says" "
+src = open('lowering.mjs').read()
+src = src.replace('export const LOWERING_VERSION = \"0.5.0\";',
+                  'export const LOWERING_VERSION = \"0.9.9\";')
+open('lowering.mjs','w').write(src)"
+
+run_case host-version-drifts "artifact_versions says" "
+src = open('observed_execution_host.mjs').read()
+src = src.replace('export const HOST_VERSION = \"0.5.1\";',
+                  'export const HOST_VERSION = \"0.9.9\";')
+open('observed_execution_host.mjs','w').write(src)"
+
+run_case film-emitter-version-drifts "artifact_versions says" "
+src = open('bridge/ic32_film.c').read()
+src = src.replace('emitter_version\\\\\":\\\\\"0.2.0', 'emitter_version\\\\\":\\\\\"0.9.9')
+open('bridge/ic32_film.c','w').write(src)"
+
+# ── B1.2.1: the three stale law statements ─────────────────────────────────
+run_case inputs-model-deferred-again "must record the inputs model as DECIDED and print the CURRENT" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.canonical-lowering' and e['revision'] == 2:
+        e['statement'] = e['statement'].replace('FALSE CHOICE', 'question still open')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case receipt-shape-reverted-in-law "must record the inputs model as DECIDED and print the CURRENT" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.canonical-lowering' and e['revision'] == 2:
+        e['statement'] = e['statement'].replace(
+            'LoweringReceipt {program_sem_id, lowering_sem_id, target_template_sem_id}',
+            'LoweringReceipt {program_sem_id, lowering_sem_id, target_term_sem_id}')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case codomain-rule-dropped-from-law "must state the B1.2.1 rule" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.canonical-lowering' and e['revision'] == 2:
+        e['statement'] = e['statement'].replace(
+            'A RELATION\'S IDENTITY MUST COMMIT, BY CONTENT AND NOT BY NAME, TO EXACTLY THE ENCODINGS OF ITS OWN DOMAIN AND CODOMAIN',
+            'A relation should describe its encodings')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case superseded-lowering-law-erased "has no canonical PROPERTY-TESTED revision" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if not (e['id'] == 'derivation.canonical-lowering'
+                                        and e['revision'] == 2)]
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 run_case entry-snapshot-law-deleted "law derivation.entry-snapshot@1 missing" "
 import json

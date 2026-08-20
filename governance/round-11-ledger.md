@@ -603,7 +603,7 @@ source evaluator ─────────────────▶ source_o
 REFINEMENT:  source_outcome_sem_id == target_outcome_sem_id
 ```
 
-`law:derivation.canonical-lowering@1` (one source program under one lowering semantics determines one canonical target term), `law:derivation.target-decoding@1` (one canonical normal form under one decoder determines one structural outcome, or a structural decode refusal), and `law:derivation.lowering-refinement@1`, which composes them and is the theorem actually wanted. The first two exist to make the third **diagnosable**.
+`law:derivation.canonical-lowering@1` (one source program under one lowering semantics determines one canonical target term), `law:derivation.target-decoding@1` (one canonical normal form under one decoder determines one structural outcome, or a structural decode refusal), and `law:derivation.lowering-refinement@1`, which composes them and is the theorem actually wanted. The first two exist to make the third **diagnosable**. *(Both `@1`s were **superseded** at B1.2.1 — canonical-lowering by `@2`, lowering-refinement by `@2`; this line is history and stands as written.)*
 
 **And the lowering does NOT get a film.** A film is evidence for a *transition system*; lowering is a relation `DeriveProgram → TargetTerm`. Filming it would invent a sequence of internal compiler steps and make implementation strategy semantic — the same mistake the read-order ruling refused in round 12. The instrument is **re-lowering and comparing canonical target bytes**. A film becomes appropriate only if the lowering engine itself ever becomes a governed transition system whose intermediate steps matter.
 
@@ -633,7 +633,7 @@ source evaluator ─────────▶ {status:"value", value:5} ──
 
 `lowering_check.mjs` **9/9**. Six identities, six distinct values, asserted so — collapsing any pair turns a refinement statement into a **renaming**, which is the failure the chain exists to avoid.
 
-**139. Three relations, three obligations, because they fail independently.** A lowering can be perfect while the decoder misreads the normal form; a decoder can be perfect while lowering emitted the wrong term; and the runtime can execute a correct term incorrectly. `law:derivation.canonical-lowering@1` and `law:derivation.target-decoding@1` exist to make `law:derivation.lowering-refinement@1` **diagnosable** — a bare equality failure cannot say which of three broke. All three were registered **OPEN and unbuilt** in the previous section before any of them was written, which is the `film_identity_forward_declaration` discipline: a decision made in advance is inherited rather than improvised.
+**139. Three relations, three obligations, because they fail independently.** A lowering can be perfect while the decoder misreads the normal form; a decoder can be perfect while lowering emitted the wrong term; and the runtime can execute a correct term incorrectly. `law:derivation.canonical-lowering@1` and `law:derivation.target-decoding@1` exist to make `law:derivation.lowering-refinement@1` **diagnosable** — a bare equality failure cannot say which of three broke. All three were registered **OPEN and unbuilt** in the previous section before any of them was written, which is the `film_identity_forward_declaration` discipline: a decision made in advance is inherited rather than improvised. *(Both `@1`s were **superseded** at B1.2.1 — canonical-lowering by `@2`, lowering-refinement by `@2`; this line is history and stands as written.)*
 
 **140. The lowering gets no film, and that is a ruling.** A film is evidence for a **transition system**; lowering is a relation `DeriveProgram → TargetTerm`. Filming it would invent a sequence of internal compiler steps and make implementation strategy semantic — the mistake the read-order ruling refused when it kept access order out of the footprint. The instrument is **re-lowering**: lower again, independently, compare `target_term_sem_id`. `add(3,2)` reaches a different one, so the check is not vacuous.
 
@@ -688,7 +688,7 @@ t:fun · t: · t:bod.bod.fun · t:bod.bod · t:bod.bod.arg.arg.fun · t:bod.bod.
 
 **Not one dup rule ever fires.** The lowered term is full of `!&L{…}` dups — Church addition duplicates its function argument and ic32's net is linear — and under the leftmost-tree-app strategy the residual dups are simply **dead** by the end. So v0.1.0's refusal was the right refusal for the wrong reason: **the blocker was never their presence, it was firing them.** The precondition moved from PRESENCE to ENABLEDNESS, which still has to be computed — the emitter classifies every live dup cell against `dupRule`'s own table to decide quiescence honestly — and `film-dup-rule-enabled` names where it actually stops.
 
-`ic32_film` **0.2.0** emits multi-frame films. The C side reproduces the kernel's six loci exactly, reaches the same `final_sem_id 37800fc6…`, and `replaySemFilm` accepts the whole chain on `FloatRt` **and** `DescFloatRt`. `law:derivation.lowering-refinement@1` goes **OBSERVED → FILM-EVIDENCED** for the first witness, without changing the fixture.
+`ic32_film` **0.2.0** emits multi-frame films. The C side reproduces the kernel's six loci exactly, reaches the same `final_sem_id 37800fc6…`, and `replaySemFilm` accepts the whole chain on `FloatRt` **and** `DescFloatRt`. `law:derivation.lowering-refinement@1` goes **OBSERVED → FILM-EVIDENCED** for the first witness, without changing the fixture. *(`lowering-refinement@1` was **superseded** at B1.2.1 by `@2`, which corrects a six-versus-seven identity enumeration and not this grade; history, unchanged.)*
 
 **149. And one check was deleted for being accidentally true.** v0.1.0 asserted the readback fired **zero** interactions. On a one-step dup-free fixture, resolving the state costs nothing at all — so a machine counter that never moved looked like a verified property. It is not one: ic32's `interactions` is **not plane-classified**, it counts every `fire()`, `app_sup` and APP-LAM alike, while the kernel's claim is about **INTERACT-plane** rules. On the lowered term it fires **four**, resolving residual projections the kernel's reference readback resolves by chasing without counting — and the states agree perfectly. The counter was never the claim. Pool-quiescence is what is asserted now, re-checked at the terminal rather than inherited from the loop exit, and the count is **reported**.
 
@@ -1411,3 +1411,166 @@ round.
 `T.port(name)`, write `instantiate()` over the template, and write I-4a/I-4b/I-4c with the mandated
 asymmetric fixture. The identities will not move when it lands, and that is checkable rather than
 hoped for.
+
+---
+
+## Round 27, pass B1.2.1 — `emit()` was a hidden semantic relation
+
+**GPT's find against the B1.2 pack, reproduced here before anything was built against it, and it
+brought three more of the same species out with it.** GPT approved the target-template layer and the
+minimal AST and stopped B2 for the fourth time, for the best reason yet: the round is no longer about
+whether an untrusted caller can forge an execution. It is about *where compiler semantics live and
+which relation identity must move when an encoding changes*.
+
+**216. The contradiction, reproduced.** Change `TARGET_ENCODING.add` and nothing else. The executable
+term's bytes change. `INSTANTIATION_SEM_ID` (`isem-bf9434fc…`), `target_template_sem_id`
+(`tmpl-ebab76bb…`) and `TARGET_TEMPLATE_ENCODING_SEM_ID` (`tenc-2adf4d28…`) **all stand still** — so
+the identity of the relation that *produces* those bytes did not move. `LOWERING_SEM_ID` moved instead
+(`lsem-d95ee1cb…` → `lsem-39ec194a…` under my mutation; GPT reached `6e445936…` under a different
+mutation of the same field, which is why the finding is the SHAPE and not the hex). B1.2 introduced
+the template and left both encoding commitments pointing where they had pointed when there was no
+template.
+
+**217. Both halves were wrong, and they are one mistake facing opposite ways.**
+
+- **UNDER-BOUND.** `INSTANTIATION_SEMANTICS` named its domain by **id** and its codomain in **prose** —
+  `"TRVM-TERM-CANON-v1 / ic32 executable text, via emit()"`. The whole executable encoding reached the
+  relation's identity as **eight characters inside an English sentence**. A name anyone may claim is
+  not a commitment; that is the objection the primitive ruling already raised against a bare
+  `componentReachability`, arriving inside the compiler.
+- **OVER-BOUND, and this half is mine.** `LOWERING_SEMANTICS` still carried the entire
+  `TARGET_ENCODING` — a **pre-template leftover**. Before B1.2, `lower()` produced ic32 text and the
+  executable encoding genuinely *was* lowering's codomain. B1.2 moved the codomain onto the template,
+  fixed the `LoweringReceipt` **one declaration below**, and left this line pointing two layers
+  downstream. So an emitter change **re-identified every `LoweringReceipt` ever issued**, for a
+  relation lowering does not perform.
+
+**THE RULE, now in the law:** *a relation's identity must commit, BY CONTENT AND NOT BY NAME, to
+exactly the encodings of its own domain and codomain — no more and no fewer.* Under-binding hides a
+semantic dependency behind a symbol name; over-binding re-identifies a relation when something it does
+not perform changes. They are the same defect and they were both present.
+
+**218. `TARGET_EXECUTABLE_ENCODING_SEM_ID`, and emission is ruled INTO the instantiation relation.**
+`xenc-` over `canonicalBytes(TARGET_ENCODING)`, named as `INSTANTIATION_SEMANTICS.codomain_encoding_sem_id`.
+GPT's larger point is taken and **written down rather than left implicit**: a third relation with its
+own `emission_sem_id` is the more faithful decomposition — *a correct port substitution can coexist
+with an incorrect emitter* — and it is **not taken while `emit()` is neither independently reused nor
+independently theorem-bearing**. The trigger for revisiting it is in the hashed record, so the boundary
+stays a decision rather than an accident. That is the whole complaint of this round, one layer up.
+
+**219. THE THREE-WAY SEPARATION, MEASURED — `emit-is-not-a-hidden-relation`.** The two-relation ruling
+is worth nothing if the ids do not sort changes *between* the relations:
+
+| mutation | `lsem` | `isem` | `tenc` |
+|---|---|---|---|
+| `TARGET_ENCODING.add` / `.dup_label_policy` / `.numbers` | same | **MOVED** | same |
+| `op_lowering_rules.const` / `.add` | **MOVED** | same | same |
+| `TARGET_TEMPLATE_ENCODING.grammar` (the shared boundary) | **MOVED** | **MOVED** | **MOVED** |
+
+**220. Removing the leftover binding exposed a second gap: the lowering map had never been written
+down.** `lowered_ops` says *which* ops lower and the template encoding says what the codomain's nodes
+*are*, but **nothing in the hashed semantics said that a `const` becomes a `church` node**, or that
+`add` preserves operand order. B1.1 froze the `input` rule under GPT's pressure and `const` and `add`
+were left implicit — so `const(n) → church(n+1)` would have **contradicted no sentence**. New
+`op_lowering_rules`. *An identity that cannot move when its map changes is the same defect as one that
+moves when its map has not.*
+
+**221. The two refusal vocabularies were CROSSED.** `TARGET_ENCODING.refusals` held four `lower-*`
+**source-fragment** refusals that cannot arise while emitting; `LOWERING_SEMANTICS.refusal_semantics`
+held `emit-unbound-port` and `template-malformed`, **neither reachable from `lower()`** — which emits
+only zero-port templates it built itself. Once the encoding's bytes carry an identity, renaming
+`lower-negative` would have moved the *executable encoding's* id without touching the encoding. Each
+list now belongs to the record that owns it, and the witness **drives every name lowering claims to an
+actual refusal**.
+
+**222. `LOWERED_OPS` → `IMPLEMENTED_LOWERED_OPS`**, GPT's naming point taken. It read as the fragment
+itself while sitting four lines from `LOWERING_SEMANTICS.lowered_ops` holding a **different and larger**
+list, and distinguishing *specified* from *implemented* is the entire conceptual content of B1.2. The
+comment above it still said `input` was absent "because the inputs model is undecided" — untrue since
+B1 and doubly untrue since B1.2 froze the rule.
+
+**223. The receipt prose GPT flagged is not repaired, it is DERIVED.** Case 1 printed
+`{program_sem_id, lowering_sem_id, target_term_sem_id}` for a round after B1.2 moved the receipt's
+domain — the code correct, its own report describing the previous architecture. It now reads the field
+list off `Object.keys(receipt)`, which is the only version of the line that cannot say something the
+receipt does not.
+
+**224. THE COUNT IS GONE, not corrected — and the law had it too.** `six-identities-stay-distinct`
+went on proving a six-way claim about a seven-node chain for the whole of B1.2, **and
+`law:derivation.lowering-refinement@1` enumerated the same six** — now **superseded** by `@2`. So the
+registry and the witness were
+stale together, which is how a hand-typed count survives a reading. `REFINEMENT_CHAIN` is now
+machine-readable with an `exercised` flag and a `why_not` per unexercised node; the case
+(`chain-identities-stay-distinct`) **derives** its set, **fails** if a declared node is not wired into
+the witness, and **names** the unexercised ones. The headline derives too. *A node silently absent and
+a node declared absent are the difference between a stale instrument and a scoped one.* GPT's advice —
+"don't get obsessed with the count; cover every semantic node it claims the refinement distinguishes"
+— is implemented as *there is no count to get wrong*.
+
+**225. `law:derivation.canonical-lowering@1` — since **superseded** by `@2` — was describing the
+pre-B1.2 world, AND grid_check was
+holding it there.** My find, not GPT's, and the worse of the two stale records. The statement printed
+the `LoweringReceipt` as `{program_sem_id, lowering_sem_id, target_term_sem_id}` — the domain B1.2
+explicitly moved — and called parameterized-versus-instantiated **DEFERRED**, three passes after B1
+decided it and B1.1 ruled the framing a false choice. The grid assertion defending it read *"must keep
+the inputs model DEFERRED AND NAMED"* and required only that the words `PARAMETERIZED` and
+`INSTANTIATED` appear. **A check that requires a stale record to stay stale is a ratchet, not an
+instrument.** Revised to `@2`, which now requires the DECISION and *refuses* the deferring sentence.
+
+**226. And the lookup was reading whichever revision came first.** `entries.find((x) => x.id ===
+"derivation.canonical-lowering")` carried no revision filter, and the sibling loop pinned
+`revision === 1`. So every assertion below them read whatever sat earliest in the array — which is how
+a check keeps testing a superseded statement without ever saying so. All three lookups now resolve the
+**canonical** revision. Three laws revised, all three predecessors **kept** as non-canonical history
+with `defect_class: record-staleness`, `accepted_false_verdict: false`,
+`underlying_observations_genuine: true` — every witness they cite ran and passed; what was stale was
+the record of what the mechanism does.
+
+**227. `artifact_versions` had THREE entries no check read, and I found it by tripping over my own
+half-applied bump.** The `declared` list in grid_check named `trvm_law_kernel.mjs`, `trvm_world.mjs`
+and `derive_protocol.mjs`; the map also carried `lowering.mjs`, `observed_execution_host.mjs` and
+`bridge/ic32_film.c`. **Half the map was a hand-maintained number with no instrument behind it** — it
+had been carrying `lowering.mjs` through 0.2.0, 0.3.0 and 0.4.0 by hand, unverified. Bumping to 0.5.0
+and watching grid_check say **PASS** with the grid still declaring 0.4.0 is what surfaced it. And the
+same commit had moved the file's *header* to `v0.5.0` while leaving `LOWERING_VERSION` at `"0.4.0"` —
+the identical defect inside one file. All six entries are now read, the map is required to be **fully
+covered** by the reader, and `ic32_film.c` is matched on the `emitter_version` string it actually emits
+to consumers.
+
+**228. A falsifier outlived its premise again, and was deleted rather than repointed.**
+`inputs-model-decided-by-accident` required the law to KEEP the deferred wording. B1.2.1 removed that
+assertion, so the case had no subject: it perturbed a sentence nothing checks. Deleted on the **B1
+precedent** — `inputs-silently-lowered` went the same way for the same reason. Its live replacement,
+`inputs-model-deferred-again`, perturbs the DECISION the law now makes. Two more cases were repointed
+after the non-vacuity detector caught them reporting misses against anchors this round had moved; that
+detector earned its keep three times in one round.
+
+**229. NOTHING BEHAVIOURAL CHANGED, and that is checkable.** `instantiate()` still throws; `input`
+still refuses as `lower-input-not-implemented`; the three port falsifiers are still `DECLARED` and
+unwritten. The `add(2,3)` witness still reaches the **same 129 characters** of ic32, the same six-frame
+film, the same normal form and the same value 5. `emit(template)` is still byte-identical to what the
+pre-template `lower()` produced. Both relation ids moved — `lsem-84c93447…`, `isem-6ac0ea7b…` — and
+that is the point: **both relations' commitments changed and neither relation's behaviour did.**
+
+**230. One debt is NAMED rather than paid.** Once emission belongs to instantiation, `lower()` calling
+`emit()` means **lowering performs part of instantiation**, and the whole 13-case refinement witness
+runs off `low.target_term` — so it reaches native execution **without passing through the relation this
+round just made load-bearing**. Nothing identity-bearing flows from the field: the receipt ends at the
+template and the term's id is minted by the kernel. But it is recorded as `LOWERING_STATUS.emission_debt`
+with a named closer, which makes **B2's restatement of `add(2,3)` through `instantiate({})` mandatory
+rather than tidy**.
+
+**231. Gate.** grid **v1.37.0** — 80 entries / 372 citations · `lowering.mjs` **0.5.0** · negative
+battery **241/241** (21 new; 1 deleted for a dead premise, 3 repointed) · lowering **13/13**, refinement
+unchanged and still FILM-EVIDENCED · derive 45/45 · realm 24/24 · bridge 48/48 · film 16/16 · twelve
+paired probes · harness 9/9 · runner 3/3. `scheduler_certificate.json` byte-identical —
+**thirty-first** consecutive round.
+
+**232. B2 is one ruling away**, and its shape is unchanged from B1.2 except that item 6 is now
+mandatory: (1) delete one refusal line so `input` lowers to `T.port(name)`; (2) `instantiate()` +
+`InstantiationReceipt`, verified by **independent re-instantiation** against an independently minted
+`target_term_sem_id` — `instantiate()` must **not** self-assert it, on the same rule that keeps the
+term's identity the kernel's; (3) I-4a; (4) I-4b; (5) I-4c on `x + (x + y)` all the way through —
+correct → 7, swapped → 8, and the correct receipt accepts only the 7-producing term; (6) **restate
+`add(2,3)` through `instantiate({})`**, which closes item 230 and is the backwards-compatibility
+theorem. Then `church_exp_2_2` and the dedicated DUP-ERA film.

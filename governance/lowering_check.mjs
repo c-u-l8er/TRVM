@@ -57,7 +57,9 @@ import {
   INSTANTIATION_SEM_ID, INSTANTIATION_FALSIFIERS, LOWERING_SEMANTICS,
   INSTANTIATION_SEMANTICS, LOWERING_STATUS, INSTANTIATION_STATUS,
   OVERBOUND_TRANSITIONAL_SEM_IDS, T, emit, templatePorts, targetTemplateSemId,
-  TARGET_TEMPLATE_ENCODING_SEM_ID,
+  TARGET_TEMPLATE_ENCODING_SEM_ID, TARGET_EXECUTABLE_ENCODING_SEM_ID,
+  TARGET_ENCODING, TARGET_TEMPLATE_ENCODING, REFINEMENT_CHAIN,
+  SUPERSEDED_CODOMAIN_SEM_IDS, IMPLEMENTED_LOWERED_OPS,
 } from "./lowering.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -118,8 +120,14 @@ const receipt = low.ok ? loweringReceipt(PROGRAM_SEM_ID, low.target_template_sem
       && receipt.target_term_sem_id === undefined,
     `add(const 2, const 3) lowers to ${low.ok && low.target_term.length} characters of ic32, the same ` +
     `string twice. The RELATION is ${LOWERING_SEM_ID.slice(0, 16)}… and the APPLICATION is a receipt ` +
-    `${receipt?.lowering_receipt_id.slice(0, 16)}… binding {program_sem_id, lowering_sem_id, ` +
-    `target_term_sem_id} — one id must not answer both "which lowering is this" and "what did it do here"`);
+    `${receipt?.lowering_receipt_id.slice(0, 16)}… binding ` +
+    // DERIVED FROM THE RECEIPT. This sentence hand-typed `target_term_sem_id`
+    // and went on printing it for a round after B1.2 moved the receipt's domain
+    // onto the template — the code was right and its own report was describing
+    // the previous architecture. Reading the field list off the object is the
+    // only version of this line that cannot say something the receipt does not.
+    `{${Object.keys(receipt ?? {}).filter((k) => k !== "lowering_receipt_id").join(", ")}} — one id ` +
+    `must not answer both "which lowering is this" and "what did it do here"`);
 }
 
 /* ── 2. and the instrument is RE-LOWERING, not a film ────────────────────── */
@@ -190,16 +198,47 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
     `accepted by an authority that owns every oracle it consulted`);
 }
 
-/* ── 6. six identities, and none of them is another one ──────────────────── */
+/* ── 6. every identity the chain declares, and none of them is another one ──
+      THE COUNT IS NOT WRITTEN DOWN. This case asserted that SIX identities stay
+      distinct; B1.2 added target_template_sem_id to the chain and not to the
+      set, so it went on proving a six-way claim about a seven-node chain — green
+      the whole time, and one node short of what its own name promised. The set
+      is now DERIVED from REFINEMENT_CHAIN, so a node added to the chain and not
+      to the witness fails here instead of being quietly excluded, and the
+      unexercised nodes are NAMED rather than absent. */
 {
-  const ids = { PROGRAM_SEM_ID, LOWERING_SEM_ID, TARGET_TERM_SEM_ID,
-    TARGET_NF_SEM_ID, DECODE_SEM_ID, OUTCOME_SEM_ID: SOURCE_OUTCOME_SEM_ID };
-  const vals = Object.values(ids);
-  R("six-identities-stay-distinct",
-    new Set(vals).size === 6 && vals.every((v) => typeof v === "string" && v.length > 0),
-    Object.entries(ids).map(([k, v]) => `${k.replace("_SEM_ID", "")}=${v.slice(0, 10)}…`).join(" · ") +
-    ` — six distinct values. Collapsing any pair turns a refinement statement into a RENAMING, which ` +
-    `is the failure this chain exists to avoid`);
+  const value = {
+    program_sem_id: PROGRAM_SEM_ID,
+    lowering_sem_id: LOWERING_SEM_ID,
+    target_template_sem_id: low.ok ? low.target_template_sem_id : null,
+    instantiation_sem_id: null,   // exercised:false — no instantiate() yet
+    inputs_sem_id: null,          // exercised:false — the environment is {}
+    target_term_sem_id: TARGET_TERM_SEM_ID,
+    target_nf_sem_id: TARGET_NF_SEM_ID,
+    decode_sem_id: DECODE_SEM_ID,
+    outcome_sem_id: SOURCE_OUTCOME_SEM_ID,
+  };
+  const declared = REFINEMENT_CHAIN.map((n) => n.id);
+  const exercised = REFINEMENT_CHAIN.filter((n) => n.exercised);
+  const open = REFINEMENT_CHAIN.filter((n) => !n.exercised);
+  const vals = exercised.map((n) => value[n.id]);
+  // the set must COVER the chain: a node declared and not wired up here is the
+  // defect this rewrite exists to make impossible, so it is a failure and not a
+  // silent skip
+  const covered = declared.every((id) => id in value)
+    && Object.keys(value).every((k) => declared.includes(k));
+  R("chain-identities-stay-distinct",
+    covered && vals.every((v) => typeof v === "string" && v.length > 0)
+      && new Set(vals).size === vals.length
+      && open.every((n) => value[n.id] === null && typeof n.why_not === "string"),
+    exercised.map((n) => `${n.id.replace("_sem_id", "")}=${String(value[n.id]).slice(0, 10)}…`)
+      .join(" · ") +
+    ` — ${vals.length} distinct values over a ${declared.length}-node chain, and the count is DERIVED ` +
+    `from REFINEMENT_CHAIN rather than asserted. Collapsing any pair turns a refinement statement into ` +
+    `a RENAMING, which is the failure this chain exists to avoid. DECLARED AND NOT EXERCISED: ` +
+    `${open.map((n) => n.id).join(", ")} — the ids exist and are distinct, but this fixture reaches ` +
+    `its term through lower()'s convenience emission rather than through instantiate(), so naming them ` +
+    `here is scope rather than coverage`);
 }
 
 /* ── 7. the refusals are named, and the fragment's edges are checked ─────── */
@@ -305,6 +344,85 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
     `id lives in its own domain from the term's even here, where there are zero ports`);
 }
 
+/* ── 7e. emit() IS NOT A HIDDEN RELATION — B1.2.1, GPT's find ────────────
+      B1.2 named lowering's DOMAIN encoding by id and instantiation's CODOMAIN
+      in prose ("… via emit()"), so the rule deciding how church(n) and add(a,b)
+      become interaction-net terms reached the identity of the relation that
+      produces those terms only as a symbol name inside an English sentence.
+      Measured against B1.2: change the add combinator and the executable term's
+      bytes change, while isem-bf9434fc…, the template id and the template-
+      encoding id all stand still. LOWERING_SEM_ID moved — the wrong id, and for
+      the wrong reason: a pre-template leftover binding lowering to an encoding
+      two layers downstream, so an emitter change re-identified every
+      LoweringReceipt ever issued.
+
+      Both halves are the same mistake facing opposite ways, and the fix is one
+      boundary drawn twice. THREE MUTATIONS, THREE ANSWERS — asserted here
+      because the two-relation ruling is worth nothing if the ids do not sort
+      changes between the relations. */
+{
+  const semId = (tag, o) => tag + "|" + createHash("sha256")
+    .update(tag + "|" + canonicalBytes(o)).digest("hex");
+  const XE = (o) => semId("TRVM-TARGET-EXECUTABLE-ENC-v1", o);
+  const TE = (o) => semId("TRVM-TARGET-TEMPLATE-ENC-v1", o);
+  const L = (over = {}) => semId("TRVM-LOWERING-SEM-v2", { ...LOWERING_SEMANTICS, ...over });
+  const I = (over = {}) => semId("TRVM-INSTANTIATION-SEM-v2", { ...INSTANTIATION_SEMANTICS, ...over });
+  const baseL = L(), baseI = I();
+
+  // 1. THE EMITTER: three different rules, each changing the emitted term
+  const emitterMoves = [
+    { ...TARGET_ENCODING, add: "λm.λn.λf.λx.!&L{f0,f1}=f;((n f1) ((m f0) x))" },
+    { ...TARGET_ENCODING, dup_label_policy: "labels count DOWN from 1000, breadth-first." },
+    { ...TARGET_ENCODING, numbers: "binary naturals rather than Church numerals." },
+  ].map((mut) => ({ l: L(), i: I({ codomain_encoding_sem_id: XE(mut) }) }));
+
+  // 2. A LOWERING RULE: the source -> template map, which is lowering's alone
+  const ruleMoves = [
+    { ...LOWERING_SEMANTICS.op_lowering_rules, const: "{op:\"const\", value:n} lowers to church(n+1)." },
+    { ...LOWERING_SEMANTICS.op_lowering_rules, add: "{op:\"add\", a, b} lowers to add(b', a') — SWAPPED." },
+  ].map((mut) => ({ l: L({ op_lowering_rules: mut }), i: I() }));
+
+  // 3. THE TEMPLATE GRAMMAR: the shared boundary, so BOTH must move
+  const gMut = { ...TARGET_TEMPLATE_ENCODING,
+    grammar: "Template := church(n) | add(Template, Template) | port(source_name) | lam(Template)" };
+  const shared = { l: L({ target_template_encoding_sem_id: TE(gMut) }),
+    i: I({ domain_encoding_sem_id: TE(gMut) }), t: TE(gMut) };
+
+  // and lowering may not claim a refusal it cannot produce
+  const drive = {
+    "lower-unsupported-op": { op: "sub", a: { op: "const", value: 1 }, b: { op: "const", value: 1 } },
+    "lower-non-integer-constant": { op: "const", value: 1.5 },
+    "lower-negative": { op: "const", value: -1 },
+    "lower-reads-undecided": { op: "read", resource: "fb" },
+  };
+  const reachable = LOWERING_SEMANTICS.refusal_semantics.every((name) => {
+    const r = drive[name] ? lower(drive[name]) : { ok: true };
+    return !r.ok && String(r.reason).startsWith(name);
+  });
+
+  R("emit-is-not-a-hidden-relation",
+    emitterMoves.every((m) => m.i !== baseI && m.l === baseL)
+      && ruleMoves.every((m) => m.l !== baseL && m.i === baseI)
+      && shared.l !== baseL && shared.i !== baseI && shared.t !== TARGET_TEMPLATE_ENCODING_SEM_ID
+      && INSTANTIATION_SEMANTICS.codomain_encoding_sem_id === TARGET_EXECUTABLE_ENCODING_SEM_ID
+      && TARGET_EXECUTABLE_ENCODING_SEM_ID.startsWith("xenc-")
+      && !("target_encoding" in LOWERING_SEMANTICS)
+      && reachable
+      && !LOWERING_SEMANTICS.refusal_semantics.includes("emit-unbound-port")
+      && INSTANTIATION_SEMANTICS.semantic_refusals.includes("emit-unbound-port")
+      && SUPERSEDED_CODOMAIN_SEM_IDS.lowering_sem_id_b12 !== LOWERING_SEM_ID
+      && SUPERSEDED_CODOMAIN_SEM_IDS.instantiation_sem_id_b12 !== INSTANTIATION_SEM_ID,
+    `changing the add combinator, the dup label policy or the Church expansion moves the ` +
+    `INSTANTIATION id and NOT lowering's — the executable encoding is content-bound at ` +
+    `${TARGET_EXECUTABLE_ENCODING_SEM_ID.slice(0, 16)}… instead of named as "via emit()" in prose. ` +
+    `Changing a per-op lowering rule moves LOWERING's id and NOT instantiation's, and those rules had ` +
+    `to be WRITTEN DOWN: removing the leftover target_encoding binding exposed that nothing in the ` +
+    `hashed semantics said a const becomes a church node, so const(n) -> church(n+1) would have ` +
+    `contradicted no sentence. Changing the TEMPLATE grammar moves BOTH, because it is the boundary ` +
+    `they share. And lowering no longer claims emit-unbound-port or template-malformed: all ` +
+    `${LOWERING_SEMANTICS.refusal_semantics.length} names it does claim are driven to a refusal above`);
+}
+
 /* ── 7c. extra inputs are IGNORED, because the SOURCE ignores them ───────── */
 {
   const P2 = { op: "input", name: "x" };
@@ -379,7 +497,15 @@ console.log(fail
     `host launched emits SIX chained semantic-film frames that the law kernel's own replaySemFilm ` +
     `accepts on two runtime classes, and reduces it to a canonical normal form; that form decodes ` +
     `structurally to {status:"value",value:5}; and its outcome identity EQUALS the source evaluator's. ` +
-    `Six identities stay distinct. STILL NOT CLAIMED: the six DUP-* rules, the d:/v: loci and ` +
+    // DERIVED. This sentence said "Six identities stay distinct" for the round
+    // in which the chain grew a seventh node, in the headline of the check whose
+    // job is to report exactly that. Same species as the four-rung print and the
+    // UNDECIDED spike status — and the count below cannot disagree with the case
+    // above it, because both read REFINEMENT_CHAIN.
+    `${REFINEMENT_CHAIN.filter((n) => n.exercised).length} of the chain's ${REFINEMENT_CHAIN.length} ` +
+    `identities are exercised here and stay distinct; ` +
+    `${REFINEMENT_CHAIN.filter((n) => !n.exercised).map((n) => n.id).join(" and ")} are DECLARED and ` +
+    `not exercised until instantiation is built. STILL NOT CLAIMED: the six DUP-* rules, the d:/v: loci and ` +
     `BUDGET_EXHAUSTED terminals — a term needing any of them is refused by name, not approximated. ` +
     // DERIVED, because the hand-written version of this sentence said "stays
     // UNDECIDED" for a whole round after B1 decided it — green headline, green
