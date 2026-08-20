@@ -1716,7 +1716,7 @@
   "trvm_world.mjs": "0.12.0",
   "derive_protocol.mjs": "0.15.0",
   "observed_execution_host.mjs": "0.5.1",
-  "lowering.mjs": "0.7.1",
+  "lowering.mjs": "0.7.2",
   "bridge/ic32_film.c": "0.2.0"
  },
  "world": {

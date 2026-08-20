@@ -63,8 +63,8 @@ import {
   instantiate, instantiationReceipt, inputsSemId, portSemId,
   INSTANTIATION_RECEIPT_FIELDS, SUPERSEDED_PROSE_RULE_SEM_IDS, INPUT_PORT_SPEC,
   EMISSION_SEMANTICS, EMISSION_SEM_ID, EMISSION_RECEIPT_FIELDS, emissionReceipt,
-  closedTemplateSemId, verifyInstantiationReceipt, verifyEmissionReceipt,
-  verifyInstantiationReceiptOwned, verifyEmissionReceiptOwned,
+  closedTemplateSemId, verifyInstantiationReceipt, verifyEmissionReceiptAgainst,
+  verifyInstantiationReceiptOwned, verifyEmissionReceiptOwnedAgainst, makeEmissionVerifier,
 } from "./lowering.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -533,7 +533,7 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
   R("receipt-is-not-self-certified",
     !mintsItsOwnId && verified && !forged
       && verifyInstantiationReceipt(low.template, {}, rec).ok === true
-      && verifyEmissionReceipt(INST0.closed_template, emRec, kernelSemId).ok === true
+      && verifyEmissionReceiptAgainst(INST0.closed_template, emRec, kernelSemId).ok === true
       && emRec.emission_sem_id === EMISSION_SEM_ID
       && EMISSION_RECEIPT_FIELDS.every((f) => emRec[f] !== undefined)
       && rec.instantiation_sem_id === INSTANTIATION_SEM_ID
@@ -867,7 +867,7 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
       "y" satisfied a receipt claiming port("y") as the source template, {x:2} as
       the inputs and church(2) as the result: three claims TRUE OF THREE
       DIFFERENT TEMPLATES and of no single immutable one, because port("y") with
-      {x:2} refuses outright. verifyEmissionReceipt had it across its two
+      {x:2} refuses outright. verifyEmissionReceiptAgainst had it across its two
       ownCanonical calls.
 
       THE RECEIPT IS SNAPSHOT TOO. It arrives from whoever is asking to be
@@ -898,7 +898,7 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
   const hybridE = emissionReceipt(
     closedTemplateSemId(T.church(3)),                                  // "the closed template was 3"
     fakeCanon(emit(T.church(2))));                                     // "the term was 2"
-  const ve = verifyEmissionReceipt(hostileClosed, hybridE, fakeCanon);
+  const ve = verifyEmissionReceiptAgainst(hostileClosed, hybridE, fakeCanon);
 
   // ── the RECEIPT is snapshot too, and the honest claim about that is
   //    narrower than the other two. No live exploit existed: no verifier reads
@@ -932,10 +932,10 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
       && n === 1 && k === 1
       && !yAlone.ok && /^instantiate-missing-input: y/.test(yAlone.reason)
       && verifyInstantiationReceipt(low2.template, {}, good).ok === true
-      && verifyEmissionReceipt(inst2.closed_template, goodE, fakeCanon).ok === true
+      && verifyEmissionReceiptAgainst(inst2.closed_template, goodE, fakeCanon).ok === true
       && typeof verifyInstantiationReceiptOwned === "function"
-      && typeof verifyEmissionReceiptOwned === "function"
-      && verifyEmissionReceipt(inst2.closed_template, goodE, "not-a-function").reason
+      && typeof verifyEmissionReceiptOwnedAgainst === "function"
+      && verifyEmissionReceiptAgainst(inst2.closed_template, goodE, "not-a-function").reason
          === "verify-emission-no-canonicaliser",
     `a template answering "x" then "y" is traversed ONCE (${n}) and its hybrid receipt is ` +
     `${vi.reason} — three claims each true of a different template and of no single immutable one, ` +
@@ -947,6 +947,42 @@ const TARGET_OUTCOME_SEM_ID = TARGET_OUTCOME ? outcomeSemId(TARGET_OUTCOME) : nu
     `another. Honest receipts still verify on both relations, so the verifier is not merely refusing ` +
     `everything, and the canonicaliser stays a CAPABILITY the caller grants rather than an oracle ` +
     `this module picks for itself`);
+
+  // ── B2.1.2: THE EMISSION VERDICT IS RELATIVE TO ITS ORACLE ────────────
+  // GPT's find. verifyEmissionReceiptAgainst returns {ok:true} for a receipt
+  // claiming the emitted term's identity is "deadbeef", if the caller supplies
+  // an oracle that agrees. That is a legitimate PARAMETRIC judgment and a
+  // dangerous thing to spell like an absolute one, in a tree whose recurring
+  // finding is that a claimant must not nominate the oracle certifying the
+  // claim. Not a rung — nothing turns this into an authority verdict today —
+  // so the repair is the SHAPE: `Against` in the name, and a composition root
+  // that binds the trusted canonicaliser ONCE so ordinary callers have no
+  // parameter to pass.
+  const bogus = emissionReceipt(closedTemplateSemId(INST0.closed_template), "deadbeef");
+  const complicit = verifyEmissionReceiptAgainst(INST0.closed_template, bogus, () => "deadbeef");
+  const verifyEmission = makeEmissionVerifier({ canonicaliseTarget: kernelSemId });
+  const boundBogus = verifyEmission(INST0.closed_template, bogus);
+  const boundGood = verifyEmission(INST0.closed_template,
+    emissionReceipt(INST0.closed_template_sem_id, TARGET_TERM_SEM_ID));
+  const unbindable = (() => { try { makeEmissionVerifier({}); return "BOUND"; }
+    catch (e) { return e.message; } })();
+  R("emission-verdict-names-its-oracle",
+    complicit.ok === true && boundBogus.ok === false
+      && /^verify-emission-mismatch: target_term_sem_id/.test(boundBogus.reason)
+      && boundGood.ok === true && verifyEmission.length === 2
+      && unbindable === "emission-verifier-no-canonicaliser"
+      && typeof verifyEmissionReceiptAgainst === "function"
+      && typeof verifyEmissionReceiptOwnedAgainst === "function",
+    `a receipt claiming the emitted term's identity is "deadbeef" VERIFIES against an oracle that ` +
+    `says deadbeef — ${complicit.ok} — and that is not a defect, it is what a parametric verifier ` +
+    `means. The defect was calling it verifyEmissionReceipt and returning a bare ok:true, which ` +
+    `reads as an oracle-INDEPENDENT verdict. The name carries \`Against\` now, and ` +
+    `makeEmissionVerifier binds the trusted canonicaliser at a composition root: the bound verifier ` +
+    `takes ${verifyEmission.length} arguments, so ordinary callers have NO PARAMETER in which to ` +
+    `nominate a judge, and the same bogus receipt is ${boundBogus.reason.split(":")[0]}. Binding ` +
+    `without an oracle is ${unbindable} rather than a verifier that trusts anything. The relation ` +
+    `module still does not choose the judge — the trusted root does, which is where every other ` +
+    `oracle in this tree is chosen`);
 }
 
 

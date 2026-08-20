@@ -1810,6 +1810,36 @@ open('lowering_check.mjs','w').write(src)"
 # keeping it would have meant growing an embedded copy of the module inside its
 # own test. The three B2.1 cases above replace it.
 
+# ── B2.1.2: the emission verdict is relative to its oracle ─────────────────
+run_case emission-verifier-unnamed-relativity "must NAME its relativity" "
+src = open('lowering.mjs').read()
+src = src.replace('export function verifyEmissionReceiptAgainst(', 'export function verifyEmissionReceipt(')
+src = src.replace('verifyEmissionReceiptAgainst(closed_template, receipt, bound)',
+                  'verifyEmissionReceipt(closed_template, receipt, bound)')
+open('lowering.mjs','w').write(src)"
+
+run_case emission-binder-removed "must NAME its relativity and offer a BOUND form" "
+src = open('lowering.mjs').read()
+src = src.replace('export function makeEmissionVerifier', 'function makeEmissionVerifier')
+open('lowering.mjs','w').write(src)"
+
+run_case emission-binder-takes-an-oracle-late "must NAME its relativity and offer a BOUND form" "
+src = open('lowering.mjs').read()
+src = src.replace('  return Object.freeze((closed_template, receipt) =>\n    verifyEmissionReceiptAgainst(closed_template, receipt, bound));',
+                  '  return Object.freeze((closed_template, receipt, oracle) =>\n    verifyEmissionReceiptAgainst(closed_template, receipt, oracle || bound));')
+open('lowering.mjs','w').write(src)"
+
+run_case emission-binder-trusts-anything "must NAME its relativity and offer a BOUND form" "
+src = open('lowering.mjs').read()
+src = src.replace('    throw new Error(\"emission-verifier-no-canonicaliser\");',
+                  '    canonicaliseTarget = () => \"anything\";')
+open('lowering.mjs','w').write(src)"
+
+run_case oracle-witness-dropped "must carry emission-verdict-names-its-oracle" "
+src = open('lowering_check.mjs').read()
+src = src.replace('emission-verdict-names-its-oracle', 'emission-oracle-noted')
+open('lowering_check.mjs','w').write(src)"
+
 # ── B2.1.1: the verifier may not authenticate a second snapshot ────────────
 run_case verifier-resnapshots-the-template "verifiers must OWN what they authenticate" "
 src = open('lowering.mjs').read()
@@ -1901,8 +1931,8 @@ open('lowering.mjs','w').write(src)"
 
 run_case emission-verifier-imports-its-own-oracle "receipt VERIFICATION must be a production function" "
 src = open('lowering.mjs').read()
-src = src.replace('export function verifyEmissionReceipt(closed_template, receipt, canonicaliseTarget)',
-                  'export function verifyEmissionReceipt(closed_template, receipt)')
+src = src.replace('export function verifyEmissionReceiptAgainst(closed_template, receipt, canonicaliseTarget)',
+                  'export function verifyEmissionReceiptAgainst(closed_template, receipt)')
 open('lowering.mjs','w').write(src)"
 
 run_case b2-ids-erased "B2 identities must be kept" "
@@ -1940,7 +1970,7 @@ json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 run_case lowering-version-drifts "artifact_versions says" "
 src = open('lowering.mjs').read()
-src = src.replace('export const LOWERING_VERSION = \"0.7.1\";',
+src = src.replace('export const LOWERING_VERSION = \"0.7.2\";',
                   'export const LOWERING_VERSION = \"0.9.9\";')
 open('lowering.mjs','w').write(src)"
 

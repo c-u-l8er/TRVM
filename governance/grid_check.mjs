@@ -1196,7 +1196,16 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
            reserved for properties that are genuinely textual — a version
            constant, a forbidden phrase, a NUL byte — or for code-shape
            obligations that would need a JS parser this tree does not have, which
-           are marked TEXT-TIER below so a reader knows which rung they are on. */
+           are marked TEXT-TIER below so a reader knows which rung they are on.
+
+           AND THE COROLLARY, which B2.1.1 learned by shipping it: REPRESENTATION
+           STRENGTH DOES NOT IMPLY ASSERTION COMPLETENESS. Moving an assertion up
+           the hierarchy can make it SILENTLY WEAKER — `typeof f === "function"`
+           cannot see that a parameter was deleted, so two arity obligations were
+           lost in the conversion and only the negative battery noticed. The rule
+           is therefore: prefer the strongest representation available, AND
+           separately enumerate every property the old check actually
+           established. */
         let LOW = null, lowImport = null;
         try { LOW = await import(pathToFileURL(A("lowering.mjs")).href); }
         catch (e) { lowImport = e.message; }
@@ -1505,7 +1514,7 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         // one traversal.
         ok(/return verifyInstantiationReceiptOwned\(\.\.\.owned\)/.test(lowNoc) &&
            /export function verifyInstantiationReceiptOwned/.test(lowNoc) &&
-           /export function verifyEmissionReceiptOwned/.test(lowNoc) &&
+           /export function verifyEmissionReceiptOwnedAgainst/.test(lowNoc) &&
            !/targetTemplateSemId\(ownCanonical\(template\)\)/.test(lowNoc) &&
            !/closedTemplateSemId\(ownCanonical\(closed_template\)\)/.test(lowNoc) &&
            /ownCanonical\(receipt\)/.test(lowNoc),
@@ -1515,15 +1524,49 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "then called targetTemplateSemId(ownCanonical(template)) on the caller's object again, so a " +
           "template answering \"x\" then \"y\" satisfied a receipt no immutable template satisfies. " +
           "The receipt is snapshot too — it arrives from whoever is asking to be believed");
+        // B2.1.2: the emission verdict is RELATIVE and must be named so.
+        // BEHAVIOURAL: bind a complicit oracle and require the parametric form
+        // to accept it (that is what parametric MEANS), while requiring the
+        // bound form to have no parameter in which one could be passed.
+        {
+          // A BEHAVIOURAL ASSERTION THAT CAN THROW TAKES THE WHOLE CHECKER DOWN,
+          // and a stack trace is not a diagnostic — the battery sees a nonzero
+          // exit with no message and reports the wrong reason. Found by a
+          // forgery that made emissionReceipt refuse: calling the API is
+          // stronger than reading its source AND it runs adversary-influenced
+          // code, so every probe on this rung is wrapped.
+          const probe = (f, fallback = null) => { try { return f(); } catch { return fallback; } };
+          const bogus = probe(() => L.emissionReceipt(L.closedTemplateSemId(L.T.church(2)), "deadbeef"));
+          const complicit = probe(() =>
+            L.verifyEmissionReceiptAgainst(L.T.church(2), bogus, () => "deadbeef"));
+          const bound = probe(() =>
+            L.makeEmissionVerifier({ canonicaliseTarget: (t) => "k:" + t.length }));
+          ok(bogus !== null &&typeof L.verifyEmissionReceiptAgainst === "function" &&
+             typeof L.verifyEmissionReceiptOwnedAgainst === "function" &&
+             L.verifyEmissionReceipt === undefined &&
+             complicit?.ok === true &&
+             typeof bound === "function" && bound.length === 2 &&
+             probe(() => bound(L.T.church(2), bogus))?.ok === false &&
+             (() => { try { L.makeEmissionVerifier({}); return false; }
+               catch (e) { return e.message === "emission-verifier-no-canonicaliser"; } })(),
+            "the emission verifier must NAME its relativity and offer a BOUND form. A receipt " +
+            "claiming the term's identity is \"deadbeef\" verifies against an oracle that says " +
+            "deadbeef — which is what a parametric verifier means, and is a dangerous thing to spell " +
+            "as `verifyEmissionReceipt` returning a bare ok:true, in a tree whose recurring finding " +
+            "is that a claimant must not nominate the oracle certifying the claim. `Against` in the " +
+            "name; makeEmissionVerifier binds the trusted canonicaliser at a composition root so " +
+            "ordinary callers have NO PARAMETER for a judge; and no alias keeps the weaker spelling " +
+            "reachable, because an alias is a second path to one relation");
+        }
         ok(typeof L.verifyInstantiationReceipt === "function" &&
-           typeof L.verifyEmissionReceipt === "function" &&
+           typeof L.verifyEmissionReceiptAgainst === "function" &&
            typeof L.verifyInstantiationReceiptOwned === "function" &&
-           typeof L.verifyEmissionReceiptOwned === "function" &&
+           typeof L.verifyEmissionReceiptOwnedAgainst === "function" &&
            // ARITY, on the function object. Deleting the canonicaliser parameter
            // leaves every behavioural probe passing — undefined is not a
            // function either way — so `typeof` alone could not see it.
-           L.verifyEmissionReceipt?.length === 3 && L.verifyInstantiationReceipt?.length === 3 &&
-           L.verifyEmissionReceipt?.(L.T.church(1), {}, "not-a-function")?.reason ===
+           L.verifyEmissionReceiptAgainst?.length === 3 && L.verifyInstantiationReceipt?.length === 3 &&
+           L.verifyEmissionReceiptAgainst?.(L.T.church(1), {}, "not-a-function")?.reason ===
              "verify-emission-no-canonicaliser",
           "receipt VERIFICATION must be a production function, not test code. A relation whose only " +
           "implementation of 'does this receipt hold?' lives in its own suite is a relation nobody " +
@@ -1575,6 +1618,10 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
             ["emission-is-its-own-relation",
               "an emitter change must move EMISSION's id and neither of the other two, and a " +
               "substitution change must move instantiation's and not emission's"],
+            ["emission-verdict-names-its-oracle",
+              "the emission verdict is relative to a caller-supplied canonicaliser, and the witness " +
+              "must show the parametric form accepting a complicit oracle while the BOUND form has " +
+              "no parameter in which one could be passed"],
             ["verifiers-own-what-they-authenticate",
               "a hostile template answering \"x\" then \"y\" must be traversed ONCE and its hybrid " +
               "receipt refused. B2.1's verifiers verified one snapshot and authenticated another, " +

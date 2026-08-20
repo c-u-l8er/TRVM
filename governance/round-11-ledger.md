@@ -1879,3 +1879,92 @@ emission vectors: they test a *runtime* and emission produces the *input* to one
 `EMISSION_CONFORMANCE-v1` corpus over `{closed_template → target_term_sem_id}` composes with the
 existing runtime oracle downstream; I-4a is already evidence of the second, weaker emission property —
 different bytes, same normal form.
+
+---
+
+## Round 27, pass B2.1.2 — binding the oracle, and the exp_2_2 measurement
+
+**GPT's third verifier-boundary find, and the measurement that opens the runtime frontier.**
+
+**266. THE EMISSION VERDICT WAS RELATIVE AND SPELLED LIKE AN ABSOLUTE ONE.** Reproduced:
+
+```js
+verifyEmissionReceipt(T.church(2),
+  emissionReceipt(closedTemplateSemId(T.church(2)), "deadbeef"),
+  () => "deadbeef")                                     →  { ok: true }
+```
+
+The receipt claims the emitted term's identity is `deadbeef` and it **verifies**, because the caller
+supplied an oracle that agrees. **That is not a defect — it is what a parametric verifier means.** The
+defect was calling it `verifyEmissionReceipt` and returning a bare `ok:true`, which reads as an
+oracle-independent verdict, in a tree whose recurring finding is that *a claimant must not nominate the
+oracle that certifies the claim.* **Not a rung:** nothing turns this into an authority verdict today.
+
+**267. The repair is the SHAPE, before something does.** `Against` in the name —
+`verifyEmissionReceiptAgainst` / `verifyEmissionReceiptOwnedAgainst` — and `makeEmissionVerifier({
+canonicaliseTarget })` for a **trusted composition root** to bind the oracle once. The bound verifier
+takes **two** arguments, so ordinary callers have **no parameter in which to nominate a judge**.
+Binding without one throws `emission-verifier-no-canonicaliser`. **No alias is kept for the old name:**
+an alias is a second path to one relation with the weaker spelling still reachable, which is the defect
+B2 removed from `lower()`. The relation module still does not choose the judge — the trusted root does,
+which is where every other oracle in this tree is chosen.
+
+**268. A BEHAVIOURAL ASSERTION THAT CAN THROW TAKES THE WHOLE CHECKER DOWN.** The forgery that makes
+`emissionReceipt` refuse caused `grid_check` to **crash with a stack trace instead of reporting a
+diagnostic** — the battery saw a nonzero exit and the wrong reason. Climbing the assertion hierarchy
+means *running adversary-influenced code*, so every probe on that rung is now wrapped. **This is the
+second cost of the hierarchy in two rounds**, after arity: the first was silent weakening, this one is
+silent crashing, and both were found by the battery rather than by review.
+
+**269. GPT's generalized rule, recorded where the hierarchy is stated:**
+
+> Prefer the strongest semantic representation available, **and separately enumerate every property
+> the old check actually established.** Representation strength does not imply assertion completeness.
+
+**270. THE `church_exp_2_2` MEASUREMENT — measure first, build nothing.** Round 26's lesson, applied
+before a line of the next round is written. `measure_exp22.mjs` drives the reference kernel over the
+canonical state and reports:
+
+```
+FRAMES: 21    terminal: NORMAL_FORM    nf: λa.(S (S (S (S a))))  — matches the corpus
+FIRE:   APP-LAM 6 · DUP-SUP= 4 · DUP-LAM 3 · DUP-VAR 3 · APP-SUP 2 · DUP-APP 2 · DUP-SUP! 1
+NEVER:  APP-ERA · DUP-ERA
+LOCI:   d: 13 · t: 4 · v: 4
+```
+
+**Every rule the next round was aiming at fires, and the locus families are all three.** Two findings
+worth having before building:
+
+- **TWO rules remain unexercised, not one.** `DUP-ERA` was expected; **`APP-ERA` was not**, and a
+  dedicated witness will have to cover both or say why not.
+- **The final signature is 50 characters**, under the §5 compaction bound, so the decoder does not
+  refuse this normal form — the fixture is decodable end to end.
+
+**271. And the 21 is a COINCIDENCE UNTIL PROVEN OTHERWISE.** The corpus records `ref_interactions: 21`
+for this vector and the measured film is 21 frames. Those are **different quantities** — an AST
+reference interaction count and a float-plane frame count — and GPT's warning is taken verbatim: *do
+not let "21 in the corpus" become "therefore the C emitter must print 21 frames".* The theorem stays
+**given the frozen film strategy, C and the independent kernel agree frame by frame on the same
+transitions and the same terminal**. If the C emitter legitimately reaches a different count,
+investigate rather than force the number.
+
+**272. The historical wrinkle is real and is in this tree's own record.** `l_prog_history.
+round_4_diagnosis` names `church_exp_2_2` at step 15 as the FALSE QUIESCENCE witness that falsified
+`law:sched.free.ast-term@1`. The AST relation is retracted and the float-plane enumeration is what runs
+now — the measurement above reaches a normal form with no quiescence — but the C emitter must be
+explicit about its transition strategy, what counts as ENABLED, what TERMINAL means, and whether
+BUDGET_EXHAUSTED is distinguishable from NORMAL_FORM. That fixture has fooled a scheduler once.
+
+**273. Gate.** grid **v1.40.0** — 87 entries / 374 citations · `lowering.mjs` **0.7.2** · negative
+battery **286/286** (5 new) · lowering **23/23** · derive 45/45 · realm 24/24 · bridge 48/48 · film
+16/16 · harness 9/9 · runner 3/3. `scheduler_certificate.json` byte-identical — **thirty-fifth**
+consecutive round.
+
+**274. Compiler apparatus stops here, by GPT's instruction and my agreement.** And one correction I
+owe: my reason for deferring `EMISSION_CONFORMANCE-v1` was **wrong**. I argued `church_exp_2_2` would
+force the template grammar to grow, so the fixtures would be rebuilt. It will not — `church_exp_2_2` is
+a raw runtime corpus term that exists independently of `Template := church | add | port`, and the work
+on it is native-film transitions, not compiler grammar. GPT's reason is the right one and replaces
+mine: **the marginal value of seven more closed-template fixtures is simply lower than the first
+independently replayed native film containing real DUP/SUP transitions.** Sequence:
+`church_exp_2_2` → dedicated DUP-ERA (and now APP-ERA) → `EMISSION_CONFORMANCE-v1`.

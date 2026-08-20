@@ -1,135 +1,137 @@
 {
-  "type": "TRVM-GOV-ARTIFACTS-v1",
-  "version": 1,
-  "why": "The negative battery copied a hand-maintained flat file list into each scratch case, so an artifact added to the tree was not covered until somebody remembered to extend the list — and nothing said so. That is the same class as the harness defects law:evidence.instrument-nonvacuity@1 exists to catch: the roster looks complete while its coverage silently shrinks. The artifact set is now DECLARED once, both negative runners read it, and grid_check refuses any governance artifact that is present but undeclared. Adding a file now forces a decision instead of allowing an omission.",
-  "case_inputs": [
-    "invariant-grid.json",
-    "trvm_law_kernel.mjs",
-    "grid_check.mjs",
-    "kappa_witnesses.mjs",
-    "scheduler_certificate.json",
-    "refinement_receipt.json",
-    "golden_prehash_vectors.json",
-    "trvm_world.mjs",
-    "world_warrant_receipt.json",
-    "maintenance_receipt.json",
-    "artifacts.json",
-    "derive_protocol.mjs",
-    "derive_worker.mjs",
-    "derive_launcher.mjs",
-    "observed_execution_host.mjs",
-    "lowering.mjs",
-    "lowering_check.mjs"
-  ],
-  "ledgers_pattern": "^round-\\d+-ledger\\.md$",
-  "tools": [
-    "negative_battery.sh",
-    "extract_prehash.mjs",
-    "derive_battery.mjs",
-    "derive_realm_battery.mjs",
-    "harness_selftest.sh",
-    "runner_contract.sh",
-    "make_review_pack.sh"
-  ],
-  "case_input_note": "derive_protocol.mjs and derive_worker.mjs moved from tools to case_inputs at v1.16: their SOURCE now carries invariants grid_check asserts (no __reads path, reads from read_grants, executor-asserted implementation_id), so they must be present in every scratch case for those assertions to run. The batteries stay tools — they are runners, not artifacts under test.",
-  "probes_pattern": "^probe_.*\\.mjs$",
-  "probe_roles": {
-    "probe_semid.mjs": "round 6 — semantic state identity",
-    "probe_cert.mjs": "round 5 — scheduler certificate",
-    "probe_worldalias_v02_repro.mjs": "round 8 — world aliasing",
-    "probe_support_v03_repro.mjs": "round 8.2 — support soundness",
-    "probe_sembudget_v1_repro.mjs": "round 6B — semantic film budget",
-    "probe_forkescape_v05_repro.mjs": "9B — the fork was not a boundary",
-    "probe_keytheft_v06_repro.mjs": "9C — the hidden key was not hidden",
-    "probe_maintainer_9d_repro.mjs": "9D — the coordinator was not sealed",
-    "probe_coordinator_alias_9d1_repro.mjs": "9D.1 — reachable aliases",
-    "probe_realm_9d2_repro.mjs": "9D.2 — nested values, and the shared realm",
-    "probe_ownfailopen_9d3_repro.mjs": "9D.3 — ownership failed open",
-    "probe_closureenv_repro.mjs": "9D.4 — the authority that was never an object; DECLARED, not repaired",
-    "probe_derivegrant_v02_repro.mjs": "DERIVE-v0.2 — the bypassable read footprint and the unverified implementation_id, frozen against v0.1.0 and CONFINED against live; the only PAIRED probe, and it gates",
-    "probe_coresem_v03_repro.mjs": "DERIVE-CORE-v1 — program_sem_id bound syntax and claimed semantics: add was JavaScript '+', bind() validated nothing, arity was unconstrained, and the footprint's ORDER was inside the semantic projection. Frozen against v0.2.0, CONFINED against live; PAIRED, and it gates",
-    "probe_stalegrant_v03_repro.mjs": "ROUND 17 — the GAP witness: containment, re-derivation and schema all pass on a result whose World has moved. Not a regression repro; there was no freshness check at all before it",
-    "probe_issuebind_v05_repro.mjs": "ROUND 17 — issuance authenticated the grant rather than the request, an options bag let a caller write authority content, and acceptance took both of its proofs from its caller. Frozen against the draft, CONFINED against live; PAIRED, and it gates",
-    "probe_traceforge_v06_repro.mjs": "ROUND 19 — read_trace was outside the semantic projection and therefore unchecked: a reversed trace validated and was accepted. Frozen against v0.5.0, CONFINED against live; PAIRED, and it gates",
-    "probe_execclaim_v07_repro.mjs": "ROUND 22 — the law said impersonation was closed while deriveLocally took the implementation identity as a caller parameter: JS impersonated C through acceptance. Frozen against v0.6.0, CONFINED against live; PAIRED, and it gates",
-    "probe_execreg_v08_repro.mjs": "P-2: registerExecutor was an assertion dressed as an observation — it launched nothing — and accept(…, executor) put a proof back in the caller's hands, which is the round-17 shape one level up. Paired: 2 breach frozen, 5 confined live.",
-    "probe_execlaunch_v09_repro.mjs": "P-3/P-3F: the authority hashed one thing and executed another. artifact_files (evidence) and spawn() (action) were independent fields of one caller-supplied object, so declaring the genuine closure while spawning something else produced provenance 'observed' for an implementation that never ran — in both the derivation and film planes. Paired: 2 breach frozen, 5 confined live.",
-    "probe_semoracle_v10_repro.mjs": "P-4: acceptance took its semantic oracle from the claimant. accept(registry, req, res) let a caller supply the mapping from program_sem_id to program, so an issued const(5) request accepted as 999 under a registry-shaped object whose verify() blessed the issued id. Not a type problem — a real ProgramRegistry populated differently does it too. Paired: 2 breach frozen, 5 confined live.",
-    "probe_hostown_v11_repro.mjs": "P-5: an instanceof guard is satisfied by a subclass. A two-method EvilHost overriding run() and observationOf() passed the authority's host check while nothing executed. Paired: 2 breach frozen, 4 confined live.",
-    "probe_snapshot_v12_repro.mjs": "P-6/P-6b: untrusted data was validated while the caller still owned it. A getter read four times put an entrypoint outside its own hashed closure into the immutable catalog and the un-hashed worker ran; the same shape split a registry key from its value. Paired: 2 breach frozen, 5 confined live.",
-    "probe_reread_v13_repro.mjs": "P-7/P-7b: the issued request was authenticated as one value and used as another. wasIssued() hashed ONE read of every field and passed; execute() then re-read the caller's object for the family, for the host's canonicalisation and for the worker's structured clone, so a request answering const(5) to the first read and const(999) after it was issued as one program and executed as another, and acceptance returned implementation_provenance \"observed\" for it. The same 999 result under the frozen issued request is refused, so the forgery is exactly the caller's retained ownership. P-7b is the same defect on `res`, closed in the same round. P-7c is the same defect in ObservedExecutionHost.run(), which keyed the observation over read 1 of the invocation and launched read 2 — leaving a true-looking observation for an execution that did not happen. Paired: 3 breach frozen, 6 confined live."
+ "type": "TRVM-GOV-ARTIFACTS-v1",
+ "version": 1,
+ "why": "The negative battery copied a hand-maintained flat file list into each scratch case, so an artifact added to the tree was not covered until somebody remembered to extend the list \u2014 and nothing said so. That is the same class as the harness defects law:evidence.instrument-nonvacuity@1 exists to catch: the roster looks complete while its coverage silently shrinks. The artifact set is now DECLARED once, both negative runners read it, and grid_check refuses any governance artifact that is present but undeclared. Adding a file now forces a decision instead of allowing an omission.",
+ "case_inputs": [
+  "invariant-grid.json",
+  "trvm_law_kernel.mjs",
+  "grid_check.mjs",
+  "kappa_witnesses.mjs",
+  "scheduler_certificate.json",
+  "refinement_receipt.json",
+  "golden_prehash_vectors.json",
+  "trvm_world.mjs",
+  "world_warrant_receipt.json",
+  "maintenance_receipt.json",
+  "artifacts.json",
+  "derive_protocol.mjs",
+  "derive_worker.mjs",
+  "derive_launcher.mjs",
+  "observed_execution_host.mjs",
+  "lowering.mjs",
+  "lowering_check.mjs"
+ ],
+ "ledgers_pattern": "^round-\\d+-ledger\\.md$",
+ "tools": [
+  "negative_battery.sh",
+  "extract_prehash.mjs",
+  "derive_battery.mjs",
+  "derive_realm_battery.mjs",
+  "harness_selftest.sh",
+  "runner_contract.sh",
+  "make_review_pack.sh",
+  "measure_exp22.mjs"
+ ],
+ "case_input_note": "derive_protocol.mjs and derive_worker.mjs moved from tools to case_inputs at v1.16: their SOURCE now carries invariants grid_check asserts (no __reads path, reads from read_grants, executor-asserted implementation_id), so they must be present in every scratch case for those assertions to run. The batteries stay tools \u2014 they are runners, not artifacts under test.",
+ "probes_pattern": "^probe_.*\\.mjs$",
+ "probe_roles": {
+  "probe_semid.mjs": "round 6 \u2014 semantic state identity",
+  "probe_cert.mjs": "round 5 \u2014 scheduler certificate",
+  "probe_worldalias_v02_repro.mjs": "round 8 \u2014 world aliasing",
+  "probe_support_v03_repro.mjs": "round 8.2 \u2014 support soundness",
+  "probe_sembudget_v1_repro.mjs": "round 6B \u2014 semantic film budget",
+  "probe_forkescape_v05_repro.mjs": "9B \u2014 the fork was not a boundary",
+  "probe_keytheft_v06_repro.mjs": "9C \u2014 the hidden key was not hidden",
+  "probe_maintainer_9d_repro.mjs": "9D \u2014 the coordinator was not sealed",
+  "probe_coordinator_alias_9d1_repro.mjs": "9D.1 \u2014 reachable aliases",
+  "probe_realm_9d2_repro.mjs": "9D.2 \u2014 nested values, and the shared realm",
+  "probe_ownfailopen_9d3_repro.mjs": "9D.3 \u2014 ownership failed open",
+  "probe_closureenv_repro.mjs": "9D.4 \u2014 the authority that was never an object; DECLARED, not repaired",
+  "probe_derivegrant_v02_repro.mjs": "DERIVE-v0.2 \u2014 the bypassable read footprint and the unverified implementation_id, frozen against v0.1.0 and CONFINED against live; the only PAIRED probe, and it gates",
+  "probe_coresem_v03_repro.mjs": "DERIVE-CORE-v1 \u2014 program_sem_id bound syntax and claimed semantics: add was JavaScript '+', bind() validated nothing, arity was unconstrained, and the footprint's ORDER was inside the semantic projection. Frozen against v0.2.0, CONFINED against live; PAIRED, and it gates",
+  "probe_stalegrant_v03_repro.mjs": "ROUND 17 \u2014 the GAP witness: containment, re-derivation and schema all pass on a result whose World has moved. Not a regression repro; there was no freshness check at all before it",
+  "probe_issuebind_v05_repro.mjs": "ROUND 17 \u2014 issuance authenticated the grant rather than the request, an options bag let a caller write authority content, and acceptance took both of its proofs from its caller. Frozen against the draft, CONFINED against live; PAIRED, and it gates",
+  "probe_traceforge_v06_repro.mjs": "ROUND 19 \u2014 read_trace was outside the semantic projection and therefore unchecked: a reversed trace validated and was accepted. Frozen against v0.5.0, CONFINED against live; PAIRED, and it gates",
+  "probe_execclaim_v07_repro.mjs": "ROUND 22 \u2014 the law said impersonation was closed while deriveLocally took the implementation identity as a caller parameter: JS impersonated C through acceptance. Frozen against v0.6.0, CONFINED against live; PAIRED, and it gates",
+  "probe_execreg_v08_repro.mjs": "P-2: registerExecutor was an assertion dressed as an observation \u2014 it launched nothing \u2014 and accept(\u2026, executor) put a proof back in the caller's hands, which is the round-17 shape one level up. Paired: 2 breach frozen, 5 confined live.",
+  "probe_execlaunch_v09_repro.mjs": "P-3/P-3F: the authority hashed one thing and executed another. artifact_files (evidence) and spawn() (action) were independent fields of one caller-supplied object, so declaring the genuine closure while spawning something else produced provenance 'observed' for an implementation that never ran \u2014 in both the derivation and film planes. Paired: 2 breach frozen, 5 confined live.",
+  "probe_semoracle_v10_repro.mjs": "P-4: acceptance took its semantic oracle from the claimant. accept(registry, req, res) let a caller supply the mapping from program_sem_id to program, so an issued const(5) request accepted as 999 under a registry-shaped object whose verify() blessed the issued id. Not a type problem \u2014 a real ProgramRegistry populated differently does it too. Paired: 2 breach frozen, 5 confined live.",
+  "probe_hostown_v11_repro.mjs": "P-5: an instanceof guard is satisfied by a subclass. A two-method EvilHost overriding run() and observationOf() passed the authority's host check while nothing executed. Paired: 2 breach frozen, 4 confined live.",
+  "probe_snapshot_v12_repro.mjs": "P-6/P-6b: untrusted data was validated while the caller still owned it. A getter read four times put an entrypoint outside its own hashed closure into the immutable catalog and the un-hashed worker ran; the same shape split a registry key from its value. Paired: 2 breach frozen, 5 confined live.",
+  "probe_reread_v13_repro.mjs": "P-7/P-7b: the issued request was authenticated as one value and used as another. wasIssued() hashed ONE read of every field and passed; execute() then re-read the caller's object for the family, for the host's canonicalisation and for the worker's structured clone, so a request answering const(5) to the first read and const(999) after it was issued as one program and executed as another, and acceptance returned implementation_provenance \"observed\" for it. The same 999 result under the frozen issued request is refused, so the forgery is exactly the caller's retained ownership. P-7b is the same defect on `res`, closed in the same round. P-7c is the same defect in ObservedExecutionHost.run(), which keyed the observation over read 1 of the invocation and launched read 2 \u2014 leaving a true-looking observation for an execution that did not happen. Paired: 3 breach frozen, 6 confined live."
+ },
+ "subdirs": {
+  "bridge": "cross-plane C bridge: ic32_canon.c + bridge_check.mjs (canonical BYTES, 48/48) and ic32_film.c + film_check.mjs (round 23: a semantic-film FRAME the native runtime originates). ic32_film.c #includes ic32_canon.c under IC32_CANON_NO_MAIN so the canonicalizer under the film is the same code the bridge gate replays, not a copy of it.",
+  "ic32_handoff": "Lane B pack v1, frozen",
+  "ic32_handoff_v2": "Lane B pack v2, frozen",
+  "ic32_handoff_v3": "Lane B pack v3, frozen \u2014 evidence-enable the existing ic32",
+  "v04_verbatim": "round-4 verbatim sources, historical"
+ },
+ "derivation_boundary": {
+  "status": "v0.7.0 \u2014 protocol proven in-process and across a worker; NOT yet the production derivation path",
+  "files": {
+   "derive_protocol.mjs": "program-as-data over a FROZEN core, canonical request/result schemas, authority grants separated from the observed read footprint, live-footprint freshness, and a DerivationAuthority that is the only constructor of a request and the only holder of acceptance",
+   "derive_battery.mjs": "45 falsifiers, in-process",
+   "derive_worker.mjs": "the far side; holds no parent reference, resolves programs from its own registry, reads only its grant snapshot, and asserts its own implementation_id",
+   "derive_realm_battery.mjs": "10 falsifiers across a real worker boundary",
+   "probe_derivegrant_v02_repro.mjs": "the two v0.1.0 defects, frozen \u2014 and the same witnesses run against live, which is what makes it a gate rather than a document",
+   "probe_coresem_v03_repro.mjs": "the four semantic gaps behind one program_sem_id, frozen at v0.2.0",
+   "probe_stalegrant_v03_repro.mjs": "every check passing on a result the World has moved past",
+   "probe_issuebind_v05_repro.mjs": "issuance bound to the grant instead of the request, frozen",
+   "probe_traceforge_v06_repro.mjs": "a forged execution trace accepted as evidence, frozen",
+   "probe_execclaim_v07_repro.mjs": "JS impersonating C through acceptance, frozen"
   },
-  "subdirs": {
-    "bridge": "cross-plane C bridge: ic32_canon.c + bridge_check.mjs (canonical BYTES, 48/48) and ic32_film.c + film_check.mjs (round 23: a semantic-film FRAME the native runtime originates). ic32_film.c #includes ic32_canon.c under IC32_CANON_NO_MAIN so the canonicalizer under the film is the same code the bridge gate replays, not a copy of it.",
-    "ic32_handoff": "Lane B pack v1, frozen",
-    "ic32_handoff_v2": "Lane B pack v2, frozen",
-    "ic32_handoff_v3": "Lane B pack v3, frozen — evidence-enable the existing ic32",
-    "v04_verbatim": "round-4 verbatim sources, historical"
+  "two_evidence_objects": {
+   "read_grants + grant_id": "the AUTHORITY GRANT \u2014 what the authority made available. A capability record, deliberately allowed to be broader than what is read, because under data-dependent traversal the authority cannot know the needed subset in advance. grant_id = H(canonical read_grants) binds the snapshot so it cannot be edited in flight.",
+   "read_footprint": "the OBSERVED DEPENDENCY RECORD \u2014 what the program actually consumed through a tracked read or scope. Freshness, invalidation, replay and support analysis key on THIS. Defining it as the grant would over-invalidate every derivation whose grant was wider than its reads, which under snapshot granting is all of them.",
+   "why_separate": "v0.1.0's prose said the footprint was 'the authority's record of what it read on the derivation's behalf'. That was two errors at once: it described a collapse that would break freshness, and the mechanism did not even implement the collapse \u2014 the worker sourced its read table from canonical_inputs, and {op:'input', name:'__reads'} returned the whole table with zero tracked reads."
   },
-  "derivation_boundary": {
-    "status": "v0.7.0 — protocol proven in-process and across a worker; NOT yet the production derivation path",
-    "files": {
-      "derive_protocol.mjs": "program-as-data over a FROZEN core, canonical request/result schemas, authority grants separated from the observed read footprint, live-footprint freshness, and a DerivationAuthority that is the only constructor of a request and the only holder of acceptance",
-      "derive_battery.mjs": "45 falsifiers, in-process",
-      "derive_worker.mjs": "the far side; holds no parent reference, resolves programs from its own registry, reads only its grant snapshot, and asserts its own implementation_id",
-      "derive_realm_battery.mjs": "10 falsifiers across a real worker boundary",
-      "probe_derivegrant_v02_repro.mjs": "the two v0.1.0 defects, frozen — and the same witnesses run against live, which is what makes it a gate rather than a document",
-      "probe_coresem_v03_repro.mjs": "the four semantic gaps behind one program_sem_id, frozen at v0.2.0",
-      "probe_stalegrant_v03_repro.mjs": "every check passing on a result the World has moved past",
-      "probe_issuebind_v05_repro.mjs": "issuance bound to the grant instead of the request, frozen",
-      "probe_traceforge_v06_repro.mjs": "a forged execution trace accepted as evidence, frozen",
-      "probe_execclaim_v07_repro.mjs": "JS impersonating C through acceptance, frozen"
-    },
-    "two_evidence_objects": {
-      "read_grants + grant_id": "the AUTHORITY GRANT — what the authority made available. A capability record, deliberately allowed to be broader than what is read, because under data-dependent traversal the authority cannot know the needed subset in advance. grant_id = H(canonical read_grants) binds the snapshot so it cannot be edited in flight.",
-      "read_footprint": "the OBSERVED DEPENDENCY RECORD — what the program actually consumed through a tracked read or scope. Freshness, invalidation, replay and support analysis key on THIS. Defining it as the grant would over-invalidate every derivation whose grant was wider than its reads, which under snapshot granting is all of them.",
-      "why_separate": "v0.1.0's prose said the footprint was 'the authority's record of what it read on the derivation's behalf'. That was two errors at once: it described a collapse that would break freshness, and the mechanism did not even implement the collapse — the worker sourced its read table from canonical_inputs, and {op:'input', name:'__reads'} returned the whole table with zero tracked reads."
-    },
-    "granting_model": "SNAPSHOT (model A): the authority resolves a bounded canonical world slice once, and both the executor and the re-deriving authority evaluate against those same bytes. Chosen over read-RPC (model B) because it is deterministic, films cleanly, and does not turn every primitive evaluation into a cross-realm round trip. The cost is least-authority: the grant may reveal more than the program reads. Confidentiality against the derivation realm is the trigger to revisit, and it is named here rather than discovered later.",
-    "claimed": "OBJECT authority does not cross: structured cloning refuses callables (DataCloneError), the worker resolves program_sem_id against its own registry, it can read only the grant snapshot the authority resolved, the returned footprint is validated as a SUBSET of that grant on the authority's own evidence before any re-derivation, the executor asserts implementation_id and the caller may only state a requirement against it, and a returned result is re-derived by the authority — on the semantic projection, so a conforming foreign implementation can agree — before it is evidence.",
-    "not_claimed": "determinism of a long-lived evaluator; host confinement; that any existing measureFn has been ported; that a NATIVE executor's registered identity is bound to its binary (the trusted launcher hashing what it execs is unbuilt — WHETHER observation exists is now mandatory, WHAT a native executable registers is not yet); that the World's lock composition around acceptance has been BUILT (specified, with the caller's obligation stated rather than enforced); and that any lowering into TRVM terms has been attempted.",
-    "frozen_core": "TRVM-DERIVE-CORE-v1. program_sem_id = H('TRVM-PROGRAM-v2' | core_sem_id | canonical AST) where core_sem_id = H(canonical CORE_SPEC), so the id commits SEMANTICS and not only syntax. v0.2.0 hashed the AST alone while the record said the language was deliberately not frozen — the two cannot both be true, and four behaviours could differ behind one id. Every v0.2.0 program id is retired.",
-    "footprint_is_a_set": "read_footprint is a canonical DEPENDENCY SET, sorted and deduplicated; access order with repeats lives in read_trace, which is excluded from the semantic projection alongside implementation_id. Depending on {a,b} must not become a different identity because one implementation visited a then b — execution strategy does not silently become semantics, the same principle that keeps ref_interactions out of conformance identity. The core still FIXES evaluation order so refusals and traces reproduce.",
-    "three_questions": {
-      "containment": "footprintWithinGrant — was every claimed read inside the snapshot this derivation received? HISTORICAL.",
-      "agreement": "validateForeignResult — does the semantic projection re-derive to the same canonical bytes? Also historical: it evaluates against the same snapshot.",
-      "freshness": "validateFootprintFresh — are those dependencies still current NOW? TEMPORAL, keyed on the footprint and never on a global vclock. All three are required; the first two can pass about a World that has moved."
-    },
-    "issuance": "An authority-issued request authenticates THE WHOLE REQUEST: issuance records request_id -> request_sem_id = H(canonical request), recomputed at acceptance. grant_id proves integrity only — a hash authenticates content to itself. The authority is the only constructor of a request, exactly one option (expected_implementation_id) may be requested, and acceptance is a METHOD closing over the issuance table and the live reader so no proof can arrive as an argument. A signature is added when the grant crosses a real trust boundary, is persisted and replayed, is delegated, or must be proved to an independent verifier.",
-    "acceptance_is_not_commitment": "accept() returns {validated, fresh_at_check} and NOT committable. One call cannot establish committability: the World can move between it returning and the caller applying. The composition that commits belongs to the World — acquire the authoritative lock, accept, deterministic prepared apply with no hostile callback in between, seal the receipt, release — and no lock capability is exported to reach it.",
-    "two_envelopes": {
-      "semantic_result": "value · witness · support · read_footprint. Determines portable meaning; this is what cross-implementation validation compares.",
-      "execution_evidence": "implementation_id · read_trace. Conformance and provenance. EXCLUDED from the comparison and NOT excluded from checking — the core fixes evaluation order, so a disagreeing trace is a conformance failure of the implementation. The semantic film will live here.",
-      "why": "v0.5.0 kept read_trace as a sibling of value and read_footprint, excluded it from the projection, and checked nothing about it: a reversed trace validated and was accepted. Non-semantic does not mean unverified, and a flat shape made the exclusion read as permission."
-    },
-    "three_objects": {
-      "semantic_result": "portable MEANING — what cross-implementation validation compares.",
-      "execution_evidence": "the execution CLAIM — what the result says happened. Checked for trace conformance against the authority's own re-derivation, and never mistaken for provenance.",
-      "host observation": "the only OBSERVATION. The authority records what it launched via an authority-issued executor handle; acceptance compares the request's expectation against THAT, and answers implementation-provenance-unavailable where none exists.",
-      "why": "round 19's two envelopes were one short. A conforming trace does not prove C executed anything, and neither does a string, and neither would a digest of the executable carried inside the same untrusted result."
-    }
+  "granting_model": "SNAPSHOT (model A): the authority resolves a bounded canonical world slice once, and both the executor and the re-deriving authority evaluate against those same bytes. Chosen over read-RPC (model B) because it is deterministic, films cleanly, and does not turn every primitive evaluation into a cross-realm round trip. The cost is least-authority: the grant may reveal more than the program reads. Confidentiality against the derivation realm is the trigger to revisit, and it is named here rather than discovered later.",
+  "claimed": "OBJECT authority does not cross: structured cloning refuses callables (DataCloneError), the worker resolves program_sem_id against its own registry, it can read only the grant snapshot the authority resolved, the returned footprint is validated as a SUBSET of that grant on the authority's own evidence before any re-derivation, the executor asserts implementation_id and the caller may only state a requirement against it, and a returned result is re-derived by the authority \u2014 on the semantic projection, so a conforming foreign implementation can agree \u2014 before it is evidence.",
+  "not_claimed": "determinism of a long-lived evaluator; host confinement; that any existing measureFn has been ported; that a NATIVE executor's registered identity is bound to its binary (the trusted launcher hashing what it execs is unbuilt \u2014 WHETHER observation exists is now mandatory, WHAT a native executable registers is not yet); that the World's lock composition around acceptance has been BUILT (specified, with the caller's obligation stated rather than enforced); and that any lowering into TRVM terms has been attempted.",
+  "frozen_core": "TRVM-DERIVE-CORE-v1. program_sem_id = H('TRVM-PROGRAM-v2' | core_sem_id | canonical AST) where core_sem_id = H(canonical CORE_SPEC), so the id commits SEMANTICS and not only syntax. v0.2.0 hashed the AST alone while the record said the language was deliberately not frozen \u2014 the two cannot both be true, and four behaviours could differ behind one id. Every v0.2.0 program id is retired.",
+  "footprint_is_a_set": "read_footprint is a canonical DEPENDENCY SET, sorted and deduplicated; access order with repeats lives in read_trace, which is excluded from the semantic projection alongside implementation_id. Depending on {a,b} must not become a different identity because one implementation visited a then b \u2014 execution strategy does not silently become semantics, the same principle that keeps ref_interactions out of conformance identity. The core still FIXES evaluation order so refusals and traces reproduce.",
+  "three_questions": {
+   "containment": "footprintWithinGrant \u2014 was every claimed read inside the snapshot this derivation received? HISTORICAL.",
+   "agreement": "validateForeignResult \u2014 does the semantic projection re-derive to the same canonical bytes? Also historical: it evaluates against the same snapshot.",
+   "freshness": "validateFootprintFresh \u2014 are those dependencies still current NOW? TEMPORAL, keyed on the footprint and never on a global vclock. All three are required; the first two can pass about a World that has moved."
   },
-  "status": "v0.13.0 — every authority operation consumes either an authority-owned object or ONE canonical snapshot made at entry: ownCanonical() at the top of authorize/wasIssued/execute/accept/observationOf/bindProgram, and the issuance table keeps the REQUEST rather than only its hash, so wasIssued answers 'what did I issue?' and no method re-reads the caller. Seven-rung supplier ladder closed; the ladder is one machine-readable record and live surfaces derive their count from it. NOT yet the production derivation path",
-  "subdir_case_inputs": [
-    "bridge/ic32_canon.c",
-    "bridge/bridge_check.mjs",
-    "bridge/ic32_film.c",
-    "bridge/film_check.mjs"
-  ],
-  "subdir_case_input_note": "Round 23: grid_check began asserting invariants on files inside subdirs (ic32_film.c must INCLUDE ic32_canon.c, film_check.mjs must exist), and the negative battery's case tree was FLAT — it copied case_inputs and tools into one directory and nothing else. The unperturbed baseline therefore failed on four absent files before any forgery was applied, which is exactly the contamination the round-14 note above records. Declared here so the case tree carries them and a deletion is a caught forgery rather than a broken instrument.",
-  "gating_probes": [
-    "probe_derivegrant_v02_repro.mjs",
-    "probe_coresem_v03_repro.mjs",
-    "probe_stalegrant_v03_repro.mjs",
-    "probe_issuebind_v05_repro.mjs",
-    "probe_traceforge_v06_repro.mjs",
-    "probe_execclaim_v07_repro.mjs",
-    "probe_execreg_v08_repro.mjs",
-    "probe_execlaunch_v09_repro.mjs",
-    "probe_semoracle_v10_repro.mjs",
-    "probe_hostown_v11_repro.mjs",
-    "probe_snapshot_v12_repro.mjs",
-    "probe_reread_v13_repro.mjs"
-  ],
-  "gating_probes_note": "The PAIRED probes, and the only ones that gate: each must still BREACH against its verbatim frozen copy and be CONFINED against live, so it fails if a future edit repairs the frozen side instead of the live one. Every other probe_*_repro.mjs freezes a boundary that is DECLARED OPEN and exits NONZERO BY DESIGN — running those as gates makes a review pack report four failures for witnesses that are behaving correctly. Round 23 did exactly that, by replacing a hand-typed list in verify.sh with a glob; the list lives here now and grid_check checks the Makefile against it, so the two cannot drift and neither is a glob."
+  "issuance": "An authority-issued request authenticates THE WHOLE REQUEST: issuance records request_id -> request_sem_id = H(canonical request), recomputed at acceptance. grant_id proves integrity only \u2014 a hash authenticates content to itself. The authority is the only constructor of a request, exactly one option (expected_implementation_id) may be requested, and acceptance is a METHOD closing over the issuance table and the live reader so no proof can arrive as an argument. A signature is added when the grant crosses a real trust boundary, is persisted and replayed, is delegated, or must be proved to an independent verifier.",
+  "acceptance_is_not_commitment": "accept() returns {validated, fresh_at_check} and NOT committable. One call cannot establish committability: the World can move between it returning and the caller applying. The composition that commits belongs to the World \u2014 acquire the authoritative lock, accept, deterministic prepared apply with no hostile callback in between, seal the receipt, release \u2014 and no lock capability is exported to reach it.",
+  "two_envelopes": {
+   "semantic_result": "value \u00b7 witness \u00b7 support \u00b7 read_footprint. Determines portable meaning; this is what cross-implementation validation compares.",
+   "execution_evidence": "implementation_id \u00b7 read_trace. Conformance and provenance. EXCLUDED from the comparison and NOT excluded from checking \u2014 the core fixes evaluation order, so a disagreeing trace is a conformance failure of the implementation. The semantic film will live here.",
+   "why": "v0.5.0 kept read_trace as a sibling of value and read_footprint, excluded it from the projection, and checked nothing about it: a reversed trace validated and was accepted. Non-semantic does not mean unverified, and a flat shape made the exclusion read as permission."
+  },
+  "three_objects": {
+   "semantic_result": "portable MEANING \u2014 what cross-implementation validation compares.",
+   "execution_evidence": "the execution CLAIM \u2014 what the result says happened. Checked for trace conformance against the authority's own re-derivation, and never mistaken for provenance.",
+   "host observation": "the only OBSERVATION. The authority records what it launched via an authority-issued executor handle; acceptance compares the request's expectation against THAT, and answers implementation-provenance-unavailable where none exists.",
+   "why": "round 19's two envelopes were one short. A conforming trace does not prove C executed anything, and neither does a string, and neither would a digest of the executable carried inside the same untrusted result."
+  }
+ },
+ "status": "v0.13.0 \u2014 every authority operation consumes either an authority-owned object or ONE canonical snapshot made at entry: ownCanonical() at the top of authorize/wasIssued/execute/accept/observationOf/bindProgram, and the issuance table keeps the REQUEST rather than only its hash, so wasIssued answers 'what did I issue?' and no method re-reads the caller. Seven-rung supplier ladder closed; the ladder is one machine-readable record and live surfaces derive their count from it. NOT yet the production derivation path",
+ "subdir_case_inputs": [
+  "bridge/ic32_canon.c",
+  "bridge/bridge_check.mjs",
+  "bridge/ic32_film.c",
+  "bridge/film_check.mjs"
+ ],
+ "subdir_case_input_note": "Round 23: grid_check began asserting invariants on files inside subdirs (ic32_film.c must INCLUDE ic32_canon.c, film_check.mjs must exist), and the negative battery's case tree was FLAT \u2014 it copied case_inputs and tools into one directory and nothing else. The unperturbed baseline therefore failed on four absent files before any forgery was applied, which is exactly the contamination the round-14 note above records. Declared here so the case tree carries them and a deletion is a caught forgery rather than a broken instrument.",
+ "gating_probes": [
+  "probe_derivegrant_v02_repro.mjs",
+  "probe_coresem_v03_repro.mjs",
+  "probe_stalegrant_v03_repro.mjs",
+  "probe_issuebind_v05_repro.mjs",
+  "probe_traceforge_v06_repro.mjs",
+  "probe_execclaim_v07_repro.mjs",
+  "probe_execreg_v08_repro.mjs",
+  "probe_execlaunch_v09_repro.mjs",
+  "probe_semoracle_v10_repro.mjs",
+  "probe_hostown_v11_repro.mjs",
+  "probe_snapshot_v12_repro.mjs",
+  "probe_reread_v13_repro.mjs"
+ ],
+ "gating_probes_note": "The PAIRED probes, and the only ones that gate: each must still BREACH against its verbatim frozen copy and be CONFINED against live, so it fails if a future edit repairs the frozen side instead of the live one. Every other probe_*_repro.mjs freezes a boundary that is DECLARED OPEN and exits NONZERO BY DESIGN \u2014 running those as gates makes a review pack report four failures for witnesses that are behaving correctly. Round 23 did exactly that, by replacing a hand-typed list in verify.sh with a glob; the list lives here now and grid_check checks the Makefile against it, so the two cannot drift and neither is a glob.",
+ "measurement_tools_note": "measure_exp22.mjs is a MEASUREMENT, not a gate. It drives the reference kernel over the canonical church_exp_2_2 state and prints the frame count, rule sequence, locus sequence and pre/post ids so the next round builds only what the measurement requires. It asserts nothing and exits 0 regardless \u2014 round 26's lesson was that the film emitter's blocker had been mis-stated because nobody measured which rules actually FIRE, and this exists so that cannot happen twice. Declared as a tool so grid_check's present-but-undeclared refusal does not fire and so the negative battery's case trees carry it."
 }

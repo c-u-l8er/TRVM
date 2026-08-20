@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   lowering.mjs — v0.7.1 — the source language reaches the governed runtime
+   lowering.mjs — v0.7.2 — the source language reaches the governed runtime
 
    Three logically independent relations, which is the whole design and not a
    decomposition for tidiness. Each can fail while the others hold: a lowering
@@ -119,7 +119,7 @@ import { createHash } from "node:crypto";
 import { canonicalBytes, ownCanonical, CORE_SEM_ID, programSemId } from "./derive_protocol.mjs";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const LOWERING_VERSION = "0.7.1";
+export const LOWERING_VERSION = "0.7.2";
 
 /* ── THE EXECUTABLE TARGET ENCODING ───────────────────────────────────────
    ic32's interaction net is linear: a variable used twice needs an explicit
@@ -1129,8 +1129,36 @@ export function verifyInstantiationReceiptOwned(template, inputs, receipt) {
   return { ok: true, closed_template: again.closed_template };
 }
 
-/** Re-emit independently, canonicalise with a SUPPLIED oracle, and compare. */
-export function verifyEmissionReceipt(closed_template, receipt, canonicaliseTarget) {
+/* ── THE EMISSION VERDICT IS RELATIVE TO AN ORACLE, and the name says so ──
+   B2.1.1 named this `verifyEmissionReceipt` and returned {ok:true}, which reads
+   as an absolute judgment. It is not. GPT's find:
+
+       verifyEmissionReceipt(T.church(2),
+         emissionReceipt(closedTemplateSemId(T.church(2)), "deadbeef"),
+         () => "deadbeef")                              →  { ok: true }
+
+   The receipt claims the emitted term's identity is `deadbeef`, and it verifies,
+   because the caller supplied an oracle that agrees. What the function proves is
+   *this receipt verifies AGAINST THIS CANONICALISER* — a perfectly good
+   parametric judgment, and a dangerous thing to spell like an absolute one in a
+   tree whose recurring finding is that a claimant must not nominate the oracle
+   that certifies the claim.
+
+   NOT A RUNG: no authority takes this function from an untrusted claimant and
+   turns its result into a verdict. The repair is the SHAPE, before something
+   does. `Against` in the name, and `makeEmissionVerifier` for the composition
+   root to bind the trusted canonicaliser ONCE so ordinary callers cannot pass
+   one at all. The relation module still does not choose the judge; the trusted
+   root does, which is where every other oracle in this tree is chosen.
+
+   NO ALIAS is kept for the old name. An alias would be a second path to the
+   same relation with the weaker spelling still available — the defect B2 removed
+   from lower(). */
+
+/** Re-emit independently and compare AGAINST A SUPPLIED ORACLE. The verdict is
+ *  relative to `canonicaliseTarget`; prefer a verifier bound by
+ *  makeEmissionVerifier at a trusted composition root. */
+export function verifyEmissionReceiptAgainst(closed_template, receipt, canonicaliseTarget) {
   // the canonicaliser is a CAPABILITY the caller grants, not data to snapshot —
   // the module defining a relation must not choose the oracle that judges it
   if (typeof canonicaliseTarget !== "function")
@@ -1138,11 +1166,22 @@ export function verifyEmissionReceipt(closed_template, receipt, canonicaliseTarg
   let owned;
   try { owned = [ownCanonical(closed_template), ownCanonical(receipt)]; }
   catch (e) { return { ok: false, reason: "verify-emission-not-canonical: " + e.message }; }
-  return verifyEmissionReceiptOwned(owned[0], owned[1], canonicaliseTarget);
+  return verifyEmissionReceiptOwnedAgainst(owned[0], owned[1], canonicaliseTarget);
+}
+
+/** Bind the trusted target canonicaliser ONCE, at a composition root that is
+ *  entitled to choose it, and hand out a two-argument verifier. Ordinary code
+ *  then cannot supply an oracle, because there is no parameter for one. */
+export function makeEmissionVerifier({ canonicaliseTarget }) {
+  if (typeof canonicaliseTarget !== "function")
+    throw new Error("emission-verifier-no-canonicaliser");
+  const bound = canonicaliseTarget;
+  return Object.freeze((closed_template, receipt) =>
+    verifyEmissionReceiptAgainst(closed_template, receipt, bound));
 }
 
 /** PRECONDITION: closed_template and receipt are already owned snapshots. */
-export function verifyEmissionReceiptOwned(closed_template, receipt, canonicaliseTarget) {
+export function verifyEmissionReceiptOwnedAgainst(closed_template, receipt, canonicaliseTarget) {
   if (receipt?.emission_sem_id !== EMISSION_SEM_ID)
     return { ok: false, reason: "verify-emission-relation-mismatch" };
   let term;
