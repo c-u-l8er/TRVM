@@ -2163,3 +2163,103 @@ contrived term that happens to contain both: coverage by construction, not cover
 over `{closed_template → target_term_sem_id}`, which becomes a good consolidation round once both
 adjacent relations carry independent evidence. (4) **C-side replay** — films flowing the other
 direction — unchanged and unclaimed.
+
+## Round 27, pass B4 — the pool closes, and three cleanups GPT ruled
+
+GPT accepted B3 and ruled on all three open questions, then asked for the ERA round to carry the
+cleanups rather than opening another preflight. All nine steps are in this pass except the last two,
+which are the next two rounds by his ordering.
+
+**299. EVERY RULE OF THE DECLARED POOL NOW HAS A POSITIVE NATIVE WITNESS.** `APP-ERA` and `DUP-ERA`
+were the last two, and they arrived **by construction, not by discovery** — two purpose-built minimal
+fixtures rather than one contrived term that happens to contain both:
+
+| | fixture | film |
+|---|---|---|
+| E-1 | `(* x)` | one `APP-ERA` frame at `t:`, normal form `*` |
+| E-2 | `!{a,b} = *; λz.a` | one `DUP-ERA` frame at `d:0`, normal form `λa.*` |
+| E-3 | `!{a,b} = *; (a b)` | `DUP-ERA` then `APP-ERA`, both projections live |
+
+E-2 earns its place twice: only the LEFT projection is reachable, so it takes the **one-sided path
+through `find_projections`** that no two-projection fixture exercises. E-3 is the other side of that —
+the sibling resolves through the substitution ic32 writes into `heap[D]` rather than through a slot
+the walk replaced. All three replay on `FloatRt` and `DescFloatRt`.
+
+**300. The corpus could never have found these.** The 24 conformance vectors contain **no ERA at
+all** — which is exactly how all 24 could agree while two of nine rules had never run natively. A
+coverage gap that a whole corpus is structurally blind to is not one measurement finds; it is one
+somebody has to construct a term for.
+
+**301. `APP-ERA` CARRIES ic32's `collect()`, and that was a measurement rather than an argument.**
+The runtime's own APP-ERA frees the discarded argument's built spine (stopping at DUP/VAR/ERA). Under
+free scheduling rather than demand-driven `whnf`, "the discarded argument is uniquely owned" is an
+assumption, and a wrongly freed slot would be reallocated and show up as a post-state divergence. It
+is kept — the runtime under test must be the runtime that ships — and the C↔JS agreement on the ERA
+fixtures is what says it is safe here, not the comment in `ic32.c`.
+
+**302. THE SCOPE PREDICATE STOPPED NAMING A RULE, on its fourth move.** dup PRESENCE → dup
+ENABLEDNESS → the two ERA rules → nothing rule-shaped at all. **Twice** the grid assertion pinning it
+became a ratchet blocking the round that closed the gap. What `grid_check` asserts now is the durable
+property every one of those four spellings was an instance of: *an enumerated rule the emitter cannot
+fire refuses BY NAME (`film-rule-not-implemented`) rather than being silently skipped.* The same
+disease, one level up, produced the second generalisation: the `@1`-is-history assertion had to be
+edited each time the law superseded, so it now checks the SHAPE — **exactly one canonical revision,
+every superseded one on the record and saying so** — and will not need editing at `@4`.
+
+**303. GPT's ruling on the one-interaction guard, taken with the addition he asked for.** The guard
+stays **POST-HOC**: it measures what the shipped runtime *did*, including any future change inside
+`fire()` or `whnf()`, where a structural pre-check could only measure what we predict. The prediction
+behind it is now **measured separately** rather than left as prose — `ic32_film --probe-whnf` asks the
+**one** classifier what heads it admits and reports, per class:
+
+```
+DUP-LAM · DUP-SUP= · DUP-SUP! · DUP-ERA · DUP-VAR · DUP-APP
+    interaction delta 0    canonical semantic state unchanged
+```
+
+**The second clause is the one a counter alone would miss.** `whnf` memoizes — it writes a stuck
+application's reduced head back into its slot — **without counting an interaction**. That is fine
+precisely because the canonical state does not move, and "fine" is a thing to check. No second inline
+classifier was added to do this: two semantic recognizers can drift, and this tree has paid for
+mechanism duplication twice.
+
+**304. AND THE CAVEAT IS RECORDED, not discovered later.** The post-hoc guard is sound because the
+emitter is **FAIL-STOP** — a refusal exits, so a heap mutated before the guard fired never becomes
+accepted evidence. If `ic32_film` ever becomes a persistent service, that needs transactional scratch
+state or rollback. In the file, in the law, and here.
+
+**305. CANONICAL LOCUS INJECTIVITY IS NOW A CHECKED PRECONDITION — and GPT was right that it is not a
+non-question.** The locus is committed into `frame_id`, so if one redex could legitimately be named
+`t:arg.bod` and `v:3:arg.bod` there would be **two canonical frame identities for the same pre, rule
+and post**, and the D-7 uniqueness result would gain an exception. The representation makes it
+expressible: each `findAppRedexes` call carries its own visited set, so a node reachable both from the
+root and from inside a dup value is enumerated twice. **Physical identity is per-runtime and not
+comparable across implementations**, so each side checks its own: the emitter refuses
+`film-locus-alias`, and `I-1` computes the same property on the kernel's node graph — **44 distinct
+enabled redexes across 21 states of `church_exp_2_2`, 0 carrying more than one canonical locus**.
+Reported even at zero: *a diagnostic that only speaks when it fires is indistinguishable from one that
+was never wired in.* Precedence between two spellings is **UNRULED**, so refusing is the honest
+answer; picking one silently would decide a rule nobody wrote down.
+
+**306. THE FAMILY ID LOST ITS RELEASE VERSION** — `impl-c-ic32-film-v0.1.0` → **`impl-c-ic32-film`**.
+GPT's ruling on the three-layer ontology: the **family** is the lineage and is stable across ordinary
+artifact releases; the **digest** is which exact bytes ran and moves on every build; the **session** is
+which launch. The old name sat beside a v0.3.0 binary for three releases — if every release is meant
+to change the family, the digest is doing that job twice; if it is not, semver in the name is
+guaranteed to drift and nothing checks it. **No compensating `implementation_version` field**, because
+the digest is the provenance. **The frozen probes keep the old string**: `probe_execlaunch_v09_repro.mjs`
+is a dated record of what the catalog said in its era, and rewriting a frozen witness to agree with
+the present falsifies the witness.
+
+**307. Gate at B4.** grid **v1.42.0** — 89 entries · `bridge/ic32_film.c` **0.4.0** · negative battery
+**298/298** · film **32/32** · lowering 23/23 · bridge 48/48 · derive 45/45 · realm 24/24 ·
+**measure-compare 35/35 (non-gating)** — the corpus, three film fixtures, three ERA fixtures and five
+single-dup-head fixtures, with **0 aliased loci**. `cert_id a08ee15d…` byte-identical —
+**thirty-seventh** consecutive round.
+
+**308. STILL OPEN, in GPT's order.** (1) **BUDGET_EXHAUSTED as native film evidence** rather than the
+typed refusal it is now. (2) **`EMISSION_CONFORMANCE-v1`** over `{closed_template → target_term_sem_id}`.
+Also unclaimed and unchanged: **C-side replay** (films flow C→JS only), canonical-locus alias
+**precedence** if a well-formed fixture ever produces one, and a direct negative fixture for
+`film-projection-not-unique` if the representation can express two reachable matching projections
+safely.

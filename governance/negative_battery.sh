@@ -996,25 +996,41 @@ for e in g['law_registry']['entries']:
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 # ── round 23: the execution plane originates evidence ───────────────────────
-run_case film-law-deleted "law film.native-emission@2 missing" "
+run_case film-law-deleted "law film.native-emission@3 missing" "
 import json
 g = json.load(open('invariant-grid.json'))
 g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
                                 if e['id'] != 'film.native-emission']
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
-run_case film-history-scrubbed "must stay on the record as history" "
+run_case film-history-scrubbed "must have EXACTLY ONE canonical revision, that revision must be the" "
 import json
 g = json.load(open('invariant-grid.json'))
 g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
                                 if not (e['id'] == 'film.native-emission' and e['revision'] == 1)]
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
-run_case film-orders-collapsed "ENUMERATION order and the LOCUS INDEX order are different" "
+run_case film-history-unannotated "must have EXACTLY ONE canonical revision, that revision must be the" "
 import json
 g = json.load(open('invariant-grid.json'))
 for e in g['law_registry']['entries']:
     if e['id'] == 'film.native-emission' and e['revision'] == 2:
+        e.pop('revision_note', None)
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case film-two-canonical "must have EXACTLY ONE canonical revision, that revision must be the" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'film.native-emission' and e['revision'] == 2:
+        e['canonical'] = True
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case film-orders-collapsed "ENUMERATION order and the LOCUS INDEX order are different" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'film.native-emission' and e['revision'] == 3:
         e['statement'] = e['statement'].replace('BOTH ARE LOAD-BEARING', 'they are equivalent')
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
@@ -1022,7 +1038,7 @@ run_case film-measurement-unrecorded "measured before it was asserted" "
 import json
 g = json.load(open('invariant-grid.json'))
 for e in g['law_registry']['entries']:
-    if e['id'] == 'film.native-emission' and e['revision'] == 2:
+    if e['id'] == 'film.native-emission' and e['revision'] == 3:
         e['statement'] = e['statement'].replace('TRANSCRIPTION THEOREM', 'weaker claim')
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
@@ -1030,7 +1046,7 @@ run_case film-terminal-by-loop-exit "concluded only after a fresh full-pool enum
 import json
 g = json.load(open('invariant-grid.json'))
 for e in g['law_registry']['entries']:
-    if e['id'] == 'film.native-emission' and e['revision'] == 2:
+    if e['id'] == 'film.native-emission' and e['revision'] == 3:
         e['statement'] = e['statement'].replace('FRESH FULL-POOL ENUMERATION', 'loop exit')
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
@@ -1081,9 +1097,14 @@ src = open('bridge/ic32_film.c').read()
 src = src.replace('film-not-quiescent-at-terminal', 'film-terminal-noted')
 open('bridge/ic32_film.c','w').write(src)"
 
-run_case film-era-scope-unnamed "must CHECK pool-quiescence at the terminal" "
+run_case film-unhandled-rule-unnamed "refuse an unhandled enumerated rule BY NAME" "
 src = open('bridge/ic32_film.c').read()
-src = src.replace('film-era-rule-not-implemented', 'film-rule-skipped')
+src = src.replace('film-rule-not-implemented', 'film-rule-skipped')
+open('bridge/ic32_film.c','w').write(src)"
+
+run_case film-locus-alias-blessed "must REFUSE a canonical-locus alias" "
+src = open('bridge/ic32_film.c').read()
+src = src.replace('film-locus-alias', 'film-locus-duplicate-ok')
 open('bridge/ic32_film.c','w').write(src)"
 
 run_case film-budget-untyped "must have a TYPED REFUSAL for the budget" "

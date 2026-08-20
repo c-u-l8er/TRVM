@@ -53,7 +53,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
-  parse, extrude, FloatRt, semStateId, semStateSignature, readback, semId,
+  parse, extrude, FloatRt, semStateId, semStateSignature, readback, semId, chase,
   findFloatRedexes, semLocusOf, fireFloat, liveDiscoveryOrder, PLANE_POOL_FREE, PLANE_OF,
 } from "../trvm_law_kernel.mjs";
 
@@ -69,11 +69,47 @@ const ROOT = resolve(HERE, "..");
 const BIN = process.env.TRVM_FILM_BIN ?? join(HERE, "ic32_film");
 const BUDGET = 4096;
 
-/* The rules the native emitter declares OUT OF SCOPE this round. Named once,
-   here, because the comparator has to know what a refusal means — not because
-   the JS relation has any such notion. exp_2_2 exercises neither, which is the
-   measured fact that put them out of scope. */
-const NATIVE_UNIMPLEMENTED = new Set(["APP-ERA", "DUP-ERA"]);
+/* The rules the native emitter declares OUT OF SCOPE. EMPTY at v0.4.0: the two
+   ERA rules left this set when their dedicated witnesses were built, and the
+   set is kept rather than deleted because the comparator has to know what a
+   refusal MEANS, and the next unimplemented rule will need somewhere to be
+   declared. An empty set here is a claim — every rule of the declared pool has
+   a native handler — and film_check derives the same sentence from the film. */
+const NATIVE_UNIMPLEMENTED = new Set([]);
+
+/* ── canonical locus injectivity, PER RUNTIME ─────────────────────────────
+   GPT's ruling, B3 §(c): within one enabled semantic state, canonical locus
+   assignment must be injective over semantic redex identity — one redex, at
+   most one canonical locus. The locus is committed into frame_id, so two
+   spellings of one transition would be two canonical frame identities for the
+   same pre, rule and post.
+
+   Physical identity is not comparable across implementations, so this is NOT a
+   C-vs-JS field: each side checks its own and the comparator reports both. The
+   native side refuses `film-locus-alias`; this is the same property on the
+   kernel's node graph, where a redex is identified by the NODE OBJECT the path
+   resolves to (or by the cell id for a dup). */
+const redexNode = (frt, root, r) => {
+  if (r.kind === "dup") return `dup:${r.id}`;
+  let t = chase(frt, r.kind === "app" ? root : frt.heap.get(r.id)?.val);
+  for (const k of r.path) {
+    if (!t || typeof t !== "object" || !(k in t)) return null;
+    t = chase(frt, t[k]);
+  }
+  return t ?? null;
+};
+const aliasedLoci = (frt, root, rx, order) => {
+  const byId = new Map();
+  for (const r of rx) {
+    const id = redexNode(frt, root, r);
+    if (id === null) continue;
+    if (!byId.has(id)) byId.set(id, new Set());
+    byId.get(id).add(String(semLocusOf(r, order)));
+  }
+  let n = 0;
+  for (const [, locs] of byId) if (locs.size > 1) n++;
+  return n;
+};
 
 /* ── the JS reference measurement ─────────────────────────────────────────
    The kernel's own enumeration, its own locus construction, its own fire.
@@ -89,6 +125,7 @@ function measureJS(term) {
   const rows = [], fire = new Map();
   const loci = { "t:": 0, "d:": 0, "v:": 0 };
   const initial = semStateId(frt, root);
+  let aliases = 0;
 
   for (let n = 0; ; n++) {
     const rx = findFloatRedexes(frt, root, PLANE_POOL_FREE);
@@ -110,6 +147,7 @@ function measureJS(term) {
        available — and the difference only becomes visible the first time a
        strategy changes. Diagnostic, not a film field: see the header. */
     const enabledSet = rx.map((r) => `${String(semLocusOf(r, order))}:${r.rule}`).join(" ");
+    aliases += aliasedLoci(frt, root, rx, order);
     const after = fireFloat(frt, root, pick);
     root = after.root;
     const rule = after.rule ?? pick.rule;
@@ -136,7 +174,7 @@ function measureJS(term) {
     outcome: "film", initial, rows,
     terminal: { termination: "NORMAL_FORM", steps: rows.length, final, remaining },
     nf: rb.str, nfid: semId(rb.str), siglen,
-    fire, loci,
+    fire, loci, aliases,
     note: `readback interactFired=${rb.interactFired} collapseFired=${rb.collapseFired} liveCount=${rb.liveCount}`,
   };
 }
@@ -255,6 +293,20 @@ else {
   fixtures.push({ name: "film/apply_id", term: "(λx.λt.(t x) λy.y)" });
   fixtures.push({ name: "film/lowered_add_2_3", term: `((${ADD} ${C2}) ${C3})` });
   fixtures.push({ name: "film/dup_sup_enabled", term: "!{a,b} = {λx.x,λy.y}; (a b)" });
+  /* THE ERA FIXTURES. Two purpose-built minimal terms, not one contrived term
+     that happens to contain both — coverage by construction. The conformance
+     corpus contains no ERA at all, which is why the whole 24 vectors could
+     agree while two of the nine declared rules had never run natively. */
+  fixtures.push({ name: "era/app_era_minimal", term: "(* x)" });
+  fixtures.push({ name: "era/dup_era_minimal", term: "!{a,b} = *; λz.a" });
+  fixtures.push({ name: "era/dup_era_both_projections", term: "!{a,b} = *; (a b)" });
+  /* the six admitted dup head classes, as FILMS — the whnf-neutrality probe
+     measures the classifier's precondition on these same shapes */
+  fixtures.push({ name: "head/dup_lam", term: "!{a,b} = λx.x; (a b)" });
+  fixtures.push({ name: "head/dup_sup_eq", term: "!&1{a,b} = &1{λx.x,λy.y}; (a b)" });
+  fixtures.push({ name: "head/dup_sup_ne", term: "!&1{a,b} = &2{λx.x,λy.y}; (a b)" });
+  fixtures.push({ name: "head/dup_var", term: "!{a,b} = S; (a b)" });
+  fixtures.push({ name: "head/dup_app", term: "!{a,b} = (S y); (a b)" });
 }
 
 if (!existsSync(BIN)) {
@@ -263,12 +315,13 @@ if (!existsSync(BIN)) {
   process.exit(1);
 }
 
-let differed = 0, agreed = 0;
+let differed = 0, agreed = 0, jsAliases = 0, aliasFixtures = [];
 const interesting = [];
 for (const f of fixtures) {
   const r = compare(f.name, f.term);
   if (r.agree) {
     agreed++;
+    if (r.js?.aliases) { jsAliases += r.js.aliases; aliasFixtures.push(f.name); }
     const rows = r.js?.rows?.length ?? 0;
     if (rows) {
       const dv = (r.js.loci["d:"] ?? 0) + (r.js.loci["v:"] ?? 0);
@@ -304,6 +357,15 @@ if (differed) {
   console.log("  law kernel's reference relation produce the same frames, loci, semantic ids and terminals.");
   console.log("  Dup-plane coverage among them:");
   for (const s of interesting) console.log(`    · ${s}`);
+  /* PER-RUNTIME, and reported even when it is zero. A diagnostic that only
+     speaks up when it fires is indistinguishable from a diagnostic that was
+     never wired in — and this one's whole value is the standing zero. */
+  console.log(`  Canonical-locus injectivity (JS side, per-runtime — physical identity is not comparable`);
+  console.log(`  across implementations): ${jsAliases} aliased redexes across ${agreed} fixtures` +
+    `${aliasFixtures.length ? ` — in ${aliasFixtures.join(", ")}` : ""}. The native side checks its own`);
+  console.log(`  and refuses film-locus-alias; a redex reachable both from the root and from inside a dup`);
+  console.log(`  value is enumerable under a t: AND a v: locus, and two spellings of one transition would`);
+  console.log(`  be two frame_ids for the same pre, rule and post.`);
   console.log("  This is a MEASUREMENT, not a conformance claim: nothing here is committed, replayed or signed.");
 }
 process.exit(differed ? 1 : 0);

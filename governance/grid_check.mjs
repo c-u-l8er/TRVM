@@ -225,7 +225,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0", "1.35.0", "1.36.0", "1.37.0", "1.38.0", "1.39.0", "1.40.0", "1.41.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0", "1.35.0", "1.36.0", "1.37.0", "1.38.0", "1.39.0", "1.40.0", "1.41.0", "1.42.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -1136,15 +1136,46 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
       }
       // ── v1.24 / v1.41: the execution plane originates evidence ────────
       {
-        const nf = entries.find((x) => x.id === "film.native-emission" && x.revision === 2);
+        const nf = entries.find((x) => x.id === "film.native-emission" && x.revision === 3);
         ok(!!nf && nf.canonical === true && nf.status === "PROPERTY-TESTED",
-          "law film.native-emission@2 missing, non-canonical, or not PROPERTY-TESTED (v1.41)");
+          "law film.native-emission@3 missing, non-canonical, or not PROPERTY-TESTED (v1.42)");
         const nf1 = entries.find((x) => x.id === "film.native-emission" && x.revision === 1);
-        ok(!!nf1 && nf1.canonical === false && /SUPERSEDED/i.test(nf1.revision_note ?? ""),
-          "film.native-emission@1 must stay on the record as history. It is not WRONG about anything " +
-          "it claims — it is narrower than what is now witnessed — and it carries the record of the " +
-          "two scope corrections (dup PRESENCE to ENABLEDNESS; the readback interaction-count check " +
-          "removed for being accidentally true) that @2 does not repeat");
+        /* GENERALISED at v1.42 rather than extended to name @2 as well. This
+           law line has superseded twice in three rounds and each time this
+           check had to be edited to name one more revision — a smaller version
+           of the ratchet directly below: an assertion that enumerates the
+           current revisions goes stale on the next one. What holds durably is
+           the SHAPE — exactly one canonical revision, every superseded one
+           still on the record and saying so. None of them is WRONG about what
+           it claims; each is narrower than what came after, and @1 in
+           particular carries the readback interaction-count record that no
+           later revision repeats (asserted separately below). */
+        const nfAll = entries.filter((x) => x.id === "film.native-emission");
+        const nfCanon = nfAll.filter((x) => x.canonical === true);
+        const nfStale = nfAll.filter((x) => x.canonical !== true);
+        /* CONTIGUITY IS PART OF IT, and leaving it out was a real weakening the
+           battery caught in one run. The first version of this generalisation
+           asserted only "one canonical, all stale annotated" — under which
+           DELETING @1 outright passes, because what remains is still one
+           canonical and one annotated stale. The forgery for it went on being
+           caught, but by a DIFFERENT assertion further down that happens to
+           require @1 to exist (the ACCIDENTALLY TRUE record). That is the
+           coincidental-second-occurrence species this tree has now hit four
+           times: an assertion satisfied by something other than the property it
+           was written for. Revisions must run 1..N with none missing, so a
+           withdrawn round cannot hide behind a survivor. */
+        const nfRevs = nfAll.map((x) => x.revision).sort((a, b) => a - b);
+        const contiguous = nfRevs.every((r, i) => r === i + 1);
+        ok(nfAll.length >= 2 && nfCanon.length === 1 && contiguous
+             && nfCanon[0].revision === nfRevs[nfRevs.length - 1]
+             && nfStale.every((x) => /SUPERSEDED|history/i.test(x.revision_note ?? "")),
+          `film.native-emission must have EXACTLY ONE canonical revision, that revision must be the ` +
+          `LATEST, and every superseded one must still be on the record saying so — found revisions ` +
+          `[${nfRevs.join(", ")}], ${nfCanon.length} canonical` +
+          `${nfCanon.length === 1 ? ` (@${nfCanon[0].revision})` : ""}, ` +
+          `${nfStale.filter((x) => /SUPERSEDED|history/i.test(x.revision_note ?? "")).length}/${nfStale.length} ` +
+          `annotated${contiguous ? "" : ", NOT CONTIGUOUS"}. Withdrawing a superseded revision loses ` +
+          `the round it recorded; leaving two canonical leaves a reader no way to know which binds`);
         /* THE FLOAT-PLANE CLAIM, and the three sentences of it that a later
            round could quietly lose. The locus families and the two-order
            distinction are not decoration: a `d:` index is what makes the film
@@ -1154,28 +1185,28 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
            real redex. */
         ok(!!nf && /t: a structural path/.test(nf.statement ?? "")
              && /DISCOVERY INDEX over live cells/.test(nf.statement ?? ""),
-          "film.native-emission@2 must state the three canonical locus families and say what a d: " +
+          "film.native-emission@3 must state the three canonical locus families and say what a d: " +
           "locus IS. An index into the live discovery order and a heap address are indistinguishable " +
           "on one allocator and only one of them replays on another");
         ok(!!nf && /BOTH ARE LOAD-BEARING/.test(nf.statement ?? ""),
-          "film.native-emission@2 must keep the record that the ENUMERATION order and the LOCUS INDEX " +
+          "film.native-emission@3 must keep the record that the ENUMERATION order and the LOCUS INDEX " +
           "order are different traversals. Collapsing them is the cheapest available 'simplification' " +
           "and it yields a locus that names a real redex which is not the redex that fired — measured, " +
           "not feared: the perturbation differs on 12 corpus fixtures");
         ok(!!nf && /TRANSCRIPTION THEOREM/.test(nf.statement ?? "")
              && /MEASURED BEFORE IT WAS ASSERTED/.test(nf.statement ?? ""),
-          "film.native-emission@2 must record that the relation was measured before it was asserted " +
+          "film.native-emission@3 must record that the relation was measured before it was asserted " +
           "and that no expected table lives in the emitter. A conformance theorem whose expected " +
           "values came from the other implementation is a transcription theorem, and nothing in the " +
           "artifact would show it");
         ok(!!nf && /FRESH FULL-POOL ENUMERATION/.test(nf.statement ?? ""),
-          "film.native-emission@2 must state that the terminal is concluded only after a fresh " +
+          "film.native-emission@3 must state that the terminal is concluded only after a fresh " +
           "full-pool enumeration. 'The loop ended' and 'the rules I implement are exhausted' are the " +
           "two ways a false normal form gets written down, and this fixture is the tree's own witness " +
           "for the second");
         ok(!!nf && /SCOPE, CHECKED RATHER THAN ASSUMED/i.test(nf.statement ?? "")
              && /REFUSED BY NAME/.test(nf.statement ?? ""),
-          "film.native-emission@2 no longer states its scope as CHECKED refusals. An emitter that " +
+          "film.native-emission@3 no longer states its scope as CHECKED refusals. An emitter that " +
           "silently skipped what it cannot do would be claiming the general case with a fixture's " +
           "evidence — and v0.1.0's scope was stated by the WRONG predicate (dup presence rather than " +
           "dup enabledness), which a refusal makes visible and a silence would not have");
@@ -1192,27 +1223,44 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "being accidentally true. A check that passes because the fixture is trivial is not evidence, " +
           "and deleting it without saying why would leave the strongest-sounding sentence unexplained");
         ok(!!nf && /replaySemFilm/.test(nf.statement ?? "") && /WITHOUT normalization or translation/.test(nf.statement ?? ""),
-          "film.native-emission@2 must name the kernel's OWN replaySemFilm and say the frame is " +
+          "film.native-emission@3 must name the kernel's OWN replaySemFilm and say the frame is " +
           "accepted without translation — a checker written for the occasion checks the occasion");
         ok(!!nf && /film_planes/.test(nf.statement ?? ""),
-          "film.native-emission@2 must keep the two transition systems apart. The TRVM calculus film " +
+          "film.native-emission@3 must keep the two transition systems apart. The TRVM calculus film " +
           "and the derivation evidence relation share HOST infrastructure and no semantics, and round " +
           "15 §61 exists because a session could otherwise finish the second and write that the first " +
           "was done");
         for (const f of ["bridge/ic32_film.c", "bridge/film_check.mjs"])
-          ok(existsSync(A(f)), `film.native-emission@2 cites ${f}, which is absent`);
+          ok(existsSync(A(f)), `film.native-emission@3 cites ${f}, which is absent`);
         const filmSrc = existsSync(A("bridge/ic32_film.c")) ? readFileSync(A("bridge/ic32_film.c"), "utf8") : "";
         ok(/#define IC32_CANON_NO_MAIN/.test(filmSrc) && /#include "ic32_canon\.c"/.test(filmSrc),
           "ic32_film.c must INCLUDE ic32_canon.c rather than copy it — the canonicalizer beneath the " +
           "film has to be the same code the 48/48 bridge gate replays, or the film round is proving a " +
           "canonicalizer nothing else has ever checked");
-        ok(/film-not-quiescent-at-terminal/.test(filmSrc) && /film-era-rule-not-implemented/.test(filmSrc),
-          "ic32_film.c must CHECK pool-quiescence at the terminal and refuse its OUT-OF-SCOPE rules by " +
-          "name. The scope predicate has now moved twice and each move was a correction: v0.1.0 refused " +
-          "on dup PRESENCE (wrong — the lowered add carries dups and fires none), v0.2.0 on dup " +
-          "ENABLEDNESS (right for v0.2.0, and a RATCHET the moment the dup rules were built), v0.3.0 on " +
-          "the two ERA rules the church_exp_2_2 measurement showed are the ones with no witness. An " +
-          "assertion that requires a stale scope to stay stale would have blocked the round that closed it");
+        /* THE SCOPE PREDICATE HAS MOVED FOUR TIMES AND EVERY MOVE WAS A
+           CORRECTION: v0.1.0 refused on dup PRESENCE (wrong — the lowered add
+           carries dups and fires none), v0.2.0 on dup ENABLEDNESS (right then,
+           a RATCHET the moment the dup rules were built), v0.3.0 on the two
+           ERA rules the church_exp_2_2 measurement identified, v0.4.0 on
+           nothing rule-shaped at all, because every rule of the pool now has a
+           witness. So this assertion no longer names ANY RULE. What it pins is
+           the DURABLE property those four spellings were each an instance of:
+           a rule the emitter cannot fire must refuse BY NAME rather than be
+           silently skipped, and the terminal must be re-derived. Pinning a
+           rule name here would have blocked each of the three rounds that
+           closed a gap — which is the ratchet species B1.2.1 named, and this
+           check has now been on the wrong side of it twice. */
+        ok(/film-not-quiescent-at-terminal/.test(filmSrc) && /film-rule-not-implemented/.test(filmSrc),
+          "ic32_film.c must CHECK pool-quiescence at the terminal and refuse an unhandled enumerated " +
+          "rule BY NAME (film-rule-not-implemented). An emitter that silently skipped what it cannot " +
+          "fire would be claiming the general case with a fixture's evidence, and the gap would be " +
+          "invisible in the artifact");
+        ok(/film-locus-alias/.test(filmSrc),
+          "ic32_film.c must REFUSE a canonical-locus alias. A node reachable both from the root and " +
+          "from inside a dup value is enumerable under a t: AND a v: locus; the locus is committed " +
+          "into frame_id, so two spellings of one transition would be two canonical frame identities " +
+          "for the same pre, rule and post. Precedence between them is UNRULED, and refusing is the " +
+          "honest answer to an unruled question — picking one silently decides a rule nobody wrote");
         ok(/film-projection-not-unique/.test(filmSrc),
           "ic32_film.c must REFUSE rather than choose when a dup cell's projection is not unique. ic32 " +
           "fires a dup from a DEMANDED SIDE and replaces the projection where it stands, so the film " +
@@ -1223,7 +1271,7 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
            fixture belongs, and in neither the emitter nor the comparator, which
            is where an expected answer would have to live to do any harm. */
         for (const f of ["bridge/ic32_film.c", "bridge/measure_compare.mjs"]) {
-          ok(existsSync(A(f)), `film.native-emission@2 cites ${f}, which is absent`);
+          ok(existsSync(A(f)), `film.native-emission@3 cites ${f}, which is absent`);
           const src = existsSync(A(f)) ? readFileSync(A(f), "utf8") : "";
           ok(!/&1001\{c0,c1\}/.test(src),
             `${f} contains the church_exp_2_2 fixture term. The FIXTURE belongs in film_check.mjs; an ` +

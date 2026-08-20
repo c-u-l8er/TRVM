@@ -72,7 +72,11 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const CANON = join(HERE, "bridge", "ic32_canon");
 const FILM = join(HERE, "bridge", "ic32_film");
 const C_CANON = "impl-c-ic32-canon-v0.1.0";
-const C_FILM = "impl-c-ic32-film-v0.1.0";
+/* Family identity is STABLE across artifact releases (GPT's B3 ruling): the
+   lineage is the family, the bytes are executable_artifact_id, the launch is
+   executor_session_id. The old name carried a release version that sat three
+   versions behind the binary. Frozen probes keep the era string. */
+const C_FILM = "impl-c-ic32-film";
 
 let fail = false, ran = 0;
 const R = (id, ok, note) => { ran++; if (!ok) fail = true;

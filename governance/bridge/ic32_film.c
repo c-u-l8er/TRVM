@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   ic32_film.c — v0.3.0 — the execution plane originates DUP/SUP evidence
+   ic32_film.c — v0.4.0 — the execution plane originates evidence for EVERY declared rule
 
    v0.2.0 could emit multi-frame films but fired only APP-LAM: a term where any
    DUP-* rule became enabled was refused by name. That refusal was honest and it
@@ -13,13 +13,29 @@
 
        APP-SUP · DUP-LAM · DUP-SUP= · DUP-SUP! · DUP-VAR · DUP-APP
 
-   ERA IS DELIBERATELY NOT AMONG THEM. The JS measurement of church_exp_2_2
-   (governance/measure_exp22.mjs) established that neither APP-ERA nor DUP-ERA
-   fires on this fixture — two rules unexercised, not the one that was
-   anticipated. Both are ENUMERATED here, because enabledness feeds the terminal
-   and a rule left out of the pool would let a false NORMAL_FORM through; both
-   REFUSE TO FIRE, by name, because a handler with no witness is coverage by
-   hope. The dedicated ERA fixtures are the next round.
+   ERA was deliberately not among them, because the JS measurement of
+   church_exp_2_2 established that neither APP-ERA nor DUP-ERA fires on that
+   fixture — two rules unexercised, not the one that was anticipated — and a
+   handler with no witness is coverage by hope.
+
+   v0.4.0 CLOSES THE POOL. Both ERA rules fire, and they arrived with the two
+   purpose-built minimal fixtures that justify them rather than as a pair of
+   handlers hoping for a term: `(* x)` is one APP-ERA frame, and
+   `!{a,b} = *; λz.a` is one DUP-ERA frame with a single live projection.
+   COVERAGE BY CONSTRUCTION, not coverage because one large program happened to
+   contain everything. Every rule of the declared pool now has a positive
+   native witness, and film_check derives that sentence from the films rather
+   than stating it.
+
+   v0.4.0 also adds CANONICAL LOCUS INJECTIVITY as a checked precondition. Each
+   findAppRedexes call carries its own visited set, so a node reachable both
+   from the root and from inside a dup value is enumerable under a `t:` AND a
+   `v:` locus. The locus is committed into frame_id, so two spellings of one
+   transition would be two canonical frame identities for the same pre, rule
+   and post — which is not something "canonical" can mean. Nothing in the 35
+   measured fixtures produces an alias; the emitter REFUSES `film-locus-alias`
+   rather than blessing both spellings, because precedence between them is
+   unruled and picking one silently would decide a rule nobody wrote down.
 
    ── MEASURE BEFORE ASSERTING ───────────────────────────────────────────────
    `--measure` prints what this runtime actually does — frame rows, rule and
@@ -61,12 +77,23 @@
    both and the caller says which it wants.
 
    ── WHAT IS STILL NOT CLAIMED ──────────────────────────────────────────────
-     · APP-ERA and DUP-ERA fire nowhere. Enumerated, refused.
      · BUDGET_EXHAUSTED films are not emitted. The budget is a TYPED REFUSAL
        (film-budget-exhausted); what is forbidden is falling through to
        NORMAL_FORM with work remaining, and that cannot happen here because the
        terminal re-enumerates the full pool before it is written.
+     · A canonical-locus alias is REFUSED, not resolved. If a well-formed
+       fixture ever produces one, the answer is a precedence rule — probably
+       earliest occurrence under the frozen global enumeration — and not
+       blessing both spellings.
      · It does not replay. Films flow C → JS only.
+     · THE ONE-INTERACTION GUARD IS POST-HOC AND STAYS SO. It measures what the
+       runtime DID, including any future change inside fire() or whnf(), where
+       a structural pre-check could only measure what we predict. Its soundness
+       depends on this emitter being FAIL-STOP: a refusal exits, so a heap
+       mutated before the guard fired never becomes accepted evidence. If this
+       ever becomes a persistent service, that needs transactional scratch
+       state. The PREDICTION behind it — that whnf is inert on every head class
+       dup_rule_name admits — is measured by `--probe-whnf`, not asserted here.
 
    The canonicalizer is INCLUDED, not copied: ic32_canon.c is the same file the
    bridge gate replays at 48/48, which in turn includes ic32.c verbatim.
@@ -74,6 +101,8 @@
    Usage:  ic32_film "<term>"                emit a TRVM-SEMFILM-v1.1 film (JSON)
            ic32_film --measure "<term>"      non-gating measurement, plain text
            ic32_film --measure -v "<term>"   + the enabled set at every step
+           ic32_film --probe-whnf "<term>"   per admitted dup head: interaction
+                                             delta and canonical-state movement
            on any unmet precondition: {"ok":false,"reason":"…"} and exit 1
    ═══════════════════════════════════════════════════════════════════════════ */
 #define IC32_CANON_NO_MAIN 1
@@ -399,7 +428,6 @@ static void find_projections(Term* rootslot, uint32_t D, PVec* p0, PVec* p1){
 static int fire_dup(Term* rootslot, uint32_t D, uint32_t L, const char** rule_out){
     const char* rule = dup_rule_name(D, L);
     if (!rule) return 0;
-    if (!strcmp(rule, "DUP-ERA")) refuse("film-era-rule-not-implemented");
 
     PVec p0 = {0}, p1 = {0};
     find_projections(rootslot, D, &p0, &p1);
@@ -471,8 +499,69 @@ static int step_at(Term* slot, const char* path, const char** rule_out){
         *rule_out = "APP-SUP";
         return 1;
     }
-    if (TAG(f) == T_ERA) refuse("film-era-rule-not-implemented");
+    if (TAG(f) == T_ERA){
+        /* (* a) -> *. ic32's whnf also runs `collect(heap[A+1])`, which frees
+           the discarded argument's already-built APP/SUP/LAM spine and stops
+           at DUP/VAR/ERA. That is RECLAMATION, not semantics — it moves slots
+           onto a free list and changes nothing the canonical signature can
+           see. It is kept rather than suppressed because the runtime under
+           test must be the runtime that ships, and because suppressing it
+           would make the film's memory behaviour differ from ic32's own for
+           no semantic gain. Whether the free-scheduling order can reach a
+           state where collect() frees a slot something live still points at
+           is not argued here: it is MEASURED, by the C↔JS post-state
+           agreement on the ERA fixtures. */
+        interactions++;
+        collect(heap[A+1]);
+        FREE2(A);
+        *slot = MK(T_ERA,0,0);
+        *rule_out = "APP-ERA";
+        return 1;
+    }
     return 0;
+}
+
+/* ── the underlying redex a locus names ───────────────────────────────────
+   GPT's ruling, B3 §(c): within one enabled semantic state, canonical locus
+   assignment must be INJECTIVE over semantic redex identity — one redex gets
+   at most one canonical locus. The representation makes an alias expressible:
+   each findAppRedexes call carries its OWN visited set, so a node reachable
+   both from the root and from inside a dup value is enumerated twice, once
+   under `t:` and once under `v:`. Nothing in the 27 measured fixtures produces
+   one, and the locus is committed into frame_id — so two spellings of one
+   transition would be two canonical frame identities for the same pre, rule
+   and post, which is not what "canonical" can mean.
+
+   Identity is PHYSICAL and per-runtime: an application redex is its APP node,
+   a dup redex is its cell. The two live in disjoint key spaces. C and JS
+   cannot compare these to each other; each checks its own injectivity. */
+static Term node_at(Term start, const char* path){
+    Term t = ccanon_chase(start);
+    while (path && *path){
+        const char* dot = strchr(path, '.');
+        size_t hl = dot ? (size_t)(dot - path) : strlen(path);
+        char head[MAXPATH];
+        if (hl >= MAXPATH) return 0;
+        memcpy(head, path, hl); head[hl] = 0;
+        uint32_t A = ADDR(t);
+        Term nxt;
+        if      (TAG(t) == T_LAM && !strcmp(head, "bod")) nxt = heap[A];
+        else if (TAG(t) == T_APP && !strcmp(head, "fun")) nxt = heap[A];
+        else if (TAG(t) == T_APP && !strcmp(head, "arg")) nxt = heap[A+1];
+        else if (TAG(t) == T_SUP && !strcmp(head, "lft")) nxt = heap[A];
+        else if (TAG(t) == T_SUP && !strcmp(head, "rgt")) nxt = heap[A+1];
+        else return 0;
+        t = ccanon_chase(nxt);
+        path = dot ? dot + 1 : "";
+    }
+    return t;
+}
+static uint64_t redex_identity(Term root, FRedex* r){
+    if (r->kind == K_DUP) return ((uint64_t)1 << 40) | (uint64_t)r->D;
+    Term base = (r->kind == K_APP) ? root : heap[r->D];
+    Term t = node_at(base, r->path);
+    if (!t || TAG(t) != T_APP) return 0;
+    return (uint64_t)ADDR(t);
 }
 
 /* dispatch: the three redex kinds address three different slots. A `v:` redex
@@ -496,16 +585,17 @@ static int rule_index(const char* r){
 }
 
 int main(int argc, char** argv){
-    int verbose = 0; const char* term_arg = NULL;
+    int verbose = 0, probe_whnf = 0; const char* term_arg = NULL;
     long budget = 4096;
     for (int i = 1; i < argc; i++){
         if      (!strcmp(argv[i], "--measure")) g_measure = 1;
+        else if (!strcmp(argv[i], "--probe-whnf")) { probe_whnf = 1; g_measure = 1; }
         else if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--verbose")) verbose = 1;
         else if (!strcmp(argv[i], "--budget") && i + 1 < argc) budget = strtol(argv[++i], NULL, 10);
         else term_arg = argv[i];
     }
     if (!term_arg){
-        fprintf(stderr, "usage: ic32_film [--measure] [-v] [--budget N] \"<term>\"\n");
+        fprintf(stderr, "usage: ic32_film [--measure|--probe-whnf] [-v] [--budget N] \"<term>\"\n");
         return 2;
     }
     heap = (Term*)calloc(HEAPCAP, sizeof(Term));
@@ -530,10 +620,54 @@ int main(int argc, char** argv){
     int rule_count[NRULES]; for (int i = 0; i < NRULES; i++) rule_count[i] = 0;
     long locus_t = 0, locus_d = 0, locus_v = 0;
 
+    /* ── THE PRECONDITION WITNESS (GPT's ruling, B3 §(b)) ─────────────────
+       The emitter's one-interaction guard is POST-HOC on purpose: it measures
+       what the shipped runtime actually did, including any future change
+       inside fire() or whnf(), where a structural pre-check could only measure
+       what we predict. GPT ruled the post-hoc guard is the stronger final
+       instrument and asked for the prediction to be MEASURED SEPARATELY rather
+       than left as prose.
+
+       This is that measurement. For every live dup cell the classifier
+       ADMITS — every head class dup_rule_name returns a rule for — it runs
+       ic32's own whnf on the cell's value and reports two things:
+
+           interaction delta        must be 0
+           canonical semantic state must be unchanged
+
+       The second clause is the one that matters and the one a counter alone
+       would miss: whnf performs representation-level memoization (it writes
+       the reduced head back into a stuck application's slot) WITHOUT counting
+       an interaction. That is fine precisely because the canonical state does
+       not move, and "fine" is a thing to check.
+
+       It deliberately does NOT re-classify anything: a second inline rule
+       recognizer beside dup_rule_name would be two semantic recognizers that
+       can drift, which is the mechanism-duplication defect this tree has paid
+       for twice. It asks the ONE classifier what it admits, and measures those. */
+    if (probe_whnf){
+        CellVec live = {0}; live_cells(root, ORDER_L2R, &live);
+        printf("PROBE-WHNF ic32_film 0.4.0\n");
+        printf("TERM %s\n", term_arg);
+        for (size_t i = 0; i < live.n; i++){
+            uint32_t D = live.a[i].D, L = live.a[i].lab;
+            const char* r = dup_rule_name(D, L);
+            if (!r) { printf("SKIP d:%zu not-admitted\n", i); continue; }
+            char* s0 = canonical_signature(root); char h0[65]; sha_of(s0, h0); free(s0);
+            long before = interactions;
+            whnf(heap[D]);
+            long delta = interactions - before;
+            char* s1 = canonical_signature(root); char h1[65]; sha_of(s1, h1); free(s1);
+            printf("WHNF %s delta=%ld state=%s\n", r, delta, strcmp(h0, h1) ? "CHANGED" : "same");
+        }
+        cv_free(&live);
+        return 0;
+    }
+
     if (g_measure){
         char* s0 = canonical_signature(root);
         char h0[65]; sha_of(s0, h0);
-        printf("MEASURE ic32_film 0.3.0\n");
+        printf("MEASURE ic32_film 0.4.0\n");
         printf("TERM %s\n", term_arg);
         printf("INITIAL %s\n", h0);
         free(s0);
@@ -557,6 +691,21 @@ int main(int argc, char** argv){
 
         CellVec order = {0}; live_cells(root, ORDER_L2R, &order);
         for (int i = 0; i < n; i++) sem_locus_of(&rx[i], &order);
+
+        /* CANONICAL LOCUS INJECTIVITY, checked at every state rather than
+           assumed from a corpus that happens not to produce an alias. Refusing
+           is the honest answer while precedence between two spellings is
+           UNRULED: blessing both would put two frame_ids on one transition,
+           and picking one silently would decide a rule nobody wrote down. */
+        for (int i = 0; i < n; i++){
+            uint64_t idi = redex_identity(root, &rx[i]);
+            if (!idi) continue;
+            for (int j = i + 1; j < n; j++)
+                if (redex_identity(root, &rx[j]) == idi && strcmp(rx[i].locus, rx[j].locus) != 0){
+                    cv_free(&order);
+                    refuse("film-locus-alias");
+                }
+        }
 
         char* pre_sig = canonical_signature(root);
         if (!nf) snprintf(first_sig, sizeof(first_sig), "%s", pre_sig);
@@ -661,7 +810,7 @@ int main(int argc, char** argv){
     char film_id[65]; sha_of(fcommit, film_id); free(fcommit);
 
     printf("{\"ok\":true,");
-    printf("\"emitter\":\"ic32_film\",\"emitter_version\":\"0.3.0\",");
+    printf("\"emitter\":\"ic32_film\",\"emitter_version\":\"0.4.0\",");
     printf("\"domain\":\"TRVM-SEMFILM-v1.1\",");
     printf("\"source_term\":");
     { printf("\""); for (const char* p = term_arg; *p; p++){

@@ -55,14 +55,35 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   replaySemFilm, FloatRt, DescFloatRt, semFilmIdOf, frameId31, PLANE_POOL_FREE,
-  parse, extrude, findFloatRedexes, semLocusOf, liveDiscoveryOrder, fireFloat,
+  parse, extrude, findFloatRedexes, semLocusOf, liveDiscoveryOrder, fireFloat, chase,
 } from "../trvm_law_kernel.mjs";
 import { ObservedExecutionHost, digestArtifactFiles } from "../observed_execution_host.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = process.env.TRVM_GOV_ROOT ?? resolve(HERE, "..");
 const BIN = join(HERE, "ic32_film");
-const C_FAMILY = "impl-c-ic32-film-v0.1.0";
+/* THE FAMILY ID CARRIES NO RELEASE VERSION, by GPT's B3 ruling. The ontology
+   was already three-layered and the name was doing one of the other layers'
+   jobs:
+
+       implementation_family_id   which implementation LINEAGE is this?
+       executable_artifact_id     which exact BYTES ran?
+       executor_session_id        which LAUNCH was this?
+
+   `impl-c-ic32-film-v0.1.0` sat beside a v0.3.0 binary for three releases. If
+   every release is meant to change the family, the artifact digest is doing
+   that job twice; if it is not, semver in the name is guaranteed to drift and
+   nothing checks it. So family identity is STABLE across ordinary artifact
+   releases and changes only when the meaning of the family does. Exact bytes
+   belong to the digest, which moves on every build. No compensating
+   `implementation_version` field either — the digest is the provenance, and a
+   human-readable binary version stays descriptive metadata.
+
+   THE FROZEN PROBES KEEP THE OLD STRING. probe_execlaunch_v09_repro.mjs names
+   `impl-c-ic32-film-v0.1.0` and must go on naming it: it is a dated record of
+   what the catalog said in its era, and rewriting a frozen witness to agree
+   with the present would falsify the witness. Only the live catalog moved. */
+const C_FAMILY = "impl-c-ic32-film";
 
 let fail = false, ran = 0;
 const R = (id, ok, note) => { ran++; if (!ok) fail = true;
@@ -272,12 +293,13 @@ const FAMS22 = new Set(FILM22.frames.map((f) => f.locus.slice(0, 2)));
   R("era-declared-in-pool-and-in-no-frame",
     declared.has("APP-ERA") && declared.has("DUP-ERA")
       && !RULES22.has("APP-ERA") && !RULES22.has("DUP-ERA"),
-    `both ERA rules are in the film's DECLARED pool and in none of its frames. The distinction is ` +
-    `load-bearing in one direction: a rule left OUT of the pool would make "no enabled work" mean "no ` +
-    `work of the kinds I implement", which is how a false normal form gets written down. So they are ` +
-    `enumerated for the terminal's sake and refused for the witness's. This fixture exercises neither ` +
-    `— APP-ERA was NOT expected to be missing and the measurement is what said so — and the dedicated ` +
-    `ERA fixtures are the next round, not a claim of this one`);
+    `both ERA rules are in the film's DECLARED pool and in none of THIS fixture's frames — and that ` +
+    `is now a fact about the fixture rather than a limit of the emitter, since E-1 and E-2 below give ` +
+    `each of them a minimal witness of its own. The pool membership stays load-bearing in one ` +
+    `direction: a rule left OUT of the pool would make "no enabled work" mean "no work of the kinds I ` +
+    `implement", which is how a false normal form gets written down. Keeping this case is the point — ` +
+    `coverage by CONSTRUCTION means the big fixture is not asked to carry rules it never fires, and ` +
+    `APP-ERA's absence here was not predicted by anyone, only measured`);
 }
 
 /* ── the multi-frame forgery kit ──────────────────────────────────────────
@@ -467,6 +489,178 @@ forge("F-5 transition from another state",
   }
 }
 
+/* ── E-1 … E-5: THE ERA WITNESSES ────────────────────────────────────────
+   The last two rules of the declared pool. TWO PURPOSE-BUILT MINIMAL TERMS,
+   not one contrived term that happens to contain both — coverage by
+   construction rather than coverage because a large program terminated. The
+   conformance corpus contains NO ERA at all, which is exactly why all 24
+   vectors could agree while two of nine rules had never run natively, and why
+   these had to be built rather than found.
+
+   The measurement came first here too: the kernel was run on each candidate
+   before the emitter was asked, and the fixtures were chosen from what it
+   showed — `(* x)` is one APP-ERA frame, and `!{a,b} = *; λz.a` is one DUP-ERA
+   frame in which only ONE projection is live, which also exercises the
+   single-projection path in find_projections. */
+const ERA_FIXTURES = [
+  { id: "E-1 APP-ERA", term: "(* x)", rule: "APP-ERA",
+    why: "an eraser applied to an argument. One frame, no dups, no context — the smallest term in " +
+         "which this rule can fire at all" },
+  { id: "E-2 DUP-ERA", term: "!{a,b} = *; λz.a", rule: "DUP-ERA",
+    why: "a dup cell over an eraser, with only the LEFT projection reachable. One frame, and the " +
+         "single-live-projection path through find_projections that the two-projection fixtures never " +
+         "take" },
+  { id: "E-3 DUP-ERA both projections", term: "!{a,b} = *; (a b)", rule: "DUP-ERA",
+    why: "both projections live, so the sibling resolves through the substitution ic32 writes into " +
+         "heap[D] rather than through a slot the walk replaced. Fires APP-ERA afterwards, which is a " +
+         "consequence of the fixture and not the reason for it" },
+];
+const ERA_FILMS = {};
+for (const f of ERA_FIXTURES) {
+  const e = await auth.emit(f.term, C_FAMILY);
+  const acc = e.ok ? auth.accept(f.term, e.emission, FloatRt) : { ok: false };
+  const b = e.ok ? replaySemFilm(f.term, e.film, DescFloatRt) : { ok: false };
+  const rules = new Set(e.ok ? e.film.frames.map((x) => x.rule) : []);
+  ERA_FILMS[f.rule] = ERA_FILMS[f.rule] ?? e.film;
+  R(f.id,
+    e.ok && acc.ok && b.ok && acc.film_provenance === "observed"
+      && rules.has(f.rule) && e.film.terminal.termination === "NORMAL_FORM",
+    `${e.ok ? `${e.film.terminal.steps} frame(s) — ${e.film.frames.map((x) => `${x.rule}@${x.locus}`).join(" ")} — ` +
+      `terminal ${e.film.terminal.termination}, normal form ${JSON.stringify(e.emission.normal_form)}; ` +
+      `replayed on FloatRt and DescFloatRt, provenance ${acc.film_provenance}` : `emitter refused: ${e.reason}`}. ${f.why}`);
+}
+const ALL_WITNESSED = new Set([...RULES22, ...Object.entries(ERA_FILMS)
+  .flatMap(([, film]) => film?.frames.map((x) => x.rule) ?? [])]);
+
+/* ── E-4 / E-5: forgeries on the ERA surfaces ────────────────────────────── */
+{
+  const eraChain = (film, frames, tOver = {}) => {
+    let prev = "genesis";
+    const out = frames.map((f, i) => {
+      const g = { ...f, i, prev };
+      g.frame_id = frameId31(prev, g.pre, g.plane, g.rule, g.locus, g.post);
+      prev = g.frame_id;
+      return g;
+    });
+    const t = { ...film.terminal, steps: out.length, last_frame: prev, ...tOver };
+    return { frames: out, terminal: t, film_id: semFilmIdOf(t) };
+  };
+  const appEraFilm = ERA_FILMS["APP-ERA"], dupEraFilm = ERA_FILMS["DUP-ERA"];
+
+  forge("E-4 APP-ERA misdescribed",
+    eraChain(appEraFilm, appEraFilm.frames.map((f) => ({ ...f, rule: "APP-LAM" }))),
+    "sem-rule-mismatch",
+    `the eraser application relabelled as a lambda application. Both are INTERACT-plane and both are ` +
+    `in the declared pool; what separates them is the chased head, which replay recomputes. Until ` +
+    `this round APP-ERA could not be forged because it had never been emitted`,
+    ERA_FIXTURES[0].term);
+
+  forge("E-5 DUP-ERA locus moved",
+    eraChain(dupEraFilm, dupEraFilm.frames.map((f, i) =>
+      (i === 0 ? { ...f, locus: "d:7" } : f))),
+    "sem-locus-not-enabled",
+    `the dup-over-eraser named at a discovery index no live cell carries. This fixture has exactly ` +
+    `ONE live cell, so d:0 is the only index that can name anything — which makes it the cleanest ` +
+    `possible demonstration that a d: locus is resolved against the live discovery order rather than ` +
+    `accepted as a label`,
+    ERA_FIXTURES[1].term);
+}
+
+/* ── W-1: THE PRECONDITION WITNESS BEHIND THE ONE-INTERACTION GUARD ──────
+   GPT's B3 ruling §(b): KEEP the post-hoc `interactions - before == 1` check —
+   it measures what the shipped runtime actually did, including any future
+   change inside fire() or whnf(), where a structural pre-check could only
+   measure what we predict. But measure the prediction separately instead of
+   leaving it as prose in a comment.
+
+   `fire(D,L,k)` opens with `whnf(heap[D])`. The argument that this costs
+   nothing is that dup_rule_name has already established BY CHASING that the
+   value is one of the admitted head classes, and whnf returns each of those
+   without an interaction. This asks the runtime, for every class the ONE
+   classifier admits: interaction delta 0, and canonical semantic state
+   unchanged.
+
+   THE SECOND CLAUSE IS THE ONE A COUNTER WOULD MISS. whnf memoizes — it writes
+   a stuck application's reduced head back into its slot — without counting an
+   interaction. That is fine precisely because the canonical state does not
+   move, and "fine" is a thing to check rather than assume.
+
+   It does NOT re-classify anything. A second inline recognizer beside
+   dup_rule_name would be two semantic recognizers that can drift, which is the
+   mechanism-duplication defect this tree has already paid for twice. */
+{
+  const HEADS = [
+    ["DUP-LAM",  "!{a,b} = λx.x; (a b)"],
+    ["DUP-SUP=", "!&1{a,b} = &1{λx.x,λy.y}; (a b)"],
+    ["DUP-SUP!", "!&1{a,b} = &2{λx.x,λy.y}; (a b)"],
+    ["DUP-ERA",  "!{a,b} = *; (a b)"],
+    ["DUP-VAR",  "!{a,b} = S; (a b)"],
+    ["DUP-APP",  "!{a,b} = (S y); (a b)"],
+  ];
+  const seen = [], bad = [];
+  for (const [want, term] of HEADS) {
+    let rows = [];
+    try {
+      rows = execFileSync(BIN, ["--probe-whnf", term], { maxBuffer: 1 << 26 }).toString()
+        .split("\n").filter((l) => l.startsWith("WHNF ")).map((l) => l.split(" "));
+    } catch { /* rows stays empty and the class is reported missing */ }
+    const row = rows.find((r) => r[1] === want);
+    if (!row) { bad.push(`${want}: classifier admitted no such head`); continue; }
+    seen.push(want);
+    if (row[2] !== "delta=0") bad.push(`${want}: ${row[2]}`);
+    if (row[3] !== "state=same") bad.push(`${want}: ${row[3]}`);
+  }
+  R("W-1 whnf is inert on every admitted dup head",
+    bad.length === 0 && seen.length === HEADS.length,
+    `${seen.length}/${HEADS.length} admitted head classes measured — ${seen.join(", ")} — each with ` +
+    `interaction delta 0 and the canonical semantic state unchanged` +
+    `${bad.length ? `; VIOLATIONS: ${bad.join(" · ")}` : ""}. This is the PREDICTION behind the ` +
+    `emitter's one-interaction guard, measured rather than argued. The guard itself stays post-hoc ` +
+    `and stays the final instrument: it sees what the runtime DID, and a violated precondition ` +
+    `becomes a refusal before any frame is committed. That soundness relies on the emitter being ` +
+    `FAIL-STOP — the mutated in-process heap never becomes accepted evidence because the process ` +
+    `exits. If ic32_film ever becomes a persistent service, this needs transactional scratch state`);
+}
+
+/* ── I-1: CANONICAL LOCUS INJECTIVITY, on the kernel's side ──────────────
+   GPT's B3 ruling §(c). The emitter refuses `film-locus-alias` on its own
+   physical identities; physical identity is not comparable across
+   implementations, so this is the same property computed on the kernel's node
+   graph. Reported even though it is zero: a diagnostic that only speaks when
+   it fires is indistinguishable from one that was never wired in. */
+{
+  const frt = new FloatRt();
+  let root = extrude(frt, parse(frt, EXP22));
+  let states = 0, aliases = 0, groups = 0;
+  for (const frame of FILM22.frames) {
+    const rs = findFloatRedexes(frt, root, PLANE_POOL_FREE);
+    const order = liveDiscoveryOrder(frt, root);
+    const byId = new Map();
+    for (const r of rs) {
+      const id = r.kind === "dup" ? `dup:${r.id}` : (() => {
+        let t = chase(frt, r.kind === "app" ? root : frt.heap.get(r.id).val);
+        for (const k of r.path) t = chase(frt, t[k]);
+        return t;
+      })();
+      if (!byId.has(id)) byId.set(id, new Set());
+      byId.get(id).add(String(semLocusOf(r, order)));
+    }
+    groups += byId.size;
+    for (const [, locs] of byId) if (locs.size > 1) aliases++;
+    states++;
+    root = fireFloat(frt, root, rs.find((r) => String(semLocusOf(r, order)) === frame.locus)).root;
+  }
+  R("I-1 one redex, at most one canonical locus",
+    aliases === 0 && states === FILM22.frames.length,
+    `${groups} distinct enabled redexes across ${states} states of church_exp_2_2, and ${aliases} of ` +
+    `them carry more than one canonical locus. The representation makes an alias EXPRESSIBLE — each ` +
+    `findAppRedexes call carries its own visited set, so a node reachable both from the root and from ` +
+    `inside a dup value is enumerated under a t: AND a v: locus — and the locus is committed into ` +
+    `frame_id, so two spellings of one transition would be two canonical frame identities for the ` +
+    `same pre, rule and post. Nothing in the measured corpus produces one; the emitter refuses ` +
+    `film-locus-alias rather than blessing both spellings, because precedence between them is UNRULED`);
+}
+
 /* ── F-6 / F-7 / P-3F: THE PROVENANCE FORGERIES ──────────────────────────── */
 {
   // F-6: a genuine C film paired with an observation of something else. There
@@ -541,18 +735,25 @@ forge("F-5 transition from another state",
 {
   const tryEmit = (t) => { try { execFileSync(BIN, [t], { maxBuffer: 1 << 26 }); return "ACCEPTED"; }
     catch (e) { try { return JSON.parse(e.stdout.toString()).reason; } catch { return "CRASH"; } } };
-  const appEra = tryEmit("(* x)");                      // an APP-ERA redex, enabled
-  const dupEra = tryEmit("!{a,b} = *; (a b)");          // a DUP-ERA redex, enabled
   const nf = tryEmit("λx.x");
-  R("emitter-refuses-out-of-scope",
-    appEra === "film-era-rule-not-implemented" && dupEra === "film-era-rule-not-implemented"
-      && nf === "film-no-redex-at-source",
-    `an APP-ERA redex -> ${appEra}; a DUP-ERA redex -> ${dupEra}; an already-normal term -> ${nf}. ` +
-    `v0.3.0 fires the six rules church_exp_2_2 actually exercises and says where it stops by refusing ` +
-    `rather than by emitting a film whose scope a reader has to infer. BOTH ERA rules are out of ` +
-    `scope, not one: the measurement showed APP-ERA never fires on that fixture either, which nobody ` +
-    `had predicted. The scope predicate has been wrong once already — v0.1.0 refused on dup PRESENCE, ` +
-    `and the lowered add carries dups and fires none`);
+  const budget = (() => {
+    try { execFileSync(BIN, ["--budget", "3", EXP22], { maxBuffer: 1 << 26 }); return "ACCEPTED"; }
+    catch (e) { try { return JSON.parse(e.stdout.toString()).reason; } catch { return "CRASH"; } }
+  })();
+  const unhandled = FILM22.terminal.planes.filter((r) => !ALL_WITNESSED.has(r));
+  R("scope-is-stated-by-refusal",
+    nf === "film-no-redex-at-source" && budget === "film-budget-exhausted" && unhandled.length === 0,
+    `an already-normal term -> ${nf}; a 21-frame film under --budget 3 -> ${budget}, NOT a normal ` +
+    `form; and of the ${FILM22.terminal.planes.length} declared rules ` +
+    `${unhandled.length === 0 ? "every one now has a positive native witness" : `${unhandled.join(" and ")} still have none`}. ` +
+    // DERIVED from the union of the fixtures' own films, so this cannot claim
+    // coverage a fixture stopped providing. The scope predicate has been wrong
+    // twice already: v0.1.0 refused on dup PRESENCE (the lowered add carries
+    // dups and fires none) and v0.2.0 on dup ENABLEDNESS, which became a
+    // ratchet the moment the dup rules were built.
+    `The emitter still says where it stops by REFUSING rather than by emitting a film whose scope a ` +
+    `reader has to infer — a rule with no handler is film-rule-not-implemented, and a budget reached ` +
+    `while work remains is a typed refusal rather than a fall-through to NORMAL_FORM`);
 }
 
 console.log("═".repeat(96));
@@ -570,8 +771,15 @@ console.log(fail
     // this sentence cannot outlive the gap it describes. Every hand-typed
     // version of a "still open" list in this tree has gone stale in the
     // flattering direction at least once.
-    `SCOPE: C→JS only, and of the ${FILM22.terminal.planes.length} declared rules the ones with no ` +
-    `native witness are ${FILM22.terminal.planes.filter((r) => !RULES22.has(r)).join(" and ")} — ` +
-    `enumerated so the terminal stays honest, REFUSED BY NAME rather than fired. BUDGET_EXHAUSTED is ` +
-    `a typed refusal, not a terminal.`);
+    // DERIVED from the UNION of every fixture's own film, so the sentence
+    // cannot outlive the gap it describes and cannot claim coverage a fixture
+    // stopped providing. Every hand-typed "still open" list in this tree has
+    // gone stale in the flattering direction at least once.
+    `The two ERA rules now have their own minimal witnesses — ${ERA_FIXTURES.map((f) => f.term).join("  and  ")} — ` +
+    `so of the ${FILM22.terminal.planes.length} declared rules ` +
+    `${FILM22.terminal.planes.filter((r) => !ALL_WITNESSED.has(r)).length === 0
+        ? "EVERY ONE has a positive native witness"
+        : `${FILM22.terminal.planes.filter((r) => !ALL_WITNESSED.has(r)).join(" and ")} still have none`}. ` +
+    `SCOPE: C→JS only; BUDGET_EXHAUSTED is a typed refusal rather than native film evidence, and a ` +
+    `canonical-locus alias is refused rather than resolved.`);
 process.exit(fail ? 1 : 0);
