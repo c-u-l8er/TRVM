@@ -8,6 +8,7 @@
 import { Worker } from "node:worker_threads";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { readFileSync, writeFileSync } from "node:fs";
 import {
   ProgramRegistry, programSemId, canonicalBytes, validateForeignResult,
   resolveGrants, grantId, semanticProjection, JS_IMPLEMENTATION_ID,
@@ -500,6 +501,52 @@ let observedRun = null;
     `${rows[2][1]}. Before the reusable exports were factored, checkRequest alone was ` +
     `ownKeys:2 gOPD:10 getPrototypeOf:1 get:13 has:1 — a field-read counter sees only the last of ` +
     `those` + (over.length ? ` — OVER: ${over.map(([n, g, b]) => `${n} ${g} vs ${b}`).join(" · ")}` : ""));
+}
+
+// 20c. MULTIPLICITY MUST PRESERVE CORRELATION. Round 24 made executor_sessions
+//      plural because the observation key is over BYTES, and left
+//      executable_artifact_id singular over that same plural list. Those fields
+//      vary together: change the worker's bytes between two runs of one issued
+//      request and the honest evidence is S1→artifactA and S2→artifactB, while
+//      the old shape reported artifactA beside [S1, S2] — implying both
+//      sessions ran the first. Nothing false is accepted; the SHAPE overclaims.
+{
+  const W = join(HERE, "derive_worker.mjs");
+  const original = readFileSync(W);
+  let acc, r1, r2;
+  try {
+    const auth = mkAuth();
+    const a = auth.authorize({ intent_id: "am", program_sem_id: programSemId(P),
+      canonical_inputs: { bias: 0 }, requested_resources: { exact: ["fb"], predicates: [] } },
+      { expected_implementation_id: JS_IMPLEMENTATION_ID });
+    r1 = await auth.execute(a.request);
+    // change ONLY the artifact bytes; same catalog, family, request and result
+    writeFileSync(W, Buffer.concat([original, Buffer.from("\n// multiplicity probe\n")]));
+    r2 = await auth.execute(a.request);
+    acc = auth.accept(a.request, r2.result);
+  } finally { writeFileSync(W, original); }
+
+  const byArtifact = new Map((acc.execution_observations ?? [])
+    .map((g) => [g.executable_artifact_id, g.executor_sessions]));
+  const correlated =
+    r1.executable_artifact_id !== r2.executable_artifact_id &&
+    acc.ok && acc.execution_observations?.length === 2 &&
+    acc.executable_artifact_id === null &&
+    byArtifact.get(r1.executable_artifact_id)?.length === 1 &&
+    byArtifact.get(r2.executable_artifact_id)?.length === 1 &&
+    byArtifact.get(r1.executable_artifact_id)[0] === r1.executor_session_id &&
+    byArtifact.get(r2.executable_artifact_id)[0] === r2.executor_session_id &&
+    acc.executor_sessions.length === 2 &&
+    acc.implementation_id === JS_IMPLEMENTATION_ID;
+  R("multiplicity-preserves-correlation", correlated,
+    `two authority-driven executions of ONE issued request across a worker-bytes change: ` +
+    `${r1.executable_artifact_id?.slice(0, 10)}…→${r1.executor_session_id?.slice(3, 11)}… and ` +
+    `${r2.executable_artifact_id?.slice(0, 10)}…→${r2.executor_session_id?.slice(3, 11)}…, same ` +
+    `family and same result bytes. Acceptance reports ${acc.execution_observations?.length} correlated ` +
+    `observations, executable_artifact_id ${JSON.stringify(acc.executable_artifact_id)} because it is ` +
+    `NOT unique, and each session stays attached to the artifact that actually ran it. The singular ` +
+    `ids are summaries derived from the tuples; taking list[0] for one field and a union for another ` +
+    `is selecting columns from different rows`);
 }
 
 // 21. and the ladder itself is one record, not seven prose copies

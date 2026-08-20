@@ -995,3 +995,88 @@ authority-issued owned request
 
 with results snapshotted at acceptance. No proactive P-8 hunt. **Pass B is go**, and the next
 question is what interesting programs this authority can compile, execute and causally prove.
+
+## Round 27, pass A.3 — multiplicity must preserve correlation
+
+One repair, and it closes pass A. GPT found it against 27A.2 and declined to number it P-8, which is
+the right call and worth keeping in the record: nothing false was accepted.
+
+**176. Two sessions, two artifacts, one artifact id.** Reproduced exactly as reported:
+
+```
+run the same issued request                      S1 → artifact 0e34c127… → 5
+append one comment to derive_worker.mjs
+run it again                                     S2 → artifact d07dc1d9… → 5
+
+accept →  implementation_id      impl-js-derive-…
+          executable_artifact_id 0e34c127…
+          executor_sessions      [S1, S2]
+```
+
+Both executions genuinely happened, both genuinely produced those request/result bytes, and the
+authority drove both. Nothing is invented. What is wrong is the **shape**: it reads as *these
+recorded sessions ran artifact 0e34c127…* when the evidence says *S1 ran A and S2 ran B*. The two
+artifact versions could differ arbitrarily and coincide only on this request's result.
+
+**177. And it is older than the round that surfaced it.** GPT attributed it to A.2's new merge. It is
+not: both runs share ONE host key — same invocation bytes, same output — so the host's own list holds
+two observations, and `observationOfCanonical` was already doing
+
+```js
+executable_artifact_id: list[0].executable_artifact_id,
+executor_sessions:     list.map(…)
+```
+
+That is **round 24's own fix, half-applied.** Round 24 discovered that the key is over bytes, made
+`executor_sessions` plural for exactly this reason, and left the artifact id singular over the same
+plural list. A.2's authority-level merge then rewrote the identical mistake one level up — which is
+its own small lesson: *two copies of a rule is how the mechanism gets duplicated and the semantics
+drift*, the same finding round 24 recorded about building the launch machinery twice.
+
+**178. The law.**
+
+> **Multiplicity must preserve correlation. Evidence fields that vary together may not be
+> independently collapsed into singular summaries.**
+
+`law:derivation.observation-multiplicity@1`. GPT's framing is the clearest statement of it: this is
+the database error of taking one column from the first row and another column from every row, then
+presenting the pair as a record. Provenance is **relational** — family ↔ artifact ↔ session — not
+three unrelated sets.
+
+**179. The tuple is the unit, and there is one summariser.** `summariseObservations()` lives in the
+host and is used by the host *and* by the authority merging across invocations. Observations are
+grouped by the `(implementation_family_id, executable_artifact_id)` that actually co-occurred,
+carrying the sessions that ran it; every singular field is **derived**, emitted only when genuinely
+unique and `null` otherwise — which is what the family id has done since round 24 and what the
+artifact id should have been doing beside it.
+
+```
+execution_observations: [
+  { family, artifact: A, executor_sessions: [S1] },
+  { family, artifact: B, executor_sessions: [S2] },
+]
+executable_artifact_id: null          ← not unique
+executable_artifact_ids: [A, B]
+executor_sessions: [S1, S2]           ← summaries, derived from the tuples
+```
+
+**180. Not a forgery, and the law says so in those words.** A `grid_check` assertion requires the
+statement to keep the sentence *"not a forgery but a PROVENANCE SHAPE defect"*, and a forgery in the
+negative battery rewrites it to *"a forgery of execution provenance"* and must be caught. Filing this
+as a P-rung would misdescribe the severity **in the flattering direction** — it would let a shape
+defect borrow the seriousness of an accepted false verdict, and this tree has spent twenty-seven
+rounds making severity claims mean something.
+
+**181. Gate.** grid **v1.32.0** — 75 entries / 369 citations · `derive_protocol.mjs` **0.15.0** ·
+`observed_execution_host.mjs` **0.5.0** · negative battery **194/194** with six new forgeries · bridge
+48/48 · native film 16/16 · lowering refinement 9/9 film-evidenced · derive 45/45 · realm **24/24** ·
+twelve paired probes · harness 9/9 · runner 3/3. `scheduler_certificate.json` byte-identical —
+**twenty-sixth** consecutive round. The multiplicity witness mutates `derive_worker.mjs` and restores
+it in a `finally`, so the artifact tree is unchanged whether the case passes or throws.
+
+**182. PASS A IS CLOSED.** GPT's judgment, taken: the assurance plane is not finished forever, but its
+job is now to *support* causal language growth rather than to *be* the project. Rounds 17–27 asked
+whether the machinery can truthfully say what program, what authority, what executor, what bytes,
+what dependencies, what execution and what evidence are being talked about. Pass B asks what useful
+language can be run through it. **No proactive P-8 hunt.** Future boundary work is driven by concrete
+counterexamples.

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   observed_execution_host.mjs — v0.4.0 — the only thing here that runs anything
+   observed_execution_host.mjs — v0.5.0 — the only thing here that runs anything
 
    P-3: THE AUTHORITY HASHED ONE THING AND EXECUTED ANOTHER.
 
@@ -70,7 +70,7 @@ import { basename, isAbsolute, resolve } from "node:path";
 import { Worker } from "node:worker_threads";
 import { execFile } from "node:child_process";
 
-export const HOST_VERSION = "0.4.0";
+export const HOST_VERSION = "0.5.0";
 
 /** H over an artifact CLOSURE, length-framed and keyed by BASENAME so the
  *  digest is a property of the bytes rather than of where they were extracted —
@@ -136,6 +136,62 @@ function checkEntry(family, e) {
     if (!["kind", "entrypoint", "artifact_closure"].includes(k))
       return "catalog-entry-extra-field: " + family + "." + k;
   return null;
+}
+
+/** MULTIPLICITY MUST PRESERVE CORRELATION.
+ *
+ *  Round 24 discovered that the observation key is over BYTES, so two launches
+ *  producing byte-identical output share it — and made `executor_sessions`
+ *  plural to stop one id being reported as though it named the launch in hand.
+ *  It left `executable_artifact_id` singular over that same plural list, taking
+ *  `list[0]`. Those fields are not independent:
+ *
+ *      run the same issued request
+ *      append one comment to derive_worker.mjs
+ *      run it again
+ *
+ *      S1 → artifact 0e34c127… → 5
+ *      S2 → artifact d07dc1d9… → 5
+ *
+ *      reported:  executable_artifact_id 0e34c127…
+ *                 executor_sessions      [S1, S2]
+ *
+ *  Nothing false was accepted — both executions genuinely happened and genuinely
+ *  produced these bytes — but the shape implies both sessions ran artifact
+ *  0e34c127…, and the evidence says otherwise. One of those artifact versions
+ *  could differ arbitrarily and coincide only on this request's result. It is
+ *  round 24's own bug surviving in the field round 24 did not make plural.
+ *
+ *      Evidence fields that vary together may not be independently collapsed
+ *      into singular summaries.
+ *
+ *  So the tuple is the unit. Observations are grouped by the evidence that
+ *  actually co-occurred, and every singular field is DERIVED — emitted only
+ *  when it is genuinely unique, and null otherwise, which is what the family id
+ *  has done since round 24 and what the artifact id should have done with it. */
+export function summariseObservations(tuples) {
+  const groups = new Map();
+  for (const t of tuples) {
+    const k = t.implementation_family_id + " " + t.executable_artifact_id;
+    const g = groups.get(k) ?? { implementation_family_id: t.implementation_family_id,
+      executable_artifact_id: t.executable_artifact_id, executor_sessions: [] };
+    for (const s of t.executor_sessions)
+      if (!g.executor_sessions.includes(s)) g.executor_sessions.push(s);
+    groups.set(k, g);
+  }
+  const execution_observations = [...groups.values()].map((g) => Object.freeze({
+    ...g, executor_sessions: Object.freeze(g.executor_sessions) }));
+  const families = [...new Set(execution_observations.map((g) => g.implementation_family_id))];
+  const artifacts = [...new Set(execution_observations.map((g) => g.executable_artifact_id))];
+  return {
+    implementation_family_id: families.length === 1 ? families[0] : null,
+    implementation_families: families,
+    executable_artifact_id: artifacts.length === 1 ? artifacts[0] : null,
+    executable_artifact_ids: artifacts,
+    executor_sessions: execution_observations.flatMap((g) => [...g.executor_sessions]),
+    // the correlated form, which is the evidence; everything above is a summary
+    execution_observations,
+  };
 }
 
 /** THE HOST. Its catalog is fixed at construction and its observation table has
@@ -280,15 +336,11 @@ export class ObservedExecutionHost {
     catch { return null; }
     const list = this.#observed.get(key);
     if (!list?.length) return null;
-    const families = [...new Set(list.map((o) => o.family))];
-    return {
-      // one family, or the honest plural — the same bytes observed out of two
-      // different executors is a real and reportable event, not an impossible one
-      implementation_family_id: families.length === 1 ? families[0] : null,
-      implementation_families: families,
-      executable_artifact_id: list[0].executable_artifact_id,
-      executor_sessions: list.map((o) => o.executor_session_id),
-    };
+    return summariseObservations(list.map((o) => ({
+      implementation_family_id: o.family,
+      executable_artifact_id: o.executable_artifact_id,
+      executor_sessions: [o.executor_session_id],
+    })));
   }
 }
 Object.freeze(ObservedExecutionHost.prototype);

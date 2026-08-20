@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   derive_protocol.mjs — v0.14.0 — the serialized derivation boundary
+   derive_protocol.mjs — v0.15.0 — the serialized derivation boundary
 
    law:derivation.environment-confinement@1 is FALSIFIED under the arbitrary-
    closure measureFn API, and the record says closure comes from REPLACING the
@@ -283,11 +283,12 @@ import { createHash } from "node:crypto";
 // Launching lives in ObservedExecutionHost and nowhere else. It holds no TRVM
 // semantics — it cannot re-derive a result or say what one means — so importing
 // it here couples the authority to a mechanism, not to a second opinion.
-import { ObservedExecutionHost, digestArtifactFiles } from "./observed_execution_host.mjs";
+import { ObservedExecutionHost, digestArtifactFiles, summariseObservations }
+  from "./observed_execution_host.mjs";
 export { digestArtifactFiles };
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const PROTOCOL_VERSION = "0.14.0";
+export const PROTOCOL_VERSION = "0.15.0";
 
 /* ── the canonical value domain, shared with the World ────────────────────
    Deliberately a copy of the World's rule rather than an import: this module
@@ -821,7 +822,7 @@ export function footprintWithinGrant(fp, read_grants) {
    reader callable, which was the closure-authority shape this whole line of
    work exists to remove — in-process only, but the same species. Now the
    evaluator receives nothing but canonical data. */
-export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.14.0";
+export const JS_IMPLEMENTATION_ID = "impl-js-derive-v0.15.0";
 
 function readerFromGrants(read_grants) {
   return {
@@ -1303,16 +1304,15 @@ export class DerivationAuthority {
     // MERGED, not first-hit, and for the round-24 reason. The same request run
     // before and after a bindProgram() is two invocations; if both produced
     // these bytes, both are things this authority observed, and returning the
-    // first would report one launch as though it were the only one. What is
-    // true is "these recorded sessions are known to have produced these
-    // request/result bytes", and where there are several they are all here.
-    const families = [...new Set(hits.flatMap((o) => o.implementation_families))];
-    return {
-      implementation_family_id: families.length === 1 ? families[0] : null,
-      implementation_families: families,
-      executable_artifact_id: hits[0].executable_artifact_id,
-      executor_sessions: [...new Set(hits.flatMap((o) => o.executor_sessions))],
-    };
+    // first would report one launch as though it were the only one.
+    //
+    // AND MERGED BY TUPLE, through the host's own summariser rather than field
+    // by field here. The first version of this merge took families as a union
+    // and the artifact as hits[0], which is exactly the correlation bug the
+    // summariser exists to prevent — written a second time, one level up, three
+    // days after the first was found. Two copies of a rule is how the mechanism
+    // gets duplicated and the semantics drift; there is one copy.
+    return summariseObservations(hits.flatMap((o) => o.execution_observations));
   }
 
   /** Was THIS request — every field of it — issued by THIS authority?
@@ -1438,6 +1438,13 @@ export class DerivationAuthority {
     // in hand. It never did. What is true is "these recorded sessions are known
     // to have produced these request/result bytes", and where there are several
     // they are all here.
+    // MULTIPLICITY PRESERVES CORRELATION. `execution_observations` is the
+    // evidence — one entry per (family, artifact) that actually co-occurred,
+    // with the sessions that ran it. The singular ids above it are SUMMARIES
+    // and are null unless genuinely unique: reporting one artifact id beside
+    // two sessions that ran different bytes implied both sessions ran the
+    // first, which is round 24's overclaim surviving in the field round 24 did
+    // not make plural.
     return observed === undefined
       ? { ok: true, validated: true, fresh_at_check: true,
           implementation_provenance: "unavailable" }
@@ -1445,7 +1452,9 @@ export class DerivationAuthority {
           implementation_provenance: "observed",
           implementation_id: observed.implementation_family_id,
           executable_artifact_id: observed.executable_artifact_id,
-          executor_sessions: observed.executor_sessions };
+          executable_artifact_ids: observed.executable_artifact_ids,
+          executor_sessions: observed.executor_sessions,
+          execution_observations: observed.execution_observations };
   }
 }
 Object.freeze(DerivationAuthority.prototype);

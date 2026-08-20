@@ -192,7 +192,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -972,6 +972,38 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
       ok(/executor_sessions: observed\.executor_sessions/.test(dnoc),
         "acceptance must report executor_sessionS. Reporting one id overclaims uniqueness the key " +
         "cannot support");
+      // ── v1.32: …and the plural fields must stay CORRELATED ────────────
+      ok(/export function summariseObservations\(tuples\)/.test(hostNoc) &&
+         /executable_artifact_id: artifacts\.length === 1 \? artifacts\[0\] : null/.test(hostNoc) &&
+         /execution_observations,/.test(hostNoc),
+        "the observation shape must be built from TUPLES, in one place, with every singular id " +
+        "derived and null unless unique. Round 24 made executor_sessions plural and left " +
+        "executable_artifact_id as list[0] over the same list, so two sessions that ran DIFFERENT " +
+        "artifact bytes were reported under one artifact id — selecting one column from the first row " +
+        "and another from all rows, then presenting the pair as a record");
+      ok(/return summariseObservations\(hits\.flatMap\(\(o\) => o\.execution_observations\)\)/.test(dnoc),
+        "the authority's cross-invocation merge must go through the host's summariser rather than " +
+        "recombining families, artifacts and sessions field by field. The first version of that merge " +
+        "rewrote the same correlation bug one level up, which is how a mechanism gets duplicated and " +
+        "its semantics drift apart");
+      ok(/execution_observations: observed\.execution_observations/.test(dnoc) &&
+         /executable_artifact_ids: observed\.executable_artifact_ids/.test(dnoc),
+        "acceptance must surface the correlated evidence, not only the summaries — a caller shown " +
+        "one artifact id beside two sessions has been told something the evidence does not say");
+      {
+        const om = entries.find((x) => x.id === "derivation.observation-multiplicity" && x.revision === 1);
+        ok(!!om && om.canonical === true && om.status === "PROPERTY-TESTED",
+          "law derivation.observation-multiplicity@1 missing, non-canonical, or not PROPERTY-TESTED (v1.32)");
+        ok(!!om && /EVIDENCE FIELDS THAT VARY TOGETHER MAY NOT BE INDEPENDENTLY COLLAPSED/
+          .test(om.statement ?? ""),
+          "derivation.observation-multiplicity@1 must state the general rule. 'Report the artifact id " +
+          "as well' would be the instance without the principle, and the principle is what stops the " +
+          "next pair of correlated fields being averaged into a sentence");
+        ok(!!om && /not a forgery but a PROVENANCE SHAPE defect/.test(om.statement ?? ""),
+          "derivation.observation-multiplicity@1 must be honest that nothing false was accepted here. " +
+          "Both executions happened and both produced these bytes; what overclaimed was the SHAPE, " +
+          "and filing it as a forgery would misdescribe the severity in the flattering direction");
+      }
       {
         const ip4 = entries.find((x) => x.id === "derivation.implementation-provenance" && x.revision === 4);
         ok(!!ip4 && ip4.canonical === true,

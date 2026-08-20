@@ -1404,6 +1404,51 @@ for e in g['law_registry']['entries']:
                                                 'state is state')
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
+# ── round 27A.3: multiplicity must preserve correlation ────────────────────
+run_case artifact-id-decorrelated "must be built from TUPLES" "
+src = open('observed_execution_host.mjs').read()
+src = src.replace('executable_artifact_id: artifacts.length === 1 ? artifacts[0] : null,',
+                  'executable_artifact_id: artifacts[0],')
+open('observed_execution_host.mjs','w').write(src)"
+
+run_case authority-merges-field-by-field "must go through the host's summariser" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('return summariseObservations(hits.flatMap((o) => o.execution_observations));',
+                  'return hits[0];')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case acceptance-hides-the-tuples "must surface the correlated evidence" "
+src = open('derive_protocol.mjs').read()
+src = src.replace('execution_observations: observed.execution_observations',
+                  'execution_observations: undefined')
+open('derive_protocol.mjs','w').write(src)"
+
+run_case multiplicity-law-deleted "law derivation.observation-multiplicity@1 missing" "
+import json
+g = json.load(open('invariant-grid.json'))
+g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
+                                if e['id'] != 'derivation.observation-multiplicity']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case multiplicity-law-narrowed "must state the general rule" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.observation-multiplicity':
+        e['statement'] = e['statement'].replace(
+            'EVIDENCE FIELDS THAT VARY TOGETHER MAY NOT BE INDEPENDENTLY COLLAPSED',
+            'the artifact id must be reported too and must not be collapsed')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+run_case multiplicity-called-a-forgery "must be honest that nothing false was accepted" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id'] == 'derivation.observation-multiplicity':
+        e['statement'] = e['statement'].replace('not a forgery but a PROVENANCE SHAPE defect',
+                                                'a forgery of execution provenance')
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
 run_case entry-snapshot-law-deleted "law derivation.entry-snapshot@1 missing" "
 import json
 g = json.load(open('invariant-grid.json'))
