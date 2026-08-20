@@ -1574,3 +1574,123 @@ term's identity the kernel's; (3) I-4a; (4) I-4b; (5) I-4c on `x + (x + y)` all 
 correct → 7, swapped → 8, and the correct receipt accepts only the 7-producing term; (6) **restate
 `add(2,3)` through `instantiate({})`**, which closes item 230 and is the backwards-compatibility
 theorem. Then `church_exp_2_2` and the dedicated DUP-ERA film.
+
+---
+
+## Round 27, pass B2 — inputs become executable
+
+**GPT ruled B2 GO with a ten-step progression and two API constraints, and both constraints changed
+the shape of the code rather than decorating it.** The architectural preflight is over: three passes
+decided the inputs model, fixed an overbound projection, built the target-template layer and bound the
+executable encoding, and this is the round where the thing runs.
+
+**233. `input` lowers, `instantiate()` closes, and I-4c reaches the runtime.** `x + (x + y)` with
+x=2, y=3 runs **natively to 7** and the x/y swap to **8** — different terms, different normal forms,
+different outcome identities, and the SOURCE evaluator independently gives 7 and 8. The swapped term
+does **not** verify against the correct `InstantiationReceipt`. That is the falsifier the mandated
+asymmetric fixture exists for: `add(x, y)` with the same values gives 5 either way, so the obvious
+witness could not have revealed the defect it is named for.
+
+**234. THE MAP IS STRUCTURAL AND `lower()` INTERPRETS IT.** B1.2.1 wrote `op_lowering_rules` in
+English and GPT ruled that insufficient for the same reason the codomain-in-prose was: *a normative
+sentence beside a hand-coded implementation is two artifacts that can disagree, and only one of them is
+hashed.* The table is now what runs — `LOWERING_SEMANTICS.op_lowering_rules[node.op]` — so a rule
+cannot be edited without changing behaviour and behaviour cannot change without moving
+`LOWERING_SEM_ID`. `transform: "identity"` on the port's source name is the no-normalization ruling
+**made structural**: a name reaches the port unchanged because there is no other transform the table
+can name. This closes most of B1.1's declared-open prose brittleness; `substitution` and
+`dup_label_policy` are still English elsewhere and that is unchanged.
+
+**235. `lower()` NO LONGER RETURNS AN EXECUTABLE TERM.** GPT was emphatic and the reasoning is the one
+this tree keeps re-learning: keeping the convenience field leaves an **official path** (`lower →
+instantiate → term`) beside a **shortcut** (`lower → term`), and every future reader has to remember
+which one carries the semantics. *That is how a hidden second mechanism comes back.* Removed.
+`instantiate()` is the only route to a term, including at the empty environment.
+
+**236. The migration theorem, kept as a theorem rather than an API.** `instantiate(template, {})`
+reproduces the **exact 129 characters** the removed field used to return, and the six-frame film, the
+normal form and the value 5 are all reached through it. So the zero-input path did not change meaning
+when it changed owner — which is what makes removing the shortcut safe rather than merely tidy.
+
+**237. `instantiate()` MAY NOT MINT THE IDENTITY OF ITS OWN OUTPUT.** GPT's second constraint, and it
+is load-bearing: an instantiator that emitted bytes **and** certified their semantic id would produce
+the artifact and the certificate from one source, so a wrong emission would carry a matching id and
+verify against itself. It returns `{ok, target_term, closed_template, inputs_sem_id, consumed_inputs}`
+and **no** `target_term_sem_id`; the kernel canonicalises the bytes; `instantiationReceipt()` is built
+around that id and refuses an incomplete one by name. Verification **re-instantiates and
+re-canonicalises independently** rather than asking the instantiator to agree with itself. Same
+discipline the `LoweringReceipt` already followed.
+
+**238. I-4a is witnessed against a SECOND EMITTER, because asserting it about one proves nothing.**
+A deliberately hostile allocator — `_impl17`/`q93` binders, labels from 100 — emits **189 characters**
+where the real one emits 129, from the *same template*, which keeps the same
+`target_template_sem_id` because there is no field an allocation could occupy. **And the allocation
+turns out to be non-semantic all the way down**: both terms reach the *identical* canonical normal-form
+signature. That was measured, not assumed, and it is a stronger result than the falsifier asked for.
+
+**239. I-4b keeps the source key, Unicode included.** `input("x")` and `input("y")` reach different
+template ids, and NFC-composed `é` differs from decomposed `e`+◌́ — normalizing would be a
+**language**-semantic change made at the encoding layer, where the source cannot see it.
+
+**240. GPT's item 9: the positive witness carries an unused input.** `{x:2, y:3, unused:999}` and
+`{x:2, y:3}` have **different `inputs_sem_id` and reach the SAME term**, so "extras are ignored" is
+exercised rather than merely written down — and `consumed_inputs` is `[x, y]`, keeping supplied and
+consumed distinct.
+
+**241. THE EMISSION SPLIT TRIGGER MOVED TO STATUS, and B1.2.1 had re-committed B1.1's own finding.**
+I had put the trigger inside `INSTANTIATION_SEMANTICS` — governance prose inside a relation identity,
+so rewording a note about what the project should do next would re-identify the relation. It is in
+`INSTANTIATION_STATUS` now, with GPT's two additional conditions: split emission when it becomes
+independently **reused**, independently **theorem-bearing**, independently **versioned or replaceable**,
+or when the closed-template intermediate becomes an **independently identified or externally observed**
+artifact. GPT's framing of the underlying rule is the durable one: *keep A∘B one relation while nobody
+needs to name, vary, verify, reuse or observe A independently of B.* The last two conditions fire
+first.
+
+**242. BUILDING IT MOVED NEITHER SEMANTIC ID, and the measurement is an EQUATION rather than a
+simulation.** My first version of this case spread the STATUS fields over the SEMANTICS record and
+hashed the result — which measures nothing, because status keys are not *in* the hashed object and
+adding them naturally changes the hash. The real check: **put back only `op_lowering_rules` and only
+`emission`, and the B1.2.1 identities return exactly** (`lsem-84c93447…`, `isem-6ac0ea7b…`). So those
+two fields are the only hashed bytes the round touched, and everything B2 actually *built* — `input`
+lowering, `instantiate()`, the removal of `target_term`, three falsifiers going DECLARED → WITNESSED,
+every lifecycle flag flipping — **moved no identity at all.** That is what B1.1 split the records to
+make possible, and B2 is the first round able to exercise it.
+
+**243. Two assertions had become ratchets, and one instrument was answering with the wrong field.**
+- The grid required the inputs model to be `implemented: false` and `lower-input-not-implemented` to be
+  present — correct for three passes, and **guaranteed to fail on the round that fixed it**. Same
+  species as `canonical-lowering@1`'s "keep it DEFERRED", one file over.
+- The `REFINEMENT_CHAIN` assertion required `exercised: false` and a `why_not:` to *exist* — true only
+  while nodes were unexercised. It now requires the **mechanism**: an `exercised` flag on every node,
+  and a `why_not` on every node that lacks one. That holds in both states.
+- **`consumed_inputs` was being answered by the implementation.** The assertion guards a *semantic*
+  commitment, and once `instantiate()` returned a field of the same name, renaming the semantics field
+  left grid_check passing. Found by the battery going `exit=0`; the assertion is scoped to
+  `INSTANTIATION_SEMANTICS` now.
+
+**244. And a check I wrote this round would have refused the correct architecture.** The
+"lower() must not return a target_term" assertion tested the *whole file* for `target_term: emit(`
+and matched **`instantiate()`'s own emission** — it would have failed against the very shape GPT
+ruled. Scoped to `lower()`'s body. Six battery cases also failed with `exit=1` against a *correct*
+refusal because their expected patterns contained `lower()` and `instantiate()`: **parentheses are an
+empty group in a regex**, so each pattern silently matched a string that was never printed.
+
+**245. Three law forgeries had been retargeted at history by a revision bump.** They keyed on
+`e['revision'] == 2`, so revising the law pointed them at a superseded entry — a forgery that perturbs
+history and leaves the live statement alone. They key on `canonical` now, which is the same correction
+grid_check's own lookup needed at B1.2.1.
+
+**246. Gate.** grid **v1.38.0** — 83 entries / 374 citations · `lowering.mjs` **0.6.0** · negative
+battery **260/260** (20 new; 2 deleted for dead premises, 10 repointed) · lowering **19/19**, every
+chain node now exercised · derive 45/45 · realm 24/24 · bridge 48/48 · film 16/16 · twelve paired
+probes · harness 9/9 · runner 3/3. `scheduler_certificate.json` byte-identical — **thirty-second**
+consecutive round.
+
+**247. What is next, and what is still open.** `church_exp_2_2` (DUP-LAM, both SUP cases, DUP-VAR,
+DUP-APP, APP-SUP, APP-LAM across `t:`/`d:`/`v:`) and then the purpose-built **DUP-ERA** witness, which
+`exp_2_2` does not exercise. Still declared open and unchanged: **source-refusal ↔
+instantiation-refusal preservation** — the source refuses a missing input as `program-input-missing`
+during evaluation, instantiation as `instantiate-missing-input` before a term exists, and refinement
+over refusals is a separate theorem nobody has attempted. Also unchanged: the six DUP-* rules, the
+`d:`/`v:` loci and BUDGET_EXHAUSTED terminals are refused by name rather than approximated.

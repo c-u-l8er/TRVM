@@ -225,7 +225,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0", "1.35.0", "1.36.0", "1.37.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0", "1.35.0", "1.36.0", "1.37.0", "1.38.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -1229,14 +1229,22 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         // This required `decided: false` until B1. Two levels, two identities,
         // and — separately — two states: "not ruled" and "ruled, not written"
         // are different, and the refusal must be able to say which.
-        ok(/INPUTS_MODEL = Object\.freeze\(\{\s*decided: true/.test(lowNoc) &&
-           /implemented: false/.test(lowNoc) &&
-           /lower-input-not-implemented/.test(lowNoc) &&
-           !/lower-inputs-undecided"/.test(lowNoc),
-          "lowering.mjs must record the inputs model as DECIDED and NOT IMPLEMENTED, and refuse the " +
-          "input op as lower-input-not-implemented. The old lower-inputs-undecided cannot distinguish " +
-          "'we have not ruled' from 'we have ruled and not written it', and a refusal that conflates " +
-          "two states is a stale instrument with a delay fuse");
+        // B2: DECIDED **AND** IMPLEMENTED. This required `implemented: false`
+        // and the presence of lower-input-not-implemented, which was right for
+        // three passes and is exactly the shape of assertion that becomes a
+        // ratchet once the state it pins is reached — the canonical-lowering
+        // "keep it DEFERRED" defect, one file over. `input` lowers now, so the
+        // refusal is GONE rather than repointed, and neither of the two dead
+        // refusal names may come back.
+        ok(/INPUTS_MODEL = Object\.freeze\(\{\s*decided: true,\s*implemented: true/.test(lowNoc) &&
+           !/lower-input-not-implemented/.test(lowNoc) &&
+           !/lower-inputs-undecided/.test(lowNoc) &&
+           /IMPLEMENTED_LOWERED_OPS = Object\.freeze\(\["const", "add", "input"\]\)/.test(lowNoc),
+          "lowering.mjs must record the inputs model as DECIDED and IMPLEMENTED, with `input` in the " +
+          "implemented op list and BOTH dead refusal names gone. lower-inputs-undecided could not " +
+          "distinguish 'we have not ruled' from 'we have ruled and not written it'; " +
+          "lower-input-not-implemented said the second, and at B2 neither is true — a refusal kept " +
+          "past the state it describes is a stale instrument with a delay fuse");
         // ── B1.2: the template layer, which B1 presumed and did not have ──
         ok(/export const TARGET_TEMPLATE_ENCODING = Object\.freeze/.test(lowNoc) &&
            /export const TARGET_TEMPLATE_ENCODING_SEM_ID =/.test(lowNoc) &&
@@ -1323,13 +1331,117 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
           "fragment itself while sitting beside LOWERING_SEMANTICS.lowered_ops holding a DIFFERENT " +
           "and larger list — and distinguishing SPECIFIED from IMPLEMENTED is the whole conceptual " +
           "content of B1.2, so the one name that blurred them was the wrong name to keep");
+        // THE MECHANISM, NOT A VALUE. This required `exercised: false` and a
+        // `why_not:` to exist — true while two nodes were unexercised and false
+        // the moment B2 exercised them, so the assertion would have failed for
+        // the round that FIXED what it was guarding. Requiring an exercised
+        // flag on EVERY node, and a why_not on every node that lacks one, holds
+        // in both states and is what the check actually means.
         ok(/export const REFINEMENT_CHAIN = Object\.freeze/.test(lowNoc) &&
-           /exercised: false/.test(lowNoc) && /why_not:/.test(lowNoc),
+           (lowNoc.match(/exercised: (?:true|false)/g) ?? []).length ===
+             (lowNoc.match(/\{ id: "[a-z_]+_sem_id", kind:/g) ?? []).length &&
+           (lowNoc.match(/exercised: false/g) ?? []).length ===
+             (lowNoc.match(/why_not:/g) ?? []).length,
           "the identity chain must be MACHINE-READABLE with an exercised flag per node, so the " +
           "anti-collapse set is derived rather than hand-typed. B1.2 added target_template_sem_id to " +
           "the chain and not to the set, and the check went on proving a six-way claim about a " +
           "seven-node chain — green, and one node short of its own name");
-        ok(/consumed_inputs:/.test(lowSrc) && /grant-versus-footprint/.test(lowSrc),
+        // ── B2: the inputs relation becomes executable ────────────────────
+        // THE RULES ARE STRUCTURAL AND lower() INTERPRETS THEM. GPT's B2 ruling:
+        // a normative English sentence beside a hand-coded implementation is
+        // TWO artifacts that can disagree, and only one of them is hashed. The
+        // table is now what runs, so a rule cannot be edited without changing
+        // behaviour and behaviour cannot change without moving LOWERING_SEM_ID.
+        ok(/op_lowering_rules: Object\.freeze\(\{\s*const: Object\.freeze/.test(lowNoc) &&
+           /from_field: "value"/.test(lowNoc) && /recurse_field: "a"/.test(lowNoc) &&
+           /transform: "identity"/.test(lowNoc) &&
+           /LOWERING_SEMANTICS\.op_lowering_rules\[node\.op\]/.test(lowNoc),
+          "op_lowering_rules must be STRUCTURAL and lower() must INTERPRET it. English rules beside a " +
+          "hand-coded implementation are two artifacts that can disagree while only one is hashed — " +
+          "the same defect as naming a codomain in prose, one layer in. `transform: \"identity\"` is " +
+          "the no-normalization ruling made structural: a source name reaches the port unchanged " +
+          "because there is no other transform the table can name");
+        // lower() MUST NOT RETURN AN EXECUTABLE TERM. Keeping the convenience
+        // field would leave an official path beside a shortcut, with every
+        // future reader having to remember which carried the semantics.
+        // SCOPED TO lower()'s BODY. The first version of this tested the whole
+        // file for `target_term: emit(` and matched instantiate()'s own
+        // emission — a check that would have refused the correct architecture
+        // while claiming lowering still had a shortcut.
+        ok(!/target_term/.test(lowNoc.slice(lowNoc.indexOf("export function lower(ast)"),
+             lowNoc.indexOf("export function loweringReceipt("))) &&
+           !/ports\.length \? out :/.test(lowNoc) &&
+           /export function instantiate\(template, inputs\)/.test(lowNoc),
+          "lower() must not return a target_term. Once emission belongs to the instantiation " +
+          "relation, a convenience field emitting closed templates is a SECOND PATH to an executable " +
+          "term — the official one through instantiate() and a shortcut through lowering. That is how " +
+          "a hidden second mechanism comes back, and the equality belongs in a regression theorem " +
+          "rather than in an API");
+        // AND instantiate() MUST NOT MINT THE ID OF ITS OWN OUTPUT.
+        {
+          const instBlock = lowNoc.slice(lowNoc.indexOf("export function instantiate("),
+            lowNoc.indexOf("export function instantiationReceipt("));
+          ok(!/target_term_sem_id/.test(instBlock) &&
+             /export function instantiationReceipt\(target_template_sem_id, inputs_sem_id, target_term_sem_id\)/
+               .test(lowNoc) &&
+             /instantiation-receipt-incomplete/.test(lowNoc),
+            "instantiate() must not compute target_term_sem_id. An instantiator that emitted bytes " +
+            "AND certified their semantic id would produce the artifact and the certificate from one " +
+            "source, so a wrong emission would carry a matching id and verify against itself. The " +
+            "kernel canonicalises the bytes and the receipt is built around that id — the same " +
+            "discipline that keeps a LoweringReceipt from minting the term's identity");
+        }
+        ok(/emission_split_trigger:/.test(
+             lowNoc.slice(lowNoc.indexOf("INSTANTIATION_STATUS = Object.freeze"),
+               lowNoc.indexOf("INSTANTIATION_SPEC"))) &&
+           !/emission_split_trigger/.test(
+             lowNoc.slice(lowNoc.indexOf("INSTANTIATION_SEMANTICS = Object.freeze"),
+               lowNoc.indexOf("INSTANTIATION_STATUS = Object.freeze"))) &&
+           /independently VERSIONED or REPLACEABLE/.test(lowSrc) &&
+           /EXTERNALLY OBSERVED/.test(lowSrc),
+          "the emission SPLIT TRIGGER must live in STATUS and carry all four conditions. B1.2.1 put a " +
+          "two-condition version inside INSTANTIATION_SEMANTICS, which re-committed B1.1's own " +
+          "finding: a governance note inside a relation identity re-identifies the relation when it " +
+          "is reworded. GPT added independently-versionable and externally-observed-intermediate at " +
+          "B2, and those are the two that fire first — the moment two emitters are compared over one " +
+          "closed template, an emitter upgrade re-cutting the identity of PORT SUBSTITUTION is wrong");
+        ok(/export const SUPERSEDED_PROSE_RULE_SEM_IDS/.test(lowNoc) &&
+           /NOT A DEFECT/.test(lowSrc) &&
+           /lsem-84c9344790a0403975430d270e6d567f4124cf7f848761cf19e4f997bc330244/.test(lowSrc),
+          "the B1.2.1 identities must be kept AND distinguished from the two corrected generations. " +
+          "B1's were overbound to lifecycle and B1.2's to the wrong codomain; these were bound " +
+          "correctly to an ENGLISH expression of a correct map, so the record must say NO DEFECT is " +
+          "claimed. A reader deserves to know which generation was a correction and which a refinement");
+        {
+          const lcSrc2 = existsSync(A("lowering_check.mjs")) ? readFileSync(A("lowering_check.mjs"), "utf8") : "";
+          for (const [id, why] of [
+            ["migration-preserves-the-old-bytes",
+              "instantiate(template, {}) must reproduce the exact bytes the removed lower().target_term " +
+              "returned. Removing a shortcut is only safe if the surviving path is proved to mean the same"],
+            ["receipt-is-not-self-certified",
+              "the InstantiationReceipt must be built from an id the kernel minted, and verified by " +
+              "independent re-instantiation and re-canonicalization"],
+            ["I-4a-allocation-is-not-semantic",
+              "I-4a needs a SECOND emitter with genuinely different allocation. Asserting allocation " +
+              "invariance about one emitter measures nothing"],
+            ["I-4b-the-source-name-is-semantic",
+              "I-4b must show the quotient did not take the source key with it, Unicode included"],
+            ["I-4c-binding-has-force",
+              "I-4c must run the ASYMMETRIC fixture end to end — 7 against 8 through native execution — " +
+              "and the correct receipt must accept only the 7-producing term"],
+            ["implementing-moved-neither-id",
+              "B2 must MEASURE that becoming built moved no semantic id, by putting back only the " +
+              "fields it changed and requiring the B1.2.1 identities to return exactly"],
+          ]) ok(new RegExp(id).test(lcSrc2), `lowering_check.mjs must carry ${id} — ${why}`);
+        }
+        // SCOPED TO THE SEMANTICS RECORD. Unscoped, this was satisfied by
+        // instantiate()'s RETURN field of the same name once B2 wrote it — the
+        // assertion guards a semantic commitment and was being answered by an
+        // implementation detail. Found by the battery: consumed-inputs-collapsed
+        // renamed the semantics field and grid_check still passed.
+        ok(/consumed_inputs:/.test(lowSrc.slice(lowSrc.indexOf("export const INSTANTIATION_SEMANTICS"),
+             lowSrc.indexOf("export const INSTANTIATION_STATUS"))) &&
+           /grant-versus-footprint/.test(lowSrc),
           "instantiation must keep SUPPLIED and CONSUMED inputs distinct. That is grant-versus-" +
           "footprint from round 15 one layer down, and collapsing it now would lose the distinction " +
           "before the invocation environments get large enough to need it");
@@ -1427,7 +1539,8 @@ ok(!!g.maintenance?.confinement, "grid maintenance.confinement missing (v1.6)");
         }
         {
           const fals = (lowSrc.match(/id: "I-4[abc]"/g) ?? []).length;
-          ok(fals === 3 && /status: "DECLARED"/.test(lowSrc),
+          ok(fals === 3 && /status: "WITNESSED"/.test(lowSrc) &&
+             !/status: "DECLARED"/.test(lowSrc),
             `INSTANTIATION_FALSIFIERS must declare all THREE port witnesses as data (found ${fals}). ` +
             "Allocation invariance and source-name sensitivity alone prove only that a label is " +
             "copied around; the swapped binding is what proves instantiation HONOURS the identity. A " +

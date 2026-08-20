@@ -1487,10 +1487,10 @@ src = open('lowering.mjs').read()
 src = src.replace('  decided: true,', '  decided: false,')
 open('lowering.mjs','w').write(src)"
 
-run_case decided-reads-as-implemented "must record the inputs model as DECIDED and NOT IMPLEMENTED" "
-src = open('lowering.mjs').read()
-src = src.replace('  implemented: false,', '  implemented: true,')
-open('lowering.mjs','w').write(src)"
+# decided-reads-as-implemented was here until B2. It flipped `implemented`
+# false -> true, and at B2 that IS the live state, so the perturbation had
+# nothing left to change. Its inverse is the live case now:
+# inputs-model-reads-unimplemented, below.
 
 run_case instantiation-id-merged-into-lowering "instantiation must have its OWN relation identity" "
 src = open('lowering.mjs').read()
@@ -1548,7 +1548,7 @@ import json
 g = json.load(open('invariant-grid.json'))
 g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
                                 if not (e['id'] == 'derivation.instantiation-identity'
-                                        and e['revision'] == 3)]
+                                        and e.get('canonical'))]
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 run_case spike-record-contradicts-source "still says the inputs model is UNDECIDED" "
@@ -1677,9 +1677,14 @@ src = src.replace('export const REFINEMENT_CHAIN = Object.freeze',
                   'const REFINEMENT_CHAIN_UNUSED = Object.freeze')
 open('lowering.mjs','w').write(src)"
 
-run_case unexercised-node-unexplained "identity chain must be MACHINE-READABLE" "
+# unexercised-node-unexplained was here until B2. It renamed `why_not:`, which
+# only exists on an UNEXERCISED chain node — and B2 exercised all nine, so there
+# was nothing to rename. The mechanism is still guarded: the assertion requires
+# an exercised flag on every node and a why_not on every node lacking one, and
+# chain-flag-not-boolean below breaks it from the other side.
+run_case chain-flag-not-boolean "identity chain must be MACHINE-READABLE" "
 src = open('lowering.mjs').read()
-src = src.replace('    why_not:', '    unexplained:')
+src = src.replace('exercised: true,', 'exercised: \'yes\',')
 open('lowering.mjs','w').write(src)"
 
 run_case identity-set-hand-counted "must assert the chain's identities differ and DERIVE the set" "
@@ -1697,6 +1702,114 @@ src = open('lowering_check.mjs').read()
 src = src.replace('emit-is-not-a-hidden-relation', 'emit-is-documented')
 open('lowering_check.mjs','w').write(src)"
 
+# ── B2: the inputs relation becomes executable ─────────────────────────────
+run_case rules-revert-to-prose "op_lowering_rules must be STRUCTURAL" "
+src = open('lowering.mjs').read()
+src = src.replace('    target: Object.freeze({ t: \"church\", n: Object.freeze({ from_field: \"value\" }) }),',
+                  '    target: \"a const becomes a church node\",')
+open('lowering.mjs','w').write(src)"
+
+run_case lower-stops-interpreting-the-table "must INTERPRET it" "
+src = open('lowering.mjs').read()
+src = src.replace('const rule = LOWERING_SEMANTICS.op_lowering_rules[node.op];',
+                  'const rule = HARDCODED_RULES[node.op];')
+open('lowering.mjs','w').write(src)"
+
+run_case port-transform-dropped "the no-normalization ruling made structural" "
+src = open('lowering.mjs').read()
+src = src.replace('source_name: Object.freeze({ from_field: \"name\", transform: \"identity\" })',
+                  'source_name: Object.freeze({ from_field: \"name\" })')
+open('lowering.mjs','w').write(src)"
+
+run_case shortcut-path-restored "must not return a target_term" "
+src = open('lowering.mjs').read()
+src = src.replace('    return { ok: true, template, target_template_sem_id: targetTemplateSemId(template),',
+                  '    return { ok: true, template, target_term: emit(template), target_template_sem_id: targetTemplateSemId(template),')
+open('lowering.mjs','w').write(src)"
+
+run_case instantiate-mints-its-own-id "must not compute target_term_sem_id" "
+src = open('lowering.mjs').read()
+src = src.replace('    return { ok: true, target_term: emit(closed), closed_template: closed,',
+                  '    return { ok: true, target_term: emit(closed), target_term_sem_id: \"self-certified\", closed_template: closed,')
+open('lowering.mjs','w').write(src)"
+
+run_case receipt-completeness-unchecked "must not compute target_term_sem_id" "
+src = open('lowering.mjs').read()
+src = src.replace('instantiation-receipt-incomplete', 'instantiation-receipt-partial')
+open('lowering.mjs','w').write(src)"
+
+run_case split-trigger-back-in-the-semantics "emission SPLIT TRIGGER must live in STATUS" "
+src = open('lowering.mjs').read()
+src = src.replace('  emission_split_trigger: \"SPLIT emission', '  emission_split_trigger_moved: \"SPLIT emission')
+open('lowering.mjs','w').write(src)"
+
+run_case split-trigger-loses-gpt-conditions "must live in STATUS and carry all four conditions" "
+src = open('lowering.mjs').read()
+src = src.replace('independently VERSIONED or REPLACEABLE', 'independently interesting')
+open('lowering.mjs','w').write(src)"
+
+run_case b121-ids-erased "B1.2.1 identities must be kept AND distinguished" "
+src = open('lowering.mjs').read()
+src = src.replace('export const SUPERSEDED_PROSE_RULE_SEM_IDS', 'const SUPERSEDED_PROSE_RULE_SEM_IDS')
+open('lowering.mjs','w').write(src)"
+
+run_case b121-ids-called-a-defect "the record must say NO DEFECT is claimed" "
+src = open('lowering.mjs').read()
+src = src.replace('NOT A DEFECT', 'A DEFECT of the same family')
+open('lowering.mjs','w').write(src)"
+
+run_case inputs-model-reads-unimplemented "must record the inputs model as DECIDED and IMPLEMENTED" "
+src = open('lowering.mjs').read()
+src = src.replace('  decided: true,\n  implemented: true,', '  decided: true,\n  implemented: false,')
+open('lowering.mjs','w').write(src)"
+
+run_case dead-refusal-name-returns "BOTH dead refusal names gone" "
+src = open('lowering.mjs').read()
+src = src.replace('throw new Error(\"lower-unsupported-op: \" + String(node.op));',
+                  'throw new Error(\"lower-input-not-implemented\");')
+open('lowering.mjs','w').write(src)"
+
+run_case falsifiers-still-declared "must declare all THREE port witnesses as data" "
+src = open('lowering.mjs').read()
+src = src.replace('status: \"WITNESSED\"', 'status: \"DECLARED\"')
+open('lowering.mjs','w').write(src)"
+
+run_case chain-node-loses-its-flag "identity chain must be MACHINE-READABLE" "
+src = open('lowering.mjs').read()
+src = src.replace('{ id: \"decode_sem_id\", kind: \"relation\", exercised: true,',
+                  '{ id: \"decode_sem_id\", kind: \"relation\",')
+open('lowering.mjs','w').write(src)"
+
+run_case migration-theorem-dropped "must carry migration-preserves-the-old-bytes" "
+src = open('lowering_check.mjs').read()
+src = src.replace('migration-preserves-the-old-bytes', 'migration-noted')
+open('lowering_check.mjs','w').write(src)"
+
+run_case receipt-selfcert-case-dropped "must carry receipt-is-not-self-certified" "
+src = open('lowering_check.mjs').read()
+src = src.replace('receipt-is-not-self-certified', 'receipt-built')
+open('lowering_check.mjs','w').write(src)"
+
+run_case i4a-case-dropped "must carry I-4a-allocation-is-not-semantic" "
+src = open('lowering_check.mjs').read()
+src = src.replace('I-4a-allocation-is-not-semantic', 'I-4a-noted')
+open('lowering_check.mjs','w').write(src)"
+
+run_case i4b-case-dropped "must carry I-4b-the-source-name-is-semantic" "
+src = open('lowering_check.mjs').read()
+src = src.replace('I-4b-the-source-name-is-semantic', 'I-4b-noted')
+open('lowering_check.mjs','w').write(src)"
+
+run_case i4c-case-dropped "must carry I-4c-binding-has-force" "
+src = open('lowering_check.mjs').read()
+src = src.replace('I-4c-binding-has-force', 'I-4c-noted')
+open('lowering_check.mjs','w').write(src)"
+
+run_case implementing-id-case-dropped "must carry implementing-moved-neither-id" "
+src = open('lowering_check.mjs').read()
+src = src.replace('implementing-moved-neither-id', 'implementing-noted')
+open('lowering_check.mjs','w').write(src)"
+
 # ── B1.2.1: the version map had three entries no check read ────────────────
 run_case version-map-entry-unread "and no check reads it" "
 import json
@@ -1706,7 +1819,7 @@ json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 run_case lowering-version-drifts "artifact_versions says" "
 src = open('lowering.mjs').read()
-src = src.replace('export const LOWERING_VERSION = \"0.5.0\";',
+src = src.replace('export const LOWERING_VERSION = \"0.6.0\";',
                   'export const LOWERING_VERSION = \"0.9.9\";')
 open('lowering.mjs','w').write(src)"
 
@@ -1726,7 +1839,7 @@ run_case inputs-model-deferred-again "must record the inputs model as DECIDED an
 import json
 g = json.load(open('invariant-grid.json'))
 for e in g['law_registry']['entries']:
-    if e['id'] == 'derivation.canonical-lowering' and e['revision'] == 2:
+    if e['id'] == 'derivation.canonical-lowering' and e.get('canonical'):
         e['statement'] = e['statement'].replace('FALSE CHOICE', 'question still open')
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
@@ -1734,7 +1847,7 @@ run_case receipt-shape-reverted-in-law "must record the inputs model as DECIDED 
 import json
 g = json.load(open('invariant-grid.json'))
 for e in g['law_registry']['entries']:
-    if e['id'] == 'derivation.canonical-lowering' and e['revision'] == 2:
+    if e['id'] == 'derivation.canonical-lowering' and e.get('canonical'):
         e['statement'] = e['statement'].replace(
             'LoweringReceipt {program_sem_id, lowering_sem_id, target_template_sem_id}',
             'LoweringReceipt {program_sem_id, lowering_sem_id, target_term_sem_id}')
@@ -1744,7 +1857,7 @@ run_case codomain-rule-dropped-from-law "must state the B1.2.1 rule" "
 import json
 g = json.load(open('invariant-grid.json'))
 for e in g['law_registry']['entries']:
-    if e['id'] == 'derivation.canonical-lowering' and e['revision'] == 2:
+    if e['id'] == 'derivation.canonical-lowering' and e.get('canonical'):
         e['statement'] = e['statement'].replace(
             'A RELATION\'S IDENTITY MUST COMMIT, BY CONTENT AND NOT BY NAME, TO EXACTLY THE ENCODINGS OF ITS OWN DOMAIN AND CODOMAIN',
             'A relation should describe its encodings')
@@ -1755,7 +1868,7 @@ import json
 g = json.load(open('invariant-grid.json'))
 g['law_registry']['entries'] = [e for e in g['law_registry']['entries']
                                 if not (e['id'] == 'derivation.canonical-lowering'
-                                        and e['revision'] == 2)]
+                                        and e.get('canonical'))]
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 run_case entry-snapshot-law-deleted "law derivation.entry-snapshot@1 missing" "

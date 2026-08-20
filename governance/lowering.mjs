@@ -1,13 +1,15 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   lowering.mjs — v0.5.0 — the source language reaches the governed runtime
+   lowering.mjs — v0.6.0 — the source language reaches the governed runtime
 
    Three logically independent relations, which is the whole design and not a
    decomposition for tidiness. Each can fail while the others hold: a lowering
    can be perfect while the decoder misreads the normal form; a decoder can be
    perfect while lowering emitted the wrong target term; and the runtime can
-   execute a correctly lowered term incorrectly. Twenty-five rounds have gone
+   execute a correctly lowered term incorrectly. Twenty-seven rounds have gone
    into separating claims that felt like one claim, so they get three
-   obligations, three laws, and six identities that may not collapse.
+   obligations, three laws, and a chain of identities that may not collapse —
+   DECLARED in REFINEMENT_CHAIN and counted nowhere, because the count in this
+   sentence said "six" through the pass that made it seven.
 
        program_sem_id
              │  lowering_sem_id            ← commits to the TEMPLATE encoding
@@ -58,11 +60,36 @@
    `input-port` had nowhere structural to live. B1.2 added
    TRVM-TARGET-TEMPLATE-v1, moved lowering's codomain onto it, and put the
    whole source fragment INCLUDING `input` into the hashed semantics so that
-   implementing the frozen rule cannot move an identity. `input` still refuses,
-   as lower-input-not-implemented — a STATUS refusal, deliberately not part of
-   LOWERING_SEMANTICS.refusal_semantics.
+   implementing the frozen rule cannot move an identity.
 
-   THIS HEADER WAS STALE FOR A ROUND. It described the pre-B1 chain
+   BUILT AT B2, and the point of the three passes before it is that THE ACT OF
+   IMPLEMENTING MOVED NEITHER SEMANTIC ID. `input` lowers, instantiate() runs,
+   both lifecycle flags are true, the falsifiers are WITNESSED — and none of
+   that touched lsem or isem. That is the property B1.1 set out to make possible
+   and B2 is the first round able to exercise it.
+
+   BE EXACT, THOUGH: both ids DID move this round, for two changes that are not
+   the implementation and are separable from it —
+
+       lsem   op_lowering_rules went from ENGLISH to STRUCTURAL (below)
+       isem   the emission SPLIT TRIGGER moved out of the hashed semantics into
+              INSTANTIATION_STATUS, where a governance note belongs
+
+   Both were ruled by GPT, both change what the semantic record SAYS, and
+   neither is a consequence of code being written. The distinction is measured
+   rather than asserted: flipping every lifecycle field on today's records moves
+   nothing. Two further things changed shape here:
+
+       op_lowering_rules is now STRUCTURAL and lower() INTERPRETS it, so the
+       specification and the implementation are one object rather than two that
+       can disagree. That moved lsem once, deliberately, and closes most of
+       B1.1's declared-open prose brittleness.
+
+       lower() NO LONGER RETURNS target_term. instantiate() is the only route to
+       an executable term, so the shortcut path cannot survive as a second
+       mechanism; the old equality is kept as a REGRESSION THEOREM.
+
+   THIS HEADER WAS STALE FOR A ROUND, TWICE. It described the pre-B1 chain
    program_sem_id → target_term_sem_id and said the inputs model was undecided,
    while the sections below said the opposite — a file contradicting itself,
    which is the record-staleness class this tree does not tolerate elsewhere.
@@ -92,7 +119,7 @@ import { createHash } from "node:crypto";
 import { canonicalBytes, CORE_SEM_ID, programSemId } from "./derive_protocol.mjs";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
-export const LOWERING_VERSION = "0.5.0";
+export const LOWERING_VERSION = "0.6.0";
 
 /* ── THE EXECUTABLE TARGET ENCODING ───────────────────────────────────────
    ic32's interaction net is linear: a variable used twice needs an explicit
@@ -257,15 +284,17 @@ export function emit(template) {
    file that blurred them was the wrong name to keep:
 
        LOWERING_SEMANTICS.lowered_ops   const · add · input     SPECIFIED, frozen
-       IMPLEMENTED_LOWERED_OPS          const · add             WRITTEN
+       IMPLEMENTED_LOWERED_OPS          const · add · input     WRITTEN
 
-   `input` is specified and unwritten, so it is refused as
-   lower-input-not-implemented. `read`, `scope` and `cite` have no lowering rule
-   at all. `sub`, `mul` and `len` are simply not encoded yet, and saying so is
-   cheaper than discovering it. THE COMMENT HERE USED TO SAY `input` was absent
+   AT B2 THE TWO LISTS COINCIDE, and that is a fact about this moment rather
+   than a reason to merge the names. `input` was specified at B1.2 and written
+   here; `read`, `scope` and `cite` have no lowering rule at all; `sub`, `mul`
+   and `len` are simply not encoded yet. The first of those to get a frozen rule
+   ahead of its implementation separates the lists again, which is the state the
+   distinction exists for. THE COMMENT HERE ONCE SAID `input` was absent
    "because the inputs model is undecided" — untrue since B1 decided it and
    doubly untrue since B1.2 froze the rule. */
-export const IMPLEMENTED_LOWERED_OPS = Object.freeze(["const", "add"]);
+export const IMPLEMENTED_LOWERED_OPS = Object.freeze(["const", "add", "input"]);
 
 /* ── B1: THE INPUTS MODEL, DECIDED ────────────────────────────────────────
    The question was posed as parameterized VERSUS instantiated. It is a FALSE
@@ -368,12 +397,16 @@ export const INSTANTIATION_SEMANTICS = Object.freeze({
   // BECOMES TRUE, SPLIT IT: the trigger is written down so the boundary stays a
   // decision rather than an accident, which is the whole complaint B1.2.1 is
   // answering one layer up.
+  // THE OPERATIVE STATEMENT ONLY. The CONDITIONS under which emission should be
+  // split into its own relation moved to INSTANTIATION_STATUS at B2: they are a
+  // rule about what the project should do next, not about what this relation
+  // does, and keeping governance prose in a hashed record is how rewording a
+  // note re-identifies a relation — B1.1's whole finding, which this record was
+  // quietly re-committing.
   emission: "substitution THEN emission, both inside this relation. Ports are replaced by canonically " +
-    "encoded values and the closed template is serialized by codomain_encoding_sem_id. Emission is " +
-    "DETERMINISTIC: equal closed templates emit equal terms, binder names and dup labels included. " +
-    "It carries no identity of its own because it is neither independently reused nor independently " +
-    "theorem-bearing; if it becomes either, it earns an emission_sem_id and this relation's codomain " +
-    "becomes the closed TEMPLATE rather than the executable term.",
+    "encoded values and the resulting CLOSED template is serialized by codomain_encoding_sem_id. " +
+    "Emission is DETERMINISTIC: equal closed templates emit equal terms, binder names and dup labels " +
+    "included. It carries no identity of its own.",
   consumed_inputs: "instantiation substitutes ONLY the ports the template declares. The inputs " +
     "SUPPLIED and the inputs CONSUMED are different sets and the difference is not erased: it is " +
     "grant-versus-footprint from round 15, one layer down. inputs_sem_id commits to the whole " +
@@ -426,10 +459,28 @@ export const INSTANTIATION_SEMANTICS = Object.freeze({
 export const INSTANTIATION_STATUS = Object.freeze({
   decided_at: "round 27, pass B1",
   semantics_corrected_at: "round 27, pass B1.1 — extra_input and the semantic/status split",
-  implemented: false,
-  operational_refusals: ["instantiate-not-implemented", "lower-input-not-implemented"],
-  conformance_vectors: "DECLARED OPEN until B2. The three falsifiers are named in " +
-    "INSTANTIATION_FALSIFIERS and none of them is written yet.",
+  codomain_bound_at: "round 27, pass B1.2.1 — TARGET_EXECUTABLE_ENCODING_SEM_ID",
+  implemented_at: "round 27, pass B2",
+  implemented: true,
+  operational_refusals: ["instantiate-inputs-not-canonical"],
+  // GPT's B2 ruling, and the reason it lives here rather than in the hashed
+  // semantics: it is a rule about when the PROJECT should change the
+  // architecture, so rewording it must be free. B1.2.1 put a two-condition
+  // version inside INSTANTIATION_SEMANTICS and was re-committing the exact
+  // defect B1.1 found — governance prose inside a relation identity.
+  //
+  // The underlying rule, in GPT's words: keep A∘B one relation while nobody
+  // needs to name, vary, verify, reuse or observe A independently of B.
+  emission_split_trigger: "SPLIT emission into its own relation, with its own emission_sem_id and " +
+    "this relation's codomain becoming the CLOSED TEMPLATE rather than the executable term, as soon " +
+    "as any of four things becomes true: emission is (1) independently REUSED, (2) independently " +
+    "THEOREM- or EVIDENCE-BEARING, (3) independently VERSIONED or REPLACEABLE, or (4) the closed-" +
+    "template intermediate becomes an INDEPENDENTLY IDENTIFIED or EXTERNALLY OBSERVED artifact. " +
+    "(3) and (4) are GPT's additions at B2 and they are the ones that will fire first: the moment two " +
+    "emitters are compared over one closed template, an emitter upgrade re-cutting the semantic " +
+    "identity of PORT SUBSTITUTION becomes plainly wrong. None of the four holds today.",
+  conformance_vectors: "WRITTEN AT B2. All three falsifiers in INSTANTIATION_FALSIFIERS are " +
+    "WITNESSED, I-4c end to end through native execution.",
   no_film: "instantiation gets NO FILM. It is a deterministic RELATION, not a transition system, so " +
     "its instrument is independent RE-INSTANTIATION — the same argument that gives lowering " +
     "re-lowering rather than a film. This is a statement about the INSTRUMENT, not about the " +
@@ -476,15 +527,12 @@ export const REFINEMENT_CHAIN = Object.freeze([
     of: "source AST -> target template" }),
   Object.freeze({ id: "target_template_sem_id", kind: "object", exercised: true,
     of: "the parameterized template. ADDED TO THE CHAIN AT B1.2 AND TO THIS SET AT B1.2.1" }),
-  Object.freeze({ id: "instantiation_sem_id", kind: "relation", exercised: false,
-    of: "template + inputs -> closed executable term",
-    why_not: "the id EXISTS and is distinct, but the add(2,3) witness reaches its term through " +
-      "lower()'s convenience emission rather than through instantiate(), which is not written. B2 " +
-      "restates the fixture through instantiate({}) and this becomes exercised." }),
-  Object.freeze({ id: "inputs_sem_id", kind: "data", exercised: false,
-    of: "one invocation's canonical inputs",
-    why_not: "the fixture's environment is {} and nothing consumes inputsSemId yet. It is DATA " +
-      "identity rather than a chain object, and it joins the set when instantiation does." }),
+  Object.freeze({ id: "instantiation_sem_id", kind: "relation", exercised: true,
+    of: "template + inputs -> closed executable term. EXERCISED AT B2: every term the witness " +
+      "executes now reaches native code through instantiate(), because lower() no longer emits one." }),
+  Object.freeze({ id: "inputs_sem_id", kind: "data", exercised: true,
+    of: "one invocation's canonical inputs. EXERCISED AT B2, and it is what makes extras checkable: " +
+      "{x:2,y:3} and {x:2,y:3,unused:999} have DIFFERENT inputs_sem_id and reach the SAME term." }),
   Object.freeze({ id: "target_term_sem_id", kind: "object", exercised: true,
     of: "the closed executable ic32 term, minted by the kernel and agreed by C" }),
   Object.freeze({ id: "target_nf_sem_id", kind: "object", exercised: true,
@@ -501,15 +549,15 @@ export const REFINEMENT_CHAIN = Object.freeze([
  *  list that drifts from the suite, which this tree has now watched happen to a
  *  law count, a case count and a rung count. */
 export const INSTANTIATION_FALSIFIERS = Object.freeze([
-  Object.freeze({ id: "I-4a", name: "allocation-invariance", status: "DECLARED",
+  Object.freeze({ id: "I-4a", name: "allocation-invariance", status: "WITNESSED",
     claim: "same source input name, different internal target variable allocation " +
       "(_impl17 vs q93) -> the SAME target_template_sem_id",
     proves: "the emitter's allocation is not semantic" }),
-  Object.freeze({ id: "I-4b", name: "source-name-sensitivity", status: "DECLARED",
+  Object.freeze({ id: "I-4b", name: "source-name-sensitivity", status: "WITNESSED",
     claim: "different source input names, same allocation strategy -> DIFFERENT " +
       "target_template_sem_id",
     proves: "the source input key IS semantic, so the quotient did not throw it away" }),
-  Object.freeze({ id: "I-4c", name: "binding-has-force", status: "DECLARED",
+  Object.freeze({ id: "I-4c", name: "binding-has-force", status: "WITNESSED",
     claim: "x/y port binding swapped during instantiation -> the target term or outcome changes, or " +
       "is refused; and it must NEVER validate under the correct instantiation receipt",
     proves: "instantiation HONOURS the port identity rather than carrying it decoratively — " +
@@ -544,25 +592,53 @@ export const LOWERING_SEMANTICS = Object.freeze({
   // lowering does not perform.
   codomain: "TRVM-TARGET-TEMPLATE-v1",
   target_template_encoding_sem_id: TARGET_TEMPLATE_ENCODING_SEM_ID,
-  // THE PER-OP MAP, WRITTEN DOWN. Removing target_encoding exposed that it had
-  // been standing in for rules that were never stated: `lowered_ops` says WHICH
-  // ops lower and the template encoding says what the codomain's nodes ARE, but
-  // nothing said that a const becomes a church node. B1.1 froze the `input`
-  // rule under GPT's pressure and const and add were left implicit, so a
-  // lowering that mapped const(n) to church(n+1) would have contradicted no
-  // sentence in the hashed semantics. An identity that cannot move when the map
-  // changes is the same defect as one that moves when it has not.
+  // THE PER-OP MAP, STRUCTURAL AND INTERPRETED. Removing target_encoding at
+  // B1.2.1 exposed that it had been standing in for rules that were never
+  // stated: `lowered_ops` says WHICH ops lower and the template encoding says
+  // what the codomain's nodes ARE, but nothing said that a const becomes a
+  // church node, so const(n) -> church(n+1) contradicted no sentence.
+  //
+  // B1.2.1 wrote them as ENGLISH and GPT ruled that insufficient for the same
+  // reason the codomain-in-prose was: a normative sentence beside a hand-coded
+  // implementation is TWO artifacts that can disagree, and only one of them is
+  // hashed. So `lower()` INTERPRETS this table. The specification and the
+  // implementation are now the SAME OBJECT — a rule cannot be edited without
+  // changing behaviour, and behaviour cannot be changed without moving
+  // LOWERING_SEM_ID. Measured in lowering_check: mutating a rule moves the id
+  // AND the emitted template, together, every time.
+  //
+  // `transform: "identity"` on the port's source_name is INPUT_PORT_SPEC's
+  // no-normalization ruling made structural. It was a sentence saying names are
+  // not Unicode-normalized; it is now the absence of any other transform in a
+  // table the compiler reads, which is a much harder thing to violate by
+  // accident. This closes most of B1.1's declared-open brittleness: the rules
+  // no longer move an identity when reworded, because there is no prose left in
+  // them to reword. It does NOT close all of it — `substitution` and
+  // `dup_label_policy` are still English elsewhere.
   op_lowering_rules: Object.freeze({
-    const: "{op:\"const\", value:n} lowers to {t:\"church\", n} for a non-negative integer n, with n " +
-      "carried through UNCHANGED. The expansion of that node into interaction-net text belongs to the " +
-      "EXECUTABLE encoding and is deliberately not stated here — that is the boundary whose absence " +
-      "made emit() a hidden relation.",
-    add: "{op:\"add\", a, b} lowers to {t:\"add\", a', b'} where a' and b' are the lowerings of a and " +
-      "b. Operand order is PRESERVED, a then b, the core's own evaluation order; the target `add` " +
-      "node names the combinator, and which combinator that is belongs to the executable encoding.",
-    input: "see inputs.input_lowering_rule — {op:\"input\", name:N} lowers to {t:\"port\", " +
-      "source_name:N}. Stated there rather than duplicated here, because a rule written twice in one " +
-      "hashed record is a rule that can disagree with itself.",
+    const: Object.freeze({
+      source_op: "const",
+      preconditions: Object.freeze([
+        Object.freeze({ field: "value", holds: "integer", refusal: "lower-non-integer-constant" }),
+        Object.freeze({ field: "value", holds: "nonnegative", refusal: "lower-negative" }),
+      ]),
+      target: Object.freeze({ t: "church", n: Object.freeze({ from_field: "value" }) }),
+    }),
+    add: Object.freeze({
+      source_op: "add",
+      preconditions: Object.freeze([]),
+      // OPERAND ORDER IS THE FIELD ORDER OF THIS RECORD's targets, a then b,
+      // which is the core's own evaluation order. Swapping them here swaps the
+      // emitted template, because this table is what runs.
+      target: Object.freeze({ t: "add",
+        a: Object.freeze({ recurse_field: "a" }), b: Object.freeze({ recurse_field: "b" }) }),
+    }),
+    input: Object.freeze({
+      source_op: "input",
+      preconditions: Object.freeze([]),
+      target: Object.freeze({ t: "port",
+        source_name: Object.freeze({ from_field: "name", transform: "identity" }) }),
+    }),
   }),
   // THE FULL SOURCE FRAGMENT, `input` INCLUDED. B1 left `input` out of the
   // hashed semantics, so B2 adding it would have moved LOWERING_SEM_ID — which
@@ -605,12 +681,15 @@ export const LOWERING_SEMANTICS = Object.freeze({
 export const LOWERING_STATUS = Object.freeze({
   decided_at: "round 27, pass B1",
   semantics_corrected_at: "round 27, pass B1.1",
-  implemented: false,
+  codomain_corrected_at: "round 27, pass B1.2.1 — the executable encoding unbound from this relation",
+  rules_made_structural_at: "round 27, pass B2 — op_lowering_rules is INTERPRETED by lower()",
+  implemented_at: "round 27, pass B2",
+  implemented: true,
   why_decided_before_implemented: "an unstated variable inside target_term_sem_id is the round-16 " +
     "hidden-identity bug class. Deciding this while writing `input` is how it gets in. The first " +
     "lowering witness used inputs={} and therefore decided nothing, which is why the decision is a " +
     "separate act rather than a consequence of the next commit.",
-  falsifiers: "INSTANTIATION_FALSIFIERS — three, all DECLARED, none written",
+  falsifiers: "INSTANTIATION_FALSIFIERS — three, all WITNESSED at B2",
   refinement_scope: REFINEMENT_SCOPE,
   // NAMED AT B1.2.1, because the alternative is a code shape quietly
   // contradicting the record above it. Once emission belongs to the
@@ -622,10 +701,13 @@ export const LOWERING_STATUS = Object.freeze({
   // LoweringReceipt ends at the template and the term's id is minted by the
   // kernel. But it is a debt with a named closer, and B2's restatement of
   // add(2,3) through instantiate({}) is therefore MANDATORY rather than tidy.
-  emission_debt: "lower() calls emit() for zero-port templates and returns `target_term` as a " +
-    "CONVENIENCE. After B1.2.1 that is instantiation's step, so the field is the composition at the " +
-    "empty environment: emit(template) is what instantiate(template, {}) must reproduce byte for " +
-    "byte. B2 replaces the convenience with the relation and the regression theorem is the proof.",
+  emission_debt: "PAID AT B2. lower() no longer returns `target_term` at all — the convenience field " +
+    "was a SECOND PATH to an executable term beside the official one, and GPT ruled it out on the " +
+    "rule this tree keeps re-learning: a mechanism built twice will disagree with itself, and every " +
+    "future reader has to remember which copy carries the semantics. instantiate() is now the only " +
+    "way to a term, including at the empty environment. The equality survives as a REGRESSION " +
+    "THEOREM rather than an API: instantiate(template, {}) reproduces the exact 129 bytes the " +
+    "shortcut used to return, with the same six-frame film, the same normal form and the same 5.",
 });
 
 /** The inputs model, as the batteries and the grid read it. Semantics live in
@@ -633,7 +715,7 @@ export const LOWERING_STATUS = Object.freeze({
  *  reason this object is NOT hashed into any identity. */
 export const INPUTS_MODEL = Object.freeze({
   decided: true,
-  implemented: false,
+  implemented: true,
   semantics: LOWERING_SEMANTICS.inputs,
   status: LOWERING_STATUS,
   why_two_relations: "a template can be perfectly lowered while instantiation binds \"x\" to the port " +
@@ -705,6 +787,28 @@ export const SUPERSEDED_CODOMAIN_SEM_IDS = Object.freeze({
     "same field (its lsem landed on 6e445936…), which is why the finding is the SHAPE and not the hex.",
 });
 
+/** THE B1.2.1 IDENTITIES, and this record claims NO DEFECT — which is the whole
+ *  reason it is separate from the two above. Those ids were bound to lifecycle
+ *  (B1) and to the wrong codomain (B1.2); these were bound correctly, to an
+ *  ENGLISH expression of a correct map. B1.1 declared that brittleness open in
+ *  the same breath as it fixed the lifecycle overbinding, and B2 closes most of
+ *  it by making the rules structural and INTERPRETED.
+ *
+ *  Recorded because they are the values against which "implementing B2 moved
+ *  neither id" has to be checked, and because a reader deserves to know which
+ *  of the four generations was a correction and which was a refinement. */
+export const SUPERSEDED_PROSE_RULE_SEM_IDS = Object.freeze({
+  note: "B1.2.1 hashed a correct map expressed in NORMATIVE ENGLISH. Superseded at B2 by the " +
+    "structural op_lowering_rules that lower() interprets. NOT A DEFECT — no false verdict was " +
+    "possible and no id was bound to anything it should not have been.",
+  lowering_sem_id_b121: "lsem-84c9344790a0403975430d270e6d567f4124cf7f848761cf19e4f997bc330244",
+  instantiation_sem_id_b121: "isem-6ac0ea7b0d1a2f2cf3d749072b5ac38d8a7f332f7b4b1b10c61b923f6cb03e39",
+  why_each_moved: "lsem moved because op_lowering_rules became structural; isem moved because the " +
+    "emission SPLIT TRIGGER left the hashed semantics for INSTANTIATION_STATUS. NEITHER moved because " +
+    "code was written: implementing `input`, writing instantiate(), removing lower()'s target_term " +
+    "and flipping every lifecycle flag move nothing, and lowering_check measures exactly that.",
+});
+
 /** The identity of a particular INVOCATION's inputs. This is where `x=5` lives,
  *  and it is deliberately not inside INSTANTIATION_SEM_ID: one names the rule,
  *  the other names the data the rule was applied to. Same shape as programSemId
@@ -724,13 +828,72 @@ export const portSemId = (source_name) =>
 export const INSTANTIATION_RECEIPT_FIELDS = Object.freeze([
   "target_template_sem_id", "instantiation_sem_id", "inputs_sem_id", "target_term_sem_id"]);
 
-/** DECLARED, NOT BUILT. Named so that "the model is undecided" and "the model is
- *  decided and the code is not written" cannot be confused — they were the same
- *  refusal string until B1, and a refusal that cannot distinguish two states is
- *  a stale instrument with a delay fuse. */
-export function instantiate() {
-  throw new Error("instantiate-not-implemented: the model is frozen at INPUTS_MODEL and the three " +
-    "falsifiers in INSTANTIATION_FALSIFIERS are DECLARED; B2 writes them and this");
+/** BUILT AT B2. The receipt is minted by `instantiationReceipt` BELOW, from an
+ *  id this function never computes — see the comment there. */
+export function instantiate(template, inputs) {
+  try {
+    if (!inputs || typeof inputs !== "object" || Array.isArray(inputs))
+      throw new Error("instantiate-inputs-not-canonical");
+    // CONSUMED, not SUPPLIED. The port set comes from the TEMPLATE, so an input
+    // the template has no port for cannot participate — which is how extras are
+    // ignored structurally rather than by a filtering step someone could forget.
+    const consumed = templatePorts(template);
+    const bound = Object.create(null);
+    for (const name of consumed) {
+      if (!Object.prototype.hasOwnProperty.call(inputs, name))
+        throw new Error("instantiate-missing-input: " + name);
+      // A VALUE IS EMBEDDED BY THE SAME ENCODING A CONSTANT OF ITS TYPE GETS.
+      // Not a second encoding for inputs: a value that lowered differently from
+      // the constant it equals would make refinement depend on where a number
+      // entered the program.
+      const v = inputs[name];
+      if (!Number.isInteger(v) || v < 0)
+        throw new Error("instantiate-unencodable-input: " + name);
+      bound[name] = T.church(v);
+    }
+    // SIMULTANEOUS substitution: one walk, every port replaced from `bound`,
+    // so a value containing a port could not capture one. (No value can today —
+    // integers only — and doing it in one pass is what keeps that true when
+    // they can.)
+    const subst = (n) => {
+      if (n.t === "port") return bound[n.source_name];
+      if (n.t === "church") return n;
+      if (n.t === "add") return T.add(subst(n.a), subst(n.b));
+      throw new Error("template-malformed: " + String(n.t));
+    };
+    const closed = subst(template);
+    return { ok: true, target_term: emit(closed), closed_template: closed,
+      inputs_sem_id: inputsSemId(inputs), consumed_inputs: consumed };
+  } catch (e) { return { ok: false, reason: e.message }; }
+}
+
+/** THE APPLICATION RECORD FOR INSTANTIATION, and the reason it takes
+ *  `target_term_sem_id` as an ARGUMENT rather than computing it.
+ *
+ *  GPT's B2 constraint, and it is the same discipline `loweringReceipt` already
+ *  follows: the runtime owns the identity of the thing it executes. An
+ *  `instantiate()` that emitted bytes and then certified their semantic id would
+ *  be grading its own homework — the certificate and the artifact would come from
+ *  one source, so a wrong emission would carry a matching id and verify. The id
+ *  must be minted by the kernel's canonicaliser from the bytes, and only then
+ *  does a receipt get built around it.
+ *
+ *      instantiate(template, inputs) ──▶ closed term BYTES
+ *                                              │ independent canonicaliser
+ *                                              ▼
+ *                                        target_term_sem_id
+ *                                              │
+ *                                              ▼  instantiationReceipt(…)
+ *
+ *  Verification re-instantiates, re-canonicalises independently, and compares —
+ *  never asks the instantiator whether it agrees with itself. */
+export function instantiationReceipt(target_template_sem_id, inputs_sem_id, target_term_sem_id) {
+  const receipt = { target_template_sem_id, instantiation_sem_id: INSTANTIATION_SEM_ID,
+    inputs_sem_id, target_term_sem_id };
+  for (const f of INSTANTIATION_RECEIPT_FIELDS)
+    if (receipt[f] === undefined) throw new Error("instantiation-receipt-incomplete: " + f);
+  return Object.freeze({ ...receipt,
+    instantiation_receipt_id: "irec-" + H("TRVM-INSTANTIATION-RECEIPT-v1|" + canonicalBytes(receipt)) });
 }
 
 /* ── the lowering ─────────────────────────────────────────────────────────── */
@@ -753,39 +916,67 @@ function church(n, labels) {
 
 const ADD_COMBINATOR = (L) => `λm.λn.λf.λx.!&${L}{f0,f1}=f;((m f0) ((n f1) x))`;
 
-/** program AST → canonical target term, or a NAMED refusal. Deterministic: the
- *  same AST always produces the same string, including its dup labels. */
+/* ── THE RULE INTERPRETER ─────────────────────────────────────────────────
+   The predicates and transforms a rule may name. Small and CLOSED on purpose:
+   an open set would let a rule name a transform that is really a function
+   somewhere else, and the point of the table is that reading it tells you what
+   lowering does. An unknown name is a refusal, not a default. */
+const PRECONDITION = Object.freeze({
+  integer: (v) => Number.isInteger(v),
+  nonnegative: (v) => typeof v === "number" && v >= 0,
+});
+const TRANSFORM = Object.freeze({
+  // The ONLY transform, and the no-normalization ruling made structural: a
+  // source input name reaches the port unchanged because there is nothing else
+  // it could be put through.
+  identity: (v) => v,
+});
+
+/** program AST → target TEMPLATE, or a NAMED refusal, by INTERPRETING
+ *  LOWERING_SEMANTICS.op_lowering_rules. There is no second hand-coded copy of
+ *  the map to drift from the hashed one — editing a rule changes what this
+ *  function does and moves LOWERING_SEM_ID in the same edit. */
 export function lower(ast) {
   const go = (node) => {
     if (!node || typeof node !== "object") throw new Error("lower-unsupported-op");
-    if (!IMPLEMENTED_LOWERED_OPS.includes(node.op)) {
-      // `input` HAS a frozen lowering rule (LOWERING_SEMANTICS.inputs.
-      // input_lowering_rule: it becomes T.port(node.name)) and no
-      // implementation. That is a STATUS refusal, not a semantic one, which is
-      // why it does not appear in LOWERING_SEMANTICS.refusal_semantics — B2
-      // deleting this line adds no meaning and must not move LOWERING_SEM_ID.
-      if (["input"].includes(node.op)) throw new Error("lower-input-not-implemented");
+    const rule = LOWERING_SEMANTICS.op_lowering_rules[node.op];
+    if (!rule || !IMPLEMENTED_LOWERED_OPS.includes(node.op)) {
       if (["read", "scope", "cite"].includes(node.op)) throw new Error("lower-reads-undecided");
       throw new Error("lower-unsupported-op: " + String(node.op));
     }
-    if (node.op === "const") {
-      if (!Number.isInteger(node.value)) throw new Error("lower-non-integer-constant");
-      if (node.value < 0) throw new Error("lower-negative");
-      return T.church(node.value);
+    for (const p of rule.preconditions) {
+      const holds = PRECONDITION[p.holds];
+      if (!holds) throw new Error("lowering-rule-malformed: unknown precondition " + String(p.holds));
+      if (!holds(node[p.field])) throw new Error(p.refusal);
     }
-    // `add`: operands in DECLARED FIELD ORDER, a before b, which is the core's
-    // own evaluation order — so emit()'s label counter later advances the same
-    // way the source evaluator would have walked the tree.
-    return T.add(go(node.a), go(node.b));
+    const out = {};
+    for (const [key, spec] of Object.entries(rule.target)) {
+      if (typeof spec === "string") { out[key] = spec; continue; }          // t: "church"
+      if ("recurse_field" in spec) { out[key] = go(node[spec.recurse_field]); continue; }
+      if ("from_field" in spec) {
+        const tf = TRANSFORM[spec.transform ?? "identity"];
+        if (!tf) throw new Error("lowering-rule-malformed: unknown transform " + String(spec.transform));
+        out[key] = tf(node[spec.from_field]);
+        continue;
+      }
+      throw new Error("lowering-rule-malformed: " + key);
+    }
+    return Object.freeze(out);
   };
   try {
     const template = go(ast);
-    const ports = templatePorts(template);
-    // THE EXECUTABLE TERM IS A CONVENIENCE, and only for a CLOSED template.
-    // Lowering's codomain is the template; a template with ports is not a term
-    // and must go through instantiation to become one.
-    const out = { ok: true, template, target_template_sem_id: targetTemplateSemId(template), ports };
-    return ports.length ? out : { ...out, target_term: emit(template) };
+    // NO `target_term` FIELD. It was a convenience that emitted a closed
+    // template directly, and once emission belongs to the instantiation
+    // relation it was a SECOND PATH to an executable term — the official one
+    // through instantiate() and a shortcut through lowering, with every future
+    // reader having to remember which carried the semantics. GPT ruled it out
+    // and the reasoning is the one this tree keeps re-learning: a mechanism
+    // built twice is a mechanism that will disagree with itself. instantiate()
+    // is now the ONLY way to an executable term, including for zero-port
+    // templates, and the migration theorem proves that path reproduces the
+    // exact bytes the shortcut used to return.
+    return { ok: true, template, target_template_sem_id: targetTemplateSemId(template),
+      ports: templatePorts(template) };
   } catch (e) { return { ok: false, reason: e.message }; }
 }
 
