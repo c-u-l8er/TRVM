@@ -1,0 +1,12 @@
+4ba5997 The pool closes: ERA by construction, and three rulings that each removed a ratchet
+a3f55fd The float plane originates natively, measured against the oracle before a line of it was asserted
+7932541 Binding the oracle, and measuring exp_2_2 before building anything
+b1886f1 The verifier closure, and a stronger form that was weaker
+ac33aed The emission split fires, and two defects behind it
+630465c The B2 brief, and three questions about where the next split lands
+c4ed561 Inputs become executable, and building it moved neither id
+a0e205b The B1.2.1 brief, and four questions for the ruling
+8c89120 emit() was a hidden semantic relation, and its dual
+95ee608 The B1.2 brief, and one liberty taken with the template grammar
+06822d4 The layer B1 presumed and did not have
+fc1837d The B1.1 brief -- both findings were real

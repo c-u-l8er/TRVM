@@ -1,0 +1,20 @@
+{
+ "type": "TRVM-BLIND-RUN-RECEIPT-v2",
+ "run_id": "brun-7e859c6383ccc018e192349016a481c10f178530a3e80a4ad362fe7e82e7fa4b",
+ "status": "ABORTED",
+ "previous_run_id": "brun-5e5452b8c8427792796c9a0336c2f94b7a69756107416e6acfedcbfcee1405f4",
+ "previous_status": "PINNED",
+ "spec_release_id": "srel-e5ea2fba2a4083233ec60fc6416a82cc84a0c7bac33e8926b0f604d30e69847e",
+ "blind_package_id": "bpkg-d43546396e5997376241b3958b4fa50c14971655528cb34184e57f6490e1d211",
+ "instrument_digest": "f86f6419c4c663595845a343b88a3051badee1b9a9cd7f8eb0086479f55afa16",
+ "adapters": [
+  {
+   "implementation": "javascript",
+   "role": "reference",
+   "package_digest": "063c7c63a335b68e99db479c0458bc96d2ffd86e56efc3238ce1f1a621407ba6",
+   "binary_digest": null,
+   "environment": null
+  }
+ ],
+ "note": "aborted: P4.7.5: the terminal verifier replays conformance; the instrument moved"
+}

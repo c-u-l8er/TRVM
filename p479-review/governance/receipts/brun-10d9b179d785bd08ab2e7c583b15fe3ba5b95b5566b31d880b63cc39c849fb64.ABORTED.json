@@ -1,0 +1,20 @@
+{
+ "type": "TRVM-BLIND-RUN-RECEIPT-v2",
+ "run_id": "brun-10d9b179d785bd08ab2e7c583b15fe3ba5b95b5566b31d880b63cc39c849fb64",
+ "status": "ABORTED",
+ "previous_run_id": "brun-6805c3e578aa48fee8e1a3325d14ec72e03eff7defcbe092270807217abd47e7",
+ "previous_status": "PINNED",
+ "spec_release_id": "srel-c02a6f5422f461c9e459b1b2c66922377baf8f48a4678502a1663b784e27ce2d",
+ "blind_package_id": "bpkg-3046251111a1b716878db29028bf2b8702e001c99def66e3503552bb6568b408",
+ "instrument_digest": "7ae23b3ddf7c4ef88450da3d40290511fd6f608dc1c09056f95b6a5ce11e0183",
+ "adapters": [
+  {
+   "implementation": "javascript",
+   "role": "reference",
+   "package_digest": "063c7c63a335b68e99db479c0458bc96d2ffd86e56efc3238ce1f1a621407ba6",
+   "binary_digest": null,
+   "environment": null
+  }
+ ],
+ "note": "aborted: P4.7.7: the evidence byte boundary and the run record's own closed vocabulary. The instrument gained experiment/evidence.mjs and run_state.mjs reads its record from bytes, so instrument_digest and spec_release_id both moved."
+}

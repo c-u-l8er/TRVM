@@ -1,0 +1,101 @@
+{
+ "release_type": "TRVM-PROOF-WIRE-SPEC-RELEASE-v1",
+ "protocols": {
+  "wire": "TRVM-PROOF-WIRE-v1",
+  "verified_claim": "TRVM-VERIFIED-CLAIM-v1",
+  "nested_composition": "TRVM-NESTED-COMPOSITION-v2"
+ },
+ "note": "Revision numbers are LABELS. Digests are IDENTITIES. Two releases may both call themselves spec revision 1; only the digest distinguishes them, so a conformance report cites the digest. This object excludes itself from its own preimage. The holdout is COMMITTED here and its contents are NOT in this tree.",
+ "spec_revision": 1,
+ "spec_digest": "2b4e6cc845f83f4bdfef2f7484ca47eb29f2f55eeee570513a132c6f5575fcff",
+ "spec_files": [
+  {
+   "path": "TRVM-NESTED-COMPOSITION-v2.md",
+   "sha256": "8160664abe1db19d6b86dcbe43692fc32a06828d57a8b9569e8998f0f6c35f71"
+  },
+  {
+   "path": "TRVM-PROOF-WIRE-v1.md",
+   "sha256": "32316c4e4da656e2bcff973af6ac6cf95d3e9f5f21f22674ed5736bff2264444"
+  },
+  {
+   "path": "TRVM-VERIFIED-CLAIM-v1.md",
+   "sha256": "e6fdefc9e6dcb6543c8f5ec4b689bdf8aefb4081905d2fda3fab76e687d08c3b"
+  },
+  {
+   "path": "schema/nested-composition-v2.json",
+   "sha256": "5935b455584a138aa2d879a9b502229baa499ff5d13330e38140007368cbfe82"
+  }
+ ],
+ "experiment_revision": 10,
+ "experiment_digest": "36da79f54652dddf8d9c1d341826196a15b6372f89332c7b1e16c77e118ee513",
+ "experiment_files": [
+  {
+   "path": "experiment/BLIND-IMPLEMENTATION-CONTRACT.md",
+   "sha256": "79c8d83a32b6b57d698fbd5a235bf867e218dd3c038509932c9302e08e221944"
+  },
+  {
+   "path": "experiment/HOLDOUT-OBSERVATION-v1.md",
+   "sha256": "ce1cb90b0894759616e954708fec3ff358d734b696361104b53a880396215adc"
+  },
+  {
+   "path": "experiment/HOLDOUT-RECIPE-v1.md",
+   "sha256": "7fcbee7864a5dff002f273588e0de933b9e48240af1d518317fecdba98aba61d"
+  },
+  {
+   "path": "experiment/evidence.mjs",
+   "sha256": "16943b3b41436101cf09c782f4b7653505d56f0842e0f97d3c2b8e4d9ecb119e"
+  },
+  {
+   "path": "experiment/fixtures/synthetic-challenges.json",
+   "sha256": "497bbfca63850a94b589e347ea8baa1ef9efc702bc012abd98e77f9327acc963"
+  },
+  {
+   "path": "experiment/fixtures/synthetic-expected.json",
+   "sha256": "5c26f8f4232734e7ab26e989ff8634ca5299d4c45abc00d525c1d6b8cd808e46"
+  },
+  {
+   "path": "experiment/fixtures/synthetic-negatives.json",
+   "sha256": "35fa7455b75750945ef52b3f5fe503b3cee64e5d316b98992db2026621b5ac5d"
+  },
+  {
+   "path": "experiment/fixtures/synthetic-observations.json",
+   "sha256": "3504e2ef17e69ba6d675fd3af09bc4c1945075c9128acf5c94f3ea583d25f303"
+  },
+  {
+   "path": "experiment/holdout-observation-v1.schema.json",
+   "sha256": "1ea768ff9f6ea365734b160d35740ef4ff8343ce0d0bb51018b184ae737b34fe"
+  },
+  {
+   "path": "experiment/holdout-recipe-v1.schema.json",
+   "sha256": "01639f2f028e27459ee2ad3ea89f644f2c877bbc101d8b4b46f73c6d29d4b19f"
+  },
+  {
+   "path": "experiment/holdout_runner.mjs",
+   "sha256": "8155522dfe9908bceb93899d2dc3c6cecd8c9f75c60905492e5a94047a0cf3b0"
+  },
+  {
+   "path": "experiment/holdout_schema.mjs",
+   "sha256": "05287d02849cdd1e6eceb72ff7b317884ea5007017fc4712a6f293c35f8a50fa"
+  },
+  {
+   "path": "experiment/holdout_score_core.mjs",
+   "sha256": "259f57089f440c13f8d75f944951834292873e1838d6ad2382bfe06f8ceb243a"
+  },
+  {
+   "path": "experiment/run_state.mjs",
+   "sha256": "8eee2f9193be9ea1fc35496272d4c1cfe39fe75b68883518b75f7e73657e2417"
+  }
+ ],
+ "public_corpus_revision": 1,
+ "public_corpus_digest": "34a4097377605f1e12460cc91943e25cc399c19238d6309579516c1e3a89fc17",
+ "jcs_upstream": {
+  "repository": "github.com/cyberphone/json-canonicalization",
+  "path": "testdata/",
+  "commit": "19d51d7fe467d4706a3ff08adf8a748f29fc21e0",
+  "digest": "ce13b5a0325a11c8caa785ad1f959820eef2d9374e8253aa29b50f6232544940",
+  "vectors": 6
+ },
+ "holdout_commitment": "86d437fcbd9efee21c5cf27e25564d478592731ae8d2a9e2b9f472a592630071",
+ "holdout_entries": 10,
+ "spec_release_id": "srel-28158106a0fbe1a47c44ee17be9d1777812630fad70a831cc027d9fa181ac1f3"
+}

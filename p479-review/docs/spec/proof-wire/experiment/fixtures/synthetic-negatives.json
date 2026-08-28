@@ -1,0 +1,317 @@
+{
+ "cases": [
+  {
+   "id": "N1",
+   "mutations": [
+    {
+     "path": "SMUGGLED_TOP_LEVEL",
+     "value": "not in the schema"
+    }
+   ],
+   "rule": "envelope additionalProperties:false"
+  },
+  {
+   "id": "N2",
+   "mutations": [
+    {
+     "path": "observations.S1.SMUGGLED",
+     "value": 1
+    }
+   ],
+   "rule": "observation additionalProperties:false"
+  },
+  {
+   "id": "N3",
+   "mutations": [
+    {
+     "path": "observations.S1.candidate.D.NOT_IN_NODE_SCHEMA",
+     "value": 7
+    }
+   ],
+   "rule": "node additionalProperties:false"
+  },
+  {
+   "id": "N4",
+   "mutations": [
+    {
+     "path": "observations.S2.refusal_set",
+     "value": [
+      "zzz-code",
+      "aaa-code"
+     ]
+    }
+   ],
+   "rule": "refusal_set must be SORTED (x-sorted)"
+  },
+  {
+   "id": "N5",
+   "mutations": [
+    {
+     "path": "observations.S2.refusal_set",
+     "value": [
+      "aaa-code",
+      "aaa-code"
+     ]
+    }
+   ],
+   "rule": "refusal_set uniqueItems"
+  },
+  {
+   "id": "N6",
+   "mutations": [
+    {
+     "path": "observations.S1.candidate.D.artifact_root",
+     "value": "root-NOT-HEX"
+    }
+   ],
+   "rule": "artifact_root pattern ^root-[0-9a-f]{64}$"
+  },
+  {
+   "id": "N7",
+   "mutations": [
+    {
+     "delete": true,
+     "path": "observations.S1.fixture_root"
+    }
+   ],
+   "rule": "fixture_root is REQUIRED"
+  },
+  {
+   "id": "N8",
+   "mutations": [
+    {
+     "path": "observations.S1.fixture_root",
+     "value": "root-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+   ],
+   "rule": "fixture_root must equal the challenge's declared fixture.root"
+  },
+  {
+   "id": "N9",
+   "mutations": [
+    {
+     "path": "type",
+     "value": "TRVM-HOLDOUT-OBSERVATION-v999"
+    }
+   ],
+   "rule": "envelope type const"
+  },
+  {
+   "expect_release": "srel-ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+   "id": "N10",
+   "mutations": [],
+   "rule": "spec_release_id must match the run's release"
+  },
+  {
+   "id": "N11",
+   "mutations": [
+    {
+     "path": "observations.S1.candidate.D.verdict",
+     "value": "PROBABLY"
+    }
+   ],
+   "rule": "verdict enum"
+  },
+  {
+   "id": "N12",
+   "mutations": [
+    {
+     "path": "observations.S1.candidate.NOT_A_NODE",
+     "value": {}
+    }
+   ],
+   "rule": "plane propertyNames enum \u2014 a node name outside the frozen DAG"
+  },
+  {
+   "id": "N13",
+   "mutations": [
+    {
+     "path": "observations.S1.candidate.D.structure.edges",
+     "value": "four"
+    }
+   ],
+   "rule": "structure members are integers"
+  },
+  {
+   "challenges": [
+    {
+     "fixture": {
+      "artifact": "D",
+      "root": "root-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "id": "S1",
+     "name": "every-operator-satisfied",
+     "note": "SYNTHETIC. Contains no TRVM value. Every one of the eight predicate operators, arranged to PASS.",
+     "predicates": [
+      {
+       "op": "HOLDS",
+       "path": "D.nested_claim_sem_id"
+      },
+      {
+       "op": "MOVES",
+       "path": "D.artifact_root"
+      },
+      {
+       "op": "EQ",
+       "path": "candidate.D.structure.edges",
+       "value": 4
+      },
+      {
+       "op": "NEQ",
+       "path": "candidate.D.artifact_root",
+       "right": "baseline.D.artifact_root"
+      },
+      {
+       "op": "VERDICT_EQ",
+       "path": "D.verdict",
+       "value": "VERIFIED"
+      },
+      {
+       "op": "OUTCOME_EQ",
+       "path": "resolve.outcome",
+       "value": "synthetic-ok"
+      },
+      {
+       "op": "REFUSAL_SET_EQ",
+       "value": []
+      },
+      {
+       "left": "candidate.D.structure.unique_artifacts",
+       "op": "LT",
+       "right": "candidate.D.structure.edges"
+      }
+     ],
+     "recipe": [
+      {
+       "op": "TELEPORT"
+      }
+     ]
+    }
+   ],
+   "id": "N14",
+   "mutations": [],
+   "rule": "challenge recipe: unknown operator"
+  },
+  {
+   "challenges": [
+    {
+     "fixture": {
+      "artifact": "D",
+      "root": "root-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "id": "S1",
+     "name": "every-operator-satisfied",
+     "note": "SYNTHETIC. Contains no TRVM value. Every one of the eight predicate operators, arranged to PASS.",
+     "predicates": [
+      {
+       "op": "HOLDS",
+       "path": "D.nested_claim_sem_id"
+      },
+      {
+       "op": "MOVES",
+       "path": "D.artifact_root"
+      },
+      {
+       "op": "EQ",
+       "path": "candidate.D.structure.edges",
+       "value": 4
+      },
+      {
+       "op": "NEQ",
+       "path": "candidate.D.artifact_root",
+       "right": "baseline.D.artifact_root"
+      },
+      {
+       "op": "VERDICT_EQ",
+       "path": "D.verdict",
+       "value": "VERIFIED"
+      },
+      {
+       "op": "OUTCOME_EQ",
+       "path": "resolve.outcome",
+       "value": "synthetic-ok"
+      },
+      {
+       "op": "REFUSAL_SET_EQ",
+       "value": []
+      },
+      {
+       "left": "candidate.D.structure.unique_artifacts",
+       "op": "LT",
+       "right": "candidate.D.structure.edges"
+      }
+     ],
+     "recipe": [
+      {
+       "op": "IDENTITY",
+       "smuggled": 1
+      }
+     ]
+    }
+   ],
+   "id": "N15",
+   "mutations": [],
+   "rule": "challenge recipe: unknown member in a step"
+  },
+  {
+   "challenges": [
+    {
+     "fixture": {
+      "artifact": "D"
+     },
+     "id": "S1",
+     "name": "every-operator-satisfied",
+     "note": "SYNTHETIC. Contains no TRVM value. Every one of the eight predicate operators, arranged to PASS.",
+     "predicates": [
+      {
+       "op": "HOLDS",
+       "path": "D.nested_claim_sem_id"
+      },
+      {
+       "op": "MOVES",
+       "path": "D.artifact_root"
+      },
+      {
+       "op": "EQ",
+       "path": "candidate.D.structure.edges",
+       "value": 4
+      },
+      {
+       "op": "NEQ",
+       "path": "candidate.D.artifact_root",
+       "right": "baseline.D.artifact_root"
+      },
+      {
+       "op": "VERDICT_EQ",
+       "path": "D.verdict",
+       "value": "VERIFIED"
+      },
+      {
+       "op": "OUTCOME_EQ",
+       "path": "resolve.outcome",
+       "value": "synthetic-ok"
+      },
+      {
+       "op": "REFUSAL_SET_EQ",
+       "value": []
+      },
+      {
+       "left": "candidate.D.structure.unique_artifacts",
+       "op": "LT",
+       "right": "candidate.D.structure.edges"
+      }
+     ],
+     "recipe": [
+      {
+       "op": "IDENTITY"
+      }
+     ]
+    }
+   ],
+   "id": "N16",
+   "mutations": [],
+   "rule": "challenge fixture: root is REQUIRED"
+  }
+ ],
+ "note": "Each case mutates the honest synthetic document to violate ONE published boundary rule, and MUST be REFUSED. P4.6 shipped holdout-observation-v1.schema.json and never executed it: a smuggled top-level member, a smuggled observation member and a smuggled node member were all accepted and produced an unchanged 8/8/3. A fixture whose every case is accepted cannot tell a validator from a pass-through."
+}

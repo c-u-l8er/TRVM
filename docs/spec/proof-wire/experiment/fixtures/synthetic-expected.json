@@ -1,0 +1,30 @@
+{
+ "by_challenge": {
+  "S1": {
+   "fail": 0,
+   "pass": 8,
+   "unresolved": 0
+  },
+  "S2": {
+   "fail": 8,
+   "pass": 0,
+   "unresolved": 0
+  },
+  "S3": {
+   "fail": 0,
+   "pass": 0,
+   "unresolved": 3
+  }
+ },
+ "note": "What holdout_score_core MUST report over the two files beside this one. The failing and unresolved arms are the point: a fixture whose every predicate passes cannot tell a working scorer from one that returns true.",
+ "operators_exercised": [
+  "EQ",
+  "NEQ",
+  "HOLDS",
+  "MOVES",
+  "REFUSAL_SET_EQ",
+  "VERDICT_EQ",
+  "OUTCOME_EQ",
+  "LT"
+ ]
+}

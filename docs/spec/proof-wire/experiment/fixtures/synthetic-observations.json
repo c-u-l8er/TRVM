@@ -1,0 +1,70 @@
+{
+ "implementation": "synthetic-fixture",
+ "observations": {
+  "S1": {
+   "baseline": {
+    "D": {
+     "artifact_root": "root-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "nested_claim_sem_id": "nclaim-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "structure": {
+      "edges": 4,
+      "unique_artifacts": 3
+     }
+    }
+   },
+   "candidate": {
+    "D": {
+     "artifact_root": "root-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "nested_claim_sem_id": "nclaim-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "structure": {
+      "edges": 4,
+      "unique_artifacts": 3
+     },
+     "verdict": "VERIFIED"
+    }
+   },
+   "fixture_root": "root-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "refusal_set": [],
+   "resolve": {
+    "outcome": "synthetic-ok"
+   }
+  },
+  "S2": {
+   "baseline": {
+    "D": {
+     "artifact_root": "root-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "nested_claim_sem_id": "nclaim-1111111111111111111111111111111111111111111111111111111111111111",
+     "structure": {
+      "edges": 2,
+      "unique_artifacts": 5
+     }
+    }
+   },
+   "candidate": {
+    "D": {
+     "artifact_root": "root-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "nested_claim_sem_id": "nclaim-2222222222222222222222222222222222222222222222222222222222222222",
+     "structure": {
+      "edges": 2,
+      "unique_artifacts": 5
+     },
+     "verdict": "REFUSED"
+    }
+   },
+   "fixture_root": "root-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "refusal_set": [
+    "synthetic-refusal-code"
+   ],
+   "resolve": {
+    "outcome": "synthetic-ok"
+   }
+  },
+  "S3": {
+   "baseline": {},
+   "candidate": {},
+   "fixture_root": "root-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+ },
+ "spec_release_id": "srel-0000000000000000000000000000000000000000000000000000000000000000",
+ "type": "TRVM-HOLDOUT-OBSERVATION-v1"
+}

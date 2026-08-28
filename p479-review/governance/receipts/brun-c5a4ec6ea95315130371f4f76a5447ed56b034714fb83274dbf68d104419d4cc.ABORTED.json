@@ -1,0 +1,20 @@
+{
+ "type": "TRVM-BLIND-RUN-RECEIPT-v2",
+ "run_id": "brun-c5a4ec6ea95315130371f4f76a5447ed56b034714fb83274dbf68d104419d4cc",
+ "status": "ABORTED",
+ "previous_run_id": "brun-cffe125db2fec393f314afc69d1d8473d0b1ff7660bb3f37f4c07801d107ee10",
+ "previous_status": "PINNED",
+ "spec_release_id": "srel-550fc56e15597e69d8b3436925fd3e5c4f978dab8895811f492ce8d4a09c4ffe",
+ "blind_package_id": "bpkg-bc7f251280d04dda6c59ee5f40d668dc05c41ab15573220aa3349fca775da381",
+ "instrument_digest": "aed51bcf87802fc82b0a2bdcc31762c9f8e890e60230ec28a7e721fdff0a5b7c",
+ "adapters": [
+  {
+   "implementation": "javascript",
+   "role": "reference",
+   "package_digest": "063c7c63a335b68e99db479c0458bc96d2ffd86e56efc3238ce1f1a621407ba6",
+   "binary_digest": null,
+   "environment": null
+  }
+ ],
+ "note": "aborted: P4.7.2: the run identity formula and the run type moved into the frozen instrument (TRVM-BLIND-IMPLEMENTATION-RUN-v3), so this v2 record cannot be carried forward"
+}

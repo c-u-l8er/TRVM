@@ -1,0 +1,20 @@
+{
+ "type": "TRVM-BLIND-RUN-RECEIPT-v2",
+ "run_id": "brun-84ce923bdaa53783024b44abadc5af95372742d4393fef69a7f7277e0f84699a",
+ "status": "ABORTED",
+ "previous_run_id": "brun-1526e1601106b97c4545a00b6015ccdeac88d32786bdfe041bf838f1454045e4",
+ "previous_status": "PINNED",
+ "spec_release_id": "srel-9a541e17ffeaa7f9aa6f297c5f051b9c10c0ac0ee78c96ad33f844f95ed9d126",
+ "blind_package_id": "bpkg-1e5bb3a751c3c00625cc946e8c5564e83966de1df6b8bd62641b2c910304f16a",
+ "instrument_digest": "54db87e1c4c251373ac62d8f6a2e83271d41cab0b0176cf6b2725b55f00ac3e6",
+ "adapters": [
+  {
+   "implementation": "javascript",
+   "role": "reference",
+   "package_digest": "063c7c63a335b68e99db479c0458bc96d2ffd86e56efc3238ce1f1a621407ba6",
+   "binary_digest": null,
+   "environment": null
+  }
+ ],
+ "note": "aborted: P4.7.6: evidence collections made unambiguous; the instrument moved"
+}

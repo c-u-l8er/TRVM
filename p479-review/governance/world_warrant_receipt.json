@@ -1,0 +1,164 @@
+{
+ "type": "WorldWarrantReceipt",
+ "version": 3,
+ "world_spec": {
+  "nodes": [
+   "a",
+   "b",
+   "c",
+   "d"
+  ],
+  "edges": [
+   [
+    "a",
+    "b"
+   ],
+   [
+    "b",
+    "c"
+   ]
+  ],
+  "seed": "a"
+ },
+ "law_refs": [
+  "law:world.version-monotone@1",
+  "law:warrant.freshness@1",
+  "law:warrant.footprint-soundness@1",
+  "law:warrant.phantom-scope@1",
+  "law:warrant.invalidation-trichotomy@1",
+  "law:footprint.shared@1",
+  "law:warrant.composition@1",
+  "law:warrant.frame@1"
+ ],
+ "warrant": {
+  "type": "Warrant",
+  "version": 3,
+  "measure": "component-size(a)",
+  "predicate": "reach",
+  "value": 3,
+  "witness": [
+   "a",
+   "b",
+   "c"
+  ],
+  "support": [
+   "node:a",
+   "node:b",
+   "node:c"
+  ],
+  "read_footprint": {
+   "exact": [
+    [
+     "node:a",
+     1
+    ],
+    [
+     "adj:a",
+     10
+    ],
+    [
+     "edge:a|b",
+     9
+    ],
+    [
+     "node:b",
+     3
+    ],
+    [
+     "adj:b",
+     13
+    ],
+    [
+     "edge:b|c",
+     12
+    ],
+    [
+     "node:c",
+     5
+    ],
+    [
+     "adj:c",
+     14
+    ]
+   ],
+   "predicates": [
+    [
+     "incident:a",
+     "c881bb7fc4af09fdc97c64f17c783705337597ecce375f852fa56f91995a0c95"
+    ]
+   ]
+  },
+  "derivation_id": "4190db3b5e9f00e68a9db614ee8e58519e03afb992f92f0e363644a4beaa332b",
+  "at_vclock": 14,
+  "law_refs": [
+   "law:warrant.freshness@1",
+   "law:warrant.footprint-soundness@1",
+   "law:warrant.phantom-scope@1"
+  ],
+  "informational": {
+   "note": "NON-AUTHORITATIVE",
+   "generator": "trvm_world.mjs v0.12.0"
+  },
+  "warrant_id": "20f2849e7be06e0b1fb04f373986d19c7dfcaef14c2e50d4396b3fc20e885a5c"
+ },
+ "footprint_id": "7a578e035595059e14e90ac655f798a9222111d272dc0b3c7fdf832649a46fed",
+ "composite": {
+  "warrant": {
+   "type": "Warrant",
+   "version": 3,
+   "measure": "double-of-ground",
+   "predicate": "2*cite(ground)",
+   "value": 6,
+   "witness": {
+    "cited": "20f2849e7be06e0b1fb04f373986d19c7dfcaef14c2e50d4396b3fc20e885a5c"
+   },
+   "support": [
+    "warrant:ground"
+   ],
+   "read_footprint": {
+    "exact": [
+     [
+      "warrant:ground",
+      15
+     ]
+    ],
+    "predicates": [
+     [
+      "warrant-fresh:ground",
+      "e48b106c996171ec5a3a7b26b070bd0d9ceac09fb8828bbbf57d89f08f72e9fc"
+     ]
+    ]
+   },
+   "derivation_id": "302371dcb1357ba621f98c8eadd36765d485092f2cb25cbbf564438188f5d052",
+   "at_vclock": 15,
+   "law_refs": [
+    "law:warrant.composition@1"
+   ],
+   "informational": {
+    "note": "NON-AUTHORITATIVE",
+    "generator": "trvm_world.mjs v0.12.0"
+   },
+   "warrant_id": "c0c12c75925fbbbf6c57654ce9685a0262bfbd58b62ebc89c8d639d605495d73"
+  },
+  "footprint_id": "a2bcea082fbee9ec049d1aa7cab2b0a63fcbff688453445729694305770e7279"
+ },
+ "freshness_at_emit": {
+  "verdict": "fresh",
+  "witness": {
+   "checked_exact": 8,
+   "checked_scopes": 1
+  }
+ },
+ "composite_freshness_at_emit": {
+  "verdict": "fresh",
+  "witness": {
+   "checked_exact": 1,
+   "checked_scopes": 1
+  }
+ },
+ "informational": {
+  "note": "NON-AUTHORITATIVE",
+  "generator": "trvm_world.mjs v0.12.0"
+ },
+ "receipt_id": "19fd07876510e6aff6cca23b4c23b25745b9aec139a73c78d93bd1cbb41596a5"
+}

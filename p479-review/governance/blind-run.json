@@ -1,0 +1,34 @@
+{
+ "type": "TRVM-BLIND-IMPLEMENTATION-RUN-v3",
+ "status": "PINNED",
+ "spec_release_id": "srel-4844df97e124474e30f100cbe9f8422a99213ac9288f8fcc149086a9a434c952",
+ "blind_package_id": "bpkg-9ad5de9420259a6bf247a3629bb69419d53dd1d178bf98beabb270865b22e585",
+ "instrument_digest": "1f763b5b0b48329505c22c4f0142d22ee22e84cda4ef5182a7297d7382c2f977",
+ "blind_contract_revision": 12,
+ "adapters": [
+  {
+   "implementation": "javascript",
+   "role": "reference",
+   "command": [
+    "node",
+    "governance/js_holdout_adapter.mjs",
+    "{{CHALLENGES}}",
+    "{{OUT}}"
+   ],
+   "package_files": [
+    "governance/js_holdout_adapter.mjs",
+    "governance/cas.mjs",
+    "governance/nest_bundle.mjs",
+    "governance/nest_check.mjs",
+    "governance/derive_protocol.mjs",
+    "governance/certificate.mjs",
+    "governance/schema.mjs"
+   ],
+   "package_digest": "063c7c63a335b68e99db479c0458bc96d2ffd86e56efc3238ce1f1a621407ba6",
+   "binary_digest": null,
+   "binary_path": null,
+   "environment": null
+  }
+ ],
+ "run_id": "brun-c39b708f1d96f2b6df1562d66c33c3eee3d13e2307274e42adbff79025b13ad8"
+}

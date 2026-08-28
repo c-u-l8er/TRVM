@@ -1,0 +1,20 @@
+{
+ "type": "TRVM-BLIND-RUN-RECEIPT-v2",
+ "run_id": "brun-dddf13fe8096bb95edd0eb3a08d3590b6de7bde5bebe10d1553e5ea717ab9e57",
+ "status": "ABORTED",
+ "previous_run_id": "brun-d0c354b365cf38b5dcbef7f79de92783dce44d2073eff9e293573b3983340eeb",
+ "previous_status": "PINNED",
+ "spec_release_id": "srel-39cd7297c492e0c857666ef4c2d835f151e266f17166f738ef1f080b5bf5a848",
+ "blind_package_id": "bpkg-9cb45022cc2a8d1fa08cda1e93f42325e9d2bac6f0b4cb0c6cc68cbd1c1c8479",
+ "instrument_digest": "1f763b5b0b48329505c22c4f0142d22ee22e84cda4ef5182a7297d7382c2f977",
+ "adapters": [
+  {
+   "implementation": "javascript",
+   "role": "reference",
+   "package_digest": "063c7c63a335b68e99db479c0458bc96d2ffd86e56efc3238ce1f1a621407ba6",
+   "binary_digest": null,
+   "environment": null
+  }
+ ],
+ "note": "aborted: P4.7.9 continued: the tool DESCRIPTIONS were still in governance/clean_room.mjs after the system prompt moved, and a tool description is prose the model reads and reasons from. Leaving them would have been an exception register with its fourth entry already missing. Every byte of natural language the implementer receives now comes from bpkg."
+}

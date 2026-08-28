@@ -1,0 +1,20 @@
+{
+ "type": "TRVM-BLIND-RUN-RECEIPT-v2",
+ "run_id": "brun-366c7a6eab710d729d51bd8aeba8099cf83d02cb13366a460d5def552c32b889",
+ "status": "PINNED",
+ "previous_run_id": null,
+ "previous_status": null,
+ "spec_release_id": "srel-b7ea6cafd9f6795d9333c7c2d20e89f08df498463bfa110accc7b681444eb8f3",
+ "blind_package_id": "bpkg-64104dc357adb26c74f118ebba2c01bf60409252a30c6e5fd1b5776bc895b17e",
+ "instrument_digest": "1e1692f7d3bbfa7ff6aca6619feeda37dce8735b7f427898262b7f51f799d093",
+ "adapters": [
+  {
+   "implementation": "javascript",
+   "role": "reference",
+   "package_digest": "063c7c63a335b68e99db479c0458bc96d2ffd86e56efc3238ce1f1a621407ba6",
+   "binary_digest": null,
+   "environment": null
+  }
+ ],
+ "note": "pinned"
+}

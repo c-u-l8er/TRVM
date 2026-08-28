@@ -1,0 +1,269 @@
+{
+ "blind_package_id": "bpkg-9ad5de9420259a6bf247a3629bb69419d53dd1d178bf98beabb270865b22e585",
+ "type": "TRVM-BLIND-PACKAGE-v1",
+ "root": "docs/spec/proof-wire",
+ "file_count": 65,
+ "files": [
+  {
+   "path": "SPEC-RELEASE.json",
+   "sha256": "7618024788a39bbe5b0fe47d90b65a56c1be4a5ee3312b8ca37106b2ad0fd40c"
+  },
+  {
+   "path": "TRVM-NESTED-COMPOSITION-v2.md",
+   "sha256": "8160664abe1db19d6b86dcbe43692fc32a06828d57a8b9569e8998f0f6c35f71"
+  },
+  {
+   "path": "TRVM-PROOF-WIRE-v1.md",
+   "sha256": "32316c4e4da656e2bcff973af6ac6cf95d3e9f5f21f22674ed5736bff2264444"
+  },
+  {
+   "path": "TRVM-VERIFIED-CLAIM-v1.md",
+   "sha256": "e6fdefc9e6dcb6543c8f5ec4b689bdf8aefb4081905d2fda3fab76e687d08c3b"
+  },
+  {
+   "path": "experiment/BLIND-IMPLEMENTATION-CONTRACT.md",
+   "sha256": "79c8d83a32b6b57d698fbd5a235bf867e218dd3c038509932c9302e08e221944"
+  },
+  {
+   "path": "experiment/CLEAN-ROOM-PROMPT-v1.md",
+   "sha256": "161712b31c52995c0bb3b6c96b0f755b5d4df8f66798184402e5c6a041d1007a"
+  },
+  {
+   "path": "experiment/HOLDOUT-OBSERVATION-v1.md",
+   "sha256": "ce1cb90b0894759616e954708fec3ff358d734b696361104b53a880396215adc"
+  },
+  {
+   "path": "experiment/HOLDOUT-RECIPE-v1.md",
+   "sha256": "7fcbee7864a5dff002f273588e0de933b9e48240af1d518317fecdba98aba61d"
+  },
+  {
+   "path": "experiment/evidence.mjs",
+   "sha256": "16943b3b41436101cf09c782f4b7653505d56f0842e0f97d3c2b8e4d9ecb119e"
+  },
+  {
+   "path": "experiment/fixtures/synthetic-challenges.json",
+   "sha256": "497bbfca63850a94b589e347ea8baa1ef9efc702bc012abd98e77f9327acc963"
+  },
+  {
+   "path": "experiment/fixtures/synthetic-expected.json",
+   "sha256": "5c26f8f4232734e7ab26e989ff8634ca5299d4c45abc00d525c1d6b8cd808e46"
+  },
+  {
+   "path": "experiment/fixtures/synthetic-negatives.json",
+   "sha256": "35fa7455b75750945ef52b3f5fe503b3cee64e5d316b98992db2026621b5ac5d"
+  },
+  {
+   "path": "experiment/fixtures/synthetic-observations.json",
+   "sha256": "3504e2ef17e69ba6d675fd3af09bc4c1945075c9128acf5c94f3ea583d25f303"
+  },
+  {
+   "path": "experiment/holdout-observation-v1.schema.json",
+   "sha256": "1ea768ff9f6ea365734b160d35740ef4ff8343ce0d0bb51018b184ae737b34fe"
+  },
+  {
+   "path": "experiment/holdout-recipe-v1.schema.json",
+   "sha256": "01639f2f028e27459ee2ad3ea89f644f2c877bbc101d8b4b46f73c6d29d4b19f"
+  },
+  {
+   "path": "experiment/holdout_runner.mjs",
+   "sha256": "8155522dfe9908bceb93899d2dc3c6cecd8c9f75c60905492e5a94047a0cf3b0"
+  },
+  {
+   "path": "experiment/holdout_schema.mjs",
+   "sha256": "05287d02849cdd1e6eceb72ff7b317884ea5007017fc4712a6f293c35f8a50fa"
+  },
+  {
+   "path": "experiment/holdout_score_core.mjs",
+   "sha256": "259f57089f440c13f8d75f944951834292873e1838d6ad2382bfe06f8ceb243a"
+  },
+  {
+   "path": "experiment/run_state.mjs",
+   "sha256": "8eee2f9193be9ea1fc35496272d4c1cfe39fe75b68883518b75f7e73657e2417"
+  },
+  {
+   "path": "releases/srel-1126c37dbbdefd88d15cc7f07e8fae0cd18126ca366e85a1052c2845ebb24cf2.json",
+   "sha256": "6b08bf2abcfb117a62557fc2eadf21e9db24377b2c9a61f31650ffb6e3e01b08"
+  },
+  {
+   "path": "releases/srel-16e0cb8d73207a54f83ae658ebccf28256ad196a48492f0816aaa5955c25a8a6.json",
+   "sha256": "baede665def950cb3e126880b32b141b38d53292e09b57cc47a7cb39cc975736"
+  },
+  {
+   "path": "releases/srel-17c1305b8faf29cdc334f8d350354600303f33543e8539e89e4d787f8b54e91b.json",
+   "sha256": "f4bf914a68c5059bc524a34085a86e323197aa46651084b3fb06ba79f1f4567e"
+  },
+  {
+   "path": "releases/srel-28158106a0fbe1a47c44ee17be9d1777812630fad70a831cc027d9fa181ac1f3.json",
+   "sha256": "ba642e9726ae3241171707e14d87294e4a6fc5368ae4a55177ff725c05d8bf01"
+  },
+  {
+   "path": "releases/srel-39cd7297c492e0c857666ef4c2d835f151e266f17166f738ef1f080b5bf5a848.json",
+   "sha256": "67fa787886f6c9e2e6de2c56875a56027c874575176054543919739ca5d4ffde"
+  },
+  {
+   "path": "releases/srel-4844df97e124474e30f100cbe9f8422a99213ac9288f8fcc149086a9a434c952.json",
+   "sha256": "7618024788a39bbe5b0fe47d90b65a56c1be4a5ee3312b8ca37106b2ad0fd40c"
+  },
+  {
+   "path": "releases/srel-550fc56e15597e69d8b3436925fd3e5c4f978dab8895811f492ce8d4a09c4ffe.json",
+   "sha256": "4bbc09828a8814b43db431a3f3befa158fd460c9761847d1a6381a687097c283"
+  },
+  {
+   "path": "releases/srel-9303fdf61b64b4fc48fb53bfdb2f6708a7cf2c7fab845f86342871034a256f01.json",
+   "sha256": "7b5c051013035191e10d598f4419a8710cce3cb052557317d26f0eadd6acfe51"
+  },
+  {
+   "path": "releases/srel-9a541e17ffeaa7f9aa6f297c5f051b9c10c0ac0ee78c96ad33f844f95ed9d126.json",
+   "sha256": "2dc4fdf08f614557a67a8543365be70cd6ce7494411093c2ce798b2e5093f8a4"
+  },
+  {
+   "path": "releases/srel-a5f032c7e3cd93a98098cdf67d353349dafe2bacd7bc0ae7e8d6e9a9e9c9f091.json",
+   "sha256": "c45951893c7cad9bd744399a307e00a84477c08bb5d3c601be8c2a9e1e80ecac"
+  },
+  {
+   "path": "releases/srel-b7ea6cafd9f6795d9333c7c2d20e89f08df498463bfa110accc7b681444eb8f3.json",
+   "sha256": "85a49b22d4f0ee6fbfc3df80ffd71375d72af8d53d531bf1dc63199538a54f69"
+  },
+  {
+   "path": "releases/srel-c02a6f5422f461c9e459b1b2c66922377baf8f48a4678502a1663b784e27ce2d.json",
+   "sha256": "7c35a2a0613e6bfbddcdb0fba8b896b438f3e248123464d2e9c9f8778e83b798"
+  },
+  {
+   "path": "releases/srel-d85397216500cb8f2283902b58051e46c53cd963827d2b9a5b27fb9b0fdf67de.json",
+   "sha256": "0fd8a88d66d8091ec4981c3e66c089c5c34e8730a1454532a46125fea2f2bb4f"
+  },
+  {
+   "path": "releases/srel-dbd208dc13f91d886f03f54b361cfa125d10b6688c3de1266eea8378981e9703.json",
+   "sha256": "4402b3b1764b3c6618eadebe274697f28e9430ba96188dd7e3ed80e0e277713a"
+  },
+  {
+   "path": "releases/srel-e5ea2fba2a4083233ec60fc6416a82cc84a0c7bac33e8926b0f604d30e69847e.json",
+   "sha256": "70ddf938d4897a00f18fb5789435391264f566ac6441fb2b4153fd089712d58f"
+  },
+  {
+   "path": "releases/srel-e7ee2900151f5227aa46b8b878df4b767d16e3dd003a21ff00d93946835ba723.json",
+   "sha256": "1c05deb186596f2f7c58735eb71406545d44364b7b3842224cc65b91fe41ac0e"
+  },
+  {
+   "path": "requirements/open/RFC8785-number-stress-corpus.md",
+   "sha256": "a4c8cef2c0278382c01008c8e591141a400d105f1e3b3829e57c5c5ba23fa57b"
+  },
+  {
+   "path": "schema/nested-composition-v2.json",
+   "sha256": "5935b455584a138aa2d879a9b502229baa499ff5d13330e38140007368cbfe82"
+  },
+  {
+   "path": "vectors/jcs-upstream/PROVENANCE.md",
+   "sha256": "f9f81e614ecb4bd7fad94f535da9aad37dc0c970dc4250f7f3801beeda587660"
+  },
+  {
+   "path": "vectors/jcs-upstream/input/arrays.json",
+   "sha256": "e503b6d71d1afa595b1c74b1016445c944cd89f90418066b23de1aeda7d17563"
+  },
+  {
+   "path": "vectors/jcs-upstream/input/french.json",
+   "sha256": "0a3e59a427dd5fe6defddceaf62e3cb727e399fd260c933c455c39572b3d5309"
+  },
+  {
+   "path": "vectors/jcs-upstream/input/structures.json",
+   "sha256": "60bbcd77da4b755062fbbd68f621709374f31144d8295bb685c3ec230ff8bf33"
+  },
+  {
+   "path": "vectors/jcs-upstream/input/unicode.json",
+   "sha256": "7fca1b93823b73c31de0987de70af246ccd31d7e6a492e53484f2b88bc017b77"
+  },
+  {
+   "path": "vectors/jcs-upstream/input/values.json",
+   "sha256": "495d6082445c97c4b30583d9035fa969e535730271ee1c53fbeb0c59ca605a05"
+  },
+  {
+   "path": "vectors/jcs-upstream/input/weird.json",
+   "sha256": "a3a905266bd4a49a969274ea69baa14ee0c4af0ead926d6fa2b7612b4af75387"
+  },
+  {
+   "path": "vectors/jcs-upstream/outhex/arrays.txt",
+   "sha256": "1798aa4058d37457b30a7d95a3cf1193923e9ea0f251226002528836f942eb6e"
+  },
+  {
+   "path": "vectors/jcs-upstream/outhex/french.txt",
+   "sha256": "dd4b87b01959f4765f914a022f11e78acb3a7bcec72d5d7c4ac3825b909f69fb"
+  },
+  {
+   "path": "vectors/jcs-upstream/outhex/structures.txt",
+   "sha256": "a378bf6bcd2d55395cd32100b15d4e9001e4f986323f25491eaf5ada304fa225"
+  },
+  {
+   "path": "vectors/jcs-upstream/outhex/unicode.txt",
+   "sha256": "c8a864791aa97a6c3a21fd62fa62c54812d3d6671a7c917c87a184a57c349c33"
+  },
+  {
+   "path": "vectors/jcs-upstream/outhex/values.txt",
+   "sha256": "5fe5f055e2993a5f29bc68920b81b28b27a9086e4898bf1be3f536ff44fe3f55"
+  },
+  {
+   "path": "vectors/jcs-upstream/outhex/weird.txt",
+   "sha256": "69fc8625f1bb4198778e82307b4e33fa808d8ea5e964225730246c622d72b0eb"
+  },
+  {
+   "path": "vectors/jcs-upstream/output/french.json",
+   "sha256": "d99d0ebdcb0033cb858cfa830ae46bc0fb3309413b271f1da828c89901a27ed5"
+  },
+  {
+   "path": "vectors/jcs-upstream/output/structures.json",
+   "sha256": "605f65004ec2db7692522a0852c22f1c989e036d547e88963d1a3143cf3195d5"
+  },
+  {
+   "path": "vectors/jcs-upstream/output/values.json",
+   "sha256": "2d5e01a318d0f0879ab568c4be289c8b1f64ef8921a53c6277d5e069978baacb"
+  },
+  {
+   "path": "vectors/public/cas/root-377d77c33137bdeb7ccd366b14ec13d6eead55e662524d5f8e2ee92de9895af4.json",
+   "sha256": "1074745c1720c5f1e91505841d78c39132a16fd9b98ca9cb4ac92a9d40700889"
+  },
+  {
+   "path": "vectors/public/cas/root-7c7b4ca5e888ba076411a1e317a21264b856226986b718da02c0e77ca33baaed.json",
+   "sha256": "6a8e8cdb135c7136c78b26003a67d7858d2873cf690bb27e8b8c7fe48fcd8f8e"
+  },
+  {
+   "path": "vectors/public/cas/root-87e01d35c37ee7f98c5a190a06140687252965f6ce93249f06b46e517fb22562.json",
+   "sha256": "7abdd6d9d8f042476a73d2e531589578cb47e4a7bd64995f00a3bee97bad5805"
+  },
+  {
+   "path": "vectors/public/cas/root-b5b33778522764c7af9f30b22f3d7e1e3900064a6d2c0ab99d8b6d5aba39b65b.json",
+   "sha256": "6b0b7624d7683593c9ffa27c54fe9d43b4a1e64a800ebf4435582463288dde2d"
+  },
+  {
+   "path": "vectors/public/cas/root-d1ba867c688281d76e62d82226ec09219a71ab9a67f6daaed7162d6a1b8383ed.json",
+   "sha256": "d449fe803dfb735deb131a6e5c0d76cd59ebf1abf7c3418970c8adffc069686d"
+  },
+  {
+   "path": "vectors/public/manifest.json",
+   "sha256": "2d664f0cb46cd7c117efce300b50aa3bd03d4394076f529e5a0f2d85b28c2b77"
+  },
+  {
+   "path": "vectors/public/nested-negative-nested-verdict-forged.json",
+   "sha256": "19e9ac7f90b6013df522a8f9c91cb84c86fba5b36b648aa9250b3a3ff91215b8"
+  },
+  {
+   "path": "vectors/public/nested-negative-operand-carries-a-warrant-field.json",
+   "sha256": "d36a10aabea0d5043654ccf4b73bf354ac18a4f087513d14a58a6c425374338e"
+  },
+  {
+   "path": "vectors/public/nested-negative-operand-carries-an-address.json",
+   "sha256": "7b696084000cf8ce97627405bc27cf247adf136bf0704f324be9ef1ba0c8848d"
+  },
+  {
+   "path": "vectors/public/nested-negative-reference-contract-says-address-is-a-warrant.json",
+   "sha256": "a33abb6dd6344d09f1a91bed8c5eba89688c1b6df057ed39f7b84609910c981f"
+  },
+  {
+   "path": "vectors/public/nested-negative-scope-generalizes-beyond-children.json",
+   "sha256": "aaf6a7267c8ba2af751eb8dbd709498b26f7d761dfe2decf6843eb2c688ad577"
+  },
+  {
+   "path": "vectors/public/nested-positive.json",
+   "sha256": "7abdd6d9d8f042476a73d2e531589578cb47e4a7bd64995f00a3bee97bad5805"
+  }
+ ],
+ "note": "The ARTIFACT identity of the bytes delivered to the clean room, as distinct from srel, which is the SEMANTIC identity of the specification. requirements/open/ is deliberately outside spec_digest so a declared-open register may grow; it is deliberately INSIDE this package, because the implementer reads it. Editing it moves bpkg and not srel, and that is the correct behaviour of both."
+}

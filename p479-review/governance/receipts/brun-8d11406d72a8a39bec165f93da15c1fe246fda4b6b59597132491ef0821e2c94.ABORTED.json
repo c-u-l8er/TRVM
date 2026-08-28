@@ -1,0 +1,19 @@
+{
+ "type": "TRVM-BLIND-RUN-RECEIPT-v1",
+ "run_id": "brun-8d11406d72a8a39bec165f93da15c1fe246fda4b6b59597132491ef0821e2c94",
+ "status": "ABORTED",
+ "spec_release_id": "srel-d85397216500cb8f2283902b58051e46c53cd963827d2b9a5b27fb9b0fdf67de",
+ "blind_package_id": null,
+ "instrument_digest": null,
+ "adapters": [],
+ "superseded_record": {
+  "type": "TRVM-BLIND-IMPLEMENTATION-RUN-v1",
+  "implementation": "Go",
+  "spec_release_id": "srel-d85397216500cb8f2283902b58051e46c53cd963827d2b9a5b27fb9b0fdf67de",
+  "blind_contract_revision": 1,
+  "status": "FROZEN",
+  "note": "The run points at the release. The release does NOT point back: spec_release_id already binds experiment_digest, so a run record inside the experiment surface would change the identity of the thing it names. A later release does not move this run; a substantive change ABORTS it and a new record is written.",
+  "run_id": "brun-8d11406d72a8a39bec165f93da15c1fe246fda4b6b59597132491ef0821e2c94"
+ },
+ "note": "ABORTED at P4.7 before any Go work began. The run was TRVM-BLIND-IMPLEMENTATION-RUN-v1, whose `status: FROZEN` pinned a RELEASE and nothing else: no candidate source digest, no binary digest, no environment, no instrument digest and no package identity. Three of those gaps were independently demonstrated to be exploitable — forcing every real predicate true in the scorer left this record green; editing requirements/open/, which the contract hands to the implementer, left it green; and the adapter registry lived in the runner's own source, so registering Go would have meant editing the measuring instrument after the challenge set existed. A run that cannot notice any of those is not a frozen experiment, and continuing under it would have produced a measurement whose meaning could not be stated. Superseded by a TRVM-BLIND-IMPLEMENTATION-RUN-v2 record pinning srel + bpkg + instrument_digest + per-subject package digests."
+}

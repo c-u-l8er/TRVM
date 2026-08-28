@@ -1,0 +1,20 @@
+{
+ "type": "TRVM-BLIND-RUN-RECEIPT-v2",
+ "run_id": "brun-6293829eebfbad1276851d961c545513e21128a32ba86bfbe97bb50cbda9de8a",
+ "status": "ABORTED",
+ "previous_run_id": "brun-f21542d9cad3285e390fea324d3cb091d1f0b7726cf2752e937ffca303d9637b",
+ "previous_status": "PINNED",
+ "spec_release_id": "srel-e7ee2900151f5227aa46b8b878df4b767d16e3dd003a21ff00d93946835ba723",
+ "blind_package_id": "bpkg-15588547f87245be2cacfc2cdd1d7b8028950bd883eafc748b72d60662000f4a",
+ "instrument_digest": "1f763b5b0b48329505c22c4f0142d22ee22e84cda4ef5182a7297d7382c2f977",
+ "adapters": [
+  {
+   "implementation": "javascript",
+   "role": "reference",
+   "package_digest": "063c7c63a335b68e99db479c0458bc96d2ffd86e56efc3238ce1f1a621407ba6",
+   "binary_digest": null,
+   "environment": null
+  }
+ ],
+ "note": "aborted: P4.7.8: the clean-room mount is a closed artifact. lstat walk, no unbound file inside the mount, emission from the manifest, and --verify-mount before the first model request. The contract gained §2.0 and RUN-v3, so experiment revision 9."
+}

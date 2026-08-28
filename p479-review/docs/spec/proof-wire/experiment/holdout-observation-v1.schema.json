@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trvm.dev/spec/proof-wire/experiment/holdout-observation-v1.schema.json",
+  "title": "TRVM-HOLDOUT-OBSERVATION-v1",
+  "description": "The neutral document an implementation emits after applying a holdout recipe. PROCEDURAL, not normative: it is the boundary between an implementation and a scorer that loads no protocol code. See HOLDOUT-OBSERVATION-v1.md. Frozen BEFORE the challenge set is revealed, so that the shape of a Go observation is not chosen in the light of the challenges it will answer.",
+  "type": "object",
+  "required": [
+    "type",
+    "implementation",
+    "spec_release_id",
+    "observations"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "const": "TRVM-HOLDOUT-OBSERVATION-v1"
+    },
+    "implementation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Free-form label naming the producer, e.g. javascript, go. Not interpreted."
+    },
+    "spec_release_id": {
+      "type": "string",
+      "pattern": "^srel-[0-9a-f]{64}$",
+      "description": "The release this run was written against. Two observation documents are comparable only when these agree."
+    },
+    "observations": {
+      "type": "object",
+      "description": "One entry per challenge, keyed by challenge id.",
+      "propertyNames": {
+        "pattern": "^H[0-9]+$|^S[0-9]+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/observation"
+      }
+    }
+  },
+  "$defs": {
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Every member is OPTIONAL. A member the recipe did not produce is ABSENT — never null, never a zero value. 'the checker returned nothing' and 'the checker was not asked' are different observations and a predicate can tell them apart.",
+      "properties": {
+        "baseline": {
+          "$ref": "#/$defs/plane"
+        },
+        "candidate": {
+          "$ref": "#/$defs/plane"
+        },
+        "refusal_set": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "uniqueItems": true,
+          "description": "SORTED and DISTINCT, so that byte equality is set equality. [] means a verification refused nothing; ABSENT means no verification happened.",
+          "x-sorted": true
+        },
+        "resolve": {
+          "type": "object",
+          "required": [
+            "outcome"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "outcome": {
+              "type": "string",
+              "description": "The observable resolution outcome of TRVM-PROOF-WIRE-v1 section 3.3 — the outcome, not the internal stage at which a strict parser noticed (section 3.6)."
+            }
+          }
+        },
+        "fixture_root": {
+          "type": "string",
+          "pattern": "^root-[0-9a-f]{64}$",
+          "description": "REQUIRED. The content address the adapter actually resolved to obtain the fixture. The scorer independently requires this to equal the challenge's declared fixture.root: an adapter that fetched by the convenience label and checked the root afterwards is indistinguishable from one that fetched by the root, unless it has to report what it fetched."
+        }
+      },
+      "required": [
+        "fixture_root"
+      ]
+    },
+    "plane": {
+      "type": "object",
+      "description": "Nodes of the frozen public DAG, plus 'leaf' for a leaf fixture.",
+      "propertyNames": {
+        "enum": [
+          "A",
+          "B",
+          "C1",
+          "C2",
+          "D",
+          "leaf"
+        ]
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/node"
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "artifact_root": {
+          "type": "string",
+          "pattern": "^root-[0-9a-f]{64}$"
+        },
+        "nested_claim_sem_id": {
+          "type": "string",
+          "pattern": "^nclaim-[0-9a-f]{64}$"
+        },
+        "verified_claim_sem_id": {
+          "type": "string",
+          "pattern": "^vclaim-[0-9a-f]{64}$"
+        },
+        "verdict": {
+          "enum": [
+            "VERIFIED",
+            "REFUSED"
+          ]
+        },
+        "structure": {
+          "$ref": "#/$defs/structure"
+        }
+      }
+    },
+    "structure": {
+      "type": "object",
+      "description": "Reported VERBATIM as the artifact carries it. An implementation does not recompute, round, reorder or omit members here: the point of the plane is whether two implementations derived the same structural facts.",
+      "additionalProperties": false,
+      "properties": {
+        "edges": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unique_artifacts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_depth_below": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bytes_if_inlined": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unique_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "films_below_by_edge_multiplicity": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "films_below_distinct": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cases_below_by_edge_multiplicity": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cases_below_distinct": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "structure_sem_id": {
+          "type": "string",
+          "pattern": "^nstruct-[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

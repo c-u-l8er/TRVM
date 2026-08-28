@@ -1,0 +1,138 @@
+[
+ {
+  "fixture": {
+   "artifact": "D",
+   "root": "root-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "id": "S1",
+  "name": "every-operator-satisfied",
+  "note": "SYNTHETIC. Contains no TRVM value. Every one of the eight predicate operators, arranged to PASS.",
+  "predicates": [
+   {
+    "op": "HOLDS",
+    "path": "D.nested_claim_sem_id"
+   },
+   {
+    "op": "MOVES",
+    "path": "D.artifact_root"
+   },
+   {
+    "op": "EQ",
+    "path": "candidate.D.structure.edges",
+    "value": 4
+   },
+   {
+    "op": "NEQ",
+    "path": "candidate.D.artifact_root",
+    "right": "baseline.D.artifact_root"
+   },
+   {
+    "op": "VERDICT_EQ",
+    "path": "D.verdict",
+    "value": "VERIFIED"
+   },
+   {
+    "op": "OUTCOME_EQ",
+    "path": "resolve.outcome",
+    "value": "synthetic-ok"
+   },
+   {
+    "op": "REFUSAL_SET_EQ",
+    "value": []
+   },
+   {
+    "left": "candidate.D.structure.unique_artifacts",
+    "op": "LT",
+    "right": "candidate.D.structure.edges"
+   }
+  ],
+  "recipe": [
+   {
+    "op": "IDENTITY"
+   }
+  ]
+ },
+ {
+  "fixture": {
+   "artifact": "D",
+   "root": "root-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "id": "S2",
+  "name": "every-operator-falsified",
+  "note": "SYNTHETIC. The SAME eight operators arranged to FAIL. A scorer that has quietly stopped evaluating passes S1 and is caught here.",
+  "predicates": [
+   {
+    "op": "HOLDS",
+    "path": "D.nested_claim_sem_id"
+   },
+   {
+    "op": "MOVES",
+    "path": "D.artifact_root"
+   },
+   {
+    "op": "EQ",
+    "path": "candidate.D.structure.edges",
+    "value": 99
+   },
+   {
+    "op": "NEQ",
+    "path": "candidate.D.artifact_root",
+    "right": "baseline.D.artifact_root"
+   },
+   {
+    "op": "VERDICT_EQ",
+    "path": "D.verdict",
+    "value": "VERIFIED"
+   },
+   {
+    "op": "OUTCOME_EQ",
+    "path": "resolve.outcome",
+    "value": "non-canonical-wire"
+   },
+   {
+    "op": "REFUSAL_SET_EQ",
+    "value": []
+   },
+   {
+    "left": "candidate.D.structure.unique_artifacts",
+    "op": "LT",
+    "right": "candidate.D.structure.edges"
+   }
+  ],
+  "recipe": [
+   {
+    "op": "IDENTITY"
+   }
+  ]
+ },
+ {
+  "fixture": {
+   "artifact": "D",
+   "root": "root-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "id": "S3",
+  "name": "absent-is-unresolved-not-false",
+  "note": "SYNTHETIC. The observation omits what these read. ABSENT must score UNRESOLVED \u2014 neither pass nor fail \u2014 because a missing observation scoring as a quiet zero is the failure mode the rule exists to prevent.",
+  "predicates": [
+   {
+    "op": "EQ",
+    "path": "candidate.D.structure.edges",
+    "value": 4
+   },
+   {
+    "left": "candidate.D.structure.unique_artifacts",
+    "op": "LT",
+    "right": "candidate.D.structure.edges"
+   },
+   {
+    "op": "REFUSAL_SET_EQ",
+    "value": []
+   }
+  ],
+  "recipe": [
+   {
+    "op": "IDENTITY"
+   }
+  ]
+ }
+]

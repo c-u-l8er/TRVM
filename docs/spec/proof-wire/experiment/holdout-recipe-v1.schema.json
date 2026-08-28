@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trvm.dev/spec/proof-wire/experiment/holdout-recipe-v1.schema.json",
+  "title": "TRVM-PROOF-WIRE-HOLDOUT-v2 challenge",
+  "description": "One hidden challenge. PROCEDURAL, not normative. The challenge language is effectively an experimental wire protocol between whoever writes the challenges and whoever adapts them, so it is schema'd like one: an adapter that silently tolerates an unknown recipe operator or an unknown member reports an observation of something other than the challenge it was given. Validated BEFORE adaptation. See HOLDOUT-RECIPE-v1.md.",
+  "type": "object",
+  "required": ["id", "name", "fixture", "recipe", "predicates"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "pattern": "^[HS][0-9]+$" },
+    "name": { "type": "string", "minLength": 1 },
+    "note": { "type": "string" },
+    "fixture": { "$ref": "#/$defs/fixture" },
+    "recipe": { "type": "array", "items": { "$ref": "#/$defs/step" } },
+    "predicates": { "type": "array", "items": { "$ref": "#/$defs/predicate" } }
+  },
+  "$defs": {
+    "fixture": {
+      "type": "object",
+      "required": ["root"],
+      "additionalProperties": false,
+      "description": "The root is AUTHORITATIVE and is the lookup key; artifact/leaf is a convenience label checked against the corpus manifest afterwards.",
+      "properties": {
+        "root": { "type": "string", "pattern": "^root-[0-9a-f]{64}$" },
+        "artifact": { "enum": ["A", "B", "C1", "C2", "D"] },
+        "leaf": { "type": "string", "minLength": 1 }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": ["op"],
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "enum": ["IDENTITY", "SET", "REVERSE", "RESEAL", "CHECK_WITH_OPTIONS",
+                   "WIRE_PREPEND_DUPLICATE_MEMBER", "RECOMPOSE_DAG"],
+          "description": "Seven operators and no eighth. An unknown operator is a refusal to emit, never a skipped step."
+        },
+        "path": { "type": "string", "minLength": 1 },
+        "value": {},
+        "name": { "type": "string", "minLength": 1 },
+        "options": { "type": "object" },
+        "note": { "type": "string" }
+      }
+    },
+    "predicate": {
+      "type": "object",
+      "required": ["op"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "enum": ["EQ", "NEQ", "HOLDS", "MOVES", "REFUSAL_SET_EQ", "VERDICT_EQ", "OUTCOME_EQ", "LT"] },
+        "path": { "type": "string", "minLength": 1 },
+        "left": { "type": "string", "minLength": 1 },
+        "right": { "type": "string", "minLength": 1 },
+        "value": {}
+      }
+    }
+  }
+}

@@ -1,0 +1,145 @@
+{
+ "type": "TRVM-NORMATIVE-SCHEMA-v1",
+ "protocol": "TRVM-NESTED-COMPOSITION-v2",
+ "spec": "TRVM-NESTED-COMPOSITION-v2.md",
+ "note": "NORMATIVE, and DELIBERATELY NOT IMPORTED BY THE RUNTIME. The checker declares its own grammar and constants; `spec_agreement.mjs` compares the two and refuses a disagreement. If the runtime imported this file the two would agree by construction and the comparison would measure nothing — the same tautology law:proof.semantic-vocabulary-closed@1 exists to refuse, one level up. Before a normative spec existed, the checker's own grammar was the correct source of truth for the field audit; after freeze it is not sufficient, because deleting a field from the checker AND from the check that enforced it merely shrinks the audit's denominator.",
+ "grammar": {
+  "bundle": {
+   "required": ["protocol", "claim", "chain_ids", "references", "aggregate", "structure"],
+   "optional": ["type", "version", "annotations"]
+  },
+  "claim": {
+   "required": ["connective", "scope", "operands", "nested_claim_sem_id"],
+   "optional": []
+  },
+  "scope": {
+   "required": ["kind", "quantifier", "generalizes_beyond_children",
+                "children_rechecked_by_their_own_checkers", "parent_rederives_leaf_evidence"],
+   "optional": []
+  },
+  "operand": {
+   "required": ["protocol", "claim_sem_id", "aggregate_id", "verified_claim_sem_id"],
+   "optional": []
+  },
+  "references": { "required": ["contract", "operands"], "optional": [] },
+  "reference_contract": {
+   "required": ["resolution", "wire", "address_is_a_warrant"], "optional": []
+  },
+  "reference": { "required": ["verified_claim_sem_id", "artifact_root"], "optional": [] },
+  "chain_ids": { "required": ["leaf_chains"], "optional": [] },
+  "aggregate": {
+   "required": ["operands", "child_verdicts", "leaf_receipts_rederived_by_parent",
+                "films_replayed_by_parent", "nested_verdict", "aggregate_id"],
+   "optional": []
+  },
+  "structure": {
+   "required": ["edges", "unique_artifacts", "max_depth_below", "bytes_if_inlined",
+                "unique_bytes", "films_below_by_edge_multiplicity", "films_below_distinct",
+                "cases_below_by_edge_multiplicity", "cases_below_distinct", "structure_sem_id"],
+   "optional": []
+  }
+ },
+ "constants": {
+  "protocol": "TRVM-NESTED-COMPOSITION-v2",
+  "connectives": ["CONJUNCTION"],
+  "scope": {
+   "kind": "NESTED_COMPOSED_VERIFIED_CLAIM_CONJUNCTION",
+   "quantifier": "OVER_CITED_CHILD_CERTIFICATES",
+   "generalizes_beyond_children": false,
+   "children_rechecked_by_their_own_checkers": true,
+   "parent_rederives_leaf_evidence": false
+  },
+  "reference_contract": {
+   "resolution": "CONTENT_ADDRESSED",
+   "wire": "CANONICAL",
+   "address_is_a_warrant": false
+  },
+  "child_protocols": {
+   "TRVM-BOUNDED-PROOF-v1": { "claim_field": "bounded_claim_sem_id", "composed": false },
+   "TRVM-BOUNDED-DOMAIN-PROOF-v1": { "claim_field": "domain_claim_sem_id", "composed": false },
+   "TRVM-NESTED-COMPOSITION-v2": { "claim_field": "nested_claim_sem_id", "composed": true }
+  },
+  "verifier_policy": {
+   "max_depth": 32,
+   "max_artifact_bytes": 8388608,
+   "max_total_resolved_bytes": 67108864,
+   "max_operands_per_node": 64,
+   "max_artifact_resolutions": 4096,
+   "derivation_reuse": true
+  },
+  "artifact_root_protocol": "TRVM-ARTIFACT-ROOT-v2",
+  "certificate_protocol": "TRVM-VERIFIED-CLAIM-v1",
+  "id_prefixes": {
+   "nested_claim_sem_id": "nclaim-",
+   "aggregate_id": "nagg-",
+   "structure_sem_id": "nstruct-",
+   "verified_claim_sem_id": "vclaim-",
+   "artifact_root": "root-",
+   "verifier_policy_id": "nestpol-"
+  }
+ },
+ "field_planes": {
+  "note": "Every field of every record is DERIVED (the checker computes the value itself and compares), CHECKED (compared against a value the checker declares) or NON_AUTHORITATIVE (its CONTENT establishes nothing, though the envelope is still protocol-shaped and structurally validated). There is no fourth category and an unclassified field is a defect.",
+  "bundle": {
+   "protocol": "CHECKED", "claim": "DERIVED", "chain_ids": "DERIVED", "references": "DERIVED",
+   "aggregate": "DERIVED", "structure": "DERIVED",
+   "type": "NON_AUTHORITATIVE", "version": "NON_AUTHORITATIVE", "annotations": "NON_AUTHORITATIVE"
+  },
+  "claim": { "connective": "CHECKED", "scope": "CHECKED", "operands": "DERIVED",
+             "nested_claim_sem_id": "DERIVED" },
+  "scope": { "kind": "CHECKED", "quantifier": "CHECKED", "generalizes_beyond_children": "CHECKED",
+             "children_rechecked_by_their_own_checkers": "CHECKED",
+             "parent_rederives_leaf_evidence": "CHECKED" },
+  "operand": { "protocol": "DERIVED", "claim_sem_id": "DERIVED", "aggregate_id": "DERIVED",
+               "verified_claim_sem_id": "DERIVED" },
+  "references": { "contract": "CHECKED", "operands": "DERIVED" },
+  "reference_contract": { "resolution": "CHECKED", "wire": "CHECKED",
+                          "address_is_a_warrant": "CHECKED" },
+  "reference": { "verified_claim_sem_id": "DERIVED", "artifact_root": "DERIVED" },
+  "chain_ids": { "leaf_chains": "DERIVED" },
+  "aggregate": { "operands": "DERIVED", "child_verdicts": "DERIVED",
+                 "leaf_receipts_rederived_by_parent": "DERIVED",
+                 "films_replayed_by_parent": "DERIVED", "nested_verdict": "DERIVED",
+                 "aggregate_id": "DERIVED" },
+  "structure": { "edges": "DERIVED", "unique_artifacts": "DERIVED", "max_depth_below": "DERIVED",
+                 "bytes_if_inlined": "DERIVED", "unique_bytes": "DERIVED",
+                 "films_below_by_edge_multiplicity": "DERIVED", "films_below_distinct": "DERIVED",
+                 "cases_below_by_edge_multiplicity": "DERIVED", "cases_below_distinct": "DERIVED",
+                 "structure_sem_id": "DERIVED" }
+ },
+ "refusal_codes": [
+  "nest-artifact-invalid-utf8",
+  "nest-artifact-malformed",
+  "nest-artifact-non-canonical",
+  "nest-artifact-root-malformed",
+  "nest-artifact-root-mismatch",
+  "nest-artifact-unresolvable",
+  "nest-budget-exceeded",
+  "nest-chain-ids-mismatch",
+  "nest-checker-threw",
+  "nest-child-protocol-unsupported",
+  "nest-child-refused",
+  "nest-citation-cross-wired",
+  "nest-claim-id-mismatch",
+  "nest-connective-unsupported",
+  "nest-count-inconsistent",
+  "nest-cycle",
+  "nest-certificate-stale",
+  "nest-depth-exceeded",
+  "nest-ingress-refused",
+  "nest-operand-duplicated",
+  "nest-operand-malformed",
+  "nest-policy-weakened",
+  "nest-protocol-mismatch",
+  "nest-reference-contract-mismatch",
+  "nest-reference-mismatch",
+  "nest-scope-mismatch",
+  "nest-structure-mismatch",
+  "nest-vocabulary-unknown"
+ ],
+ "set_valued_comparisons": [
+  "chain_ids.leaf_chains",
+  "the pairing of claim.operands with references.operands",
+  "a refusal set reported by a verifier"
+ ]
+}

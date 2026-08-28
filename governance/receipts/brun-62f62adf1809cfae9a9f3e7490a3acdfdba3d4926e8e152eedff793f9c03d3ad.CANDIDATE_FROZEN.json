@@ -1,0 +1,29 @@
+{
+ "type": "TRVM-BLIND-RUN-RECEIPT-v1",
+ "run_id": "brun-62f62adf1809cfae9a9f3e7490a3acdfdba3d4926e8e152eedff793f9c03d3ad",
+ "status": "CANDIDATE_FROZEN",
+ "spec_release_id": "srel-a5f032c7e3cd93a98098cdf67d353349dafe2bacd7bc0ae7e8d6e9a9e9c9f091",
+ "blind_package_id": "bpkg-71ba928bfa6772b8ed99d92976d4a680adc77e4578dd5bb95028d5817f646f7d",
+ "instrument_digest": "aed51bcf87802fc82b0a2bdcc31762c9f8e890e60230ec28a7e721fdff0a5b7c",
+ "adapters": [
+  {
+   "implementation": "javascript",
+   "role": "reference",
+   "package_digest": "063c7c63a335b68e99db479c0458bc96d2ffd86e56efc3238ce1f1a621407ba6",
+   "binary_digest": null,
+   "environment": null
+  },
+  {
+   "implementation": "twin",
+   "role": "candidate",
+   "package_digest": "912aee0e82df41770a9f71b4d6b49a099d7b5bf15fc468100f5b69f6707751a4",
+   "binary_digest": "4d73d45c104f97a81e8934641e438a0a01a432c4369a1f27c828246a13b13e16",
+   "environment": {
+    "toolchain": "t",
+    "model": "m",
+    "tool_version": "v"
+   }
+  }
+ ],
+ "note": "candidate twin frozen"
+}

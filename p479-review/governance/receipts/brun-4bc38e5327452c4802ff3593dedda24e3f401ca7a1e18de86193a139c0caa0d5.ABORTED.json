@@ -1,0 +1,20 @@
+{
+ "type": "TRVM-BLIND-RUN-RECEIPT-v2",
+ "run_id": "brun-4bc38e5327452c4802ff3593dedda24e3f401ca7a1e18de86193a139c0caa0d5",
+ "status": "ABORTED",
+ "previous_run_id": "brun-b1de3bafd4ab4252f32d45fa8e9bf4242ce57d4a914f94f264507d26c1bf6be4",
+ "previous_status": "PINNED",
+ "spec_release_id": "srel-1126c37dbbdefd88d15cc7f07e8fae0cd18126ca366e85a1052c2845ebb24cf2",
+ "blind_package_id": "bpkg-cd0d72c1aecb3b5ba021f9dcce95d7a6c4f1faf99881da1e12f2bf0b7164859f",
+ "instrument_digest": "734e27825dc2d6b0f8681ab0431dd6f32b5b1b9727d70ec922e46a9e210981e4",
+ "adapters": [
+  {
+   "implementation": "javascript",
+   "role": "reference",
+   "package_digest": "063c7c63a335b68e99db479c0458bc96d2ffd86e56efc3238ce1f1a621407ba6",
+   "binary_digest": null,
+   "environment": null
+  }
+ ],
+ "note": "aborted: P4.7.3: --state-root removed; the world is where the program lives, and the instrument moved"
+}
