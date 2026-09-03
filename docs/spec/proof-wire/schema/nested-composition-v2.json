@@ -75,7 +75,8 @@
    "structure_sem_id": "nstruct-",
    "verified_claim_sem_id": "vclaim-",
    "artifact_root": "root-",
-   "verifier_policy_id": "nestpol-"
+   "verifier_policy_id": "nestpol-",
+   "child_protocol_set_id": "nestcps-"
   }
  },
  "field_planes": {
@@ -117,6 +118,8 @@
   "nest-budget-exceeded",
   "nest-chain-ids-mismatch",
   "nest-checker-threw",
+  "nest-child-protocol-override-refused",
+  "nest-child-protocol-registration-malformed",
   "nest-child-protocol-unsupported",
   "nest-child-refused",
   "nest-citation-cross-wired",

@@ -1,8 +1,8 @@
 {
  "type": "TRVM-BLIND-IMPLEMENTATION-RUN-v3",
  "status": "PINNED",
- "spec_release_id": "srel-4844df97e124474e30f100cbe9f8422a99213ac9288f8fcc149086a9a434c952",
- "blind_package_id": "bpkg-9ad5de9420259a6bf247a3629bb69419d53dd1d178bf98beabb270865b22e585",
+ "spec_release_id": "srel-f5720a3d0ee9dbb95670c9cd66672bf70c7dbe353df0c114a18c8a982f203629",
+ "blind_package_id": "bpkg-350de8116e9118c2b24e260bc4890fcfce0a7973dbd5a4a168af3cf3df791a04",
  "instrument_digest": "1f763b5b0b48329505c22c4f0142d22ee22e84cda4ef5182a7297d7382c2f977",
  "blind_contract_revision": 12,
  "adapters": [
@@ -24,11 +24,11 @@
     "governance/certificate.mjs",
     "governance/schema.mjs"
    ],
-   "package_digest": "142e8a8884a4ed31cfdfcf6c3d955222acf1756c9f17d764bb473ed4543d8c3d",
+   "package_digest": "eba6d18ae9c925e3a3424de4a2e6da4eccef8b300f2f6b9c6a4078503ddf7e34",
    "binary_digest": null,
    "binary_path": null,
    "environment": null
   }
  ],
- "run_id": "brun-74f54466247c3ccbfcf15ada42242605c7a299961a8b7413e1c914f18fe8c264"
+ "run_id": "brun-e553dc1d6cd63e1b9a9ff0aa452e2515bad8888dcf19fdaf5c929f1509cb6cd0"
 }

@@ -65,10 +65,15 @@
 
    It is destructured out with `store`, so it never reaches the resource
    policy. A key this checker already ships is refused (a caller may EXTEND the
-   table and may not REPLACE an entry); a malformed entry is refused by name;
-   both under nest-policy-weakened, because a supplied table is part of the
-   caller's request to this verifier exactly as `max_depth` is, and this
-   protocol's refusal vocabulary is frozen with its release. The effective
+   table and may not REPLACE an entry) under
+   nest-child-protocol-override-refused; a malformed entry is refused by name
+   under nest-child-protocol-registration-malformed. TRVM-P0.1 SPLIT THESE OUT
+   OF nest-policy-weakened: P0 reused it because the refusal vocabulary is
+   frozen with its release, which is true and is why the fix was a release, not
+   a loosened gate. The distinction is not cosmetic — a refusal SET is the only
+   thing conformance compares, so two different faults reported under one code
+   are one fact to every reader downstream, and a caller cannot tell a table
+   this verifier will not hold from a bound it will not grant. The effective
    table is built inside the owned check and used at the dispatch; the
    verdict then NAMES the set — `measured.child_protocol_set = { builtin,
    supplied: [{protocol, checker_id}], child_protocol_set_id }` — and the
@@ -128,9 +133,12 @@
      nest-depth-exceeded             a citation chain past the policy ceiling
      nest-budget-exceeded            resolutions or bytes past the policy ceiling
      nest-cycle                      a root cited by one of its own ancestors
-     nest-policy-weakened            a caller asked for a policy looser than the shipped one,
-                                     or supplied a child-protocol table this verifier will
-                                     not hold: an entry overriding a built-in, or a malformed one
+     nest-policy-weakened            a caller asked for a policy looser than the shipped one
+     nest-child-protocol-override-refused
+                                     a supplied entry would REPLACE a checker this verifier ships
+     nest-child-protocol-registration-malformed
+                                     a supplied child-protocol table, or one of its entries, is
+                                     not the shape this verifier holds
      nest-checker-threw              the checker raised instead of refusing
    ═══════════════════════════════════════════════════════════════════════════ */
 import { createHash } from "node:crypto";
@@ -228,7 +236,8 @@ export function childProtocolSet(child_protocols) {
     return { effective: IMPLEMENTED_CHILD_PROTOCOLS, supplied: [], child_protocol_set_id: null };
   const SHAPE = "A supplied entry is exactly {claim_field: non-empty string, check: function, " +
     "composed: false, checker_id: non-empty string}, keyed by a protocol id";
-  const malformed = (what, why) => ({ refusal: `${what} is malformed: ${why}. ${SHAPE}` });
+  const malformed = (what, why) => ({ code: "nest-child-protocol-registration-malformed",
+    refusal: `${what} is malformed: ${why}. ${SHAPE}` });
   const kind = (v) => (v === null ? "null" : Array.isArray(v) ? "an array" : typeof v);
   if (child_protocols === null || typeof child_protocols !== "object" || Array.isArray(child_protocols))
     return malformed("child_protocols", `a table is a record keyed by protocol id, not ${kind(child_protocols)}`);
@@ -238,7 +247,8 @@ export function childProtocolSet(child_protocols) {
     if (p.length === 0 || /\s/.test(p))
       return malformed(at, "a protocol id is a non-empty string without whitespace");
     if (Object.prototype.hasOwnProperty.call(IMPLEMENTED_CHILD_PROTOCOLS, p))
-      return { refusal: `${at} would OVERRIDE the checker this verifier ships for that protocol. The ` +
+      return { code: "nest-child-protocol-override-refused",
+        refusal: `${at} would OVERRIDE the checker this verifier ships for that protocol. The ` +
         `built-in table is this checker's own: a caller may EXTEND it with protocols this verifier does ` +
         `not implement and may not REPLACE an entry while still claiming this verifier's verdict` };
     if (e === null || typeof e !== "object" || Array.isArray(e))
@@ -341,7 +351,7 @@ export function checkNestBytes(raw, opts = {}) {
   const cps = childProtocolSet(child_protocols);
   if (cps.refusal)
     return publicResult({ measured: { verifier_policy_id: policyId(SHIPPED_POLICY) },
-      refusals: [{ code: "nest-policy-weakened", detail: cps.refusal }] });
+      refusals: [{ code: cps.code, detail: cps.refusal }] });
 
   if (!Buffer.isBuffer(raw) && !(raw instanceof Uint8Array))
     return publicResult({ measured: {}, refusals: [{ code: "nest-ingress-refused",
@@ -394,11 +404,13 @@ function checkOwned(bundle, { store, child_protocols, ...requested } = {}) {
       refusals: [{ code: "nest-policy-weakened", detail: pol.refusal }] });
   /* THE SUPPLIED TABLE IS VALIDATED HERE AND USED NOWHERE ELSE — TRVM-P0.
      Refused before anything is resolved, under the shipped policy id, exactly
-     as a loosened bound is. */
+     as a loosened bound is — but NOT under the same code (TRVM-P0.1): a table
+     this verifier will not hold is not a caller asking for a looser bound, and
+     a refusal SET is the only thing a conformance run compares. */
   const cps = childProtocolSet(child_protocols);
   if (cps.refusal)
     return publicResult({ measured: { verifier_policy_id: policyId(SHIPPED_POLICY) },
-      refusals: [{ code: "nest-policy-weakened", detail: cps.refusal }] });
+      refusals: [{ code: cps.code, detail: cps.refusal }] });
   const policy = pol.policy;
   const verifier_policy_id = reportedPolicyId(policy, cps);
   try {

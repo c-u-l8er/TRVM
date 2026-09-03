@@ -127,6 +127,23 @@ protocol and binds `(protocol, claim_sem_id, aggregate_id, chain_ids)` together.
 not carry all four **cannot be cited at all** — this is *citability*, and it comes before identity,
 availability and warrant.
 
+**4.3. The verifier's own coordinates.** Two further identities are about the VERIFIER rather than the
+artifact, and are reported with the verdict rather than sealed into it:
+
+```
+verifier_policy_id      = "nestpol-"  ++ hex(SHA-256(
+    "TRVM-NESTED-COMPOSITION-v2|" ++ <the effective policy, key-sorted k=v joined by "|">))
+
+child_protocol_set_id   = "nestcps-" ++ hex(SHA-256(
+    "TRVM-NESTED-COMPOSITION-v2|" ++ canonical_bytes(
+        the SORTED supplied list of {protocol, checker_id, claim_field})))
+```
+
+When a table was supplied, `child_protocol_set_id` is folded into the preimage of
+`verifier_policy_id`, so **one coordinate names both what was bounded and who was allowed to check**.
+Two verifiers holding the same supplied set report the same set id; a verifier holding none reports
+`verifier_policy_id` byte-identically to every id issued before the table existed.
+
 ---
 
 ## 5. The chain is derived, never declared
@@ -164,6 +181,17 @@ When resolution completes, the store MUST NOT be consulted again.
 **6.2. JUDGE.** Each **distinct** artifact in the snapshot is handed to the checker of its own
 protocol. A verifier MAY reuse a judgment it derived itself in this run; the verdict and the refusal
 set MUST be identical to recomputation.
+
+**6.2.1. The protocol→checker table belongs to the VERIFIER, never to the artifact.** A verifier MAY
+extend the table in §3's `child_protocols` with protocols it does not implement natively, and MUST
+refuse a supplied entry that would REPLACE one it ships (`nest-child-protocol-override-refused`) or
+that is not the shape it holds (`nest-child-protocol-registration-malformed`). An artifact MUST NOT
+be able to name, carry or inject checker code: what the caller supplies is verifier configuration,
+read once and copied field by field, and a later mutation of the caller's object MUST reach nothing.
+When a table was supplied, the verdict MUST name the effective set — the built-in keys, the supplied
+`(protocol, checker_id)` pairs and a `child_protocol_set_id` over them — and the reported
+`verifier_policy_id` MUST fold that set id in. With no supplied table nothing is added and no
+identity moves.
 
 **6.3. WALK.** For every operand:
 
@@ -218,6 +246,11 @@ nest-depth-exceeded               a citation chain past the policy ceiling
 nest-budget-exceeded              octets, resolutions or operands past the policy ceiling
 nest-cycle                        a root cited by one of its own ancestors
 nest-policy-weakened              a caller asked for a policy looser than the shipped one
+nest-child-protocol-override-refused
+                                  a supplied entry would REPLACE a checker the verifier ships
+nest-child-protocol-registration-malformed
+                                  a supplied table, or one of its entries, is not the shape
+                                  the verifier holds
 nest-checker-threw                the checker raised instead of refusing
 ```
 
@@ -240,6 +273,12 @@ proved.
 - **Not a claim about how many times anything was checked.**
 - **Not transitive in the sense of trust.** A nested composition may cite another, and every artifact
   in the graph is judged by its own protocol's checker regardless of depth.
+- **Not a verdict independent of who checked it.** A `VERIFIED` issued while a supplied child-protocol
+  table was in force is meaningful ONLY together with the `verifier_policy_id` and
+  `child_protocol_set_id` reported beside it. A `checker_id` is a NAME, not a warrant: a supplied
+  checker that answers `VERIFIED` to everything widens only what THAT verifier will hold, and says
+  nothing about what any other verifier would. A consumer MUST NOT equate two verdicts because the
+  token is the same string; **verification without verifier identity is incomplete evidence.**
 
 ---
 

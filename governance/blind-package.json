@@ -1,16 +1,16 @@
 {
- "blind_package_id": "bpkg-9ad5de9420259a6bf247a3629bb69419d53dd1d178bf98beabb270865b22e585",
+ "blind_package_id": "bpkg-350de8116e9118c2b24e260bc4890fcfce0a7973dbd5a4a168af3cf3df791a04",
  "type": "TRVM-BLIND-PACKAGE-v1",
  "root": "docs/spec/proof-wire",
- "file_count": 65,
+ "file_count": 66,
  "files": [
   {
    "path": "SPEC-RELEASE.json",
-   "sha256": "7618024788a39bbe5b0fe47d90b65a56c1be4a5ee3312b8ca37106b2ad0fd40c"
+   "sha256": "a4ad81044fc1e6a1ee55dd0814dc3ff80677303c1cd1b8f3d8c1e19e7a3a7fcf"
   },
   {
    "path": "TRVM-NESTED-COMPOSITION-v2.md",
-   "sha256": "8160664abe1db19d6b86dcbe43692fc32a06828d57a8b9569e8998f0f6c35f71"
+   "sha256": "7b6f0ea5d704bcfebb77190270e76778c4ececb9b9bc18c296274336dbeb2895"
   },
   {
    "path": "TRVM-PROOF-WIRE-v1.md",
@@ -145,12 +145,16 @@
    "sha256": "1c05deb186596f2f7c58735eb71406545d44364b7b3842224cc65b91fe41ac0e"
   },
   {
+   "path": "releases/srel-f5720a3d0ee9dbb95670c9cd66672bf70c7dbe353df0c114a18c8a982f203629.json",
+   "sha256": "a4ad81044fc1e6a1ee55dd0814dc3ff80677303c1cd1b8f3d8c1e19e7a3a7fcf"
+  },
+  {
    "path": "requirements/open/RFC8785-number-stress-corpus.md",
    "sha256": "a4c8cef2c0278382c01008c8e591141a400d105f1e3b3829e57c5c5ba23fa57b"
   },
   {
    "path": "schema/nested-composition-v2.json",
-   "sha256": "5935b455584a138aa2d879a9b502229baa499ff5d13330e38140007368cbfe82"
+   "sha256": "b18ea4c3158346b291082294126a6bc35443803fda4f503ff3d9606a0ebab87a"
   },
   {
    "path": "vectors/jcs-upstream/PROVENANCE.md",

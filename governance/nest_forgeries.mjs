@@ -700,8 +700,9 @@ P0("registry-cannot-override-a-built-in", () => {
     const r = checkNestBundle(H.D, { store: H.store, child_protocols: impostor(p, f) });
     const rb = checkNestBytes(canonicalWireBytes(H.D), { store: H.store, child_protocols: impostor(p, f) });
     const d = r.refusals[0]?.detail ?? "";
-    const good = r.ok === false && JSON.stringify(codesOf(r)) === JSON.stringify(["nest-policy-weakened"])
-      && JSON.stringify(codesOf(rb)) === JSON.stringify(["nest-policy-weakened"])
+    const CODE = ["nest-child-protocol-override-refused"];
+    const good = r.ok === false && JSON.stringify(codesOf(r)) === JSON.stringify(CODE)
+      && JSON.stringify(codesOf(rb)) === JSON.stringify(CODE)
       && /OVERRIDE/.test(d) && d.includes(p) && r.measured.checker_evaluations === undefined;
     ok &&= good;
     rows.push(`${p} → ${codesOf(r).join(",")}${good ? "" : ` [${d.slice(0, 80)}]`}`);
@@ -711,7 +712,8 @@ P0("registry-cannot-override-a-built-in", () => {
   catch (e) { producerThrew = e.message; }
   ok &&= /override/i.test(producerThrew ?? "") && calls === 0;
   return { ok, note: `a supplied entry for a protocol this checker SHIPS is refused before anything is ` +
-    `resolved — ${rows.join(" · ")} — the impostor checker was called ${calls} times, no artifact was ` +
+    `resolved, under its OWN code since TRVM-P0.1 — ${rows.join(" · ")} — the impostor checker was ` +
+    `called ${calls} times, no artifact was ` +
     `judged, and the producer refuses the same table ("${String(producerThrew).slice(0, 60)}…")` };
 });
 
@@ -745,8 +747,9 @@ P0("registry-entry-malformed-is-refused-by-name", () => {
     const d = r.refusals[0]?.detail ?? "";
     let producerThrew = null;
     try { buildNestBundle([child], { child_protocols: table }); } catch (e) { producerThrew = e.message; }
-    const g = r.ok === false && JSON.stringify(codesOf(r)) === JSON.stringify(["nest-policy-weakened"])
-      && JSON.stringify(codesOf(rb)) === JSON.stringify(["nest-policy-weakened"])
+    const CODE = JSON.stringify(["nest-child-protocol-registration-malformed"]);
+    const g = r.ok === false && JSON.stringify(codesOf(r)) === CODE
+      && JSON.stringify(codesOf(rb)) === CODE
       && /malformed/.test(d) && r.measured.checker_evaluations === undefined
       && /malformed/i.test(producerThrew ?? "");
     ok &&= g;
@@ -816,6 +819,60 @@ P0("registry-names-its-checker-in-the-verdict", () => {
     `${String(liar.measured.verifier_policy_id).slice(0, 22)}… vs the honest ` +
     `${String(honest.measured.verifier_policy_id).slice(0, 22)}…. Nothing here is believed from ` +
     `elsewhere; a reader can see WHICH verifier accepted it` };
+});
+
+/* TRVM-P0.1 §B3. The rule GPT v5 §4 states — "verification without verifier identity is incomplete
+   evidence" — as a MEASUREMENT rather than a sentence in a header. Two verdicts whose token is the
+   same string are shown to be different facts, and the thing that distinguishes them is shown to be
+   the coordinate, not the token. A consumer that keeps only `verdict` is measured to lose the whole
+   distinction; one that keeps the pair is measured to keep it. */
+P0("a-verdict-token-is-not-a-verdict-VERIFIED-at-two-policies-is-two-facts", () => {
+  const store = memoryStore(new Map());
+  const child = alienChild();
+  child.cases.push({ x: 1, y: 1 });            // the honest alien checker refuses this; the liar does not
+  store.put(child);
+  const nest = buildNestBundle([child], { child_protocols: LIAR_TABLE });
+
+  const liar = checkNestBundle(nest, { store, child_protocols: LIAR_TABLE });
+  const honest = checkNestBundle(nest, { store, child_protocols: ALIEN_TABLE });
+  const bare = checkNestBundle(nest, { store });
+
+  /* A consumer that keeps only the token, and one that keeps the pair. */
+  const tokenOnly = (r) => r.verdict;
+  const withCoordinate = (r) => JSON.stringify([r.verdict, r.measured.verifier_policy_id,
+    r.measured.child_protocol_set?.child_protocol_set_id ?? null]);
+
+  /* The same artifact, VERIFIED under the liar's table and under a second table that differs only
+     in the checker_id — same behaviour, different identity. The token cannot tell them apart. */
+  const RENAMED = { [ALIEN_PROTOCOL]: { ...LIAR_TABLE[ALIEN_PROTOCOL], checker_id: "trvm-test-alien-LIAR-renamed" } };
+  const renamed = checkNestBundle(nest, { store, child_protocols: RENAMED });
+
+  const ok =
+    liar.verdict === "VERIFIED" && renamed.verdict === "VERIFIED"
+    && tokenOnly(liar) === tokenOnly(renamed)                      // the token conflates them
+    && withCoordinate(liar) !== withCoordinate(renamed)            // the coordinate does not
+    && liar.measured.child_protocol_set.child_protocol_set_id
+       !== renamed.measured.child_protocol_set.child_protocol_set_id
+    && liar.measured.verifier_policy_id !== renamed.measured.verifier_policy_id
+    /* and the same artifact is NOT verified at the honest coordinate, nor at the bare one */
+    && honest.ok === false && bare.ok === false
+    && honest.measured.verifier_policy_id !== liar.measured.verifier_policy_id
+    /* the bare verdict reports no set at all and the shipped policy id */
+    && bare.measured.child_protocol_set === undefined
+    /* determinism: the coordinate is a function of the set, not of the call */
+    && withCoordinate(checkNestBundle(nest, { store, child_protocols: LIAR_TABLE })) === withCoordinate(liar);
+
+  return { ok, note: `ONE artifact, four verifiers. Two of them answer the same TOKEN — ` +
+    `${JSON.stringify(tokenOnly(liar))} === ${JSON.stringify(tokenOnly(renamed))} — while being ` +
+    `different verifiers: ${String(liar.measured.child_protocol_set.child_protocol_set_id).slice(0, 20)}… ` +
+    `vs ${String(renamed.measured.child_protocol_set.child_protocol_set_id).slice(0, 20)}… under ` +
+    `${String(liar.measured.verifier_policy_id).slice(0, 20)}… vs ` +
+    `${String(renamed.measured.verifier_policy_id).slice(0, 20)}…, and the ONLY difference between ` +
+    `them is a checker_id. The honest table (${honest.verdict}) and no table at all (${bare.verdict}, ` +
+    `no child_protocol_set reported) refuse the same bytes. So a consumer that stores ` +
+    `verdict alone has stored a string that four different verifiers would have written differently; ` +
+    `VERIFIED@policy-A and VERIFIED@policy-B are NOT the same evidence, and this protocol reports the ` +
+    `coordinate precisely so that they cannot be equated` };
 });
 
 for (const c of CASES) {

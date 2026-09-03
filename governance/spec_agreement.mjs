@@ -33,11 +33,13 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
   GRAMMAR, IMPLEMENTED_CHILD_PROTOCOLS, IMPLEMENTED_CONNECTIVES, IMPLEMENTED_NEST_SCOPE,
-  IMPLEMENTED_REFERENCE_CONTRACT, SHIPPED_POLICY,
+  IMPLEMENTED_REFERENCE_CONTRACT, SHIPPED_POLICY, policyId, childProtocolSetId,
 } from "./nest_check.mjs";
-import { NEST_PROTOCOL } from "./nest_bundle.mjs";
-import { ARTIFACT_ROOT_PROTOCOL } from "./cas.mjs";
-import { CERTIFICATE_PROTOCOL } from "./certificate.mjs";
+import {
+  NEST_PROTOCOL, nestedClaimSemId, nestAggregateId, nestStructureSemId,
+} from "./nest_bundle.mjs";
+import { ARTIFACT_ROOT_PROTOCOL, rootOfBytes } from "./cas.mjs";
+import { CERTIFICATE_PROTOCOL, verifiedClaimSemId } from "./certificate.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCHEMA = join(HERE, "..", "docs", "spec", "proof-wire", "schema",
@@ -97,6 +99,34 @@ for (const p of sortedKeys(C.child_protocols)) {
     C.child_protocols[p].composed, IMPLEMENTED_CHILD_PROTOCOLS[p]?.composed);
 }
 
+/* ── 3b. ID PREFIXES, MEASURED BY MINTING (TRVM-P0.1) ─────────────────────
+   Added because `child_protocol_set_id` is now a coordinate a reader needs in
+   order to know WHOSE verdict it is holding, and the normative `id_prefixes`
+   map was declared and compared to nothing: this checker could have renamed
+   every prefix it mints and this gate stayed green. The implementation side is
+   NOT a table typed beside the schema's — a copied constant would be exactly
+   the tautology §1 exists to forbid. It is the prefix of an id this tree
+   actually MINTS, one call per kind, so what is compared is the wire and not a
+   description of it. The ids themselves are thrown away; only the text before
+   the first "-" is read. This ENLARGES the gate: TRVM-P0.1 needed a new
+   coordinate named in the spec, and naming one without checking it is how the
+   refusal-code debt happened in the first place. */
+const mintedPrefix = (id) => String(id).slice(0, String(id).indexOf("-") + 1);
+const MINTED = {
+  nested_claim_sem_id: nestedClaimSemId("CONJUNCTION", { ...IMPLEMENTED_NEST_SCOPE }, []),
+  aggregate_id: nestAggregateId({ nested_verdict: "VERIFIED" }),
+  structure_sem_id: nestStructureSemId({ nodes_distinct: 1 }),
+  verified_claim_sem_id: verifiedClaimSemId({
+    protocol: NEST_PROTOCOL, claim_sem_id: "c", aggregate_id: "a", chain_ids: {} }),
+  artifact_root: rootOfBytes(Buffer.from("", "utf8")),
+  verifier_policy_id: policyId(SHIPPED_POLICY),
+  child_protocol_set_id: childProtocolSetId(
+    [{ protocol: "X-v1", checker_id: "c", claim_field: "f" }]),
+};
+same("constants.id_prefixes", sortedKeys(C.id_prefixes), sortedKeys(MINTED));
+for (const k of sortedKeys(C.id_prefixes))
+  same(`id_prefixes.${k} (minted)`, C.id_prefixes[k], mintedPrefix(MINTED[k]));
+
 /* ── 4. FIELD PLANES cover exactly the normative grammar ─────────────────── */
 for (const rec of sortedKeys(N.grammar)) {
   const keys = [...(N.grammar[rec].required ?? []), ...(N.grammar[rec].optional ?? [])].sort();
@@ -128,7 +158,9 @@ console.log(problems.length === 0
   ? `SPEC-AGREEMENT: PASS — the normative schema and the checker's OWN declarations agree on ` +
     `${sortedKeys(N.grammar).length} record grammars, ` +
     `${Object.values(N.grammar).reduce((n, r) => n + r.required.length + r.optional.length, 0)} ` +
-    `fields and their planes, ${declared.length} refusal codes, the scope, the reference contract, ` +
+    `fields and their planes, ${declared.length} refusal codes, ` +
+    `${sortedKeys(C.id_prefixes).length} id prefixes MEASURED BY MINTING ONE ID OF EACH KIND, ` +
+    `the scope, the reference contract, ` +
     `the child-protocol table, both domain-separation strings and all ` +
     `${Object.keys(N.constants.verifier_policy).length} verifier-policy values — AND THE RUNTIME ` +
     `DOES NOT IMPORT THE SCHEMA, asserted on the source of all ${RUNTIME.length} files, because ` +

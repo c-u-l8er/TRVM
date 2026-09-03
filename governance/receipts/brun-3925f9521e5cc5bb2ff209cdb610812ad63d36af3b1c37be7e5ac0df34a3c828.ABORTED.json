@@ -1,0 +1,20 @@
+{
+ "type": "TRVM-BLIND-RUN-RECEIPT-v2",
+ "run_id": "brun-3925f9521e5cc5bb2ff209cdb610812ad63d36af3b1c37be7e5ac0df34a3c828",
+ "status": "ABORTED",
+ "previous_run_id": "brun-74f54466247c3ccbfcf15ada42242605c7a299961a8b7413e1c914f18fe8c264",
+ "previous_status": "PINNED",
+ "spec_release_id": "srel-4844df97e124474e30f100cbe9f8422a99213ac9288f8fcc149086a9a434c952",
+ "blind_package_id": "bpkg-9ad5de9420259a6bf247a3629bb69419d53dd1d178bf98beabb270865b22e585",
+ "instrument_digest": "1f763b5b0b48329505c22c4f0142d22ee22e84cda4ef5182a7297d7382c2f977",
+ "adapters": [
+  {
+   "implementation": "javascript",
+   "role": "reference",
+   "package_digest": "142e8a8884a4ed31cfdfcf6c3d955222acf1756c9f17d764bb473ed4543d8c3d",
+   "binary_digest": null,
+   "environment": null
+  }
+ ],
+ "note": "aborted: TRVM-P0.1 normative closure: nest_check.mjs splits the overloaded nest-policy-weakened into nest-child-protocol-override-refused and nest-child-protocol-registration-malformed; spec revision 2 (srel-f5720a3d) adds both codes, TRVM-NESTED-COMPOSITION-v2.md sections 4.3/6.2.1/7/8, and the id_prefixes map gains child_protocol_set_id; spec_agreement now measures all 7 id prefixes by minting"
+}
