@@ -87,6 +87,38 @@ export const CHILD_PROTOCOLS = Object.freeze({
     claim_field: "nested_claim_sem_id", check: null, composed: true }),
 });
 
+/** THE PRODUCER'S OWN VALIDATION of a caller-supplied table — TRVM-P0. Declared
+ *  here and not imported from the checker, for the reason the table itself is
+ *  not shared. The producer uses a supplied entry for exactly what the checker
+ *  does: to know which field of the child holds the claim a citation is about,
+ *  and to run the child's OWN checker before certifying it — so there is still
+ *  no mode of this producer that mints an unchecked certificate. A key the
+ *  base table already holds is refused: a caller may extend, never replace. */
+export function withChildProtocols(base, child_protocols) {
+  if (child_protocols === undefined) return base;
+  const fail = (m) => { throw new Error(m); };
+  const kind = (v) => (v === null ? "null" : Array.isArray(v) ? "an array" : typeof v);
+  if (child_protocols === null || typeof child_protocols !== "object" || Array.isArray(child_protocols))
+    fail(`nest-bundle-child-protocols-malformed: a table is a record keyed by protocol id, not ${kind(child_protocols)}`);
+  const supplied = {};
+  for (const [p, e] of Object.entries(child_protocols)) {
+    const at = `nest-bundle-child-protocols-malformed: child_protocols[${JSON.stringify(p)}]`;
+    if (p.length === 0 || /\s/.test(p)) fail(`${at} is not a protocol id`);
+    if (Object.prototype.hasOwnProperty.call(base, p))
+      fail(`nest-bundle-child-protocol-override-refused: ${p} is a protocol this producer already implements`);
+    if (e === null || typeof e !== "object" || Array.isArray(e)) fail(`${at} is ${kind(e)}, not a record`);
+    if (Object.keys(e).sort().join(",") !== "check,checker_id,claim_field,composed")
+      fail(`${at} keys are [${Object.keys(e).sort().join(", ")}]`);
+    if (typeof e.claim_field !== "string" || e.claim_field.length === 0) fail(`${at}.claim_field must be a non-empty string`);
+    if (typeof e.check !== "function") fail(`${at}.check must be a function`);
+    if (e.composed !== false) fail(`${at}.composed must be false`);
+    if (typeof e.checker_id !== "string" || e.checker_id.length === 0) fail(`${at}.checker_id must be a non-empty string`);
+    supplied[p] = Object.freeze({ claim_field: e.claim_field, check: e.check, composed: false,
+      checker_id: e.checker_id });
+  }
+  return Object.freeze({ ...base, ...supplied });
+}
+
 /* THE SCOPE IS PURELY SEMANTIC NOW. `children_resolved_by_content_address` was
    transport and `child_verdicts_cached_across_citations` was execution
    strategy; both have left, and what remains says only what the conjunction
@@ -212,11 +244,12 @@ function shapeBelow(children, protocols, leafStats) {
   return { unique, edges, inlined, height, filmsByEdge, casesByEdge };
 }
 
-export function buildNestBundle(children, { protocols = CHILD_PROTOCOLS } = {}) {
+export function buildNestBundle(children, { protocols = CHILD_PROTOCOLS, child_protocols } = {}) {
+  const table = withChildProtocols(protocols, child_protocols);
   const operands = [], references = [], verdicts = {};
   const leafStats = new Map();
   for (const child of children) {
-    const spec = protocols[child?.protocol];
+    const spec = Object.prototype.hasOwnProperty.call(table, child?.protocol) ? table[child.protocol] : undefined;
     if (!spec) throw new Error("nest-bundle-unknown-child-protocol: " + child?.protocol);
     const op = operandFor(child, spec.claim_field);
     if (spec.composed) {
@@ -252,7 +285,7 @@ export function buildNestBundle(children, { protocols = CHILD_PROTOCOLS } = {}) 
     && operands.length > 0 ? "VERIFIED" : "REFUSED";
   aggregate.aggregate_id = nestAggregateId(aggregate);
 
-  const sub = shapeBelow(children, protocols, leafStats);
+  const sub = shapeBelow(children, table, leafStats);
   const structure = {
     edges: sub.edges,
     unique_artifacts: sub.unique.size,

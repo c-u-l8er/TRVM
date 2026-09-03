@@ -34,14 +34,19 @@ import { readFileSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { checkNestBundle, checkNestBytes, NEST_MAX_DEPTH, SHIPPED_POLICY } from "./nest_check.mjs";
+import {
+  checkNestBundle, checkNestBytes, NEST_MAX_DEPTH, SHIPPED_POLICY, IMPLEMENTED_CHILD_PROTOCOLS, policyId,
+  deriveChainIds,
+} from "./nest_check.mjs";
 import {
   NEST_PROTOCOL, CHILD_PROTOCOLS, buildNestBundle, buildDag,
   nestedClaimSemId, nestAggregateId, nestStructureSemId,
+  NEST_CLAIM_SCOPE, REFERENCE_CONTRACT, CONNECTIVE, operandFor, referenceFor,
 } from "./nest_bundle.mjs";
 import {
-  artifactRoot, memoryStore, canonicalWire, canonicalWireBytes, directoryStore,
+  artifactRoot, artifactBytes, memoryStore, canonicalWire, canonicalWireBytes, directoryStore,
 } from "./cas.mjs";
+import { publicResult } from "./schema.mjs";
 import { verifiedClaimSemId, certificateOf } from "./certificate.mjs";
 import { checkBundle } from "./proof_check.mjs";
 import { caseEvidenceId, aggregateId } from "./proof_bundle.mjs";
@@ -539,6 +544,279 @@ F("more-operands-than-the-policy-allows", "nest-budget-exceeded", (w) => {
     `SHA-256 has no fixed point for this encoding. nest-cycle is kept, is defence in depth, and ` +
     `is not load-bearing`);
 }
+
+/* ══ TRVM-P0: CHECKED CHILD PROTOCOL REGISTRATION ═══════════════════════════
+   GAP-T9 (Graphonomous D-054/D-055, research note R13): the judge side was
+   closed on every path a caller had — the table is frozen, an opts key was
+   nest-policy-weakened before anything was checked, the producer threw. What
+   was protected is that THE ARTIFACT never names its own claim field or
+   checker; a VERIFIER may. So a caller — the verifier — may hand the checker,
+   beside `store`, a table of protocols it vouches for. Built-ins cannot be
+   overridden, composition stays this checker's, the effective set is REPORTED
+   and moves the reported policy id, and the parent still recomputes every
+   certificate: the registry widens the checker set and cannot mint trust.
+   Every block below FAILED against the shipped table before the repair. */
+const ALIEN_PROTOCOL = "TRVM-TEST-ALIEN-LEAF-v1";
+const ALIEN_CHECKER_ID = "trvm-test-alien-checker-v1";
+const ALIEN_CHAIN = Object.freeze({ alien_toolchain: "alien-tc-0.1.0", alien_pin: "a".repeat(40) });
+const aH = (s) => createHash("sha256").update(s).digest("hex");
+const alienClaimId = (c) => "aclaim-" + aH(ALIEN_PROTOCOL + "|" +
+  canonicalWire({ protocol: ALIEN_PROTOCOL, statement: c?.statement, domain: c?.domain }));
+const alienAggId = (a) => { const { aggregate_id, ...rest } = a; return "aagg-" + aH(ALIEN_PROTOCOL + "|" + canonicalWire(rest)); };
+/** A leaf of a protocol this tree does not implement, complete in the four
+ *  bound values a certificate names (protocol, claim, aggregate, chain). */
+function alienChild() {
+  const cases = [{ x: 0, y: 0 }, { x: 1, y: 2 }, { x: 2, y: 1 }];
+  const claim = { statement: "x + y = y + x", domain: { x: [0, 1, 2], y: [0, 1, 2] }, alien_claim_sem_id: null };
+  claim.alien_claim_sem_id = alienClaimId(claim);
+  const aggregate = { count: cases.length, verdict: "VERIFIED", aggregate_id: null };
+  aggregate.aggregate_id = alienAggId(aggregate);
+  return { protocol: ALIEN_PROTOCOL, claim, chain_ids: { ...ALIEN_CHAIN }, aggregate, cases,
+    annotations: { note: "NON-AUTHORITATIVE — a leaf protocol this tree does not implement" } };
+}
+/** An HONEST checker for it: re-derives both identities, the chain against its
+ *  own live pin, the count and every case, and returns the public shape. */
+function checkAlien(child) {
+  const refusals = [];
+  const refuse = (code, detail) => refusals.push({ code, detail });
+  if (child?.protocol !== ALIEN_PROTOCOL) refuse("alien-protocol-mismatch", String(child?.protocol));
+  const claim = child?.claim ?? {};
+  if (alienClaimId(claim) !== claim.alien_claim_sem_id) refuse("alien-claim-id-mismatch", "alien_claim_sem_id is not over this claim");
+  if (canonicalWire(child?.chain_ids ?? null) !== canonicalWire(ALIEN_CHAIN)) refuse("alien-chain-id-mismatch", "chain_ids is not this checker's live toolchain");
+  const cases = Array.isArray(child?.cases) ? child.cases : [];
+  const agg = child?.aggregate ?? {};
+  if (agg.count !== cases.length) refuse("alien-count-inconsistent", `aggregate.count says ${agg.count}, this checker derives ${cases.length}`);
+  for (const [i, c] of cases.entries()) if (c?.x + c?.y !== c?.y + c?.x) refuse("alien-case-failed", `case ${i}`);
+  if (agg.verdict !== (refusals.length === 0 ? "VERIFIED" : "REFUSED")) refuse("alien-count-inconsistent", "aggregate.verdict is not the derived one");
+  if (alienAggId(agg) !== agg.aggregate_id) refuse("alien-count-inconsistent", "aggregate_id is not over this aggregate");
+  return publicResult({ refusals, measured: { derived_cases: cases.length } });
+}
+const ALIEN_TABLE = Object.freeze({ [ALIEN_PROTOCOL]: Object.freeze({
+  claim_field: "alien_claim_sem_id", check: checkAlien, composed: false, checker_id: ALIEN_CHECKER_ID }) });
+/** A LYING supplied checker, in the style of LYING above: VERIFIED, always. */
+const LIAR_TABLE = Object.freeze({ [ALIEN_PROTOCOL]: Object.freeze({
+  claim_field: "alien_claim_sem_id", composed: false, checker_id: "trvm-test-alien-LIAR",
+  check: () => ({ ok: true, verdict: "VERIFIED", evidence_verdict: null, refusals: [], measured: {} }) }) });
+/** The nest bundle built BY HAND, exactly as the producer would if it knew the
+ *  protocol — so the no-registry vector runs against the shipped producer too. */
+function handNest(child, claim_field) {
+  const op = operandFor(child, claim_field);
+  const aggN = { operands: 1, child_verdicts: { [op.verified_claim_sem_id]: "VERIFIED" },
+    leaf_receipts_rederived_by_parent: 0, films_replayed_by_parent: 0, nested_verdict: "VERIFIED", aggregate_id: null };
+  aggN.aggregate_id = nestAggregateId(aggN);
+  const bytes = artifactBytes(child), cases = Array.isArray(child.cases) ? child.cases.length : 0;
+  const st = { edges: 1, unique_artifacts: 1, max_depth_below: 1, bytes_if_inlined: bytes, unique_bytes: bytes,
+    films_below_by_edge_multiplicity: 0, films_below_distinct: 0, cases_below_by_edge_multiplicity: cases,
+    cases_below_distinct: cases, structure_sem_id: null };
+  st.structure_sem_id = nestStructureSemId(st);
+  return { protocol: NEST_PROTOCOL,
+    claim: { connective: CONNECTIVE, scope: NEST_CLAIM_SCOPE, operands: [op],
+      nested_claim_sem_id: nestedClaimSemId(CONNECTIVE, NEST_CLAIM_SCOPE, [op]) },
+    chain_ids: deriveChainIds([child]),
+    references: { contract: REFERENCE_CONTRACT, operands: [referenceFor(child, op.verified_claim_sem_id)] },
+    aggregate: aggN, structure: st };
+}
+/** R13 §7.1 [3a] — the refusal set the shipped checker returns for an alien child. */
+const R13_REFUSAL_SET = Object.freeze(["nest-chain-ids-mismatch", "nest-child-protocol-unsupported",
+  "nest-child-refused", "nest-count-inconsistent", "nest-structure-mismatch"]);
+const codesOf = (r) => [...new Set(r.refusals.map((x) => x.code))].sort();
+const P0 = (name, f) => {
+  ran++;
+  let out;
+  try { out = f(); } catch (e) { fail = true; console.log(`FAIL  ${name}  (threw: ${e.message})`); return; }
+  if (out.ok) console.log(`PASS  ${name.padEnd(50)} → ${out.note}`);
+  else { fail = true; console.log(`FAIL  ${name}  ${out.note}`); }
+};
+
+P0("registry-alien-leaf-verifies-under-a-supplied-checker", () => {
+  const store = memoryStore(new Map());
+  const child = alienChild(); store.put(child);
+  const nest = buildNestBundle([child], { child_protocols: ALIEN_TABLE });
+  const hand = handNest(child, "alien_claim_sem_id");
+  const sameSemantic = ["claim", "chain_ids", "references", "aggregate", "structure"]
+    .every((k) => canonicalWire(nest[k]) === canonicalWire(hand[k]));
+  const r = checkNestBundle(nest, { store, child_protocols: ALIEN_TABLE });
+  const rb = checkNestBytes(canonicalWireBytes(nest), { store, child_protocols: ALIEN_TABLE });
+  const again = checkNestBundle(nest, { store, child_protocols: ALIEN_TABLE });
+  const cps = r.measured.child_protocol_set;
+  const A = clone(H.A); store.put(A);
+  const mixed = buildNestBundle([child, A], { child_protocols: ALIEN_TABLE });
+  const rm = checkNestBundle(mixed, { store, child_protocols: ALIEN_TABLE });
+  const shippedId = policyId(SHIPPED_POLICY);
+  const ok = sameSemantic && r.ok === true && rb.ok === true && rm.ok === true
+    && r.measured.checker_evaluations === 1 && rm.measured.checker_evaluations === 2
+    && r.measured.cases_below_distinct === 3
+    && JSON.stringify(cps?.supplied) === JSON.stringify([{ protocol: ALIEN_PROTOCOL, checker_id: ALIEN_CHECKER_ID }])
+    && JSON.stringify(cps?.builtin) === JSON.stringify(Object.keys(IMPLEMENTED_CHILD_PROTOCOLS))
+    && typeof cps?.child_protocol_set_id === "string"
+    && r.measured.verifier_policy_id !== shippedId
+    && r.measured.verifier_policy_id === again.measured.verifier_policy_id
+    && r.measured.verifier_policy_id === rb.measured.verifier_policy_id
+    && r.measured.verifier_policy_id === rm.measured.verifier_policy_id
+    && rm.chain_ids === undefined && mixed.chain_ids.leaf_chains.length === 2;
+  return { ok, note: `a ${ALIEN_PROTOCOL} leaf, stored under its root, is VERIFIED through a ` +
+    `supplied honest checker (${r.verdict}, ${r.measured.checker_evaluations ?? "?"} evaluation, ` +
+    `${r.measured.cases_below_distinct ?? "?"} cases below) on the object AND the bytes boundary; the ` +
+    `producer built the same semantic planes the hand construction gives (${sameSemantic}); a mixed ` +
+    `DAG over the alien leaf and the P1 leaf verifies with ${rm.measured.checker_evaluations ?? "?"} ` +
+    `evaluations and ${mixed.chain_ids.leaf_chains.length} leaf chains; and the verdict NAMES the set: ` +
+    `builtin=[${(cps?.builtin ?? []).join(", ")}] supplied=[${(cps?.supplied ?? []).map((s) => `${s.protocol}@${s.checker_id}`).join(", ")}] ` +
+    `under ${String(r.measured.verifier_policy_id).slice(0, 22)}… ≠ shipped ${shippedId.slice(0, 22)}…, ` +
+    `deterministic across calls` + (ok ? "" : ` [codes ${codesOf(r).join(",")} | mixed ${codesOf(rm).join(",")}]`) };
+});
+
+P0("registry-absent-the-r13-refusal-set-is-verbatim", () => {
+  const store = memoryStore(new Map());
+  const child = alienChild(); store.put(child);
+  const nest = handNest(child, "alien_claim_sem_id");
+  let producerThrew = null;
+  try { buildNestBundle([child]); } catch (e) { producerThrew = e.message; }
+  const r = checkNestBundle(nest, { store });
+  const rb = checkNestBytes(canonicalWireBytes(nest), { store });
+  const unsupported = r.refusals.find((x) => x.code === "nest-child-protocol-unsupported")?.detail;
+  const wantDetail = `operand 0: child protocol "${ALIEN_PROTOCOL}"; this checker implements ` +
+    `[${Object.keys(IMPLEMENTED_CHILD_PROTOCOLS).join(", ")}]`;
+  const ok = r.ok === false && JSON.stringify(codesOf(r)) === JSON.stringify(R13_REFUSAL_SET)
+    && JSON.stringify(codesOf(rb)) === JSON.stringify(R13_REFUSAL_SET)
+    && unsupported === wantDetail && r.measured.checker_evaluations === 0
+    && r.measured.unique_artifact_resolutions === 1
+    && r.measured.child_protocol_set === undefined
+    && r.measured.verifier_policy_id === policyId(SHIPPED_POLICY)
+    && producerThrew === "nest-bundle-unknown-child-protocol: " + ALIEN_PROTOCOL;
+  return { ok, note: `without a supplied table the SAME artifact is refused with exactly the R13 §7.1 ` +
+    `set [${codesOf(r).join(", ")}], the unsupported detail verbatim, 0 evaluations, no ` +
+    `child_protocol_set in the measured record and the shipped policy id — nothing about a verdict ` +
+    `with no registry moved; the producer still throws "${producerThrew}"` +
+    (ok ? "" : ` [detail=${JSON.stringify(unsupported)} cps=${JSON.stringify(r.measured.child_protocol_set)}]`) };
+});
+
+P0("registry-cannot-override-a-built-in", () => {
+  let calls = 0;
+  const impostor = (p, claim_field) => ({ [p]: { claim_field, composed: false, checker_id: "impostor",
+    check: () => { calls += 1; return { ok: true, verdict: "VERIFIED", refusals: [], measured: {} }; } } });
+  const rows = [];
+  let ok = true;
+  for (const [p, f] of [[P1, "bounded_claim_sem_id"], [NEST_PROTOCOL, "nested_claim_sem_id"]]) {
+    const r = checkNestBundle(H.D, { store: H.store, child_protocols: impostor(p, f) });
+    const rb = checkNestBytes(canonicalWireBytes(H.D), { store: H.store, child_protocols: impostor(p, f) });
+    const d = r.refusals[0]?.detail ?? "";
+    const good = r.ok === false && JSON.stringify(codesOf(r)) === JSON.stringify(["nest-policy-weakened"])
+      && JSON.stringify(codesOf(rb)) === JSON.stringify(["nest-policy-weakened"])
+      && /OVERRIDE/.test(d) && d.includes(p) && r.measured.checker_evaluations === undefined;
+    ok &&= good;
+    rows.push(`${p} → ${codesOf(r).join(",")}${good ? "" : ` [${d.slice(0, 80)}]`}`);
+  }
+  let producerThrew = null;
+  try { buildNestBundle([clone(H.A)], { child_protocols: impostor(P1, "bounded_claim_sem_id") }); }
+  catch (e) { producerThrew = e.message; }
+  ok &&= /override/i.test(producerThrew ?? "") && calls === 0;
+  return { ok, note: `a supplied entry for a protocol this checker SHIPS is refused before anything is ` +
+    `resolved — ${rows.join(" · ")} — the impostor checker was called ${calls} times, no artifact was ` +
+    `judged, and the producer refuses the same table ("${String(producerThrew).slice(0, 60)}…")` };
+});
+
+P0("registry-entry-malformed-is-refused-by-name", () => {
+  const good = { claim_field: "alien_claim_sem_id", check: checkAlien, composed: false, checker_id: ALIEN_CHECKER_ID };
+  const bad = [
+    ["missing-check", { [ALIEN_PROTOCOL]: { ...good, check: undefined } }],
+    ["check-not-a-function", { [ALIEN_PROTOCOL]: { ...good, check: "checkAlien" } }],
+    ["composed-true", { [ALIEN_PROTOCOL]: { ...good, composed: true } }],
+    ["composed-missing", { [ALIEN_PROTOCOL]: { claim_field: good.claim_field, check: good.check, checker_id: good.checker_id } }],
+    ["claim-field-empty", { [ALIEN_PROTOCOL]: { ...good, claim_field: "" } }],
+    ["claim-field-not-a-string", { [ALIEN_PROTOCOL]: { ...good, claim_field: ["alien_claim_sem_id"] } }],
+    ["checker-id-missing", { [ALIEN_PROTOCOL]: { ...good, checker_id: undefined } }],
+    ["checker-id-empty", { [ALIEN_PROTOCOL]: { ...good, checker_id: "" } }],
+    ["entry-gains-a-field", { [ALIEN_PROTOCOL]: { ...good, warrant: true } }],
+    ["entry-null", { [ALIEN_PROTOCOL]: null }],
+    ["entry-a-string", { [ALIEN_PROTOCOL]: "checkAlien" }],
+    ["protocol-name-empty", { "": good }],
+    ["protocol-name-with-whitespace", { "TRVM TEST": good }],
+    ["table-an-array", [good]],
+    ["table-a-string", "TRVM-TEST-ALIEN-LEAF-v1"],
+  ];
+  const store = memoryStore(new Map());
+  const child = alienChild(); store.put(child);
+  const nest = handNest(child, "alien_claim_sem_id");
+  const rows = [];
+  let ok = true;
+  for (const [name, table] of bad) {
+    const r = checkNestBundle(nest, { store, child_protocols: table });
+    const rb = checkNestBytes(canonicalWireBytes(nest), { store, child_protocols: table });
+    const d = r.refusals[0]?.detail ?? "";
+    let producerThrew = null;
+    try { buildNestBundle([child], { child_protocols: table }); } catch (e) { producerThrew = e.message; }
+    const g = r.ok === false && JSON.stringify(codesOf(r)) === JSON.stringify(["nest-policy-weakened"])
+      && JSON.stringify(codesOf(rb)) === JSON.stringify(["nest-policy-weakened"])
+      && /malformed/.test(d) && r.measured.checker_evaluations === undefined
+      && /malformed/i.test(producerThrew ?? "");
+    ok &&= g;
+    if (!g) rows.push(`${name}: ${r.verdict} [${codesOf(r).join(",")}] ${d.slice(0, 70)} · producer ${String(producerThrew).slice(0, 50)}`);
+  }
+  return { ok, note: `${bad.length} malformed tables — a missing or non-function check, composed:true, ` +
+    `composed absent, an empty or non-string claim_field, a missing or empty checker_id, an extra ` +
+    `field, a null or string entry, an empty or whitespace protocol name, an array, a string — are ` +
+    `each refused by name before anything is resolved, on both boundaries, and the producer refuses ` +
+    `each of them too` + (rows.length ? ` [${rows.join(" | ")}]` : "") };
+});
+
+P0("registry-cannot-mint-trust-operand-cross-wired", () => {
+  const store = memoryStore(new Map());
+  const child = alienChild(); store.put(child);
+  const nest = buildNestBundle([child], { child_protocols: LIAR_TABLE });
+  nest.claim.operands[0].claim_sem_id = "aclaim-" + aH("some other claim");
+  reseal(nest);
+  const r = checkNestBundle(nest, { store, child_protocols: LIAR_TABLE });
+  const ok = r.ok === false && JSON.stringify(codesOf(r)) === JSON.stringify(["nest-citation-cross-wired"])
+    && r.measured.checker_evaluations === 1
+    && r.measured.child_protocol_set?.supplied?.[0]?.checker_id === "trvm-test-alien-LIAR";
+  return { ok, note: `a supplied checker that answers VERIFIED to everything, over an operand whose ` +
+    `claim_sem_id was swapped while its verified_claim_sem_id was left: the liar was consulted ` +
+    `(${r.measured.checker_evaluations ?? "?"} evaluation) and the parent STILL refuses ` +
+    `[${codesOf(r).join(", ")}], because the certificate is recomputed from the RESOLVED child and ` +
+    `compared field by field — a checker_id is a name, not a warrant` };
+});
+
+P0("registry-cannot-mint-trust-child-moved-under-citation", () => {
+  const store = memoryStore(new Map());
+  const child = alienChild(); store.put(child);
+  const nest = buildNestBundle([child], { child_protocols: LIAR_TABLE });
+  const moved = clone(child);
+  moved.claim.alien_claim_sem_id = "aclaim-" + aH("resealed elsewhere");
+  const root2 = store.put(moved);
+  nest.references.operands[0].artifact_root = root2;
+  nest.structure.bytes_if_inlined = nest.structure.unique_bytes = artifactBytes(moved);
+  reseal(nest);
+  const r = checkNestBundle(nest, { store, child_protocols: LIAR_TABLE });
+  const codes = codesOf(r);
+  const ok = r.ok === false && codes.includes("nest-certificate-stale") && codes.includes("nest-citation-cross-wired");
+  return { ok, note: `the child's claim id moved under an untouched citation and a lying supplied ` +
+    `checker says VERIFIED: [${codes.join(", ")}] — the recomputed certificate is not the cited one` };
+});
+
+P0("registry-names-its-checker-in-the-verdict", () => {
+  const store = memoryStore(new Map());
+  const child = alienChild();
+  child.cases.push({ x: 1, y: 1 });            // count now lies; aggregate_id untouched
+  store.put(child);
+  const nest = buildNestBundle([child], { child_protocols: LIAR_TABLE });
+  const honest = checkNestBundle(nest, { store, child_protocols: ALIEN_TABLE });
+  const liar = checkNestBundle(nest, { store, child_protocols: LIAR_TABLE });
+  const ok = honest.ok === false && codesOf(honest).includes("nest-child-refused")
+    && (honest.measured.refusal_codes_transitive ?? []).includes("alien-count-inconsistent")
+    && liar.ok === true
+    && liar.measured.verifier_policy_id !== honest.measured.verifier_policy_id
+    && liar.measured.child_protocol_set?.supplied?.[0]?.checker_id === "trvm-test-alien-LIAR"
+    && honest.measured.child_protocol_set?.supplied?.[0]?.checker_id === ALIEN_CHECKER_ID;
+  return { ok, note: `the trade-off, measured: a child the honest supplied checker refuses ` +
+    `(${honest.verdict} [${codesOf(honest).join(", ")}], transitively ` +
+    `[${(honest.measured.refusal_codes_transitive ?? []).filter((c) => c.startsWith("alien-")).join(", ")}]) ` +
+    `is ${liar.verdict} under a lying one — a supplied checker WIDENS the set of verified artifacts, ` +
+    `which is why the verdict names it: checker_id ` +
+    `${JSON.stringify(liar.measured.child_protocol_set?.supplied?.[0]?.checker_id)} under policy ` +
+    `${String(liar.measured.verifier_policy_id).slice(0, 22)}… vs the honest ` +
+    `${String(honest.measured.verifier_policy_id).slice(0, 22)}…. Nothing here is believed from ` +
+    `elsewhere; a reader can see WHICH verifier accepted it` };
+});
 
 for (const c of CASES) {
   ran++;

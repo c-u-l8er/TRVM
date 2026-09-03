@@ -48,6 +48,57 @@
    looser is refused by name. The EFFECTIVE policy's identity is reported beside
    the verdict, so a reader can tell which policy accepted an artifact.
 
+   THE CHILD-PROTOCOL TABLE MAY BE EXTENDED BY THE VERIFIER, NEVER BY THE
+   ARTIFACT — TRVM-P0. `IMPLEMENTED_CHILD_PROTOCOLS` is frozen because a bundle
+   that could name its own claim field would choose which of its hashes to be
+   judged on (P1.1 scope, P2.1 absence, P3 citation — the same defect three
+   times). What that rule protects is WHO names the checker set: a verifier
+   does. So the caller of `checkNestBundle` / `checkNestBytes` — who IS the
+   verifier — may pass `child_protocols` beside `store`, a table of protocols
+   this tree does not implement, each entry EXACTLY
+
+       { claim_field: <non-empty string>   which field of the child holds the
+                                           claim a citation is about
+         check:       <function>           the protocol's OWN checker
+         composed:    false                composition stays THIS checker's
+         checker_id:  <non-empty string>   a NAME for the checker — not a warrant }
+
+   It is destructured out with `store`, so it never reaches the resource
+   policy. A key this checker already ships is refused (a caller may EXTEND the
+   table and may not REPLACE an entry); a malformed entry is refused by name;
+   both under nest-policy-weakened, because a supplied table is part of the
+   caller's request to this verifier exactly as `max_depth` is, and this
+   protocol's refusal vocabulary is frozen with its release. The effective
+   table is built inside the owned check and used at the dispatch; the
+   verdict then NAMES the set — `measured.child_protocol_set = { builtin,
+   supplied: [{protocol, checker_id}], child_protocol_set_id }` — and the
+   reported `verifier_policy_id` folds `child_protocol_set_id` in, so a reader
+   can tell which checker set accepted an artifact. With no supplied table
+   nothing is added and nothing moves: every verdict, measured record and id
+   is byte-identical to the shipped checker's. AND THE PARENT STILL RECOMPUTES
+   THE CERTIFICATE from the resolved child and compares it field by field: a
+   supplied checker that answers VERIFIED to everything widens what this
+   verifier accepts — visibly, under its own policy id — and cannot make a
+   cross-wired citation verify. `nest_forgeries.mjs` measures all of this.
+
+   WHAT A SUPPLIED `check(child)` MUST RETURN — the shape `schema.mjs`'s
+   `publicResult` gives and the shipped leaf checkers return:
+
+       { ok:        boolean                  MUST equal (verdict === "VERIFIED")
+         verdict:   "VERIFIED" | "REFUSED"
+         refusals:  [{ code: string, detail: string }, ...]   empty iff ok
+         measured:  { films_replayed_on_two_classes?: number,   absent → 0
+                      derived_cases?: number,                   absent → 0
+                      ... }                                     anything else is
+                                                                 not read here }
+
+   `child` is the artifact as RESOLVED from the store — canonical, re-hashed,
+   owned by this verifier — never the caller's object. The dispatch reads
+   `ok`, `verdict`, each refusal's `code`, and the two numbers; a checker that
+   throws, or returns anything but a record, is a refusal of the child. It
+   must write nothing, keep nothing and issue nothing: there is no registry of
+   accepted certificates anywhere, and a `vclaim-` confers no authority.
+
    REFUSAL CODES
 
      nest-protocol-mismatch          not a nested composition
@@ -77,7 +128,9 @@
      nest-depth-exceeded             a citation chain past the policy ceiling
      nest-budget-exceeded            resolutions or bytes past the policy ceiling
      nest-cycle                      a root cited by one of its own ancestors
-     nest-policy-weakened            a caller asked for a policy looser than the shipped one
+     nest-policy-weakened            a caller asked for a policy looser than the shipped one,
+                                     or supplied a child-protocol table this verifier will
+                                     not hold: an entry overriding a built-in, or a malformed one
      nest-checker-threw              the checker raised instead of refusing
    ═══════════════════════════════════════════════════════════════════════════ */
 import { createHash } from "node:crypto";
@@ -157,6 +210,63 @@ export const IMPLEMENTED_CHILD_PROTOCOLS = Object.freeze({
   [NEST_PROTOCOL]: Object.freeze({
     claim_field: "nested_claim_sem_id", check: null, composed: true }),
 });
+
+/* ── THE VERIFIER MAY EXTEND THE TABLE; THE ARTIFACT MAY NOT (TRVM-P0) ─────
+   See the header. This is the one place a supplied table is read: validated
+   entry by entry, copied field by field so a caller's later mutation reaches
+   nothing, merged UNDER the built-ins — which can therefore never be
+   replaced — and frozen. The supplied list is sorted by protocol and hashed,
+   so two verifiers holding the same set report the same identity. */
+const CHILD_PROTOCOL_ENTRY_KEYS = Object.freeze(["check", "checker_id", "claim_field", "composed"]);
+/** Over the sorted supplied list of {protocol, checker_id, claim_field} —
+ *  flat string records, so the file's own key-sorted encoding below is the
+ *  RFC 8785 encoding of the same value. */
+export const childProtocolSetId = (supplied) =>
+  "nestcps-" + H(NEST_PROTOCOL + "|" + stable(supplied));
+export function childProtocolSet(child_protocols) {
+  if (child_protocols === undefined)
+    return { effective: IMPLEMENTED_CHILD_PROTOCOLS, supplied: [], child_protocol_set_id: null };
+  const SHAPE = "A supplied entry is exactly {claim_field: non-empty string, check: function, " +
+    "composed: false, checker_id: non-empty string}, keyed by a protocol id";
+  const malformed = (what, why) => ({ refusal: `${what} is malformed: ${why}. ${SHAPE}` });
+  const kind = (v) => (v === null ? "null" : Array.isArray(v) ? "an array" : typeof v);
+  if (child_protocols === null || typeof child_protocols !== "object" || Array.isArray(child_protocols))
+    return malformed("child_protocols", `a table is a record keyed by protocol id, not ${kind(child_protocols)}`);
+  const supplied = {}, list = [];
+  for (const [p, e] of Object.entries(child_protocols)) {
+    const at = `child_protocols[${JSON.stringify(p)}]`;
+    if (p.length === 0 || /\s/.test(p))
+      return malformed(at, "a protocol id is a non-empty string without whitespace");
+    if (Object.prototype.hasOwnProperty.call(IMPLEMENTED_CHILD_PROTOCOLS, p))
+      return { refusal: `${at} would OVERRIDE the checker this verifier ships for that protocol. The ` +
+        `built-in table is this checker's own: a caller may EXTEND it with protocols this verifier does ` +
+        `not implement and may not REPLACE an entry while still claiming this verifier's verdict` };
+    if (e === null || typeof e !== "object" || Array.isArray(e))
+      return malformed(at, `an entry is a record, not ${kind(e)}`);
+    if (Object.keys(e).sort().join(",") !== CHILD_PROTOCOL_ENTRY_KEYS.join(","))
+      return malformed(at, `its keys are [${Object.keys(e).sort().join(", ")}]`);
+    if (typeof e.claim_field !== "string" || e.claim_field.length === 0)
+      return malformed(at, "claim_field must be a non-empty string");
+    if (typeof e.check !== "function")
+      return malformed(at, "check must be a function");
+    if (e.composed !== false)
+      return malformed(at, "composed must be false — composition is this checker's and is not delegated");
+    if (typeof e.checker_id !== "string" || e.checker_id.length === 0)
+      return malformed(at, "checker_id must be a non-empty string");
+    supplied[p] = Object.freeze({ claim_field: e.claim_field, check: e.check, composed: false,
+      checker_id: e.checker_id });
+    list.push({ protocol: p, checker_id: e.checker_id, claim_field: e.claim_field });
+  }
+  list.sort((a, b) => (a.protocol < b.protocol ? -1 : a.protocol > b.protocol ? 1 : 0));
+  return { effective: Object.freeze({ ...IMPLEMENTED_CHILD_PROTOCOLS, ...supplied }), supplied: list,
+    child_protocol_set_id: list.length ? childProtocolSetId(list) : null };
+}
+/** The policy id a verdict reports: the resource policy's alone when no table
+ *  was supplied — byte-identical to every id issued before TRVM-P0 — and the
+ *  resource policy WITH the supplied set's identity when one was. */
+const reportedPolicyId = (policy, cps) => cps.child_protocol_set_id
+  ? policyId({ ...policy, child_protocol_set_id: cps.child_protocol_set_id }) : policyId(policy);
+
 export const IMPLEMENTED_CONNECTIVES = Object.freeze(["CONJUNCTION"]);
 export const IMPLEMENTED_NEST_SCOPE = Object.freeze({
   kind: "NESTED_COMPOSED_VERIFIED_CLAIM_CONJUNCTION",
@@ -223,11 +333,15 @@ export function checkNestBytes(raw, opts = {}) {
      that much work on. An 8 MiB+1 buffer of invalid UTF-8 reported
      `nest-ingress-refused` because the decode ran first. Bound the OCTETS THAT
      ARRIVED, before anything looks at them. */
-  const { store, ...requested } = opts;
+  const { store, child_protocols, ...requested } = opts;
   const pol = effectivePolicy(requested);
   if (pol.refusal)
     return publicResult({ measured: { verifier_policy_id: policyId(SHIPPED_POLICY) },
       refusals: [{ code: "nest-policy-weakened", detail: pol.refusal }] });
+  const cps = childProtocolSet(child_protocols);
+  if (cps.refusal)
+    return publicResult({ measured: { verifier_policy_id: policyId(SHIPPED_POLICY) },
+      refusals: [{ code: "nest-policy-weakened", detail: cps.refusal }] });
 
   if (!Buffer.isBuffer(raw) && !(raw instanceof Uint8Array))
     return publicResult({ measured: {}, refusals: [{ code: "nest-ingress-refused",
@@ -237,7 +351,7 @@ export function checkNestBytes(raw, opts = {}) {
      defect of P4.2 in the one place P4.2 said was safe from it. */
   const bytes = Buffer.from(raw);
   if (bytes.length > pol.policy.max_artifact_bytes)
-    return publicResult({ measured: { verifier_policy_id: policyId(pol.policy),
+    return publicResult({ measured: { verifier_policy_id: reportedPolicyId(pol.policy, cps),
       reference_bundle_bytes: bytes.length },
       refusals: [{ code: "nest-budget-exceeded",
         detail: `${bytes.length} octets handed to this verifier, over its ` +
@@ -273,12 +387,20 @@ export function checkNestBundle(bundle, opts = {}) {
   return checkOwned(owned, opts);
 }
 
-function checkOwned(bundle, { store, ...requested } = {}) {
+function checkOwned(bundle, { store, child_protocols, ...requested } = {}) {
   const pol = effectivePolicy(requested);
   if (pol.refusal)
     return publicResult({ measured: { verifier_policy_id: policyId(SHIPPED_POLICY) },
       refusals: [{ code: "nest-policy-weakened", detail: pol.refusal }] });
+  /* THE SUPPLIED TABLE IS VALIDATED HERE AND USED NOWHERE ELSE — TRVM-P0.
+     Refused before anything is resolved, under the shipped policy id, exactly
+     as a loosened bound is. */
+  const cps = childProtocolSet(child_protocols);
+  if (cps.refusal)
+    return publicResult({ measured: { verifier_policy_id: policyId(SHIPPED_POLICY) },
+      refusals: [{ code: "nest-policy-weakened", detail: cps.refusal }] });
   const policy = pol.policy;
+  const verifier_policy_id = reportedPolicyId(policy, cps);
   try {
     /* THE ROOT ARTIFACT IS SUBJECT TO THE SAME POLICY AS A RESOLVED CHILD.
        P4.1 applied `max_artifact_bytes` only to things fetched through the CAS,
@@ -286,10 +408,10 @@ function checkOwned(bundle, { store, ...requested } = {}) {
        root verified under an 8 MiB ceiling. */
     const ownBytes = safe(() => artifactBytes(bundle));
     if (ownBytes === THREW)
-      return publicResult({ measured: { verifier_policy_id: policyId(policy) },
+      return publicResult({ measured: { verifier_policy_id },
         refusals: [{ code: "nest-ingress-refused", detail: "the artifact has no canonical form" }] });
     if (ownBytes > policy.max_artifact_bytes)
-      return publicResult({ measured: { verifier_policy_id: policyId(policy),
+      return publicResult({ measured: { verifier_policy_id,
         reference_bundle_bytes: ownBytes },
         refusals: [{ code: "nest-budget-exceeded",
           detail: `the artifact handed to this verifier is ${ownBytes} bytes, over its ` +
@@ -297,6 +419,7 @@ function checkOwned(bundle, { store, ...requested } = {}) {
             `from a policy its children are held to` }] });
     const ctx = {
       store, policy,
+      protocols: cps.effective,   // built-ins UNDER the supplied set, frozen  (TRVM-P0)
       snapshot: new Map(),        // root -> artifact          (phase 1, verifier-owned)
       heights: new Map(),         // root -> subtree height    (phase 1)
       judgments: new Map(),       // root -> {verdict, codes, films, cases}  (phase 2/3)
@@ -311,8 +434,14 @@ function checkOwned(bundle, { store, ...requested } = {}) {
     const frame = verify(bundle, ctx, null);
     const m = frame.measured;
     Object.assign(m, {
-      verifier_policy_id: policyId(policy),
+      verifier_policy_id,
       verifier_policy: policy,
+      /* WHICH CHECKER SET ACCEPTED IT — present only when the caller supplied
+         one, so a verdict with no registry is byte-identical to before. */
+      ...(cps.supplied.length ? { child_protocol_set: {
+        builtin: Object.keys(IMPLEMENTED_CHILD_PROTOCOLS),
+        supplied: cps.supplied.map(({ protocol, checker_id }) => ({ protocol, checker_id })),
+        child_protocol_set_id: cps.child_protocol_set_id } } : {}),
       // THE EXECUTION PLANE. `edges_if_fully_unfolded` is the DAG unfolded into
       // a tree — what a verifier with no reuse walks, and a property of the
       // artifact rather than of this run. `edge_traversals` is what THIS run
@@ -337,7 +466,7 @@ function checkOwned(bundle, { store, ...requested } = {}) {
     });
     return publicResult({ refusals: [...ctx.resolveRefusals, ...frame.refusals], measured: m });
   } catch (e) {
-    return publicResult({ measured: { verifier_policy_id: policyId(policy) },
+    return publicResult({ measured: { verifier_policy_id },
       refusals: [{ code: "nest-checker-threw",
         detail: `the checker raised instead of refusing: ${String(e?.message ?? e)}` }] });
   }
@@ -581,11 +710,15 @@ function verifyInner(bundle, ctx) {
     const bytes = safe(() => artifactBytes(child)) || 0;
     sub.inlined += bytes;
 
-    const spec = IMPLEMENTED_CHILD_PROTOCOLS[child?.protocol];
+    /* THE EFFECTIVE TABLE — built-ins plus whatever the VERIFIER supplied and
+       this call validated; an own-property lookup, so a protocol named after
+       something on Object.prototype is unsupported rather than a function. */
+    const spec = Object.prototype.hasOwnProperty.call(ctx.protocols, child?.protocol)
+      ? ctx.protocols[child.protocol] : undefined;
     if (!spec) {
       refuse("nest-child-protocol-unsupported",
         `operand ${i}: child protocol ${JSON.stringify(child?.protocol)}; this checker implements ` +
-        `[${Object.keys(IMPLEMENTED_CHILD_PROTOCOLS).join(", ")}]`);
+        `[${Object.keys(ctx.protocols).join(", ")}]`);
       continue;
     }
     resolvedChildren.push(child);
@@ -615,12 +748,19 @@ function verifyInner(bundle, ctx) {
       else {
         const r = safe(() => spec.check(child));
         ctx.evaluations += 1;
-        j = r === THREW
-          ? { leaf: true, verdict: "THREW", codes: [], films: 0, cases: 0 }
-          : { leaf: true, verdict: r?.verdict,
-              codes: [...new Set((r.refusals ?? []).map((x) => x.code))],
-              films: r?.measured?.films_replayed_on_two_classes ?? 0,
-              cases: r?.measured?.derived_cases ?? 0,
+        /* THE RESULT IS READ BY SHAPE, not trusted to have one: a supplied
+           checker (TRVM-P0) may return anything, and anything that is not the
+           public shape is a refusal of the child rather than an exception. */
+        const shaped = r !== THREW && r !== null && typeof r === "object" && !Array.isArray(r);
+        const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+        j = !shaped
+          ? { leaf: true, verdict: r === THREW ? "THREW" : "MALFORMED", codes: [], films: 0, cases: 0,
+              bad: true }
+          : { leaf: true, verdict: r.verdict,
+              codes: [...new Set((Array.isArray(r.refusals) ? r.refusals : []).map((x) => x?.code)
+                .filter((c) => typeof c === "string"))],
+              films: num(r.measured?.films_replayed_on_two_classes),
+              cases: num(r.measured?.derived_cases),
               bad: !(r.ok === true && r.verdict === "VERIFIED") };
         if (ctx.policy.derivation_reuse) ctx.judgments.set(ref.artifact_root, j);
       }
