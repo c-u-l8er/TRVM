@@ -45,7 +45,7 @@
 // repositories and deploy on their own schedule, so "does this site know about
 // T&R yet" is a question that gets asked from a browser console, and a stale
 // version number is the one thing that makes it unanswerable.
-const VERSION = "0.12.0";
+const VERSION = "0.12.1";
 
 // The wordmark in the bar's brand link. Named rather than typed inline because
 // the placement band suppresses itself against it (see `renderPlacement`), and
@@ -103,12 +103,16 @@ const LINKS = {
   },
 
   // Cognitive Primitives — memory / knowledge / reasoning / time / space
+  // 2026-09-05: graphonomous.com now describes the semantic/evidence graph at graphonomous/v2 —
+  // in the tree, tested, unpublished — and no longer the v0.4 memory engine (whose page, demos
+  // and benchmarks moved to old_scrap/). The npm package of that name is the OLD engine; "v0.4.3"
+  // and "shipped" here described it, and disagreed with the band the page itself renders.
   graphonomous: {
     label: "Graphonomous",
-    tagline: "Agent memory substrate",
+    tagline: "The semantic self-model — an autonomous semantic/evidence graph",
     href: "https://graphonomous.com",
-    status: "v0.4.3",
-    tier: "shipped",
+    status: "in tree",
+    tier: "alpha",
   },
   bendscript: {
     label: "BendScript",
@@ -869,7 +873,7 @@ const PLACEMENT = {
   // that page is a product page whose first screen is a download, not a position statement.
   // Without an entry the property renders the portfolio bar alone, which is the documented
   // degradation path and is what is wanted here. Do not "fix" its absence.
-  graphonomous: { name: "Graphonomous", place: 2, layer: "memory", rung: "live_deployed" },
+  graphonomous: { name: "Graphonomous", place: 2, layer: "memory", rung: "in_tree" },
   opensentience: {
     name: "OpenSentience",
     place: 2,
