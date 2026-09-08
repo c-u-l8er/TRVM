@@ -1,8 +1,25 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   trvm_world.mjs — v0.12.0 — the WORLD layer: WorldRecord + Warrant v3,
+   trvm_world.mjs — v0.13.0 — the WORLD layer: WorldRecord + Warrant v4,
    executable. The calculus kernel (trvm_law_kernel.mjs, v1.1.0 — calculus frozen
    since v1.0.2; 1.1.0 is the additive module interface)
    has no world by design; this artifact is where WORLD-plane law begins.
+
+   ROUND 28 (v0.13.0) — E-42 / E-43, the two kept-red candidate laws the
+   R10-pre lane handed this lane on 2026-09-02, adjudicated here:
+   law:world.scope-registry-versioned@1 — a scope (re)registration is a
+   versioned World transition (A-IDEMPOTENT-GUARDED, the digest computed INSIDE
+   the guard); law:warrant.lineage-bound@1 — a warrant binds the lineage it was
+   derived in {world_id, log_len, log_prefix_digest, ancestry}, fork() is a
+   descendant with recorded ancestry (L-ANCESTRY), a staging fork borrows the
+   parent's identity only while the lock generation that justifies it is open
+   (unlock AND entry into commit close it), and ONE shared lineageOf is the
+   first thing both verifiers consult. The lineage is COMMITTED: the warrant
+   commitment moves to TRVM-WARRANT-v4 = v3 fields + lineage, so a swapped
+   lineage moves warrant_id and is refused by name by BOTH verifiers —
+   freshness now authenticates before it classifies (warrant_id_mismatch).
+   World.restore(lineage) is the cross-process reconstruction the receipt
+   check uses: a declared identity, honest only because the spec and the
+   identity are both under receipt_id. Battery rows L-SCOPE-1, L-LIN-1..3.
 
    WHAT THIS IS (round 7 — the warrant round)
    ──────────────────────────────────────────
@@ -164,7 +181,7 @@ import { dirname, join } from "node:path";
 const GOV_ROOT = process.env.TRVM_GOV_ROOT ?? dirname(fileURLToPath(import.meta.url));
 const A = (n) => join(GOV_ROOT, n);
 import { randomBytes } from "node:crypto";
-const WORLD_VERSION = "0.12.0";
+const WORLD_VERSION = "0.13.0";
 
 const H = (s) => createHash("sha256").update(s).digest("hex");
 const cj = (o) => JSON.stringify(o);
@@ -211,11 +228,52 @@ const valueHashOf = (bytes) => H("TRVM-VALUE-v1|" + bytes);
 class World {
   #res = new Map();      // name -> { bytes, hash, version, deleted }
   #vclock = 0;
+  // E-42 warrant.lineage-bound@1 — L-ANCESTRY. A footprint identifies a state
+  // within ONE lineage; across a fork the parent and the copy issue the SAME
+  // version for DIFFERENT values, and the two verifiers then disagreed about
+  // one warrant (freshness: fresh; replay: value-mismatch). A world therefore
+  // carries a birth identity and, if it was forked, the ancestry that says
+  // where it left its parent.
+  #world_id = H("TRVM-WORLD-ID-v1|" + randomBytes(32).toString("hex"));  // its OWN, always
+  #ancestry = [];        // [{ world_id, fork_vclock }], oldest first, transitive
+  // A STAGING fork borrows its parent's identity, and the borrowing is BOUNDED
+  // to the interval that justifies it. `lock()` opens a generation; `unlock()`
+  // closes it. While the generation is open the parent cannot be written except
+  // through `commit`, so the two cannot diverge and one identity is honest.
+  // The moment it closes, the borrow expires and this object is an ordinary
+  // branch. Checked at USE, not at fork: the first repair bound it at fork time
+  // and a staging object that outlived the lock kept the parent's identity, both
+  // sides were written, and the two verifiers split on one warrant — W4 again,
+  // through the exception meant to permit the maintenance pass.
+  #stagingOf = null;     // { id, gen, parent } while the borrow is live
+  #lockGen = 0;
   #log = [];             // { op, resource, version, prev, hash? }
   #queries = new Map();  // qname -> fn(reader-interface)
   #lockKey = null;       // law:maintenance.capability-confinement@1
-  constructor() { Object.freeze(this); }  // no own props: instance patching throws
+  // RESTORE (round 28). A world rebuilt in another process from a committed
+  // spec has no way to reach the birth identity its receipt names, and a
+  // receipt's warrant cannot be replayed against a stranger. `restore` adopts
+  // a declared identity and ancestry. It is a CLAIM by the caller, not a proof:
+  // it is honest in `--check-receipt` because the spec and the identity are
+  // both bound under receipt_id, and it is deliberately NOT how fork() works —
+  // a copy that adopts an identity it was not born with, outside a receipt, is
+  // exactly the twin the lineage law refuses.
+  constructor(restore = null) {
+    if (restore !== null) {
+      if (typeof restore.world_id !== "string" || !/^[0-9a-f]{64}$/.test(restore.world_id))
+        throw new Error("world-restore-identity-malformed");
+      this.#world_id = restore.world_id;
+      this.#ancestry = (restore.ancestry ?? []).map((a) => ({ ...a }));
+    }
+    Object.freeze(this);   // no own props: instance patching throws
+  }
+  static restore(lineage) { return new World(lineage); }
   get vclock() { return this.#vclock; }
+  get world_id() { return this.#borrowLive() ? this.#stagingOf.id : this.#world_id; }
+  #borrowLive() { return this.#stagingOf !== null && this.#stagingOf.parent.#lockGen === this.#stagingOf.gen; }
+  get is_staging() { return this.#borrowLive(); }
+  get ancestry() { return this.#ancestry.map((a) => ({ ...a })); }
+  logPrefixDigest(n) { return H("TRVM-LOGPREFIX-v1|" + cj(this.#log.slice(0, n))); }
   get log() { return this.#log.map((e) => ({ ...e })); }          // copies: dead on arrival
   resourceEntries() {                                              // metadata copies, live only + tombstones
     return [...this.#res.entries()].map(([n, e]) => [n, { hash: e.hash, version: e.version, deleted: e.deleted }]);
@@ -232,9 +290,23 @@ class World {
   unlock(key) {
     if (key !== this.#lockKey) throw new Error("world-lock-capability-refused: unlock");
     this.#lockKey = null;
+    this.#lockGen++;              // closes the generation; every borrow expires with it
   }
   commit(key, fn) {   // the ONLY door through the lock — held by the transaction
     if (key !== this.#lockKey) throw new Error("world-lock-capability-refused: commit");
+    // CLOSES THE BORROW GENERATION. Inside this window the parent is writable —
+    // that is what the door is for — so a staging object that is still borrowing
+    // the parent's identity can diverge from it here, and if both sides write
+    // the same resource their versions collide: `lineageOf` says `same`, the
+    // ordinary checks run, and freshness (versions only) reports `fresh` while
+    // replay reports `value-mismatch`. That is W4, in the one window a
+    // generation counter bumped only by `unlock` does not close. Measured, not
+    // supposed: failures/COMMIT_WINDOW_FAILURE.txt.
+    //
+    // Warrants derived on the staging fork BEFORE this point already captured
+    // the borrowed identity and are unaffected; the maintenance pass derives
+    // before it commits and only publishes here.
+    this.#lockGen++;
     this.#lockKey = null;
     try { return fn(); } finally { this.#lockKey = key; }
   }
@@ -265,10 +337,31 @@ class World {
   valueHash(name) { const r = this.#res.get(name); return r && !r.deleted ? r.hash : null; }
   exists(name) { const r = this.#res.get(name); return !!r && !r.deleted; }
   names() { return [...this.#res.entries()].filter(([, r]) => !r.deleted).map(([n]) => n).sort(); }
-  registerQuery(qname, fn) { this._guard("registerQuery"); this.#queries.set(qname, fn); }
+  // E-43 world.scope-registry-versioned@1 — A-IDEMPOTENT-GUARDED, INSIDE the World.
+  // Registration was already write-GUARDED and was not VERSIONED, so two worlds
+  // could hold identical (vclock, log, resources) and evaluate the same scope to
+  // different digests: the version was not a sufficient statistic for scope
+  // observables. The source digest is computed HERE, not by a caller — an
+  // external compare-then-mutate is a TOCTOU between the check and the write,
+  // which is the same hole the maintenance lock closes from the other side.
+  // Identical source is a true no-op (no version, no log entry); a changed or
+  // first source advances the vclock and appends {op:"scope"}, so at_vclock
+  // identifies scope observables again.
+  registerQuery(qname, fn) {
+    this._guard("registerQuery");
+    const source_sha256 = H("TRVM-SCOPE-SRC-v1|" + qname + "|" + String(fn));
+    const cur = this.#queries.get(qname);
+    if (cur && cur.source_sha256 === source_sha256) return this.#vclock;   // idempotent
+    const prev = cur?.version ?? 0;
+    const version = ++this.#vclock;
+    this.#queries.set(qname, { fn, source_sha256, version });
+    this.#log.push({ op: "scope", resource: "scope:" + qname, version, prev, hash: source_sha256 });
+    return version;
+  }
   scopeEval(qname) {
-    const fn = this.#queries.get(qname);
-    if (!fn) throw new Error("unknown scope query: " + qname);
+    const entry = this.#queries.get(qname);
+    if (!entry) throw new Error("unknown scope query: " + qname);
+    const fn = entry.fn;
     const iface = {
       value: (n) => this.read(n).value,
       version: (n) => this.read(n).version,
@@ -284,6 +377,36 @@ class World {
     f.#vclock = this.#vclock;
     f.#log = [...this.#log];
     f.#queries = new Map(this.#queries);
+    // TWO KINDS OF FORK, and the lock is what tells them apart.
+    //
+    // Forked while the parent is LOCKED: a STAGING BUFFER. The parent cannot be
+    // written while it holds the lock — `commit` is the only door — so the two
+    // cannot diverge, and the buffer is adopted wholesale by the apply. It is
+    // the same lineage, and the Maintainer's designed pass is exactly this.
+    //
+    // Forked while the parent is WRITABLE: a real BRANCH. Both sides can now
+    // write, and both will issue the SAME version numbers for DIFFERENT values —
+    // which is W4. It gets its own identity and records where it left its
+    // parent. A copy made outside fork() gets neither and reads as a twin: the
+    // right cost for a governance plane, since a copy made outside the protocol
+    // is not a descendant.
+    if (this.#lockKey !== null) {
+      // Borrowed, not owned. Ancestry is recorded anyway, so that when the
+      // borrow expires this object is a well-formed branch rather than an
+      // orphan — an expired staging fork IS a branch, and reads as one.
+      f.#stagingOf = { id: this.#world_id, gen: this.#lockGen, parent: this };
+      f.#ancestry = [...this.#ancestry, { world_id: this.#world_id, fork_vclock: this.#vclock,
+                                         fork_prefix_digest: this.logPrefixDigest(this.#log.length) }];
+    } else {
+      // Fresh entropy, like a birth. Deriving the id from (parent, vclock)
+      // alone made two branches taken at the same vclock IDENTICAL — twins with
+      // one identity, which is the very confusion this law exists to end. The
+      // sibling negative control caught it.
+      f.#world_id = H("TRVM-WORLD-ID-v1|" + this.#world_id + "|fork@" + this.#vclock
+                      + "|" + randomBytes(32).toString("hex"));
+      f.#ancestry = [...this.#ancestry, { world_id: this.#world_id, fork_vclock: this.#vclock,
+                                         fork_prefix_digest: this.logPrefixDigest(this.#log.length) }];
+    }
     return f;
   }
 }
@@ -334,16 +457,35 @@ function jailedView(world, fp) {
 // ═══ Warrant v3, executable ════════════════════════════════════════════════
 // Field discipline (precedent: law:cert.field-discipline@1): COMMITTED —
 // measure, predicate, value, witness, support, read_footprint,
-// derivation_id, at_vclock. DERIVED on replay — value, witness, footprint
-// membership of every read. INFORMATIONAL — informational.*.
+// derivation_id, at_vclock, and (v4, round 28) lineage. DERIVED on replay —
+// value, witness, footprint membership of every read. INFORMATIONAL —
+// informational.*. The lineage is committed because a binding nobody seals
+// is a label: the first E-42 repair bound {world_id, log_len,
+// log_prefix_digest, ancestry} at derivation and left it OUTSIDE warrant_id,
+// so a warrant carried across a branch with its lineage rewritten to the
+// target's public world_id would pass lineageOf as `same` — the split, one
+// field over. Committing it costs one more pair in the preimage and moves the
+// domain tag to v4, because a preimage whose field set changed is a new
+// commitment, not the old one with an extra line.
+const lineageCommitted = (l) => l == null ? null : {
+  world_id: l.world_id, log_len: l.log_len, log_prefix_digest: l.log_prefix_digest,
+  ancestry: (l.ancestry ?? []).map((a) => ({ world_id: a.world_id, fork_vclock: a.fork_vclock,
+                                             fork_prefix_digest: a.fork_prefix_digest })),
+};
 const warrantCommitted = (w) => [
   ["measure", w.measure], ["predicate", w.predicate], ["value", w.value],
   ["witness", w.witness], ["support", [...w.support].sort()],
   ["read_footprint", { exact: [...w.read_footprint.exact].sort(),
                        predicates: [...w.read_footprint.predicates].sort() }],
   ["derivation_id", w.derivation_id], ["at_vclock", w.at_vclock],
+  ["lineage", lineageCommitted(w.lineage)],
 ];
-const warrantIdOf = (w) => H("TRVM-WARRANT-v3|" + cj(warrantCommitted(w)));
+const warrantIdOf = (w) => H("TRVM-WARRANT-v4|" + cj(warrantCommitted(w)));
+// the lineage a warrant binds at derivation (and at refresh — a refreshed
+// warrant is re-derived NOW, so its log position moves with it)
+const lineageAt = (world) => ({ world_id: world.world_id, log_len: world.log.length,
+                                log_prefix_digest: world.logPrefixDigest(world.log.length),
+                                ancestry: world.ancestry });
 
 const canonSupport = (s) => [...new Set(s ?? [])].sort();
 // derive: run measureFn under a TRACKED view; seal the warrant.
@@ -354,18 +496,75 @@ function deriveWarrant(world, spec) {
   const out = spec.measureFn(view);
   const fp = view.footprint();
   const w = {
-    type: "Warrant", version: 3,
+    type: "Warrant", version: 4,
     measure: spec.measure, predicate: spec.predicate,
     value: out.value, witness: out.witness,
     support: canonSupport(out.support),   // canonical at seal: sorted, deduplicated
     read_footprint: fp,
     derivation_id: H("TRVM-DERIVATION-v1|" + spec.measure + "|" + spec.predicate + "|" + cj(spec.inputs ?? null)),
     at_vclock: world.vclock,
+    lineage: lineageAt(world),
     law_refs: spec.law_refs ?? [],
     informational: { note: "NON-AUTHORITATIVE", generator: "trvm_world.mjs v" + WORLD_VERSION },
   };
   w.warrant_id = warrantIdOf(w);
   return w;
+}
+
+// E-42 — the SHARED lineage judgement. Both verifiers call this FIRST and take
+// the same answer, which is the structural half of the repair: the defect was
+// not that one verifier was wrong, it was that two verifiers answered the same
+// question differently about the same warrant. A verdict is only meaningful
+// against the lineage that gives it meaning, so the context is bound at
+// derivation and checked at use.
+//
+//   same world      -> "same", judge as before
+//   proper ancestor -> "ancestor", accepted as lineage IF the warrant was issued
+//                      at or before the fork point and the log prefix is intact;
+//                      then judged coherently by the ordinary rules
+//   anything else   -> "lineage-mismatch", by name
+function lineageOf(world, w) {
+  if (!w.lineage) return { rel: "unbound" };            // pre-v0.13 warrant
+  if (w.lineage.world_id === world.world_id) return { rel: "same" };
+
+  // DESCENDANT: the warrant was derived on a world that forked FROM this one.
+  // The Maintainer's designed pass is exactly this — it locks the world, forks
+  // it, derives on the fork and applies back through `commit` — so refusing it
+  // would refuse the protocol's own shape. Admitted when the fork point is
+  // recorded and the common prefix is intact; divergence past the fork point is
+  // then caught by the ordinary footprint checks, not by this one.
+  const asDesc = (w.lineage.ancestry ?? []).find((a) => a.world_id === world.world_id);
+  if (asDesc) {
+    if (asDesc.fork_prefix_digest !== world.logPrefixDigest(asDesc.fork_vclock))
+      return { rel: "mismatch", why: "log-prefix-diverged-at-fork-point" };
+    // An intact fork-point prefix establishes SHARED HISTORY. It does not
+    // establish that a warrant from the branch applies to THIS world's CURRENT
+    // state: if the parent has written since the fork, both sides have issued
+    // version numbers independently and a version collision defeats the
+    // ordinary freshness check — measured, not assumed, and it is how a
+    // diverged staging object still read `fresh` while replay said
+    // `value-mismatch`. So the descendant claim is admitted only while the
+    // parent has NOT advanced past the branch point.
+    if (world.log.length !== asDesc.fork_vclock)
+      return { rel: "mismatch", why: "parent-advanced-since-the-fork-point" };
+    return { rel: "descendant", fork_vclock: asDesc.fork_vclock };
+  }
+
+  // ANCESTOR: the warrant was derived on a world this one forked from. Admitted
+  // ONLY if it was issued AT OR BEFORE the fork point — a warrant the parent
+  // issued after the branch belongs to the other branch, and that is W4: parent
+  // and fork both reached version 2 for different values, and a warrant carried
+  // across read `fresh` to one verifier and `value-mismatch` to the other.
+  const asAnc = world.ancestry.find((a) => a.world_id === w.lineage.world_id);
+  if (asAnc) {
+    if (w.lineage.log_len > asAnc.fork_vclock) return { rel: "mismatch", why: "issued-after-the-fork-point" };
+    if (world.logPrefixDigest(w.lineage.log_len) !== w.lineage.log_prefix_digest)
+      return { rel: "mismatch", why: "log-prefix-diverged" };
+    return { rel: "ancestor", fork_vclock: asAnc.fork_vclock };
+  }
+
+  // Unrelated: a twin, a sibling branch, or a copy made outside fork().
+  return { rel: "mismatch", why: "unrelated-lineage" };
 }
 
 // freshness + classification. law:warrant.freshness@1 and
@@ -377,6 +576,16 @@ function deriveWarrant(world, spec) {
 //   support_intact   -> { resource, was, now }     (a non-support exact read
 //                        moved; candidate for early-cutoff refresh)
 function freshness(world, w) {
+  // Round 28: a warrant that does not authenticate has no lineage claim worth
+  // reading. freshness never checked warrant_id before — it classified
+  // whatever it was handed — which is how a warrant with a swapped lineage
+  // could read `fresh` here while replay refused it: two verifiers, one
+  // forged warrant, two answers. Both now refuse, each by its own name.
+  if (warrantIdOf(w) !== w.warrant_id)
+    return { verdict: "warrant_id_mismatch", witness: { declared: String(w.warrant_id).slice(0, 12), recomputed: warrantIdOf(w).slice(0, 12) } };
+  const lin = lineageOf(world, w);
+  if (lin.rel === "mismatch")
+    return { verdict: "lineage_mismatch", witness: { why: lin.why, warrant_world: w.lineage.world_id.slice(0, 12), checked_against: world.world_id.slice(0, 12) } };
   let intactCandidate = null;
   const support = new Set(w.support);
   for (const [name, ver] of w.read_footprint.exact) {
@@ -398,6 +607,10 @@ function freshness(world, w) {
 // footprint-version-mismatch, scope-digest-mismatch, value-mismatch,
 // witness-mismatch, warrant-id-mismatch, support-not-subset.
 function replayWarrant(world, w, measureFn) {
+  const lin = lineageOf(world, w);
+  if (lin.rel === "mismatch")
+    return { ok: false, reason: "lineage-mismatch", why: lin.why,
+             warrant_world: w.lineage.world_id.slice(0, 12), checked_against: world.world_id.slice(0, 12) };
   const supportSet = new Set(w.support);
   const exactSet = new Set(w.read_footprint.exact.map(([n]) => n));
   for (const s of supportSet) if (!exactSet.has(s))
@@ -431,7 +644,7 @@ function refreshWarrant(world, w, measureFn) {
   // support-soundness: refresh RESTORES derivation-produced support — a
   // forged support cannot survive the early-cutoff path (the audit's
   // laundering chain broke exactly here).
-  const nw = { ...w, read_footprint: view.footprint(), at_vclock: world.vclock,
+  const nw = { ...w, read_footprint: view.footprint(), at_vclock: world.vclock, lineage: lineageAt(world),
     witness: out.witness, support: canonSupport(out.support) };
   nw.warrant_id = warrantIdOf(nw);
   return { refreshed: true, warrant: nw };
@@ -466,12 +679,13 @@ function deriveComposite(world, spec) {
   const out = spec.measureFn(view, spec.naive ? citeNaive : cite);
   const fp = view.footprint();
   const w = {
-    type: "Warrant", version: 3,
+    type: "Warrant", version: 4,
     measure: spec.measure, predicate: spec.predicate,
     value: out.value, witness: out.witness, support: canonSupport(out.support),
     read_footprint: fp,
     derivation_id: H("TRVM-DERIVATION-v1|" + spec.measure + "|" + spec.predicate + "|" + cj(spec.inputs ?? null)),
     at_vclock: world.vclock,
+    lineage: lineageAt(world),
     law_refs: spec.law_refs ?? [],
     informational: { note: "NON-AUTHORITATIVE", generator: "trvm_world.mjs v" + WORLD_VERSION },
   };
@@ -910,7 +1124,7 @@ function certFootprintOf(cert, corpusResource, corpusVersion) {
 function warrantOfCertificate(world, cert, corpusResource) {
   const r = world.read(corpusResource);
   const w = {
-    type: "Warrant", version: 3,
+    type: "Warrant", version: 4,
     measure: "scheduler-certificate-evidence",
     predicate: "cert.evidence == aggregates(re-executed receipts)",
     value: cert.evidence,
@@ -919,6 +1133,7 @@ function warrantOfCertificate(world, cert, corpusResource) {
     read_footprint: certFootprintOf(cert, corpusResource, r.version),
     derivation_id: H("TRVM-DERIVATION-v1|scheduler-certificate|" + cert.cert_id),
     at_vclock: world.vclock,
+    lineage: lineageAt(world),
     law_refs: ["law:footprint.shared@1", "law:sched.certificate@2"],
     informational: { note: "NON-AUTHORITATIVE", generator: "trvm_world.mjs v" + WORLD_VERSION },
   };
@@ -1011,8 +1226,8 @@ function putEdge(world, a, b) {
   }
   return en;
 }
-function buildGraphWorld(nodes, edges) {
-  const w = new World();
+function buildGraphWorld(nodes, edges, restore = null) {
+  const w = restore ? World.restore(restore) : new World();
   for (const n of nodes) { w.put("node:" + n, true); w.put("adj:" + n, []); }
   for (const [a, b] of edges) putEdge(w, a, b);
   return w;
@@ -1093,6 +1308,10 @@ function coordBattery() {
 }
 // ═══ harness ═══════════════════════════════════════════════════════════════
 const QUICK = process.argv.includes("--quick");
+// --no-emit (round 28): run every law, write no receipt. The Makefile runs the
+// battery a second time from the REPOSITORY ROOT under this flag so a
+// cwd-relative read can never again turn a present file into a FAIL.
+const NO_EMIT = process.argv.includes("--no-emit");
 let anyFail = false;
 const rows = [];
 function report(name, caption, status, detail) {
@@ -1114,7 +1333,12 @@ if (process.argv.includes("--check-receipt")) {
   const rid = H("TRVM-WORLDRECEIPT-v3|" + cj(wr.world_spec) + "|" + cj(wr.warrant) + "|" + wr.footprint_id
     + "|" + cj(wr.composite.warrant) + "|" + wr.composite.footprint_id);
   if (rid !== wr.receipt_id) bad("receipt_id does not recompute");
-  const w = buildGraphWorld(wr.world_spec.nodes, wr.world_spec.edges);
+  // Round 28: the rebuilt world is RESTORED under the receipt's own lineage —
+  // the identity the warrant commits to, read from the same bytes receipt_id
+  // covers — because a warrant is only meaningful against the lineage that
+  // gives it meaning and a fresh birth here would be a stranger.
+  if (!wr.warrant?.lineage?.world_id) bad("receipt warrant carries no lineage (pre-v0.13)");
+  const w = buildGraphWorld(wr.world_spec.nodes, wr.world_spec.edges, { world_id: wr.warrant.lineage.world_id, ancestry: wr.warrant.lineage.ancestry });
   w.registerQuery("incident:" + wr.world_spec.seed, incidentScope(wr.world_spec.seed));
   const fn = componentMeasure(w, wr.world_spec.seed);
   const rG = replayWarrant(w, wr.warrant, fn);
@@ -1129,7 +1353,7 @@ if (process.argv.includes("--check-receipt")) {
   console.log("RECEIPT-CHECK: PASS — world rebuilt from committed spec; ground and composite REPLAYED with support equality; commitment recomputed.");
   process.exit(0);
 }
-console.log(`trvm_world v${WORLD_VERSION} — WorldRecord + Warrant v3, executable`);
+console.log(`trvm_world v${WORLD_VERSION} — WorldRecord + Warrant v4 (v3 + committed lineage), executable`);
 console.log("layer: WORLD (the calculus kernel is frozen at its own version and has no world by design)");
 console.log("═".repeat(96));
 
@@ -1378,7 +1602,10 @@ console.log("═".repeat(96));
 // L-WAR-5 : the SHARED footprint — the scheduler certificate as a warrant
 {
   let ok = false, detail = "scheduler_certificate.json not present";
-  if (existsSync("scheduler_certificate.json")) {
+  // Round 28: this read was the ONE cwd-relative path in the battery — run
+  // from the repository root it reported "not present" and the verdict went
+  // FAIL for a file that was there. Every other path goes through A().
+  if (existsSync(A("scheduler_certificate.json"))) {
     const cert = JSON.parse(readFileSync(A("scheduler_certificate.json"), "utf8"));
     const w = new World();
     const corpusRes = "corpus:" + cert.corpus.id;
@@ -1695,8 +1922,14 @@ console.log("═".repeat(96));
 // L-MAINT-4 : diamond — once per node, deterministic receipts
 // (law:maintenance.pass@1, dedup half).
 {
-  const mk = () => {
-    const w = buildGraphWorld(["a", "b", "c"], [["a", "b"], ["b", "c"]]);
+  // Round 28: a warrant commits its lineage, so two identical scenarios born
+  // as two worlds are two lineages and seal two pass_ids — correctly. The
+  // determinism this law states is PER LINEAGE: the second scenario is
+  // RESTORED under the first's identity (what --check-receipt does across
+  // processes), and a third, born fresh, is the witness that lineage is a
+  // coordinate of the receipt rather than noise in it.
+  const mk = (restore = null) => {
+    const w = buildGraphWorld(["a", "b", "c"], [["a", "b"], ["b", "c"]], restore);
     w.registerQuery("incident:a", incidentScope("a"));
     const m = new Maintainer(w);
     m.addGround("A", { measure: "component-size(a)", predicate: "reach", measureFn: componentMeasure(w, "a") });
@@ -1706,17 +1939,19 @@ console.log("═".repeat(96));
     m.addComposite("D", ["B", "C"], { measure: "D=B+C", predicate: "cite(B)+cite(C)",
       measureFn: (view, cite) => { const b = cite("B"), c = cite("C"); return { value: b.value + c.value, witness: { b: b.warrant_id, c: c.warrant_id }, support: ["warrant:B", "warrant:C"] }; } });
     w.del("node:c");
-    return m.pass();
+    return { rec: m.pass(), world_id: w.world_id };
   };
-  const r1 = mk(), r2 = mk();
+  const m1 = mk(), m2 = mk({ world_id: m1.world_id, ancestry: [] }), m3 = mk();
+  const r1 = m1.rec, r2 = m2.rec;
+  const freshBirthDiffers = m3.rec.pass_id !== r1.pass_id && m3.world_id !== m1.world_id;
   const names = r1.steps.map((s) => s.name);
   const oncePer = new Set(names).size === 4 && names.length === 4;
   const orderOk = names.indexOf("A") < names.indexOf("B") && names.indexOf("A") < names.indexOf("C")
     && names.indexOf("B") < names.indexOf("D") && names.indexOf("C") < names.indexOf("D");
   const deterministic = r1.pass_id === r2.pass_id;
   report("L-MAINT-4", "(diamond D<-{B,C}<-A: exactly one step per node, both paths below the join, identical receipts across identical runs, MAINTENANCE, COHERENCE)",
-    oncePer && orderOk && deterministic ? "PROPERTY-TESTED" : "FALSIFIED?!",
-    `one ground movement drives exactly 4 steps [${names.join(",")}] — A once (not once per path), join D after both arms (${orderOk}); two identical scenarios seal IDENTICAL pass_ids (${deterministic}): the deterministic Kahn order makes the receipt reproducible, not narrative (law:maintenance.pass@1)`);
+    oncePer && orderOk && deterministic && freshBirthDiffers ? "PROPERTY-TESTED" : "FALSIFIED?!",
+    `one ground movement drives exactly 4 steps [${names.join(",")}] — A once (not once per path), join D after both arms (${orderOk}); two identical scenarios IN ONE LINEAGE seal IDENTICAL pass_ids (${deterministic}) and a fresh birth seals a different one (${freshBirthDiffers}, round 28: lineage is a coordinate of the receipt); (${deterministic}): the deterministic Kahn order makes the receipt reproducible, not narrative (law:maintenance.pass@1)`);
 }
 
 // L-MAINT-5 : cycle refusal — impossible via the API, refused at the pass
@@ -2061,8 +2296,276 @@ console.log("═".repeat(96));
 
 }
 
+// ═══ Round 28 — E-43 and E-42, adjudicated in the owning lane ═══════════════
+// Both were handed here 2026-09-02 as kept-red candidate laws by the R10-pre
+// lane (invariant-r10/handoffs/TRVM_E42_E43_CANDIDATE_LAWS.md) with GPT-5.6's
+// drafts of the two contracts; the falsifiers W3/W4 in
+// experiments/observe_is_write/probe_observe_is_write_repro.mjs asserted the
+// DEFECTS against v0.12.0 and pass there by design. The rows below are the
+// same falsifiers inverted, plus the four things a repair owes: the original
+// failure re-run, a negative control proving the failure is still detectable,
+// the legitimate case that must stay permitted, and the exact identities.
+// Single-threaded, one runtime, in-process: the contract these laws are
+// stated under. Restore-from-snapshot is World.restore and is NOT a fork.
+
+const R28 = (() => {
+  const spec = (measure, fn) => ({ measure, predicate: "p", measureFn: fn });
+  const mfn = (v) => ({ value: v.read("x"), witness: { via: "x" }, support: ["x"] });
+  const refusedByBoth = (fr, rp) => fr.verdict === "lineage_mismatch" && rp.ok === false && rp.reason === "lineage-mismatch";
+  const acceptedByBoth = (fr, rp) => fr.verdict === "fresh" && rp.ok === true;
+  return { spec, mfn, refusedByBoth, acceptedByBoth };
+})();
+
+// L-SCOPE-1 : law:world.scope-registry-versioned@1 — A-IDEMPOTENT-GUARDED, inside the World
+{
+  const { spec } = R28;
+  const rs = [];
+  const mk = () => { const w = new World(); w.put("x", 1); return w; };
+  // (a) W3 inverted: two worlds identical in (vclock, log, resources); redefining
+  //     one scope now MOVES its version and lands in the log with its source digest
+  { const A = mk(), B = mk();
+    A.registerQuery("q", (r) => r.value("x")); B.registerQuery("q", (r) => r.value("x"));
+    const eqBefore = A.vclock === B.vclock && cj(A.log) === cj(B.log);
+    const vRe = B.registerQuery("q", (r) => [r.value("x"), "redefined"]);
+    const dA = A.scopeEval("q").digest, dB = B.scopeEval("q").digest;
+    const entry = B.log.filter((e) => e.op === "scope").at(-1);
+    const logged = !!entry && entry.resource === "scope:q" && entry.version === vRe && entry.version === B.vclock
+      && entry.prev < entry.version && typeof entry.hash === "string" && entry.hash.length === 64;
+    rs.push({ id: "redefinition-is-a-transition", ok: eqBefore && dA !== dB && A.vclock !== B.vclock && logged,
+      note: `identical before (${eqBefore}); after redefining q: digests ${dA.slice(0, 8)}/${dB.slice(0, 8)}, vclock ${A.vclock} vs ${B.vclock}, log entry ${JSON.stringify(entry && { op: entry.op, resource: entry.resource, version: entry.version, prev: entry.prev })} — v0.12 held both at ${A.vclock} while the digests differed` });
+  }
+  // (b) PERMITTED: identical re-registration is a true no-op — no version, no log entry
+  { const w = mk(); const f = (r) => r.value("x");
+    const v1 = w.registerQuery("q", f); const before = w.vclock, logBefore = w.log.length;
+    const v2 = w.registerQuery("q", f);
+    rs.push({ id: "identical-re-registration-is-a-no-op", ok: v1 === v2 && w.vclock === before && w.log.length === logBefore,
+      note: `vclock ${before} and ${logBefore} log entries unchanged; returned version ${v1} both times` });
+  }
+  // (c) NEGATIVE: still write-guarded — a redefinition under the lock is refused by name,
+  //     and so is a no-op re-registration (the compare-and-mutate IS a write operation)
+  { const w = mk(); const f = (r) => r.value("x"); w.registerQuery("q", f);
+    const key = w.lock(); let refusedChange = null, refusedSame = null;
+    try { w.registerQuery("q", (r) => "different"); } catch (e) { refusedChange = String(e.message); }
+    try { w.registerQuery("q", f); } catch (e) { refusedSame = String(e.message); }
+    w.unlock(key);
+    const ok = refusedChange !== null && refusedChange.startsWith("world-write-during-maintenance")
+      && refusedSame !== null && refusedSame.startsWith("world-write-during-maintenance");
+    rs.push({ id: "guarded-under-the-lock", ok, note: `change: ${refusedChange ?? "NOT REFUSED"}; identical: ${refusedSame ?? "NOT REFUSED"}` });
+  }
+  // (d) NEGATIVE: an old verdict cannot silently acquire the new scope — BOTH verifiers refuse
+  { const w = mk(); w.registerQuery("q", (r) => r.value("x"));
+    const fn = (v) => ({ value: v.scope("q"), witness: {}, support: [] });
+    const warr = deriveWarrant(w, spec("m", fn));
+    w.registerQuery("q", (r) => [r.value("x"), "redefined"]);
+    const fr = freshness(w, warr), rp = replayWarrant(w, warr, fn);
+    rs.push({ id: "old-verdict-refused-after-redefinition", ok: fr.verdict === "scope_dirty" && rp.ok === false && rp.reason === "scope-digest-mismatch",
+      note: `freshness=${fr.verdict}; replay=${rp.reason}` });
+  }
+  // (e) the version identifies scope observables again: at_vclock of a warrant over q
+  //     is strictly below the registry version after a redefinition
+  { const w = mk(); w.registerQuery("q", (r) => r.value("x"));
+    const warr = deriveWarrant(w, spec("m", (v) => ({ value: v.scope("q"), witness: {}, support: [] })));
+    const vRe = w.registerQuery("q", (r) => "other");
+    rs.push({ id: "at_vclock-orders-the-redefinition", ok: warr.at_vclock < vRe && vRe === w.vclock,
+      note: `warrant at_vclock ${warr.at_vclock} < redefinition version ${vRe}` });
+  }
+  const good = rs.filter((r) => r.ok).length;
+  report("L-SCOPE-1", "(E-43: a scope registration is a VERSIONED transition; identical source is a no-op; guarded; an old verdict cannot acquire the new scope, GOVERN, WARRANT)",
+    good === rs.length ? "PROPERTY-TESTED" : "FALSIFIED?!",
+    `${good}/${rs.length}: ` + rs.map((r) => r.id + " — " + r.note).join(" · ") +
+    " — v0.12.0 write-GUARDED registerQuery and did not VERSION it, so two worlds identical in (vclock, log, resources) evaluated one scope to two digests: the version was not a sufficient statistic for scope observables (law:world.scope-registry-versioned@1). The source digest is computed INSIDE the guard, because an external compare-then-mutate is a TOCTOU between the check and the write");
+}
+
+// L-LIN-1 : law:warrant.lineage-bound@1 — branches: fork() is a descendant with recorded ancestry
+{
+  const { spec, mfn, refusedByBoth, acceptedByBoth } = R28;
+  const rs = [];
+  // (a) W4 inverted: parent and a writable-time fork both issue version 2 for different
+  //     values; one warrant, one footprint, and the verifiers now AGREE by refusing
+  { const P = new World(); P.put("x", 1);
+    const F = P.fork(); P.put("x", 1); F.put("x", 2);
+    const sameVer = P.read("x").version === F.read("x").version && P.read("x").value !== F.read("x").value;
+    const w = deriveWarrant(P, spec("m", mfn));
+    const fr = freshness(F, w), rp = replayWarrant(F, w, mfn);
+    rs.push({ id: "post-fork-warrant-refused-across-the-branch", ok: sameVer && refusedByBoth(fr, rp) && fr.witness.why === "issued-after-the-fork-point" && rp.why === fr.witness.why,
+      note: `same version ${P.read("x").version}, values ${P.read("x").value}/${F.read("x").value}; freshness=${fr.verdict} (${fr.witness.why}); replay=${rp.reason} — v0.12 gave fresh / value-mismatch` });
+  }
+  // (b) PERMITTED: a warrant issued BEFORE the branch crosses it — the ancestor claim is admitted
+  { const P = new World(); P.put("x", 1);
+    const w = deriveWarrant(P, spec("m", mfn)); const F = P.fork();
+    const fr = freshness(F, w), rp = replayWarrant(F, w, mfn);
+    rs.push({ id: "pre-fork-warrant-crosses", ok: acceptedByBoth(fr, rp), note: `freshness=${fr.verdict}; replay ok=${rp.ok}` });
+  }
+  // (c) descendant direction: a branch's warrant checked on the parent is ADMITTED while the
+  //     parent has not advanced (then judged by the ordinary rules) and REFUSED once it has
+  { const P = new World(); P.put("x", 1);
+    const F = P.fork(); F.put("x", 2);
+    const w = deriveWarrant(F, spec("m", mfn));
+    const fr0 = freshness(P, w), rp0 = replayWarrant(P, w, mfn);
+    P.put("y", 0);
+    const fr1 = freshness(P, w), rp1 = replayWarrant(P, w, mfn);
+    const ok = fr0.verdict === "support_changed" && rp0.ok === false && rp0.reason === "footprint-version-mismatch"
+      && refusedByBoth(fr1, rp1) && fr1.witness.why === "parent-advanced-since-the-fork-point";
+    rs.push({ id: "descendant-admitted-then-judged-until-the-parent-moves", ok,
+      note: `parent unmoved: ${fr0.verdict} / ${rp0.reason}; parent advanced: ${fr1.verdict} (${fr1.witness.why}) / ${rp1.reason}` });
+  }
+  // (d) NEGATIVE: an out-of-protocol twin (a copy made outside fork()) is refused by both
+  { const P = new World(); P.put("x", 1); const T = new World(); T.put("x", 1);
+    const w = deriveWarrant(P, spec("m", mfn));
+    const fr = freshness(T, w), rp = replayWarrant(T, w, mfn);
+    rs.push({ id: "twin-refused", ok: refusedByBoth(fr, rp) && fr.witness.why === "unrelated-lineage", note: `why=${fr.witness.why}` });
+  }
+  // (e) NEGATIVE: sibling branches refuse each other's warrants, and two branches taken at
+  //     the same vclock have DISTINCT identities (the first repair minted twins here)
+  { const P = new World(); P.put("x", 1);
+    const A = P.fork(), B = P.fork(); A.put("x", 10); B.put("x", 20);
+    const w = deriveWarrant(A, spec("m", mfn));
+    const fr = freshness(B, w), rp = replayWarrant(B, w, mfn);
+    rs.push({ id: "sibling-refused-and-distinct", ok: A.world_id !== B.world_id && refusedByBoth(fr, rp) && fr.witness.why === "unrelated-lineage",
+      note: `ids differ (${A.world_id !== B.world_id}); why=${fr.witness.why}` });
+  }
+  // (f) the lineage answer is ONE answer: over the whole matrix, freshness refuses on lineage
+  //     iff replay refuses on lineage, with the same reason
+  { const cases = [];
+    const P = new World(); P.put("x", 1);
+    const pre = deriveWarrant(P, spec("m", mfn));
+    const F = P.fork(); P.put("x", 1); F.put("x", 2);
+    const post = deriveWarrant(P, spec("m", mfn));
+    const T = new World(); T.put("x", 1);
+    const S1 = P.fork(), S2 = P.fork(); S1.put("x", 10); S2.put("x", 20);
+    cases.push(["own-lineage", P, deriveWarrant(P, spec("m", mfn))], ["pre-fork-on-branch", F, pre], ["post-fork-on-branch", F, post],
+               ["twin", T, pre], ["sibling", S2, deriveWarrant(S1, spec("m", mfn))], ["branch-on-parent", P, deriveWarrant(F, spec("m", mfn))]);
+    const rows = cases.map(([id, world, w]) => { const fr = freshness(world, w), rp = replayWarrant(world, w, mfn);
+      return { id, agree: (fr.verdict === "lineage_mismatch") === (rp.reason === "lineage-mismatch") && (fr.verdict !== "lineage_mismatch" || fr.witness.why === rp.why), fr: fr.verdict, rp: rp.ok ? "ok" : rp.reason }; });
+    rs.push({ id: "lineage-answer-is-one-answer", ok: rows.every((r) => r.agree) && rows.some((r) => r.fr === "lineage_mismatch") && rows.some((r) => r.fr === "fresh"),
+      note: rows.map((r) => `${r.id}: ${r.fr} / ${r.rp}`).join(", ") });
+  }
+  const good = rs.filter((r) => r.ok).length;
+  report("L-LIN-1", "(E-42: fork() is a descendant with recorded ancestry; a warrant crosses a branch only if issued at or before the fork point; ONE lineageOf feeds both verifiers, WARRANT, FORK)",
+    good === rs.length ? "PROPERTY-TESTED" : "FALSIFIED?!",
+    `${good}/${rs.length}: ` + rs.map((r) => r.id + " — " + r.note).join(" · ") +
+    " — v0.12.0's fork() copied (res, vclock, log, queries) and nothing else, so parent and copy issued the SAME version for DIFFERENT values and one warrant read fresh to freshness and value-mismatch to replay: a footprint identifies a state within ONE lineage (law:warrant.lineage-bound@1). Both verifiers now consult one lineageOf FIRST — the defect was never that one verifier was wrong");
+}
+
+// L-LIN-2 : law:warrant.lineage-bound@1 — the staging borrow is bounded at BOTH ends of its interval
+{
+  const { spec, mfn, refusedByBoth, acceptedByBoth } = R28;
+  const rs = [];
+  const notTheSplit = (fr, rp) => !(fr.verdict === "fresh" && rp.reason === "value-mismatch");
+  // B1: forked under the lock, the borrow is live and its warrant is the parent's lineage
+  { const P = new World(); P.put("x", 1); const key = P.lock(); const S = P.fork();
+    const borrowed = S.world_id === P.world_id && S.is_staging === true;
+    const w = deriveWarrant(S, spec("m", mfn)); P.unlock(key);
+    const fr = freshness(P, w), rp = replayWarrant(P, w, mfn);
+    rs.push({ id: "B1-borrow-live-under-the-lock", ok: borrowed && acceptedByBoth(fr, rp) && S.is_staging === false,
+      note: `borrowed under the lock (${borrowed}); after unlock the staging object is its own (${S.world_id !== P.world_id}); the warrant it derived stays the parent's lineage: ${fr.verdict} / ok=${rp.ok}` });
+  }
+  // B2: `unlock` ends the borrow — a staging object that outlives the lock and diverges is refused by both
+  { const P = new World(); P.put("x", 1); const key = P.lock(); const S = P.fork(); P.unlock(key);
+    const expired = S.world_id !== P.world_id;
+    S.put("x", 99); P.put("x", 2);
+    const collide = S.read("x").version === P.read("x").version;
+    const w = deriveWarrant(S, spec("m", mfn));
+    const fr = freshness(P, w), rp = replayWarrant(P, w, mfn);
+    rs.push({ id: "B2-unlock-ends-the-borrow", ok: expired && collide && refusedByBoth(fr, rp) && notTheSplit(fr, rp),
+      note: `expired=${expired}; versions collide=${collide}; ${fr.verdict} (${fr.witness.why}) / ${rp.reason} — the first repair kept the parent's identity past the lock and reproduced W4 through the exception meant to permit the maintenance pass` });
+  }
+  // B3: entry into `commit` ends the borrow — the parent is writable inside the commit window
+  //     (that IS the door), so a retained staging reference diverging there is refused by both
+  { const P = new World(); P.put("x", 1); const key = P.lock(); const S = P.fork();
+    let liveInside = null, parentWritable = null;
+    P.commit(key, () => { liveInside = S.world_id === P.world_id; try { P.put("x", 7); parentWritable = true; } catch { parentWritable = false; } S.put("x", 42); });
+    const w = deriveWarrant(S, spec("m", mfn)); P.unlock(key);
+    const collide = S.read("x").version === P.read("x").version;
+    const fr = freshness(P, w), rp = replayWarrant(P, w, mfn);
+    rs.push({ id: "B3-commit-entry-ends-the-borrow", ok: parentWritable === true && liveInside === false && collide && refusedByBoth(fr, rp) && notTheSplit(fr, rp),
+      note: `parent writable inside commit (${parentWritable}); borrow live inside (${liveInside}); collide=${collide}; ${fr.verdict} (${fr.witness.why}) / ${rp.reason} — W4 a third time, in the one window a counter bumped only by unlock does not close` });
+  }
+  // B4: ending the borrow is NOT a validity claim — a warrant derived during the borrow keeps
+  //     the parent's lineage and can still go stale under the ordinary rules
+  { const P = new World(); P.put("x", 1); const key = P.lock(); const S = P.fork();
+    const w = deriveWarrant(S, spec("m", mfn)); P.unlock(key);
+    const fresh = freshness(P, w); P.put("x", 5); const after = freshness(P, w), rp = replayWarrant(P, w, mfn);
+    rs.push({ id: "B4-ending-the-borrow-is-not-validity", ok: fresh.verdict === "fresh" && after.verdict === "support_changed" && rp.ok === false && rp.reason === "footprint-version-mismatch",
+      note: `before the parent moved: ${fresh.verdict}; after: ${after.verdict} / ${rp.reason}` });
+  }
+  // B5: the Maintainer's own pass — lock, fork, derive on the staging buffer, apply through
+  //     commit — is exactly this shape and stays permitted end to end
+  { const w = buildGraphWorld(["a", "b", "c"], [["a", "b"], ["b", "c"]]);
+    w.registerQuery("incident:a", incidentScope("a"));
+    const m = new Maintainer(w);
+    m.addGround("A", { measure: "component-size(a)", predicate: "reach", measureFn: componentMeasure(w, "a") });
+    m.addComposite("B", ["A"], { measure: "B", predicate: "B", measureFn: (view, cite) => { const p = cite("A"); return { value: p.value + 1, witness: { cited: p.warrant_id }, support: ["warrant:A"] }; } });
+    w.del("node:c");
+    const rec = m.pass();
+    const pub = m.state.get("A"), published = w.read("warrant:A").value;
+    const fr = freshness(w, pub), rp = replayWarrant(w, pub, componentMeasure(w, "a"));
+    rs.push({ id: "B5-the-maintenance-pass-stays-permitted", ok: !rec.aborted && !rec.refused && pub.lineage.world_id === w.world_id && published.warrant_id === pub.warrant_id && acceptedByBoth(fr, rp),
+      note: `pass aborted=${!!rec.aborted}; the ground warrant derived on the staging fork carries the parent's world_id (${pub.lineage.world_id === w.world_id}) and is the one published (${published.warrant_id === pub.warrant_id}); ${fr.verdict} / ok=${rp.ok}` });
+  }
+  const good = rs.filter((r) => r.ok).length;
+  report("L-LIN-2", "(E-42: a staging fork borrows the parent's identity only while the lock generation is open — unlock AND entry into commit close it; the maintenance pass stays permitted, MAINTENANCE, FORK)",
+    good === rs.length ? "PROPERTY-TESTED" : "FALSIFIED?!",
+    `${good}/${rs.length}: ` + rs.map((r) => r.id + " — " + r.note).join(" · ") +
+    " — the lock argument ('the parent cannot diverge while it holds the lock') is sound FOR THE INTERVAL and nothing bounded the shared identity to the interval that justified it; measured twice against the module's own first two repairs (invariant-r10/experiments/trvm_e42_e43/failures). The borrow is checked at USE, not at fork");
+}
+
+// L-LIN-3 : law:warrant.lineage-bound@1 — the lineage is COMMITTED; restore is declared, not forked
+{
+  const { spec, mfn } = R28;
+  const rs = [];
+  // (a) a warrant with its lineage rewritten to a twin's public world_id is refused BY NAME by
+  //     both verifiers — lineageOf would have said `same`; the commitment says otherwise
+  { const P = new World(); P.put("x", 1); const T = new World(); T.put("x", 1);
+    const w = deriveWarrant(P, spec("m", mfn));
+    const forged = { ...w, lineage: { ...w.lineage, world_id: T.world_id } };
+    const same = lineageOf(T, forged).rel === "same";
+    const fr = freshness(T, forged), rp = replayWarrant(T, forged, mfn);
+    rs.push({ id: "swapped-lineage-moves-warrant_id", ok: same && fr.verdict === "warrant_id_mismatch" && rp.ok === false && rp.reason === "warrant-id-mismatch" && warrantIdOf(forged) !== w.warrant_id,
+      note: `lineageOf on the forgery says same=${same}; freshness=${fr.verdict}; replay=${rp.reason} — the binding is in the preimage (TRVM-WARRANT-v4), not beside it` });
+  }
+  // (b) the commitment covers every lineage field, ancestry included — mutate each, the id moves
+  { const P = new World(); P.put("x", 1); const F = P.fork(); F.put("x", 2);
+    const w = deriveWarrant(F, spec("m", mfn));
+    const muts = [
+      ["world_id", (l) => ({ ...l, world_id: "0".repeat(64) })],
+      ["log_len", (l) => ({ ...l, log_len: l.log_len + 1 })],
+      ["log_prefix_digest", (l) => ({ ...l, log_prefix_digest: "0".repeat(64) })],
+      ["ancestry.fork_vclock", (l) => ({ ...l, ancestry: l.ancestry.map((a) => ({ ...a, fork_vclock: a.fork_vclock + 1 })) })],
+      ["ancestry.fork_prefix_digest", (l) => ({ ...l, ancestry: l.ancestry.map((a) => ({ ...a, fork_prefix_digest: "0".repeat(64) })) })],
+      ["ancestry.dropped", (l) => ({ ...l, ancestry: [] })],
+    ];
+    const moved = muts.filter(([, f]) => warrantIdOf({ ...w, lineage: f(w.lineage) }) !== w.warrant_id).map(([n]) => n);
+    rs.push({ id: "every-lineage-field-is-committed", ok: moved.length === muts.length && w.lineage.ancestry.length === 1,
+      note: `${moved.length}/${muts.length} mutations move warrant_id: ${moved.join(", ")}` });
+  }
+  // (c) World.restore adopts a declared identity and the restored world verifies the receipt's
+  //     warrant as its own; a plain rebuild is a stranger — which is why --check-receipt restores
+  { const P = new World(); P.put("x", 1);
+    const w = deriveWarrant(P, spec("m", mfn));
+    const R = World.restore({ world_id: w.lineage.world_id, ancestry: w.lineage.ancestry }); R.put("x", 1);
+    const Q = new World(); Q.put("x", 1);
+    const frR = freshness(R, w), rpR = replayWarrant(R, w, mfn), frQ = freshness(Q, w);
+    let malformed = null; try { World.restore({ world_id: "nope" }); } catch (e) { malformed = String(e.message); }
+    rs.push({ id: "restore-is-declared-identity", ok: frR.verdict === "fresh" && rpR.ok === true && frQ.verdict === "lineage_mismatch" && malformed === "world-restore-identity-malformed",
+      note: `restored: ${frR.verdict} / ok=${rpR.ok}; plain rebuild: ${frQ.verdict}; malformed identity refused: ${malformed}` });
+  }
+  // (d) a restore is not a fork: it records no ancestry of its own and a fork of it is a branch
+  { const P = new World(); P.put("x", 1);
+    const R = World.restore({ world_id: P.world_id, ancestry: [] });
+    const F = R.fork();
+    rs.push({ id: "restore-is-not-a-fork", ok: R.ancestry.length === 0 && F.ancestry.length === 1 && F.ancestry[0].world_id === P.world_id && F.world_id !== R.world_id,
+      note: `restored ancestry ${R.ancestry.length}; its fork records the restored identity as parent (${F.ancestry[0].world_id === P.world_id}) and is its own world` });
+  }
+  const good = rs.filter((r) => r.ok).length;
+  report("L-LIN-3", "(E-42: the lineage is COMMITTED under TRVM-WARRANT-v4 — a swapped lineage moves warrant_id and both verifiers refuse by name; World.restore is a declared identity for receipt replay, never a fork, WARRANT, RECEIPT)",
+    good === rs.length ? "PROPERTY-TESTED" : "FALSIFIED?!",
+    `${good}/${rs.length}: ` + rs.map((r) => r.id + " — " + r.note).join(" · ") +
+    " — the first repair bound the lineage at derivation and left it outside the commitment, so a warrant carried across a branch with its lineage rewritten to the target's PUBLIC world_id passed lineageOf as `same`: a binding nobody seals is a label (law:cert.field-discipline@1, applied to the field that names the lineage)");
+}
+
 const RECEIPT_SPEC = { nodes: ["a", "b", "c", "d"], edges: [["a", "b"], ["b", "c"]], seed: "a" };
-if (!anyFail && !process.argv.includes("--check-receipt")) {
+if (!anyFail && !NO_EMIT && !process.argv.includes("--check-receipt")) {
   const w = buildGraphWorld(RECEIPT_SPEC.nodes, RECEIPT_SPEC.edges);
   w.registerQuery("incident:a", incidentScope("a"));
   const fn = componentMeasure(w, "a");
@@ -2081,7 +2584,8 @@ if (!anyFail && !process.argv.includes("--check-receipt")) {
     law_refs: ["law:world.version-monotone@1", "law:warrant.freshness@1",
       "law:warrant.footprint-soundness@1", "law:warrant.phantom-scope@1",
       "law:warrant.invalidation-trichotomy@1", "law:footprint.shared@1",
-      "law:warrant.composition@1", "law:warrant.frame@1"],
+      "law:warrant.composition@1", "law:warrant.frame@1",
+      "law:world.scope-registry-versioned@1", "law:warrant.lineage-bound@1"],
     warrant: wa,
     footprint_id: footprintId(wa.read_footprint),
     composite: { warrant: cw, footprint_id: footprintId(cw.read_footprint) },

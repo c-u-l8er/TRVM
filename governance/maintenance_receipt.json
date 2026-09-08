@@ -4,42 +4,42 @@
  "refused": false,
  "aborted": false,
  "torn": false,
- "vclock_before": 17,
- "vclock_after": 21,
+ "vclock_before": 22,
+ "vclock_after": 26,
  "before": {
   "A": {
-   "pub_version": 13,
-   "warrant_id": "37364b7694b01386abac40f7532da97fb6cde3e271bbd1622528b704853a6a1c"
+   "pub_version": 14,
+   "warrant_id": "ea76a2791ff0a4fe00aa15d55df6bf719cac3f75998fbce77e622490dec722e4"
   },
   "B": {
-   "pub_version": 14,
-   "warrant_id": "0cf94606a2b6fd7e6a3c10bac9d32b286b0fd024a8a8f2b939c8c5608e536f9d"
+   "pub_version": 16,
+   "warrant_id": "6f55c2fd8e078e018fc3612f585b031fd303ec35f75cb0e5cfbf4a9075caaf74"
   },
   "C": {
-   "pub_version": 15,
-   "warrant_id": "ab27b8bca45825ba604868e924b21cae25fc0dbb5632f5ed794902af42093d40"
+   "pub_version": 18,
+   "warrant_id": "cd509fd6739fdaca6e627961e4368dc563b3e15ed085e6e23cd97de36c3e6afb"
   },
   "D": {
-   "pub_version": 16,
-   "warrant_id": "776726c4efce1bcb7dc0daa3d8c5ba63f827e681d8845939a74b13bb0550ad2e"
+   "pub_version": 20,
+   "warrant_id": "484f8461fd050e8691757209ffeb640ae34a30953c37642cc83bfb9c53b6fc8a"
   }
  },
  "after": {
   "A": {
-   "pub_version": 18,
-   "warrant_id": "0f9219ea1f4010cc6c87cc1fcd89a740cd087e3149bae6dec3899ffd43770201"
+   "pub_version": 23,
+   "warrant_id": "8165cb71c3030848c4e67f5033036a745749292b2e1d8ad9fb88fc63be9c0799"
   },
   "B": {
-   "pub_version": 19,
-   "warrant_id": "d3a4b27eaaa2c0ee3d0aa6edba17a031aa5f9a6f1331dab39248b5da387e02c5"
+   "pub_version": 24,
+   "warrant_id": "7355d70307f6eda03670832b57c925b47c16de01a922873e240c0d1557011a61"
   },
   "C": {
-   "pub_version": 20,
-   "warrant_id": "f25719db9cc9cebd2edb8c9e80e160177d17b605d618886ffe41974999cf3a39"
+   "pub_version": 25,
+   "warrant_id": "544f519902ba6a59d0e49fdbdf1a2eee64f7f9a25abc7079bd0eba81f99b40be"
   },
   "D": {
-   "pub_version": 21,
-   "warrant_id": "b980a4e818266eeaefe68111727ecbd344afaf3355716ff17b98936efeda0b94"
+   "pub_version": 26,
+   "warrant_id": "eb4a8f502bfaede02865861ad812b3fad38427360c4d76879ede0bc275acfbfe"
   }
  },
  "steps": [
@@ -47,37 +47,37 @@
    "name": "A",
    "verdict": "support_changed",
    "action": "rederived",
-   "warrant_id_before": "37364b7694b01386abac40f7532da97fb6cde3e271bbd1622528b704853a6a1c",
-   "warrant_id_after": "0f9219ea1f4010cc6c87cc1fcd89a740cd087e3149bae6dec3899ffd43770201",
-   "pub_before": 13,
-   "pub_after": 18
+   "warrant_id_before": "ea76a2791ff0a4fe00aa15d55df6bf719cac3f75998fbce77e622490dec722e4",
+   "warrant_id_after": "8165cb71c3030848c4e67f5033036a745749292b2e1d8ad9fb88fc63be9c0799",
+   "pub_before": 14,
+   "pub_after": 23
   },
   {
    "name": "B",
    "verdict": "support_changed",
    "action": "rederived",
-   "warrant_id_before": "0cf94606a2b6fd7e6a3c10bac9d32b286b0fd024a8a8f2b939c8c5608e536f9d",
-   "warrant_id_after": "d3a4b27eaaa2c0ee3d0aa6edba17a031aa5f9a6f1331dab39248b5da387e02c5",
-   "pub_before": 14,
-   "pub_after": 19
+   "warrant_id_before": "6f55c2fd8e078e018fc3612f585b031fd303ec35f75cb0e5cfbf4a9075caaf74",
+   "warrant_id_after": "7355d70307f6eda03670832b57c925b47c16de01a922873e240c0d1557011a61",
+   "pub_before": 16,
+   "pub_after": 24
   },
   {
    "name": "C",
    "verdict": "support_changed",
    "action": "rederived",
-   "warrant_id_before": "ab27b8bca45825ba604868e924b21cae25fc0dbb5632f5ed794902af42093d40",
-   "warrant_id_after": "f25719db9cc9cebd2edb8c9e80e160177d17b605d618886ffe41974999cf3a39",
-   "pub_before": 15,
-   "pub_after": 20
+   "warrant_id_before": "cd509fd6739fdaca6e627961e4368dc563b3e15ed085e6e23cd97de36c3e6afb",
+   "warrant_id_after": "544f519902ba6a59d0e49fdbdf1a2eee64f7f9a25abc7079bd0eba81f99b40be",
+   "pub_before": 18,
+   "pub_after": 25
   },
   {
    "name": "D",
    "verdict": "support_changed",
    "action": "rederived",
-   "warrant_id_before": "776726c4efce1bcb7dc0daa3d8c5ba63f827e681d8845939a74b13bb0550ad2e",
-   "warrant_id_after": "b980a4e818266eeaefe68111727ecbd344afaf3355716ff17b98936efeda0b94",
-   "pub_before": 16,
-   "pub_after": 21
+   "warrant_id_before": "484f8461fd050e8691757209ffeb640ae34a30953c37642cc83bfb9c53b6fc8a",
+   "warrant_id_after": "eb4a8f502bfaede02865861ad812b3fad38427360c4d76879ede0bc275acfbfe",
+   "pub_before": 20,
+   "pub_after": 26
   }
  ],
  "no_op": false,
@@ -88,10 +88,10 @@
   "law:maintenance.receipt@1",
   "law:maintenance.acyclicity@1"
  ],
- "pass_id": "ee07ab028f6e9cf6f20344db6fc957312bdd49edf9460b1d28aaf4ee393ac69f",
+ "pass_id": "6d229fb4bac03a71dbf770715e9f14c156a18d76113bbf043bffbfa28722bbf9",
  "informational": {
   "note": "NON-AUTHORITATIVE",
-  "generator": "trvm_world.mjs v0.12.0",
+  "generator": "trvm_world.mjs v0.13.0",
   "scenario": "diamond D<-{B,C}<-A after deleting node:c"
  }
 }

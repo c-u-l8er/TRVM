@@ -271,7 +271,7 @@ for (const f of ["trvm_law_kernel.mjs", "kappa_witnesses.mjs"]) {
 }
 
 // ── D. structural checks carried from v1 ─────────────────────────────────
-const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0", "1.35.0", "1.36.0", "1.37.0", "1.38.0", "1.39.0", "1.40.0", "1.41.0", "1.42.0", "1.43.0", "1.44.0", "1.45.0", "1.46.0", "1.47.0", "1.48.0", "1.49.0", "1.50.0", "1.51.0", "1.52.0", "1.53.0", "1.54.0", "1.55.0", "1.56.0", "1.57.0", "1.58.0", "1.59.0", "1.60.0", "1.61.0", "1.62.0", "1.63.0", "1.64.0", "1.65.0", "1.66.0", "1.67.0", "1.68.0", "1.69.0", "1.70.0"];
+const LINEAGE = ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "1.20.0", "1.21.0", "1.22.0", "1.23.0", "1.24.0", "1.25.0", "1.26.0", "1.27.0", "1.28.0", "1.29.0", "1.30.0", "1.31.0", "1.32.0", "1.33.0", "1.34.0", "1.35.0", "1.36.0", "1.37.0", "1.38.0", "1.39.0", "1.40.0", "1.41.0", "1.42.0", "1.43.0", "1.44.0", "1.45.0", "1.46.0", "1.47.0", "1.48.0", "1.49.0", "1.50.0", "1.51.0", "1.52.0", "1.53.0", "1.54.0", "1.55.0", "1.56.0", "1.57.0", "1.58.0", "1.59.0", "1.60.0", "1.61.0", "1.62.0", "1.63.0", "1.64.0", "1.65.0", "1.66.0", "1.67.0", "1.68.0", "1.69.0", "1.70.0", "1.71.0"];
 ok(LINEAGE[LINEAGE.length - 1] === g.version,
   `grid.version (${g.version}) is not the head of the declared lineage`);
 const clKey = "changelog_from_" + LINEAGE[LINEAGE.length - 2].replaceAll(".", "_");
@@ -328,7 +328,7 @@ if (g.version.startsWith("1.")) {
   ok(typeof g.v1_criteria.declared_not_met_by_design === "string",
     "v1_criteria must declare what is NOT met by design");
 }
-ok(g.warrant?.version === 3 && g.warrant?.read_footprint,
+ok(g.warrant?.version === 4 && g.warrant?.read_footprint,
   "canonical warrant is not v3 read-footprint shape");
 ok(!!g.warrant_history?.v2_superseded, "superseded warrant not preserved in history");
 ok(!JSON.stringify(g.flagship_pair ?? {}).includes("selected_carrier"),
@@ -590,8 +590,11 @@ if (existsSync(A("golden_prehash_vectors.json"))) {
 // ── I. world warrant receipt: the ENGINE-FREE half (round 7) ──────────────
 ok(!!g.world, "grid world section missing (v1.1)");
 ok(!!g.warrant?.executable, "grid warrant.executable subsection missing (v1.1)");
-ok((g.warrant?.executable?.replay_refusals ?? []).length === 10,
-  `warrant.executable must list all 10 replay refusals (found ${(g.warrant?.executable?.replay_refusals ?? []).length})`);
+// Round 28: eleven — lineage-mismatch joins the ten (law:warrant.lineage-bound@1).
+ok((g.warrant?.executable?.replay_refusals ?? []).length === 11,
+  `warrant.executable must list all 11 replay refusals (found ${(g.warrant?.executable?.replay_refusals ?? []).length})`);
+ok((g.warrant?.executable?.freshness_verdicts ?? []).length === 6,
+  `warrant.executable must list all 6 freshness verdicts (found ${(g.warrant?.executable?.freshness_verdicts ?? []).length})`);
 ok(!!g.warrant?.executable?.support_discipline, "grid missing warrant.executable.support_discipline (v1.4)");
 ok(!!g.warrant?.executable?.composition && !!g.sigma_profile,
   "grid missing warrant.executable.composition or sigma_profile (v1.2)");
@@ -611,8 +614,22 @@ ok(typeof g.world?.canonical_value_domain === "string" && typeof g.world?.deleti
     ok(wsrc.includes(`"${r}"`), `trvm_world.mjs lacks warrant refusal "${r}"`);
   for (const v of g.warrant?.executable?.freshness_verdicts ?? [])
     ok(wsrc.includes(`"${v}"`), `trvm_world.mjs lacks freshness verdict "${v}"`);
-  ok(wsrc.includes("TRVM-WARRANT-v3") && wsrc.includes("TRVM-FOOTPRINT-v1") && wsrc.includes("TRVM-SCOPE-v1"),
+  ok(wsrc.includes("TRVM-WARRANT-v4") && wsrc.includes("TRVM-FOOTPRINT-v1") && wsrc.includes("TRVM-SCOPE-v1"),
     "trvm_world.mjs missing a commitment domain tag");
+  ok(!wsrc.includes('H("TRVM-WARRANT-v3|'), "trvm_world.mjs still seals under the v3 commitment (round 28 moved it to v4 = v3 + lineage)");
+  // Round 28 constructs (law:warrant.lineage-bound@1, law:world.scope-registry-versioned@1):
+  // the shared lineage judgement, both refusal names, the borrow generation
+  // closed at BOTH ends, the committed lineage, restore as a declared
+  // identity, and the scope transition in the log.
+  for (const c of ["function lineageOf(", '"lineage-mismatch"', '"lineage_mismatch"', '"warrant_id_mismatch"',
+                   "#world_id", "#stagingOf", "#lockGen++", "static restore(", "world-restore-identity-malformed",
+                   '["lineage", lineageCommitted(w.lineage)]', 'op: "scope"', "TRVM-SCOPE-SRC-v1", "TRVM-WORLD-ID-v1", "TRVM-LOGPREFIX-v1"])
+    ok(wsrc.includes(c), `trvm_world.mjs missing round-28 lineage/scope construct ${JSON.stringify(c)}`);
+  // the generation must close at both ends: once in unlock, once at commit entry
+  ok((wsrc.match(/#lockGen\+\+/g) ?? []).length === 2,
+    "trvm_world.mjs must close the borrow generation at BOTH unlock and commit entry (two #lockGen++ sites)");
+  ok(!wsrc.includes('existsSync("scheduler_certificate.json")'),
+    "trvm_world.mjs reads scheduler_certificate.json relative to the CALLER's cwd (round 28: every path goes through A())");
 }
 if (existsSync(A("world_warrant_receipt.json"))) {
   const wr = JSON.parse(readFileSync(A("world_warrant_receipt.json"), "utf8"));
@@ -628,14 +645,30 @@ if (existsSync(A("world_warrant_receipt.json"))) {
   }
   const w = wr.warrant ?? {};
   // mirrors of the warrant commitment (engine-free recompute)
+  // Round 28: the lineage is COMMITTED (v4 = v3 + lineage). The engine-free
+  // half recomputes it from the receipt's own fields exactly as the artifact
+  // does; a receipt whose warrant carries no lineage cannot recompute.
+  const lineageCommitted = (l) => l == null ? null : {
+    world_id: l.world_id, log_len: l.log_len, log_prefix_digest: l.log_prefix_digest,
+    ancestry: (l.ancestry ?? []).map((a) => ({ world_id: a.world_id, fork_vclock: a.fork_vclock, fork_prefix_digest: a.fork_prefix_digest })),
+  };
   const wCommitted = (x) => [
     ["measure", x.measure], ["predicate", x.predicate], ["value", x.value],
     ["witness", x.witness], ["support", [...(x.support ?? [])].sort()],
     ["read_footprint", { exact: [...(x.read_footprint?.exact ?? [])].sort(),
                          predicates: [...(x.read_footprint?.predicates ?? [])].sort() }],
     ["derivation_id", x.derivation_id], ["at_vclock", x.at_vclock],
+    ["lineage", lineageCommitted(x.lineage)],
   ];
-  const wid = createHash("sha256").update("TRVM-WARRANT-v3|" + JSON.stringify(wCommitted(w))).digest("hex");
+  for (const [tag, ww] of [["ground", w], ["composite", wr.composite?.warrant ?? {}]]) {
+    const l = ww.lineage;
+    ok(!!l && /^[0-9a-f]{64}$/.test(String(l.world_id)) && Number.isInteger(l.log_len) && /^[0-9a-f]{64}$/.test(String(l.log_prefix_digest)) && Array.isArray(l.ancestry),
+      `${tag} warrant carries no well-formed committed lineage (round 28: world_id, log_len, log_prefix_digest, ancestry)`);
+    ok(ww.version === 4, `${tag} warrant is not v4 (round 28: v3 fields + committed lineage)`);
+  }
+  ok(w.lineage?.world_id === wr.composite?.warrant?.lineage?.world_id,
+    "ground and composite warrants of one receipt were derived in different lineages");
+  const wid = createHash("sha256").update("TRVM-WARRANT-v4|" + JSON.stringify(wCommitted(w))).digest("hex");
   ok(wid === w.warrant_id, "warrant_id does not recompute from committed fields");
   const fid = createHash("sha256").update("TRVM-FOOTPRINT-v1|" + JSON.stringify([...(w.read_footprint?.exact ?? [])].sort()) + "|" + JSON.stringify([...(w.read_footprint?.predicates ?? [])].sort())).digest("hex");
   ok(fid === wr.footprint_id, "footprint_id does not recompute from the warrant's footprint");
@@ -646,7 +679,7 @@ if (existsSync(A("world_warrant_receipt.json"))) {
   // every publication read is paired with its freshness scope
   {
     const c2 = wr.composite?.warrant ?? {};
-    const cwid = createHash("sha256").update("TRVM-WARRANT-v3|" + JSON.stringify(wCommitted(c2))).digest("hex");
+    const cwid = createHash("sha256").update("TRVM-WARRANT-v4|" + JSON.stringify(wCommitted(c2))).digest("hex");
     ok(cwid === c2.warrant_id, "composite warrant_id does not recompute");
     const cfid = createHash("sha256").update("TRVM-FOOTPRINT-v1|" + JSON.stringify([...(c2.read_footprint?.exact ?? [])].sort()) + "|" + JSON.stringify([...(c2.read_footprint?.predicates ?? [])].sort())).digest("hex");
     ok(cfid === wr.composite?.footprint_id, "composite footprint_id does not recompute");

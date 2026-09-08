@@ -5757,3 +5757,127 @@ and the twelfth was the first one on the far side of the door** — eight planes
 semantics · secret release · execution and world · terminal conformance and interop replay · evidence
 shape · evidence bytes and run vocabulary · the handoff mount · **and the filesystem object the mount
 is made of**. The next code is not another package round. It is the run.
+
+## Round 28 — E-42 / E-43: a warrant is bound to a lineage, and a scope registration is a version
+
+The R10-pre lane (`~/ProjectAmp2/invariant-r10`) handed this lane two kept-red candidate laws on
+2026-09-02 (`handoffs/TRVM_E42_E43_CANDIDATE_LAWS.md`), each with a falsifier against
+`trvm_world.mjs` v0.12.0 (`sha256 a3db2cdc…`) and, by GPT-5.6's v4/v5 adjudications, a decision
+draft for the lane to rule on. On 2026-09-05/06 a session acting for that lane executed a local
+repair in this tree — report, native witness 15/15, lifecycle 8/8, two intermediate repairs each
+falsified by its own negative control — and left it UNCOMMITTED, correctly: *"nothing is registered
+or promoted; the TRVM governance lane owns registration."* GPT-5.6's disposition on that package:
+*local repair under single-threaded assumptions; concurrency outside the declared contract; the next
+lane is retrieval and adjudication, without another speculative repair pass.* This is that
+adjudication, done in the owning lane. `trvm_world.mjs` **0.12.0 → 0.13.0**, grid **v1.71.0**,
+battery **25 → 29 laws**, negative battery **+12 cases** and a third runner. Session of 2026-09-08.
+
+**612. `law:world.scope-registry-versioned@1` — A SCOPE (RE)REGISTRATION IS A WORLD TRANSITION.**
+The falsifier (W3): two worlds identical in `(vclock, log, resources)` evaluated one scope to two
+digests, because `registerQuery` was write-GUARDED and not VERSIONED — the version was not a
+sufficient statistic for scope observables, and a verdict could be consumed after its claimed scope
+changed. Ruled as drafted, **A-IDEMPOTENT-GUARDED, inside the World**: the source digest
+`H("TRVM-SCOPE-SRC-v1"|q|source)` is computed INSIDE the guard (an external compare-then-mutate is
+a TOCTOU between the check and the write — the v5 measurement: two transitions for one change, a
+stale no-op, and a re-registration under the lock that was not refused); identical source is a
+true no-op; a first or changed source `++vclock` and appends `{op:"scope", resource:"scope:<q>",
+version, prev, hash}`. Refused under the lock **for a change AND for an identical registration** —
+the compare-and-mutate is a write operation whether or not it writes. **L-SCOPE-1, 5/5.** Cost,
+stated and accepted: a maintainer may not (re)register a scope during its own pass; the Maintainer's
+designed pass does not.
+
+**613. `law:warrant.lineage-bound@1` — A FOOTPRINT IDENTIFIES A STATE WITHIN ONE LINEAGE.** The
+falsifier (W4): `fork()` copied `(res, vclock, log, queries)` and nothing else, so parent and copy
+issued the SAME version for DIFFERENT values and one warrant read `fresh` to `freshness` and
+`value-mismatch` to `replayWarrant` — two verifiers, one claim, two answers, the same split the
+round-8B alias audit produced, reached by copying instead of aliasing. Ruled as drafted,
+**L-ANCESTRY**: a World carries a birth identity `H("TRVM-WORLD-ID-v1"|32 random bytes)` and an
+ancestry `[{world_id, fork_vclock, fork_prefix_digest}]`; `fork()` while the parent is WRITABLE
+mints a new identity **with fresh entropy** (the first repair derived it from `(parent, vclock)` and
+minted two branches at one vclock as twins with one identity — its own sibling control caught it)
+and records the fork point; a warrant binds `{world_id, log_len, log_prefix_digest, ancestry}`;
+**ONE `lineageOf` is the first thing both verifiers consult** — same world → as before; an
+ancestor's warrant → admitted only if issued at or before the fork point with the prefix intact; a
+descendant's → admitted only while the parent has not advanced past the fork point; anything else →
+refused by name. The defect was never that one verifier was wrong. **L-LIN-1, 6/6**, including a
+six-case matrix in which the lineage answer is one answer and each case asserts its EXPECTED verdict
+and reason — agreement alone is satisfied by two verifiers that both return something else.
+
+**614. THE STAGING BORROW IS BOUNDED AT BOTH ENDS OF THE INTERVAL THAT JUSTIFIES IT.** The
+Maintainer's designed pass locks, forks, derives on the fork and applies through `commit`; a rule
+refusing it would refuse the protocol's own shape, so a fork taken UNDER THE LOCK is a staging
+buffer that borrows the parent's identity. The lock argument — *the parent cannot diverge while it
+holds the lock* — is sound FOR THE INTERVAL and nothing in the first repair bounded the shared
+identity to it: a staging object that OUTLIVED the lock kept the parent's identity, both sides wrote,
+both issued version 2, and the verifiers split — W4 through the exception meant to permit the pass
+(`failures/STAGING_LIFECYCLE_FAILURE.txt`). The second repair bounded the borrow to a lock
+GENERATION closed by `unlock`, and the third reproduction found the one window that counter did
+not close: **inside `commit` the parent is writable — that IS the door — and a retained staging
+reference still borrowed its identity** (`failures/COMMIT_WINDOW_FAILURE.txt`). Now **`unlock` AND
+entry into `commit` close the generation**, and the borrow is checked at USE, not at fork. Ending
+the borrow is not a validity claim: a warrant derived during it keeps the identity it captured and
+stays subject to the ordinary checks (B4). **L-LIN-2, 5/5**, B5 being the Maintainer's own pass end
+to end: the ground warrant derived on the staging fork carries the parent's `world_id`, is the one
+published, and verifies on the parent.
+
+**615. THE LINEAGE IS COMMITTED, AND THAT IS THIS ROUND'S OWN FINDING.** The repair as received
+bound the lineage at derivation and left it OUTSIDE `warrant_id`. So a warrant carried across a
+branch with its `lineage.world_id` rewritten to the target's PUBLIC `world_id` (a getter; nothing
+secret) passed `lineageOf` as `same` and went on to the ordinary checks — the split, one field over,
+and `freshness`, which had never checked `warrant_id` at all, classified the forgery `fresh` while
+replay refused it. **A binding nobody seals is a label** (`law:cert.field-discipline@1`, applied to
+the field that names the lineage). The warrant commitment moves to **`TRVM-WARRANT-v4` = the v3
+field set + `lineage`** — a preimage whose field set changed is a new commitment, not the old one
+with an extra line — and `freshness` now authenticates before it classifies
+(`warrant_id_mismatch`), so a forged warrant is refused by BOTH verifiers, each by its own name.
+Six lineage mutations (`world_id`, `log_len`, `log_prefix_digest`, each ancestry field, ancestry
+dropped) each move the id. `warrant.version` 3 → 4; the receipt stays v3 (its shape did not
+change; its ids did, because a warrant's did); `grid_check` and the negative battery's reseal
+helper recompute the v4 preimage. **L-LIN-3, 4/4.**
+
+**616. `World.restore` — A DECLARED IDENTITY FOR THE RECEIPT, NEVER A FORK.** `--check-receipt`
+rebuilds the receipt world from the committed spec in another process; a fresh birth there would be
+a stranger to the warrant it checks, and the lineage law would refuse the tree's own receipt.
+`World.restore({world_id, ancestry})` adopts a declared identity, honest in the receipt path because
+spec and identity are both under `receipt_id`; a malformed identity refuses
+(`world-restore-identity-malformed`); a restore records no ancestry of its own and its fork is a
+branch. **This is a CLAIM by the caller and is stated as one**: outside a receipt, a copy adopting
+an identity it was not born with is exactly the twin the law refuses, and a receipt whose lineage
+is swapped AND resealed replays under the swapped identity — the engine cannot re-derive a random
+birth, so the unsealed swap is the negative case that exists and the resealed one is documented
+rather than pretended. **Restore-from-snapshot as a lineage OPERATION — ancestry across processes —
+is the handoff's explicitly separate decision and stays OPEN.** `L-MAINT-4` now states pass
+determinism PER LINEAGE (the second scenario restored under the first's identity) and witnesses that
+a fresh birth seals a different `pass_id`: lineage is a coordinate of the receipt, not noise in it.
+
+**617. A PRE-EXISTING DEFECT THE R10-PRE LANE HIT TWICE AND RECORDED: THE BATTERY'S VERDICT DEPENDED
+ON THE CALLER'S DIRECTORY.** `L-WAR-5` asked `existsSync("scheduler_certificate.json")` against the
+cwd while every other path went through `A()`, so `node governance/trvm_world.mjs` from the
+repository root reported the certificate absent and printed `VERDICT: FAIL` over a present file —
+reproduced here at v0.12.0 and at the received repair before touching anything (25 laws
+PROPERTY-TESTED, one row `FALSIFIED?!  scheduler_certificate.json not present`). Fixed; `--no-emit`
+added; **`gov-world` runs the battery a second time from the repository root under `--no-emit`**,
+so the class cannot come back silently; `grid_check` refuses the literal cwd-relative read.
+
+**618. SENSITIVITY IS MEASURED, NOT ASSERTED.** Seven source forgeries, one per mechanism the two
+laws depend on, each turn a NAMED row red and nothing unrelated: commit-does-not-close-the-borrow →
+L-LIN-2 · unlock-does-not-close-the-borrow → L-LIN-2 · lineage-left-out-of-the-commitment →
+L-LIN-3 (and L-MAINT-4, whose fresh-birth witness then cannot differ) · scope-registration-unversioned
+→ L-SCOPE-1 · freshness-does-not-authenticate → L-LIN-3 · fork-identity-without-entropy → L-LIN-1 ·
+verifiers-consult-lineage-separately → L-LIN-1 and L-LIN-2. Six of those seven are visible to no
+existing runner — a generation counter that stops closing changes no receipt and no grid — so the
+negative battery gains **`run_case_battery`**, which mutates the artifact and requires the WORLD
+BATTERY itself to go red at a named row (exit 1 alone is not the evidence; the row is), plus the
+engine-free cases: an unsealed lineage swap and a stripped lineage in the receipt, a stripped
+`lineageOf`, a de-canonicalised law. The R10-pre lane's own witness and lifecycle checks run green
+against the same bytes; its original probe stays pinned to the bytes it was written against and
+refuses these, which is the pin working.
+
+**619. WHAT IS AND IS NOT CLAIMED.** Contract on every surface: **single-threaded, one runtime,
+in-process; the generation counter is unsynchronised; nothing here is a claim about concurrency,
+persistence or distribution.** `String(fn)` identifies a scope's source text, not its closure
+environment — adequate for detecting a redefinition, not a function identity. Registration in the
+owning lane is **not public promotion**: `package-v2.8` is untouched, E-42/E-43 stay
+`FALSIFIED-KEPT-RED` there until the R10-pre lane adjudicates against this commit, and F-FACTORY-1
+(no retrievable remote for `invariant-r10`) is unchanged. Open, carried: restore-from-snapshot as a
+lineage operation; the C-side replay; everything item 611 listed.

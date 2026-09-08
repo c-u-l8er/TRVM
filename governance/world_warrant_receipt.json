@@ -28,11 +28,13 @@
   "law:warrant.invalidation-trichotomy@1",
   "law:footprint.shared@1",
   "law:warrant.composition@1",
-  "law:warrant.frame@1"
+  "law:warrant.frame@1",
+  "law:world.scope-registry-versioned@1",
+  "law:warrant.lineage-bound@1"
  ],
  "warrant": {
   "type": "Warrant",
-  "version": 3,
+  "version": 4,
   "measure": "component-size(a)",
   "predicate": "reach",
   "value": 3,
@@ -89,7 +91,13 @@
    ]
   },
   "derivation_id": "4190db3b5e9f00e68a9db614ee8e58519e03afb992f92f0e363644a4beaa332b",
-  "at_vclock": 14,
+  "at_vclock": 15,
+  "lineage": {
+   "world_id": "ae00fbce442f22be8d3d6c052b566e3a29fab326952f2e7b7831b07d20da671a",
+   "log_len": 15,
+   "log_prefix_digest": "ebc868444b11112b16edbacfee1ae688673e270e154c242b282a27ff20a01f0a",
+   "ancestry": []
+  },
   "law_refs": [
    "law:warrant.freshness@1",
    "law:warrant.footprint-soundness@1",
@@ -97,20 +105,20 @@
   ],
   "informational": {
    "note": "NON-AUTHORITATIVE",
-   "generator": "trvm_world.mjs v0.12.0"
+   "generator": "trvm_world.mjs v0.13.0"
   },
-  "warrant_id": "20f2849e7be06e0b1fb04f373986d19c7dfcaef14c2e50d4396b3fc20e885a5c"
+  "warrant_id": "37d06c5ab585acc32d9968aca8017fa782ffbb366d30a59680917f90c1b43c6e"
  },
  "footprint_id": "7a578e035595059e14e90ac655f798a9222111d272dc0b3c7fdf832649a46fed",
  "composite": {
   "warrant": {
    "type": "Warrant",
-   "version": 3,
+   "version": 4,
    "measure": "double-of-ground",
    "predicate": "2*cite(ground)",
    "value": 6,
    "witness": {
-    "cited": "20f2849e7be06e0b1fb04f373986d19c7dfcaef14c2e50d4396b3fc20e885a5c"
+    "cited": "37d06c5ab585acc32d9968aca8017fa782ffbb366d30a59680917f90c1b43c6e"
    },
    "support": [
     "warrant:ground"
@@ -119,7 +127,7 @@
     "exact": [
      [
       "warrant:ground",
-      15
+      16
      ]
     ],
     "predicates": [
@@ -130,17 +138,23 @@
     ]
    },
    "derivation_id": "302371dcb1357ba621f98c8eadd36765d485092f2cb25cbbf564438188f5d052",
-   "at_vclock": 15,
+   "at_vclock": 17,
+   "lineage": {
+    "world_id": "ae00fbce442f22be8d3d6c052b566e3a29fab326952f2e7b7831b07d20da671a",
+    "log_len": 17,
+    "log_prefix_digest": "213890dbf5dd7f0d784eea9eac418ade0a9c50ac9dded84e6715919186fdad16",
+    "ancestry": []
+   },
    "law_refs": [
     "law:warrant.composition@1"
    ],
    "informational": {
     "note": "NON-AUTHORITATIVE",
-    "generator": "trvm_world.mjs v0.12.0"
+    "generator": "trvm_world.mjs v0.13.0"
    },
-   "warrant_id": "c0c12c75925fbbbf6c57654ce9685a0262bfbd58b62ebc89c8d639d605495d73"
+   "warrant_id": "f65504fa8f80bdf36ef08fc853d225540c9e9fbc6d3b573369e5ce09e0e1a4d2"
   },
-  "footprint_id": "a2bcea082fbee9ec049d1aa7cab2b0a63fcbff688453445729694305770e7279"
+  "footprint_id": "bee3a78db32ca676c7c20a3e8d3581071b3850a9412e7fc1e7d09b6818ba9c0b"
  },
  "freshness_at_emit": {
   "verdict": "fresh",
@@ -158,7 +172,7 @@
  },
  "informational": {
   "note": "NON-AUTHORITATIVE",
-  "generator": "trvm_world.mjs v0.12.0"
+  "generator": "trvm_world.mjs v0.13.0"
  },
- "receipt_id": "19fd07876510e6aff6cca23b4c23b25745b9aec139a73c78d93bd1cbb41596a5"
+ "receipt_id": "e00870aca240a1e7d41a3d7164b944633096f88aef546d371f87396357b842bd"
 }

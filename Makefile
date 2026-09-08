@@ -124,6 +124,12 @@ gov-world:
 	@echo "==== [governance] World — warrants, maintenance, confinement ===="
 	@cd $(GOV) && out=$$($(NODE) trvm_world.mjs) && printf "%s\n" "$$out" | tail -1
 	@cd $(GOV) && $(NODE) trvm_world.mjs --check-receipt
+# Round 28. The same battery a SECOND time, from the repository root and under
+# --no-emit: L-WAR-5 read scheduler_certificate.json relative to the caller's
+# cwd for twenty rounds while every other path went through A(), and the
+# battery run from here reported a present file absent and the verdict FAIL.
+# The receipt is emitted once, above; this run writes nothing and must agree.
+	@out=$$($(NODE) $(GOV)/trvm_world.mjs --no-emit --quick) && printf "%s\n" "$$out" | tail -1 | sed 's/^/  from the repository root: /'
 
 # THE FAILING CASE MUST SURVIVE THE RECIPE. This read
 #   out=$$(./negative_battery.sh) && printf ... | tail -1

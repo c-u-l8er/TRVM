@@ -408,7 +408,7 @@ r = json.load(open('world_warrant_receipt.json'))
 r['warrant']['read_footprint']['exact'] = r['warrant']['read_footprint']['exact'][1:]
 json.dump(r, open('world_warrant_receipt.json','w'), indent=1)"
 
-run_case world-refusal-dropped "10 replay refusals" "
+run_case world-refusal-dropped "11 replay refusals" "
 import json
 g = json.load(open('invariant-grid.json'))
 g['warrant']['executable']['replay_refusals'].remove('undeclared-read')
@@ -451,14 +451,19 @@ import json, hashlib
 def js(o): return json.dumps(o, separators=(",",":"), ensure_ascii=False)
 def sha(s): return hashlib.sha256(s.encode()).hexdigest()
 r = json.load(open("world_warrant_receipt.json"))
-def committed(x):
+def lineage_committed(l):
+    if l is None: return None
+    return {"world_id": l["world_id"], "log_len": l["log_len"], "log_prefix_digest": l["log_prefix_digest"],
+            "ancestry": [{"world_id": a["world_id"], "fork_vclock": a["fork_vclock"], "fork_prefix_digest": a["fork_prefix_digest"]} for a in l.get("ancestry", [])]}
+def committed(x):   # round 28: v4 = the v3 field set + the committed lineage
     return [["measure",x["measure"]],["predicate",x["predicate"]],["value",x["value"]],
             ["witness",x["witness"]],["support",sorted(x["support"])],
             ["read_footprint",{"exact":sorted(map(list,x["read_footprint"]["exact"])),
                                "predicates":sorted(map(list,x["read_footprint"]["predicates"]))}],
-            ["derivation_id",x["derivation_id"]],["at_vclock",x["at_vclock"]]]
+            ["derivation_id",x["derivation_id"]],["at_vclock",x["at_vclock"]],
+            ["lineage", lineage_committed(x.get("lineage"))]]
 def reseal_all():
-    r["warrant"]["warrant_id"] = sha("TRVM-WARRANT-v3|" + js(committed(r["warrant"])))
+    r["warrant"]["warrant_id"] = sha("TRVM-WARRANT-v4|" + js(committed(r["warrant"])))
     r["receipt_id"] = sha("TRVM-WORLDRECEIPT-v3|" + js(r["world_spec"]) + "|" + js(r["warrant"]) + "|" + r["footprint_id"]
                           + "|" + js(r["composite"]["warrant"]) + "|" + r["composite"]["footprint_id"])
 '
@@ -538,6 +543,124 @@ run_case sched-declaration-drift "strategy_schedulers" "
 import json
 g = json.load(open('invariant-grid.json'))
 g['scheduler_certificate']['strategy_schedulers'] = ['leftmost','deepest','middle','random','starve_dups']
+json.dump(g, open('invariant-grid.json','w'), indent=1)"
+
+# ── D28. round-28 forgeries: the lineage, the scope registry, and the WORLD BATTERY as the verifier ──
+# law:warrant.lineage-bound@1 · law:world.scope-registry-versioned@1.
+# Two runners above already exist: grid_check (engine-free) and the receipt
+# engine. Neither runs the world BATTERY, and six of the seven mechanisms these
+# two laws depend on are visible to nothing else — a generation counter that
+# stops closing at commit entry changes no receipt and no grid. So this runner
+# mutates the artifact and requires the battery itself to go red AT A NAMED
+# ROW: exit 1 alone is not the evidence, the row is. --no-emit --quick: no
+# receipt is written into the case tree and the trial counts are the small
+# ones, because what is measured here is the presence of a check, not its
+# statistics. TRVM_GOV_ROOT is the case tree so A() reads the case's own
+# certificate and never the live one.
+run_case_battery () {  # name, expected-red-row (regex over "L-..." names), setup-script(python)
+  local name="$1" want="$2" py="$3"
+  local d=$SCRATCH/$name/gov
+  rm -rf "$d" && mkdir -p "$d"
+  for f in $CASE_INPUTS; do mkdir -p "$d/$(dirname "$f")" && cp "$BASE/$f" "$d/$f"; done
+  [ -f "$BASE/scheduler_certificate.json" ] && cp "$BASE/scheduler_certificate.json" "$d/scheduler_certificate.json"
+  copy_spec_tree "$d"
+  local pre; pre=$(file_digests "$d"; file_digests "$d/../docs" 2>/dev/null || true)
+  CASES=$((CASES+1))
+  ( cd "$d" && python3 -c "$py" )
+  local post; post=$(file_digests "$d"; file_digests "$d/../docs" 2>/dev/null || true)
+  local touched; touched=$(changed_files "$pre" "$post")
+  if [ -z "$touched" ]; then
+    echo "FAIL  $name (VACUOUS — the forgery changed no artifact; nothing was tested)"; FAILED=1; return
+  fi
+  if [ "$touched" != "trvm_world.mjs" ]; then
+    echo "FAIL  $name (TARGET MISMATCH — a battery forgery mutates trvm_world.mjs only; run changed [$touched])"; FAILED=1; return
+  fi
+  local out; out=$(cd "$d" && TRVM_GOV_ROOT="$d" node trvm_world.mjs --no-emit --quick 2>&1); local code=$?
+  local red; red=$(printf "%s\n" "$out" | grep -oE '^L-[A-Z0-9-]+ +FALSIFIED\?!' | awk '{print $1}' | tr '\n' ' ')
+  if [ $code -ne 0 ] && printf "%s" "$red" | grep -qE "$want"; then
+    CAUGHT=$((CAUGHT+1))
+    echo "PASS  $name [trvm_world.mjs] → battery red at [${red% }]"
+  else
+    echo "FAIL  $name (battery exit=$code; red rows [${red% }]; wanted /$want/)"; printf "%s\n" "$out" | grep -E "FALSIFIED|Error" | head -3; FAILED=1
+  fi
+}
+
+# the seven mechanisms, one forgery each; every assert names the construct so a
+# refactor that moves it is a loud TARGET failure, not a quiet vacuous pass
+run_case_battery world-commit-does-not-close-the-borrow "L-LIN-2" "
+s = open('trvm_world.mjs').read()
+old = '    this.#lockGen++;\n    this.#lockKey = null;\n    try { return fn(); } finally { this.#lockKey = key; }'
+assert s.count(old) == 1, 'the commit door no longer matches'
+open('trvm_world.mjs','w').write(s.replace(old, '    this.#lockKey = null;\n    try { return fn(); } finally { this.#lockKey = key; }'))"
+
+run_case_battery world-unlock-does-not-close-the-borrow "L-LIN-2" "
+s = open('trvm_world.mjs').read()
+old = '    this.#lockKey = null;\n    this.#lockGen++;'
+assert s.count(old) == 1, 'unlock no longer matches'
+open('trvm_world.mjs','w').write(s.replace(old, '    this.#lockKey = null;'))"
+
+run_case_battery world-lineage-left-out-of-the-commitment "L-LIN-3" "
+s = open('trvm_world.mjs').read()
+old = '  [\"lineage\", lineageCommitted(w.lineage)],\n'
+assert s.count(old) == 1, 'the committed lineage pair no longer matches'
+open('trvm_world.mjs','w').write(s.replace(old, ''))"
+
+run_case_battery world-scope-registration-unversioned "L-SCOPE-1" "
+s = open('trvm_world.mjs').read()
+old = '    const version = ++this.#vclock;\n    this.#queries.set(qname, { fn, source_sha256, version });\n    this.#log.push({ op: \"scope\", resource: \"scope:\" + qname, version, prev, hash: source_sha256 });'
+assert s.count(old) == 1, 'registerQuery no longer matches'
+open('trvm_world.mjs','w').write(s.replace(old, '    const version = this.#vclock;\n    this.#queries.set(qname, { fn, source_sha256, version });'))"
+
+run_case_battery world-freshness-does-not-authenticate "L-LIN-3" "
+s = open('trvm_world.mjs').read()
+old = '  if (warrantIdOf(w) !== w.warrant_id)\n    return { verdict: \"warrant_id_mismatch\"'
+assert s.count(old) == 1, 'the freshness authentication no longer matches'
+open('trvm_world.mjs','w').write(s.replace(old, '  if (false)\n    return { verdict: \"warrant_id_mismatch\"'))"
+
+run_case_battery world-fork-identity-without-entropy "L-LIN-1" "
+s = open('trvm_world.mjs').read()
+old = '|fork@\" + this.#vclock\n                      + \"|\" + randomBytes(32).toString(\"hex\"));'
+assert s.count(old) == 1, 'the fork identity mint no longer matches'
+open('trvm_world.mjs','w').write(s.replace(old, '|fork@\" + this.#vclock);'))"
+
+run_case_battery world-verifiers-consult-lineage-separately "L-LIN-1" "
+s = open('trvm_world.mjs').read()
+old = 'function replayWarrant(world, w, measureFn) {\n  const lin = lineageOf(world, w);'
+assert s.count(old) == 1, 'replayWarrant no longer matches'
+open('trvm_world.mjs','w').write(s.replace(old, 'function replayWarrant(world, w, measureFn) {\n  const lin = { rel: \"same\" };'))"
+
+# and the engine-free half: a lineage swapped in the shipped receipt without
+# resealing moves warrant_id (the whole point of committing it); resealed, the
+# engine restores under the swapped identity and cannot tell — stated in the
+# grid's world.lineage.restore, and the reason the unsealed case is the one
+# that exists. A receipt stripped of its lineage cannot be v4 at all.
+run_case world-lineage-swap-unsealed "warrant_id does not recompute" "
+import json
+r = json.load(open('world_warrant_receipt.json'))
+r['warrant']['lineage']['world_id'] = '0' * 64
+json.dump(r, open('world_warrant_receipt.json','w'), indent=1)"
+
+run_case world-lineage-stripped "committed lineage|warrant_id does not recompute" "
+import json
+r = json.load(open('world_warrant_receipt.json'))
+del r['warrant']['lineage']
+json.dump(r, open('world_warrant_receipt.json','w'), indent=1)"
+
+run_case_engine receipt-lineage-stripped-engine "carries no lineage|warrant-id-mismatch|lineage-mismatch" "$RESEAL_WR
+del r['warrant']['lineage']
+del r['composite']['warrant']['lineage']
+reseal_all()
+json.dump(r, open('world_warrant_receipt.json','w'), indent=1)"
+
+run_case world-lineage-construct-stripped "round-28 lineage/scope construct" "
+s = open('trvm_world.mjs').read()
+open('trvm_world.mjs','w').write(s.replace('function lineageOf(', 'function lineage_of('))"
+
+run_case world-lineage-law-corrupt "canonical|non-canonical" "
+import json
+g = json.load(open('invariant-grid.json'))
+for e in g['law_registry']['entries']:
+    if e['id']=='warrant.lineage-bound': e['canonical']=False
 json.dump(g, open('invariant-grid.json','w'), indent=1)"
 
 # ── E. round-10 forgeries: the golden pre-hash byte vectors ───────────────
