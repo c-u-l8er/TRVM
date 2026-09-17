@@ -283,3 +283,33 @@ ordinary programs. It also echoes the WASM finding in §5: the same recursive
   not a term-on-stdin reducer, so it does not share this contract.
 - The throughput tier includes readback (stringify + pipe) in wall time, since
   not every backend has a `-q` equivalent. It is paid by all of them equally.
+
+## Bend 2 beside ic32, HVM4 and C on one computation (2026-09-17, laptop, shared host, `bench/bend_throughput.py`)
+
+`bend-lang.com` shipped Bend 2.0.4 (Apache-2.0; launcher = a Bun-run TypeScript CLI that self-updates and phones home unless
+`BEND_NO_TELEMETRY=1`; native target = one emitted C file built by clang). **Bend 2 is not an interaction-net runtime any more.**
+Its guide: a term is one 64-bit word, a def is a segment of a flat state machine, a call is a jump, values are affine, a closure may be
+called at most once, only `+` values carry a refcount. It reports no interaction count and **cannot express `cnot_N`** (a doubling chain
+of a labelled duplicator: function values cannot be copied in live Bend code). So this row is NOT the cnot head-to-head; it is the same
+COMPUTATION — NOT applied 2^N times to TRUE by an N-level doubling recursion — and the only shared unit is a **flip**. Slope of wall
+ms against 2^N, min of 7, rows interleaved, ic32 = the uncommitted explicit-stack build (`runtime/c/ic32` binary sha256 `30d1245d…`),
+HVM4 `6defdfc`, gcc 16.2.1 `-O2`, load 1.1, Claude app open (development reading; `bench/results-bend.json`):
+
+| row | ns per flip | M flips/s | interactions per flip | M interactions/s | startup ms | R² |
+|---|---:|---:|---:|---:|---:|---:|
+| `c-recursion` (gcc -O2, same doubling recursion, volatile sink per flip) | 0.23 | 4,338 | — | — | 2.0 | 1.0000 |
+| `bend-native` (Bend 2.0.4, one thread) | 0.90 | 1,111 | — | — | 1.2 | 1.0000 |
+| `hvm4` (cnot_N) | 90.1 | 11.1 | 14.0 | 155 | 18.1 | 0.9985 |
+| `trvm-ic32` (cnot_N) | 127.9 | 7.8 | 14.0 | 110 | 1.9 | 0.9993 |
+
+Reading: on this computation Bend's compiled state machine is about **4× slower than gcc's loop and about 100–140× faster per flip
+than either interaction-calculus engine**, because the IC engines pay ~14 graph interactions of sharing-and-provenance machinery per
+boolean flip and Bend pays a jump. That is the design difference, not a defect to chase: TRVM's calculus is the semantic substrate
+(sharing, sealed identity, films); Bend 2 gave that up for a compiled affine language with proofs. HVM4's 155 M itr/s here vs
+ic32's 110 is the same 1.1–1.4× the clean-host and laptop readings gave before. "Nearly as fast as C on one core" reads as 4×
+slower here on a recursion gcc turns into a loop; a fairer C would keep the calls (not measured).
+
+**Bend's parallel showcase** (`pow2(30n)`, 2^30 additions by fork-join, `./pow2 --threads T`, min of 3, same host, 12 cores / 24
+threads): 1 thread 2,146 ms · 2 → 1,280 · 4 → 694 · 8 → 371 · 16 → 266 · 24 → 234 ms, i.e. **5.8× on 8 threads, 9.2× on 24**.
+The fork-join scheduler does what the guide says; nothing in TRVM's three native runtimes is parallel, so there is no TRVM row
+for this and none is implied.

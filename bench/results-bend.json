@@ -1,0 +1,181 @@
+{
+ "schema": "trvm-bench-bend/1",
+ "stamp": "20260917T210412Z",
+ "host": "PX13",
+ "cpu": "AMD Ryzen AI 9 HX 370 w/ Radeon 890M",
+ "load1": 1.138671875,
+ "bend_version": "bend 2.0.4",
+ "note": "development reading on a shared host unless the host line says otherwise; the unit compared is a FLIP; IC rows pay ~14 interactions per flip by design (see module docstring)",
+ "rows": [
+  {
+   "row": "bend-native",
+   "ns_per_flip": 0.899787994013356,
+   "M_flips_per_s": 1111.372908566678,
+   "startup_ms": 1.2249935176050712,
+   "r2": 0.9999818341888194,
+   "range": "N=22..30",
+   "points": [
+    {
+     "N": 22,
+     "flips": 4194304,
+     "interactions": null,
+     "wall_ms": 5.325171999174927
+    },
+    {
+     "N": 24,
+     "flips": 16777216,
+     "interactions": null,
+     "wall_ms": 16.513944000507763
+    },
+    {
+     "N": 26,
+     "flips": 67108864,
+     "interactions": null,
+     "wall_ms": 63.380266000422125
+    },
+    {
+     "N": 28,
+     "flips": 268435456,
+     "interactions": null,
+     "wall_ms": 239.859035000336
+    },
+    {
+     "N": 30,
+     "flips": 1073741824,
+     "interactions": null,
+     "wall_ms": 967.975225000373
+    }
+   ]
+  },
+  {
+   "row": "c-recursion",
+   "ns_per_flip": 0.23052204638993865,
+   "M_flips_per_s": 4337.979883748099,
+   "startup_ms": 2.006630885983995,
+   "r2": 0.9999542329325803,
+   "range": "N=22..30",
+   "points": [
+    {
+     "N": 22,
+     "flips": 4194304,
+     "interactions": null,
+     "wall_ms": 2.582955999969272
+    },
+    {
+     "N": 24,
+     "flips": 16777216,
+     "interactions": null,
+     "wall_ms": 6.837126999926113
+    },
+    {
+     "N": 26,
+     "flips": 67108864,
+     "interactions": null,
+     "wall_ms": 17.619150000427908
+    },
+    {
+     "N": 28,
+     "flips": 268435456,
+     "interactions": null,
+     "wall_ms": 62.963659999695665
+    },
+    {
+     "N": 30,
+     "flips": 1073741824,
+     "interactions": null,
+     "wall_ms": 249.73618500007433
+    }
+   ]
+  },
+  {
+   "row": "trvm-ic32",
+   "ns_per_flip": 127.86232134459846,
+   "M_flips_per_s": 7.8209122866221525,
+   "startup_ms": 1.9436231344283463,
+   "r2": 0.9993164270891342,
+   "range": "N=14..19",
+   "points": [
+    {
+     "N": 14,
+     "flips": 16384,
+     "interactions": 229436,
+     "wall_ms": 3.4571960004541324
+    },
+    {
+     "N": 15,
+     "flips": 32768,
+     "interactions": 458816,
+     "wall_ms": 7.194932999482262
+    },
+    {
+     "N": 16,
+     "flips": 65536,
+     "interactions": 917572,
+     "wall_ms": 10.068106000289845
+    },
+    {
+     "N": 17,
+     "flips": 131072,
+     "interactions": 1835080,
+     "wall_ms": 18.110938999598147
+    },
+    {
+     "N": 18,
+     "flips": 262144,
+     "interactions": 3670092,
+     "wall_ms": 35.9321430005366
+    },
+    {
+     "N": 19,
+     "flips": 524288,
+     "interactions": 7340112,
+     "wall_ms": 68.87688699953287
+    }
+   ],
+   "interactions_per_flip": 14.000406901041666,
+   "M_interactions_per_s": 109.49304460404697
+  },
+  {
+   "row": "hvm4",
+   "ns_per_flip": 90.11409202165565,
+   "M_flips_per_s": 11.097043509684216,
+   "startup_ms": 18.073227458785368,
+   "r2": 0.9984736450425638,
+   "range": "N=18..22",
+   "points": [
+    {
+     "N": 18,
+     "flips": 262144,
+     "interactions": 3670092,
+     "wall_ms": 41.889877000357956
+    },
+    {
+     "N": 19,
+     "flips": 524288,
+     "interactions": 7340112,
+     "wall_ms": 68.59549100045115
+    },
+    {
+     "N": 20,
+     "flips": 1048576,
+     "interactions": 14680148,
+     "wall_ms": 115.01013900033286
+    },
+    {
+     "N": 21,
+     "flips": 2097152,
+     "interactions": 29360216,
+     "wall_ms": 197.29075899977033
+    },
+    {
+     "N": 22,
+     "flips": 4194304,
+     "interactions": 58720348,
+     "wall_ms": 399.8887959996864
+    }
+   ],
+   "interactions_per_flip": 14.000051682995212,
+   "M_interactions_per_s": 155.35865037792973
+  }
+ ]
+}
