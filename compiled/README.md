@@ -10,7 +10,9 @@ state-equal on every one; 14 of 14 mutants caught, each by exactly the worlds ex
 laptop.** The same evening, **Bend 2.0.4 was admitted as a fifth representation of the same worlds by the same oracle**
 (§2c: 16 of 17 worlds, 49 pairs, 904 epochs; the 33-lane world refused; 12/12 mutants; 9–59× the C step per epoch), and the
 slowdown was then FIXED by a second representation (§2c.1: bit-packed signal words, a division-free MAC — the chains at
-0.3–0.5× the C step, the spinner worlds at 7–9×, admitted again on 49 pairs with 12/12 mutants). Widened 2026-09-18 afternoon (§2b): two mailbox worlds with `~~` routes and a 33-lane spinner, each with a mutant
+0.3–0.5× the C step, the spinner worlds at 7–9×, admitted again on 49 pairs with 12/12 mutants), and **the C step got its
+first performance pass (§2d: the same packing in 64-bit words and the flags in the identity — chain120 27× faster, admitted
+on all 53 pairs with 12/12 mutants; `-O3 -march=native` measured at ~2× on the MAC, not adopted).** Widened 2026-09-18 afternoon (§2b): two mailbox worlds with `~~` routes and a 33-lane spinner, each with a mutant
 only it catches. Not claimed: a new semantic identity (none moves), a Super integration, anything about worlds the battery
 does not contain, or a production figure. The morning record (14 worlds / 41 pairs / 746 epochs / 11 mutants) is superseded
 by this one; `results-battery.json` is the afternoon run.
@@ -192,6 +194,34 @@ slot — the same packing would make it faster again, and that is the C row's bu
 worlds the remaining 7–9× is the list floor on ~14 packed slots plus ~40 Nat operations of MAC and selection per orb;
 not pursued further. Widths: v1 admits 24, v2 admits 23, the C step 63.
 
+### 2d. The C step's first performance pass — the same packing, and the compiler flags (`emit_c2.py`, profile `compiled.c.step.v2`)
+
+Bend v2 under the C step on chains said the C step had never had a performance pass, not that Bend was faster: v1 C gives
+every wire bit an int64 slot and an assignment. `emit_c2.py` keeps v1's laws and MAC and takes the same representation as
+Bend v2 with **64-bit words** (`emit_bend2.signal_layout` with word = 64: chain120's 485 slots are 9 words), `restrict`
+pointers, and **the compiler flags in the identity** (`cbknd2-` over sem, profile, flags and source; `TRVM_CFLAGS`, default
+`-O2`) because a build's flags change the machine code being admitted. **Admitted by the same oracle (`battery_bend.py
+--emitter c2 --controls`, `results-c2-backend.json`): all 53 pairs including the 33-lane world, 983 epochs, 12/12 mutants**
+(v1's numeric and clock mutants, and the three representation mutants).
+
+| world | C v1 `-O2` | C v1 `-O3 -march=native` | C v2 `-O2` | C v2 `-O3 -march=native` | Bend v2 |
+|---|---:|---:|---:|---:|---:|
+| chain120 | 0.073 µs | 0.067 µs | **0.0027 µs** | 0.0062 µs | 0.060 µs |
+| chain30 | 0.026 µs | 0.026 µs | **0.0020 µs** | 0.0060 µs | below resolution |
+| golden-demo (w=16) | 0.025 µs | **0.0145 µs** | 0.023 µs | 0.025 µs | 0.27 µs |
+| two-spinners | 0.042 µs | **0.020 µs** | 0.039 µs | 0.039 µs | 0.41 µs |
+| spinner-w8-n4 / mailbox-routes | 0.036 / 0.037 µs | 0.018 / 0.019 µs | 0.037 / 0.037 µs | 0.039 / 0.039 µs | 0.28 / 0.30 µs |
+| pulser-relay | 2.0 ns | 1.7 ns | 2.0 ns | 4.8 ns | below resolution |
+
+(one run, same in-process K-epoch loop, K = 10^6 for C, every fold ending in the same state.) Two separate effects: **the
+packing is worth ~25× on the wired worlds** (chain120 27×, chain30 13×) and nothing on the spinner worlds, where the MAC
+is the cost; **`-O3 -march=native` is worth ~2× on the MAC** (the i128 products) and nothing — or a little worse, at the
+nanosecond scale where this run cannot tell — on the packed chains. The two do not stack in this run (c2 at -O3 reads the
+same as c2 at -O2 on the spinner worlds), which is recorded, not explained. After this pass the C step is 20–25× under
+Bend v2 on chains and 7–20× under it on spinner worlds, i.e. the ratio §2c.1 reported was the C step's missing pass, not
+Bend's ceiling. The flags variant is measured, not adopted: `-march=native` binds the `.so` to this CPU, and the battery's
+admission stays at `-O2` until a flags policy is ruled (the cache is per machine either way).
+
 Not widened: lane widths between 34 and 63 are emitted and unadmitted (no world in battery); width 64 is refused;
 `~~` routes with a source that is not a `once` pulser do not exist (the seal refuses them); recurring routes
 (`forge.world.async.v1`) are deferred by ruling Q3 and not lowered by anything.
@@ -257,7 +287,8 @@ PYTHONDONTWRITEBYTECODE=1 python3 -B payload.py                     # ~2 min: th
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery.py --quick --worlds mailbox-routes,spinner-w33-n16   # a development subset; not an admission
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery_bend.py --controls --bench   # the Bend row: ~12 min once the reference films are cached under ~/.cache/trvm-compiled/refs/ (~45 min the first time)
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery_bend.py --emitter v2 --controls   # the packed representation: results-bend2-backend.json, ~1 min with cached refs
-PYTHONDONTWRITEBYTECODE=1 python3 -B battery_bend.py --bench-only          # re-measure the K-epoch slopes (C, v1, v2) into results-bend-backend.json
+PYTHONDONTWRITEBYTECODE=1 python3 -B battery_bend.py --emitter c2 --controls   # the packed C step: results-c2-backend.json
+PYTHONDONTWRITEBYTECODE=1 python3 -B battery_bend.py --bench-only          # the K-epoch slopes: C v1/v2 at -O2 and -O3 -march=native, Bend v1/v2, into results-bend-backend.json
 ```
 The Bend row needs `~/.bend/bin/bend` 2.0.4 (`BEND=` to override) with `~/.bun/bin` on PATH; `BEND_NO_TELEMETRY=1` is set by the
 build. A `pkill -f battery_bend` from a shell whose own command line names the pattern kills that shell first — the trap

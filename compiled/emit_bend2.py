@@ -31,7 +31,7 @@ MAX_LANE_WIDTH = 23   # P, N <= 2^(2w+2) must fit the 48-bit Nat
 WORD = 32
 
 
-def signal_layout(view):
+def signal_layout(view, word=WORD):
     """Bit positions for every wire/door/relay object: chains from each pulser get consecutive positions
     (wire, relay, wire, relay, ...) so that the two wire laws are +1 / -1 displacements; leftovers follow state_layout."""
     ppl, wires, doors, relays = view.layout()
@@ -64,15 +64,15 @@ def signal_layout(view):
             walk_wire(wr)
     for name in list(wires) + list(doors) + list(relays):
         take(name)
-    nwords = (len(order) + WORD - 1) // WORD
+    nwords = (len(order) + word - 1) // word
     return pos, nwords
 
 
-def packed_layout(view):
+def packed_layout(view, word=WORD):
     """The packed list: [(kind, name, slot_offset_in_C_vector, nslots)] for the non-signal fields, plus the word counts.
     Order: counters, CUR words, NXT words, then pose/fault/rotor fields in state_layout order."""
     fields, width = slot_map(view)
-    pos, nwords = signal_layout(view)
+    pos, nwords = signal_layout(view, word)
     packed = []
     for kind, name, o, n, spec in fields:
         if kind == "counter":
@@ -82,18 +82,18 @@ def packed_layout(view):
     for kind, name, o, n, spec in fields:
         if kind in ("pose", "fault", "rotor"):
             packed.append((kind, name, o, n, spec))
-    return fields, width, pos, nwords, packed
+    return fields, width, pos, nwords, packed, word
 
 
 def pack_vector(view, a, layout=None):
     """C slot vector -> packed Nat list."""
-    fields, width, pos, nwords, packed = layout or packed_layout(view)
+    fields, width, pos, nwords, packed, word = layout or packed_layout(view)
     cur, nxt = [0] * nwords, [0] * nwords
     for kind, name, o, n, spec in fields:
         if kind in ("wire", "door", "relay"):
             p = pos[name]
-            cur[p // WORD] |= int(a[o]) << (p % WORD)
-            nxt[p // WORD] |= int(a[o + 1]) << (p % WORD)
+            cur[p // word] |= int(a[o]) << (p % word)
+            nxt[p // word] |= int(a[o + 1]) << (p % word)
     out = []
     for kind, name, o, n, spec in packed:
         if kind == "cur":
@@ -107,7 +107,7 @@ def pack_vector(view, a, layout=None):
 
 def unpack_vector(view, vals, layout=None):
     """Packed Nat list -> C slot vector (a list of ints)."""
-    fields, width, pos, nwords, packed = layout or packed_layout(view)
+    fields, width, pos, nwords, packed, word = layout or packed_layout(view)
     a, i = [0] * width, 0
     cur = nxt = None
     for kind, name, o, n, spec in packed:
@@ -122,8 +122,8 @@ def unpack_vector(view, vals, layout=None):
     for kind, name, o, n, spec in fields:
         if kind in ("wire", "door", "relay"):
             p = pos[name]
-            a[o] = (cur[p // WORD] >> (p % WORD)) & 1
-            a[o + 1] = (nxt[p // WORD] >> (p % WORD)) & 1
+            a[o] = (cur[p // word] >> (p % word)) & 1
+            a[o + 1] = (nxt[p // word] >> (p % word)) & 1
     return a
 
 
@@ -145,7 +145,7 @@ def ov_of(x: Nat, +full: Nat) -> Bool:
 
 
 def emit_step_bend2(view):
-    fields, width, pos, nwords, packed = packed_layout(view)
+    fields, width, pos, nwords, packed, _word = packed_layout(view)
     spec = {n: s for k, n, _, _, s in fields if k == "counter"}
     ppl, wires, doors, relays = view.layout()
     orbs = list(view.orbs)

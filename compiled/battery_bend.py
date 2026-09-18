@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""battery_bend.py -- admission of the Bend backend (`emit_bend.py`) by the same oracle as the C backend.
+"""battery_bend.py -- admission of a backend step (`--emitter v1|v2|c2`: Bend v1, Bend v2, the packed C step) by the same oracle as the C backend.
 
     PYTHONDONTWRITEBYTECODE=1 python3 -B battery_bend.py [--quick] [--controls] [--bench] [--out results-bend-backend.json]
 
@@ -35,8 +35,10 @@ import fold as F                       # noqa: E402
 import battery as B                    # noqa: E402
 import emit_bend as EB                 # noqa: E402
 import emit_bend2 as EB2               # noqa: E402
+import emit_c2 as EC2                  # noqa: E402
 SB, O, P = F.SB, F.O, F.P
-EMITTERS = {"v1": ("emit_bend.py", EB.BendStep, EB.emit_step_bend), "v2": ("emit_bend2.py", EB2.BendStep2, lambda v: EB2.emit_step_bend2(v)[0])}
+EMITTERS = {"v1": ("emit_bend.py", EB.BendStep, EB.emit_step_bend), "v2": ("emit_bend2.py", EB2.BendStep2, lambda v: EB2.emit_step_bend2(v)[0]),
+            "c2": ("emit_c2.py", EC2.CompiledStep2, lambda v: EC2.emit_step_c2(v)[0])}
 EMITTER = "v1"
 REFS = os.path.join(os.environ.get("TRVM_COMPILED_CACHE") or os.path.expanduser("~/.cache/trvm-compiled"), "refs")
 
@@ -82,7 +84,7 @@ def main():
     a = ap.parse_args()
     global EMITTER
     EMITTER = a.emitter
-    a.out = a.out or os.path.join(HERE, "results-bend-backend.json" if EMITTER == "v1" else "results-bend2-backend.json")
+    a.out = a.out or os.path.join(HERE, {"v1": "results-bend-backend.json", "v2": "results-bend2-backend.json", "c2": "results-c2-backend.json"}[EMITTER])
     if a.worlds:
         keep = set(a.worlds.split(","))
         for k in list(B.WORLDS):
@@ -186,8 +188,24 @@ MUTANTS_V2 = [
 ]
 
 
+MUTANTS_C2 = [
+    ("react-before-commit", "rot_forge(%d, %d, eff, old_pose, &out[%d])", "rot_forge(%d, %d, old_rotor, old_pose, &out[%d])", "film"),
+    ("reset-ignored", "const int fbase = ctl[%d] ? 0 : (int)st[%d];", "const int fbase = (ctl[%d], (int)st[%d]);", "film"),
+    ("floor-shift", "i128 q = acc >= 0 ? (acc >> n) : -((-acc) >> n);", "i128 q = acc >> n;", "film"),
+    ("no-saturation", "i128 s = q < lo ? lo : (q > hi ? hi : q);", "i128 s = q;", "film"),
+    ("nxt-from-cur-words", 'const u64 n%d = (u64)st[%d]; /* NXT word %d */" % (k, nxt0 + k, k)', 'const u64 n%d = (u64)st[%d]; /* NXT word %d */" % (k, cur0 + k, k)', "film"),
+    ("cur-not-advanced", 'out[%d] = st[%d]; /* CUR word %d <- NXT */" % (cur0 + k, nxt0 + k, k)', 'out[%d] = st[%d]; /* CUR word %d <- NXT */" % (cur0 + k, cur0 + k, k)', "film"),
+    ("run-mask-dropped", 'parts.append("((n%d & 0x%xULL) %s %d)" % (sw, mask, "<<" if disp >= 0 else ">>", abs(disp)))', 'parts.append("(n%d %s %d)" % (sw, "<<" if disp >= 0 else ">>", abs(disp)))', "film"),
+    ("once-no-latch", 'emit("  const int fire_%d = (!st[%d] && st[%d] == %d);" % (o, o, o + 1, e))', 'emit("  const int fire_%d = (st[%d] == %d);" % (o, o + 1, e))', "film"),
+    ("onehot-phase-off-by-one", '/* one-hot */" % (o, o, ph))', '/* one-hot */" % (o, o, (ph + 1) % p))', "film"),
+    ("binary-phase-off-by-one", '/* binary */" % (o, o, ph))', '/* binary */" % (o, o, (ph + 1) % p))', "film"),
+    ("fault-not-sticky", "out[%d] = fbase | ov; /* sticky fault */", "out[%d] = ov; /* sticky fault */", "film"),
+    ("react-without-fire", 'emit("    if (sel) { /* REACT over the committed rotor */")', 'emit("    if (1) { /* REACT over the committed rotor */")', "film"),
+]
+
+
 def load_mutant(name, old, new):
-    fname, step_attr = EMITTERS[EMITTER][0], "BendStep" if EMITTER == "v1" else "BendStep2"
+    fname, step_attr = EMITTERS[EMITTER][0], {"v1": "BendStep", "v2": "BendStep2", "c2": "CompiledStep2"}[EMITTER]
     src = open(os.path.join(HERE, fname)).read()
     if src.count(old) != 1:
         raise RuntimeError("mutant %s: pattern found %d times, refusing" % (name, src.count(old)))
@@ -204,7 +222,7 @@ def run_controls(refs, quick):
     results = []
     # chain120 is skipped under mutants only: Bend's checker takes 211 s on its 485-slot pattern, per mutant; its laws are chain30's
     plist = [(n, s, l, sc) for n, s, l, sc in B.pairs(quick) if n not in B.WIDE_WORLDS and n not in CONTROL_SKIP]
-    for name, old, new, predicted in (MUTANTS if EMITTER == "v1" else MUTANTS_V2):
+    for name, old, new, predicted in {"v1": MUTANTS, "v2": MUTANTS_V2, "c2": MUTANTS_C2}[EMITTER]:
         step_cls = load_mutant(name, old, new)
         first, catches, folded = None, [], 0
         for wname, src, label, scen in plist:
@@ -257,22 +275,26 @@ int main(int argc, char **argv) {
 """
 
 
-def c_reps(cs, a, c, reps):
-    """The C step folded `reps` times in one process by the driver above: (final state, ns per epoch inside the process)."""
+def c_reps(cs, a, c, reps, flags=("-O2",)):
+    """The C step folded `reps` times in one process by the driver above: (final state, ns per epoch inside the process).
+    `a` is the vector the .so speaks (v1: the slot vector; v2: the packed one) -- the caller packs and unpacks."""
     import subprocess, tempfile
     d = os.path.join(os.path.expanduser("~/.cache/trvm-compiled"), "cbench")
     os.makedirs(d, exist_ok=True)
-    binp = os.path.join(d, cs.source_sha256 + ".bench")
+    binp = os.path.join(d, hashlib.sha256((" ".join(flags) + cs.source_sha256).encode()).hexdigest() + ".bench")
     if not os.path.exists(binp):
         with tempfile.TemporaryDirectory(dir=d) as td:
             with open(os.path.join(td, "step.c"), "w") as f:
                 f.write(cs.source)
             with open(os.path.join(td, "driver.c"), "w") as f:
                 f.write(C_DRIVER)
-            subprocess.run(["gcc", "-O2", "-o", binp, os.path.join(td, "driver.c"), os.path.join(td, "step.c")], check=True, capture_output=True)
+            subprocess.run(["gcc"] + list(flags) + ["-o", binp, os.path.join(td, "driver.c"), os.path.join(td, "step.c")], check=True, capture_output=True)
     inp = " ".join(str(int(v)) for v in a) + " " + " ".join(str(int(v)) for v in c) + "\n"
     r = subprocess.run([binp, str(reps)], input=inp, capture_output=True, text=True, timeout=600, check=True)
     return [int(x) for x in r.stdout.split()], float(r.stderr.strip()) / reps
+
+
+C_VARIANTS = (("c1", ("-O2",)), ("c1-O3-native", ("-O3", "-march=native")), ("c2", ("-O2",)), ("c2-O3-native", ("-O3", "-march=native")))
 
 
 def bench():
@@ -299,7 +321,21 @@ def bench():
         row = {"world": name, "state_width": cs.width, "c_step_us": round(c_ns / 1e3, 4), "python_roundtrip_us": py_us.get(name),
                "ic_reduce_s": ic_s.get(name, (None, None))[0], "ic_reducer": ic_s.get(name, (None, None))[1]}
         line = "bench %-16s width %3d  C %8.4f us" % (name, cs.width, c_ns / 1e3)
+        for tag, flags in C_VARIANTS[1:]:
+            try:
+                step = cs if tag.startswith("c1") else EC2.CompiledStep2(view, sem)
+            except ValueError:
+                row[tag] = "refused"
+                continue
+            vin = a if tag.startswith("c1") else step.pack(a)
+            fin_, _ = c_reps(step, vin, c, 2000, flags)
+            fin_ = fin_ if tag.startswith("c1") else step.unpack(fin_)
+            ns = min(c_reps(step, vin, c, 1000000, flags)[1] for _ in range(5))
+            row[tag] = {"step_us": round(ns / 1e3, 4), "over_c1": round(ns / c_ns, 2) if c_ns else None, "reps_states_equal": fin_ == final_c}
+            line += "   %s %8.4f us (%4.2fx) %s" % (tag, ns / 1e3, row[tag]["over_c1"] or -1, "EQ" if fin_ == final_c else "DIFFER")
         for tag, (_, step_cls, _emit) in EMITTERS.items():
+            if tag == "c2":
+                continue
             try:
                 bs = step_cls(view, sem)
             except ValueError:
