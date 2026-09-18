@@ -7,7 +7,8 @@ home does); the 9.2 MB demo epoch as the acceptance test. This directory is that
 
 Status: **BUILT and ADMITTED on this battery — 17 worlds, 53 (world, scenario) pairs, 983 epochs, film-equal AND
 state-equal on every one; 14 of 14 mutants caught, each by exactly the worlds expected. Development reading on the shared
-laptop.** Widened 2026-09-18 afternoon (§2b): two mailbox worlds with `~~` routes and a 33-lane spinner, each with a mutant
+laptop.** The same evening, **Bend 2.0.4 was admitted as a fifth representation of the same worlds by the same oracle**
+(§2c: 16 of 17 worlds, 49 pairs, 904 epochs; the 33-lane world refused; 12/12 mutants; 9–59× the C step per epoch). Widened 2026-09-18 afternoon (§2b): two mailbox worlds with `~~` routes and a 33-lane spinner, each with a mutant
 only it catches. Not claimed: a new semantic identity (none moves), a Super integration, anything about worlds the battery
 does not contain, or a production figure. The morning record (14 worlds / 41 pairs / 746 epochs / 11 mutants) is superseded
 by this one; `results-battery.json` is the afternoon run.
@@ -109,6 +110,51 @@ already catches has not widened anything.
   uint64): exact for every lane under 2^31.5, so no earlier world can see it; caught by the wide world's first fuzz scenario
   at epoch 8, when both a rotor and a pose lane sit at full scale.
 
+### 2c. Bend as a FIFTH representation of the same worlds — admitted on 16 of 17, refused on the 33-lane one (2026-09-18, evening)
+
+`emit_bend.py` lowers the same CompilePlanV1 view to a Bend 2.0.4 program (`FOUNDATION_LANE.md` §3ao: a compiled affine
+language, one 64-bit word per term, native target one C file built by clang) — the same laws, the same slot order, the
+wide-MAC in sign-magnitude over Bend's 48-bit `Nat` — and `battery_bend.py` admits it by the same oracle: **film-equal to
+the calculus's production films and state-equal to the C twin on every epoch of 49 (world, scenario) pairs, 904 epochs, of
+16 worlds; the 33-lane spinner REFUSED by the emitter** (the four-term accumulator needs 2^(2w) < 2^48, so w ≤ 24; the C
+step admits 63). `results-bend-backend.json`; identity `bbknd-` over sem + `compiled.bend.step.v1` + the emitted source.
+
+What Bend 2.0.4 imposed, each measured before the emitter was written (`~/.cache/trvm-compiled/bend/*.bend`): no I64/U64
+and no shift on `Nat` (so the MAC is two unsigned accumulators, a `Nat.div` by a power of two, one saturation, one
+re-encoding); a `Nat` literal over a few hundred overflows the checker's stack (`65536n`), so constants are `U32.to_nat(N)`;
+a `match` and a destructuring `let` may not scrutinize a computed value, so every pair-returning helper takes the pair as
+a PARAMETER and a MAC row's (lane, overflow) is packed into one `Nat`; an `Array<U32>` read is a computed scrutinee too, so
+the state travels as a `List<&2, Nat>` unpacked by one nested `Con` pattern (485 deep on chain120: the checker takes 211 s
+on it, once per source); a slot read twice must be bound `+`. Bend's arithmetic is real machine work (1 M mul+mod in 6 ms
+as a binary); the build is ~1 s per world and content-addressed.
+
+**Controls (12/12 caught, every mutant over every pair but chain120):** eleven of the C battery's mutants translated where
+the law has the same shape (react-before-commit, reset-ignored, no-saturation, a negative-side rounding mutant in place of
+`floor-shift`, wire-cur-stale, relay-hot-from-cur, once-no-latch, the two phase mutants, fault-not-sticky, react-without-
+fire — each caught by film divergence, by the same worlds as in C, `binary-phase-off-by-one` by the period-40 world alone)
+and one Bend-specific mutant, `affine-double-use` (a slot pattern without `+`), which **Bend's checker refuses on every
+world before any fold runs** (`s16 (consumed more than once)`) — the one control that behaves differently by construction,
+as §3aq's predictions said one would.
+
+**Cost, in-process, the same K-epoch loop in both (`--bench`; laptop, shared, two runs):**
+
+| world | Bend step per epoch | C step per epoch (driver, K = 10^6) | Bend / C | Python round trip of the C step (what `battery.py` prints) |
+|---|---:|---:|---:|---:|
+| golden-demo (w=16) | 0.45–0.94 µs | 0.026–0.10 µs | 9–18× | 11 µs |
+| two-spinners | 0.56–1.6 µs | 0.043–0.12 µs | 13–14× | 10 µs |
+| spinner-w8-n4 / mailbox-routes | 0.32–0.89 µs | 0.024–0.055 µs | 10–16× | 7–10 µs |
+| chain30 / chain120 | 0.95–1.3 / 3.6–6.6 µs | 0.016–0.047 / 0.068–0.18 µs | 28–59× / 36–53× | 18 / 93 µs |
+| pulser-relay (5 slots) | below the slope's resolution | 1.5–3.2 ns | — | 3.5 µs |
+
+The two runs differ by up to 4× on the C column (load 1.4 → 6); the ratios are the steadier reading. **The prediction
+recorded before the row was built (§3at's chat: "Bend step 3 to 5× the C step") was wrong: 9–59×, and worst on the wide
+chains**, where this emitter's representation — an affine list rebuilt every epoch, 485 conses for chain120 — is what is
+being paid, not Bend's arithmetic. That is a property of this emitter, stated as such; a Bend program over its arrays
+would need a different shape (array reads are computed scrutinees here) and was not attempted. The other two predictions
+held: the checker refuses an affine misuse at compile time, and the admitted widths differ per backend (24 against 63).
+Both K-epoch folds end in the same state on every benched world (`reps_states_equal`). No claim beyond this table on this
+laptop; it is the third admitted backend of these worlds beside ic32 and the C step, not a comparison of runtimes.
+
 Not widened: lane widths between 34 and 63 are emitted and unadmitted (no world in battery); width 64 is refused;
 `~~` routes with a source that is not a `once` pulser do not exist (the seal refuses them); recurring routes
 (`forge.world.async.v1`) are deferred by ruling Q3 and not lowered by anything.
@@ -172,7 +218,12 @@ PYTHONDONTWRITEBYTECODE=1 python3 -B battery.py --quick             # ~10 min: i
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery.py --controls          # ~55 min: the full run above + the fourteen mutants over every pair
 PYTHONDONTWRITEBYTECODE=1 python3 -B payload.py                     # ~2 min: the compiled state as the calculus's normal-form bytes, every world
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery.py --quick --worlds mailbox-routes,spinner-w33-n16   # a development subset; not an admission
+PYTHONDONTWRITEBYTECODE=1 python3 -B battery_bend.py --controls --bench   # the Bend row: ~12 min once the reference films are cached under ~/.cache/trvm-compiled/refs/ (~45 min the first time)
+PYTHONDONTWRITEBYTECODE=1 python3 -B battery_bend.py --bench-only          # re-measure the K-epoch slopes into the existing results file
 ```
+The Bend row needs `~/.bend/bin/bend` 2.0.4 (`BEND=` to override) with `~/.bun/bin` on PATH; `BEND_NO_TELEMETRY=1` is set by the
+build. A `pkill -f battery_bend` from a shell whose own command line names the pattern kills that shell first — the trap
+`project_fcb_competitive_benchmark` recorded, met again here.
 
 Run with `-B` from this directory: the forge tree is another lane's and no bytecode may be written into it. The `.so` cache is
 `~/.cache/trvm-compiled/` (override with `TRVM_COMPILED_CACHE`; the wide world's 46 MB step files land under `reparse/` there
