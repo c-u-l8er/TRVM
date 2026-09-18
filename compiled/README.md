@@ -251,7 +251,7 @@ microseconds, so the full catch set costs nothing), so the record says which wor
 ```
 react-before-commit        CAUGHT golden-demo fuzz-20260918 epoch 6     by the 8 spinner worlds (all but w16-fixed)
 reset-ignored              CAUGHT golden-demo demo          epoch 4     by the 9 spinner worlds
-floor-shift                CAUGHT golden-demo fuzz-20260918 epoch 6     by 8 spinner worlds -- NOT the 33-lane one (its fuzz never left a negative remainder)
+floor-shift                CAUGHT golden-demo fuzz-20260918 epoch 6     by the 9 spinner worlds (the 33-lane one only through its gentle scenario, §2d)
 no-saturation              CAUGHT golden-demo fuzz-20260918 epoch 8     by the 8 configurable-spinner worlds
 wire-cur-stale             CAUGHT golden-demo demo          epoch 1     by all 16 wired worlds
 relay-hot-from-cur         CAUGHT golden-demo demo          epoch 3     by the 9 worlds with a relay
