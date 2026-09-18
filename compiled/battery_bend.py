@@ -34,7 +34,10 @@ sys.dont_write_bytecode = True
 import fold as F                       # noqa: E402
 import battery as B                    # noqa: E402
 import emit_bend as EB                 # noqa: E402
+import emit_bend2 as EB2               # noqa: E402
 SB, O, P = F.SB, F.O, F.P
+EMITTERS = {"v1": ("emit_bend.py", EB.BendStep, EB.emit_step_bend), "v2": ("emit_bend2.py", EB2.BendStep2, lambda v: EB2.emit_step_bend2(v)[0])}
+EMITTER = "v1"
 REFS = os.path.join(os.environ.get("TRVM_COMPILED_CACHE") or os.path.expanduser("~/.cache/trvm-compiled"), "refs")
 
 
@@ -58,7 +61,8 @@ def reference(name, src, label, scen, quick):
     return films, reducer_name, False
 
 
-def bend_fold(src, scen, step_cls=EB.BendStep):
+def bend_fold(src, scen, step_cls=None):
+    step_cls = step_cls or EMITTERS[EMITTER][1]
     prog, _ = SB._resolve_scenario(src, scen)
     view = P.plan_view(P.artifact_to_compile_plan_v1(prog.sealed_artifact))
     bs = step_cls(view, prog.semantic_artifact_id)
@@ -72,9 +76,13 @@ def main():
     ap.add_argument("--controls", action="store_true")
     ap.add_argument("--bench", action="store_true")
     ap.add_argument("--bench-only", action="store_true", help="redo the bench rows into the existing results file; no admission")
-    ap.add_argument("--out", default=os.path.join(HERE, "results-bend-backend.json"))
+    ap.add_argument("--out", default=None)
     ap.add_argument("--worlds", default=None)
+    ap.add_argument("--emitter", default="v1", choices=list(EMITTERS), help="v1: one cons per slot, sign-magnitude MAC; v2: bit-packed signal words, biased branch-free MAC")
     a = ap.parse_args()
+    global EMITTER
+    EMITTER = a.emitter
+    a.out = a.out or os.path.join(HERE, "results-bend-backend.json" if EMITTER == "v1" else "results-bend2-backend.json")
     if a.worlds:
         keep = set(a.worlds.split(","))
         for k in list(B.WORLDS):
@@ -92,20 +100,22 @@ def main():
     env = dict(os.environ, BEND_NO_TELEMETRY="1", PATH=os.path.expanduser("~/.bun/bin") + ":" + os.environ.get("PATH", ""))
     import subprocess
     ver = subprocess.run([EB.BEND, "--version"], capture_output=True, text=True, env=env).stdout.strip()
-    receipt = {"measured": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "quick": a.quick, "loadavg": os.getloadavg(), "bend": ver,
+    receipt = {"measured": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "quick": a.quick, "emitter": EMITTER, "loadavg": os.getloadavg(), "bend": ver,
                "ic32_path": O.IC32, "pairs": [], "worlds": {}, "refused": {}, "controls": None, "bench": None}
     refs, all_ok = {}, True
     for name, src, label, scen in B.pairs(a.quick):
-        films_ref, rname, cached = reference(name, src, label, scen, a.quick)
-        refs[(name, label)] = films_ref
-        try:
-            t0 = time.perf_counter()
-            sem, dig, rows_b, bs = bend_fold(src, scen)
-            t_b = time.perf_counter() - t0
-        except ValueError as e:                 # the emitter's own refusal (lane width)
+        try:                                     # the emitter's own refusal (lane width) comes before any reference is computed
+            prog, _ = SB._resolve_scenario(src, scen)
+            EMITTERS[EMITTER][2](P.plan_view(P.artifact_to_compile_plan_v1(prog.sealed_artifact)))
+        except ValueError as e:
             receipt["refused"][name] = str(e)
             print("%-22s %-14s REFUSED by the Bend emitter: %s" % (name, label, str(e)[:90]), flush=True)
             continue
+        films_ref, rname, cached = reference(name, src, label, scen, a.quick)
+        refs[(name, label)] = films_ref
+        t0 = time.perf_counter()
+        sem, dig, rows_b, bs = bend_fold(src, scen)
+        t_b = time.perf_counter() - t0
         _, _, rows_c, cs = F.compiled_fold(src, scen)
         v = B.compare(name, label, rows_b, films_ref, rows_c)
         v.update({"sem": sem, "scenario_digest": dig, "backend_id": bs.backend_id, "reference": rname, "reference_cached": cached,
@@ -157,30 +167,50 @@ MUTANTS = [
 ]
 
 
+MUTANTS_V2 = [
+    ("react-before-commit", "+ua_%d_%d = biased(eff_%d_%d, hu_%d)  # rotor lane + half\" % (po, l, po, l, po)",
+     "+ua_%d_%d = biased(s%d, hu_%d)  # rotor lane + half\" % (po, l, ro + l, po)", "film"),
+    ("reset-ignored", "+fbase_%d = sel(nz(c%d), 0n, s%d)  # COMMIT fault reset\" % (fo, reset_slot, fo)",
+     "+fbase_%d = sel(nz(c%d), s%d, s%d)  # COMMIT fault reset\" % (fo, reset_slot, fo, fo)", "film"),
+    ("mac-sign-flipped", "fin((p_%d_%d, m_%d_%d), den_%d", "fin((m_%d_%d, p_%d_%d), den_%d", "film"),
+    ("nxt-from-cur-words", "+n%d = U32.from_nat(s%d)  # NXT word %d\" % (k, nxt0 + k, k)", "+n%d = U32.from_nat(s%d)  # NXT word %d\" % (k, cur0 + k, k)", "film"),
+    ("run-mask-dropped", 'parts.append("U32.shln(U32.and(n%d, %d), %dn)" % (sw, mask, disp))', 'parts.append("U32.shln(n%d, %dn)" % (sw, disp))', "film"),
+    ("cur-not-advanced", "o%d = s%d  # CUR word %d <- NXT\" % (cur0 + k, nxt0 + k, k)", "o%d = s%d  # CUR word %d <- NXT\" % (cur0 + k, cur0 + k, k)", "film"),
+    ("once-no-latch", "+fb_%d = Bool.and(Nat.is_eq(s%d, 0n), Nat.is_eq(s%d, %s))\" % (o, o, o + 1, lit(e))", "+fb_%d = Nat.is_eq(s%d, %s)\" % (o, o + 1, lit(e))", "film"),
+    ("onehot-phase-off-by-one", '+fb_%d = Nat.is_eq(s%d, %s)" % (o, o, lit(ph)))\n            emit("      o%d = Nat.mod((s%d + 1n : Nat), %s)" % (o, o, lit(p)))',
+     '+fb_%d = Nat.is_eq(s%d, %s)" % (o, o, lit((ph + 1) % p)))\n            emit("      o%d = Nat.mod((s%d + 1n : Nat), %s)" % (o, o, lit(p)))', "film"),
+    ("binary-phase-off-by-one", '+fb_%d = Nat.is_eq(s%d, %s)" % (o, o, lit(ph)))\n            emit("      +sum_%d', '+fb_%d = Nat.is_eq(s%d, %s)" % (o, o, lit((ph + 1) % p)))\n            emit("      +sum_%d', "film"),
+    ("fault-not-sticky", "sel(Bool.or(nz(fbase_%d), ov_%d), 1n, 0n), fbase_%d)  # sticky fault\" % (fo, po, fo, po, fo)", "b2n(ov_%d), fbase_%d)  # sticky fault\" % (fo, po, po, fo)", "film"),
+    ("react-without-fire", "+sel_%d = bit(n%d, %dn)  # spinner %s input fires\" % (po, p // WORD, p % WORD, s)", "+sel_%d = Bool.or(True{}, bit(n%d, %dn))  # spinner %s input fires\" % (po, p // WORD, p % WORD, s)", "film"),
+    ("affine-double-use", 's_pat = "".join("Con{+s%d, "', 's_pat = "".join("Con{s%d, "', "refused"),
+]
+
+
 def load_mutant(name, old, new):
-    src = open(os.path.join(HERE, "emit_bend.py")).read()
+    fname, step_attr = EMITTERS[EMITTER][0], "BendStep" if EMITTER == "v1" else "BendStep2"
+    src = open(os.path.join(HERE, fname)).read()
     if src.count(old) != 1:
         raise RuntimeError("mutant %s: pattern found %d times, refusing" % (name, src.count(old)))
-    path = os.path.join(os.path.expanduser("~/.cache/trvm-compiled"), "mutant_bend_%s.py" % name.replace("-", "_"))
+    path = os.path.join(os.path.expanduser("~/.cache/trvm-compiled"), "mutant_bend_%s_%s.py" % (EMITTER, name.replace("-", "_")))
     with open(path, "w") as f:
         f.write(src.replace(old, new))
-    spec = importlib.util.spec_from_file_location("emit_bend_mutant_" + name.replace("-", "_"), path)
+    spec = importlib.util.spec_from_file_location("emit_bend_mutant_%s_%s" % (EMITTER, name.replace("-", "_")), path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    return mod
+    return getattr(mod, step_attr)
 
 
 def run_controls(refs, quick):
     results = []
     # chain120 is skipped under mutants only: Bend's checker takes 211 s on its 485-slot pattern, per mutant; its laws are chain30's
     plist = [(n, s, l, sc) for n, s, l, sc in B.pairs(quick) if n not in B.WIDE_WORLDS and n not in CONTROL_SKIP]
-    for name, old, new, predicted in MUTANTS:
-        mod = load_mutant(name, old, new)
+    for name, old, new, predicted in (MUTANTS if EMITTER == "v1" else MUTANTS_V2):
+        step_cls = load_mutant(name, old, new)
         first, catches, folded = None, [], 0
         for wname, src, label, scen in plist:
             folded += 1
             try:
-                _, _, rows_b, _ = bend_fold(src, scen, mod.BendStep)
+                _, _, rows_b, _ = bend_fold(src, scen, step_cls)
             except Exception as e:
                 hit = {"world": wname, "scenario": label, "epoch": None, "kind": "refused", "error": "%s: %s" % (type(e).__name__, str(e)[:160])}
                 catches.append(hit)
@@ -261,28 +291,34 @@ def bench():
             continue
         src = B.WORLDS[name]
         sem, view, dig, script, world, claim, seams = F._prepare(src, None)
-        bs = EB.BendStep(view, sem)
         cs = F.CompiledStep(view, sem)
         claim, cfg, resets = F.FD.admit_step_sealed(claim, script[0][1], 1, view, seams)
-        a, c = list(bs.encode(world)), list(bs.control(cfg, resets))
-        pts, final_b = [], None
-        for reps in (1, 2000, 20000):        # 20,000 so that a 1 ns step is still above the slope's noise
-            best = None
-            for _ in range(5):
-                final_b = bs.run_raw(a, c, reps)
-                best = bs.last_wall_s if best is None else min(best, bs.last_wall_s)
-            pts.append((reps, best))
-        (r1, t1), (r2, t2), (r3, t3) = pts
-        slope_us = (t3 - t2) / (r3 - r2) * 1e6
+        a, c = list(cs.encode(world)), list(cs.control(cfg, resets))
         final_c, _ = c_reps(cs, a, c, 2000)
         c_ns = min(c_reps(cs, a, c, 1000000)[1] for _ in range(5))
-        rows.append({"world": name, "state_width": bs.width, "process_ms_reps1": round(t1 * 1e3, 2), "wall_ms_reps2000": round(t2 * 1e3, 2), "wall_ms_reps20000": round(t3 * 1e3, 2),
-                     "bend_step_us": round(slope_us, 3), "c_step_us": round(c_ns / 1e3, 4), "bend_over_c": round(slope_us * 1e3 / c_ns, 1) if c_ns else None,
-                     "python_roundtrip_us": py_us.get(name), "ic_reduce_s": ic_s.get(name, (None, None))[0], "ic_reducer": ic_s.get(name, (None, None))[1],
-                     "reps_states_equal": final_b == final_c})
-        print("bench %-16s width %3d  Bend %8.3f us/epoch   C %8.4f us/epoch  (Bend/C %5.1fx)   python round trip %6.2f us   %s %s s   reps-states %s" % (
-            name, bs.width, slope_us, c_ns / 1e3, rows[-1]["bend_over_c"] or -1, py_us.get(name) or -1, ic_s.get(name, (None, "?"))[1], ic_s.get(name, (None, None))[0],
-            "EQUAL" if final_b == final_c else "DIFFER"), flush=True)
+        row = {"world": name, "state_width": cs.width, "c_step_us": round(c_ns / 1e3, 4), "python_roundtrip_us": py_us.get(name),
+               "ic_reduce_s": ic_s.get(name, (None, None))[0], "ic_reducer": ic_s.get(name, (None, None))[1]}
+        line = "bench %-16s width %3d  C %8.4f us" % (name, cs.width, c_ns / 1e3)
+        for tag, (_, step_cls, _emit) in EMITTERS.items():
+            try:
+                bs = step_cls(view, sem)
+            except ValueError:
+                row[tag] = "refused"
+                continue
+            pts, final_b = [], None
+            for reps in (1, 2000, 20000):        # 20,000 so that a 1 ns step is still above the slope's noise
+                best = None
+                for _ in range(5):
+                    final_b = bs.run_raw(a, c, reps)
+                    best = bs.last_wall_s if best is None else min(best, bs.last_wall_s)
+                pts.append((reps, best))
+            (r1, t1), (r2, t2), (r3, t3) = pts
+            slope_us = (t3 - t2) / (r3 - r2) * 1e6
+            row[tag] = {"packed_width": getattr(bs, "packed_width", bs.width), "process_ms_reps1": round(t1 * 1e3, 2), "wall_ms_reps2000": round(t2 * 1e3, 2), "wall_ms_reps20000": round(t3 * 1e3, 2),
+                        "bend_step_us": round(slope_us, 3), "bend_over_c": round(slope_us * 1e3 / c_ns, 1) if c_ns else None, "reps_states_equal": final_b == final_c}
+            line += "   %s %8.3f us (%5.1fx) %s" % (tag, slope_us, row[tag]["bend_over_c"] or -1, "EQ" if final_b == final_c else "DIFFER")
+        rows.append(row)
+        print(line, flush=True)
     return rows
 
 
