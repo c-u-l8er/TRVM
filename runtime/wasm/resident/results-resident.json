@@ -1,0 +1,302 @@
+{
+ "measured": "2026-09-18T08:23:16-0500",
+ "host": "PX13",
+ "node": "v25.2.1",
+ "loadavg": [
+  1.37060546875,
+  1.17578125,
+  1.04443359375
+ ],
+ "ncpu": 24,
+ "jobs": 60,
+ "pool": 8,
+ "terms": {
+  "chain30-epoch-1.ic": {
+   "term_bytes": 8850,
+   "rows": {
+    "floor-node-per-job": {
+     "n": 30,
+     "p50_ms": 58.252,
+     "p99_ms": 66.423,
+     "min_ms": 44.432,
+     "statuses": {
+      "candidate": 30
+     }
+    },
+    "oneshot-worker-per-job C=1": {
+     "n": 60,
+     "p50_ms": 25.505,
+     "p99_ms": 26.497,
+     "min_ms": 18.885,
+     "jobs_per_s": 39.6,
+     "statuses": {
+      "candidate": 60
+     },
+     "output_sha256": [
+      "2318bd828467fea8f7ecb2e214a0a9fc736c23c08e62feacfa1c7d57d5118eb6"
+     ],
+     "interactions": [
+      476
+     ]
+    },
+    "oneshot-worker-per-job C=8": {
+     "n": 60,
+     "p50_ms": 33.742,
+     "p99_ms": 46.369,
+     "min_ms": 21.901,
+     "jobs_per_s": 226.3,
+     "statuses": {
+      "candidate": 60
+     },
+     "output_sha256": [
+      "2318bd828467fea8f7ecb2e214a0a9fc736c23c08e62feacfa1c7d57d5118eb6"
+     ],
+     "interactions": [
+      476
+     ]
+    },
+    "resident C=1": {
+     "n": 60,
+     "p50_ms": 1.063,
+     "p99_ms": 2.45,
+     "min_ms": 0.526,
+     "jobs_per_s": 1002.5,
+     "statuses": {
+      "candidate": 60
+     },
+     "output_sha256": [
+      "2318bd828467fea8f7ecb2e214a0a9fc736c23c08e62feacfa1c7d57d5118eb6"
+     ],
+     "interactions": [
+      476
+     ],
+     "host_timing_p50_ms": {
+      "instantiate_ms": 0.354,
+      "run_ms": 0.376,
+      "read_ms": 0.009
+     }
+    },
+    "resident C=8": {
+     "n": 60,
+     "p50_ms": 2.98,
+     "p99_ms": 9.49,
+     "min_ms": 1.039,
+     "jobs_per_s": 2033.5,
+     "statuses": {
+      "candidate": 60
+     },
+     "output_sha256": [
+      "2318bd828467fea8f7ecb2e214a0a9fc736c23c08e62feacfa1c7d57d5118eb6"
+     ],
+     "interactions": [
+      476
+     ],
+     "host_timing_p50_ms": {
+      "instantiate_ms": 0.498,
+      "run_ms": 1.671,
+      "read_ms": 0.056
+     }
+    },
+    "socket C=1": {
+     "n": 60,
+     "p50_ms": 1.407,
+     "p99_ms": 2.458,
+     "min_ms": 0.56,
+     "jobs_per_s": 736.2,
+     "statuses": {
+      "candidate": 60
+     },
+     "host_timing_p50_ms": {
+      "instantiate_ms": 0.437,
+      "run_ms": 0.456,
+      "read_ms": 0.017
+     }
+    },
+    "socket C=8": {
+     "n": 60,
+     "p50_ms": 3.301,
+     "p99_ms": 15.175,
+     "min_ms": 1.519,
+     "jobs_per_s": 1484.8,
+     "statuses": {
+      "candidate": 60
+     },
+     "host_timing_p50_ms": {
+      "instantiate_ms": 0.701,
+      "run_ms": 1.036,
+      "read_ms": 0.047
+     }
+    },
+    "daemon": {
+     "residentd": "/home/travis/.cache/resident-tmp/residentd-58aotdzi/r.sock",
+     "pool": 8,
+     "maxQueue": 32,
+     "pid": 166143,
+     "module_sha256": "0cf96179ac7063f85691834b84c9e4e01f5a855ace8678f6752315a6f15fed95",
+     "ready": 8
+    }
+   },
+   "resident_stats": {
+    "spawned": 8,
+    "replaced": 0,
+    "unconfirmed": 0,
+    "served": 121,
+    "refusedBusy": 0,
+    "deadlines": 0,
+    "cancelled": 0,
+    "pool": 8,
+    "live": 0,
+    "idle": 0,
+    "busy": 0,
+    "queued": 0,
+    "closed": true
+   }
+  },
+  "corpus-exp_2p16.ic": {
+   "term_bytes": 393,
+   "rows": {
+    "floor-node-per-job": {
+     "n": 30,
+     "p50_ms": 63.146,
+     "p99_ms": 71.857,
+     "min_ms": 47.283,
+     "statuses": {
+      "candidate": 30
+     }
+    },
+    "oneshot-worker-per-job C=1": {
+     "n": 60,
+     "p50_ms": 28.102,
+     "p99_ms": 29.575,
+     "min_ms": 24.406,
+     "jobs_per_s": 35.4,
+     "statuses": {
+      "candidate": 60
+     },
+     "output_sha256": [
+      "aa092c176f8d22e50fe2250cffd6ea6ebb69d28dbda2b3f40d557a5d6ea06fba"
+     ],
+     "interactions": [
+      131268
+     ]
+    },
+    "oneshot-worker-per-job C=8": {
+     "n": 60,
+     "p50_ms": 36.339,
+     "p99_ms": 47.887,
+     "min_ms": 23.772,
+     "jobs_per_s": 213.2,
+     "statuses": {
+      "candidate": 60
+     },
+     "output_sha256": [
+      "aa092c176f8d22e50fe2250cffd6ea6ebb69d28dbda2b3f40d557a5d6ea06fba"
+     ],
+     "interactions": [
+      131268
+     ]
+    },
+    "resident C=1": {
+     "n": 60,
+     "p50_ms": 2.804,
+     "p99_ms": 4.518,
+     "min_ms": 2.495,
+     "jobs_per_s": 312.6,
+     "statuses": {
+      "candidate": 60
+     },
+     "output_sha256": [
+      "aa092c176f8d22e50fe2250cffd6ea6ebb69d28dbda2b3f40d557a5d6ea06fba"
+     ],
+     "interactions": [
+      131268
+     ],
+     "host_timing_p50_ms": {
+      "instantiate_ms": 0.375,
+      "run_ms": 2.027,
+      "read_ms": 0.092
+     }
+    },
+    "resident C=8": {
+     "n": 60,
+     "p50_ms": 6.545,
+     "p99_ms": 14.673,
+     "min_ms": 2.956,
+     "jobs_per_s": 983.5,
+     "statuses": {
+      "candidate": 60
+     },
+     "output_sha256": [
+      "aa092c176f8d22e50fe2250cffd6ea6ebb69d28dbda2b3f40d557a5d6ea06fba"
+     ],
+     "interactions": [
+      131268
+     ],
+     "host_timing_p50_ms": {
+      "instantiate_ms": 0.524,
+      "run_ms": 4.076,
+      "read_ms": 0.241
+     }
+    },
+    "socket C=1": {
+     "n": 60,
+     "p50_ms": 4.733,
+     "p99_ms": 6.462,
+     "min_ms": 4.291,
+     "jobs_per_s": 204.1,
+     "statuses": {
+      "candidate": 60
+     },
+     "host_timing_p50_ms": {
+      "instantiate_ms": 0.381,
+      "run_ms": 2.824,
+      "read_ms": 0.148
+     }
+    },
+    "socket C=8": {
+     "n": 60,
+     "p50_ms": 13.532,
+     "p99_ms": 30.289,
+     "min_ms": 6.302,
+     "jobs_per_s": 521.3,
+     "statuses": {
+      "candidate": 60
+     },
+     "host_timing_p50_ms": {
+      "instantiate_ms": 0.682,
+      "run_ms": 5.428,
+      "read_ms": 0.273
+     }
+    },
+    "daemon": {
+     "residentd": "/home/travis/.cache/resident-tmp/residentd-b85zb0d1/r.sock",
+     "pool": 8,
+     "maxQueue": 32,
+     "pid": 166599,
+     "module_sha256": "0cf96179ac7063f85691834b84c9e4e01f5a855ace8678f6752315a6f15fed95",
+     "ready": 8
+    }
+   },
+   "resident_stats": {
+    "spawned": 8,
+    "replaced": 0,
+    "unconfirmed": 0,
+    "served": 121,
+    "refusedBusy": 0,
+    "deadlines": 0,
+    "cancelled": 0,
+    "pool": 8,
+    "live": 0,
+    "idle": 0,
+    "busy": 0,
+    "queued": 0,
+    "closed": true
+   }
+  }
+ },
+ "loadavg_after": [
+  1.3134765625,
+  1.169921875,
+  1.04345703125
+ ]
+}

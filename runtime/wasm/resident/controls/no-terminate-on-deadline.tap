@@ -1,0 +1,150 @@
+TAP version 13
+# Subtest: I1 · every oracle case reduces on the resident host exactly as on the one-shot host
+ok 1 - I1 · every oracle case reduces on the resident host exactly as on the one-shot host
+  ---
+  duration_ms: 651.742372
+  type: 'test'
+  ...
+# Subtest: I2 · the three sealed worlds reduce to their recorded payload digests and interaction counts
+ok 2 - I2 · the three sealed worlds reduce to their recorded payload digests and interaction counts
+  ---
+  duration_ms: 36.394922
+  type: 'test'
+  ...
+# Subtest: F1 · a job after a 476-interaction job sees a fresh instance: zero output, zero interactions before input
+ok 3 - F1 · a job after a 476-interaction job sees a fresh instance: zero output, zero interactions before input
+  ---
+  duration_ms: 28.120202
+  type: 'test'
+  ...
+# Subtest: X1 · 26 distinct terms on a pool of 4 each come back to their own requester
+ok 4 - X1 · 26 distinct terms on a pool of 4 each come back to their own requester
+  ---
+  duration_ms: 44.997429
+  type: 'test'
+  ...
+# Subtest: E1 · pre-dispatch refusals create no job and touch no worker
+ok 5 - E1 · pre-dispatch refusals create no job and touch no worker
+  ---
+  duration_ms: 4.745633
+  type: 'test'
+  ...
+# Subtest: D1 · the deadline terminates a real noncooperating guest, the exit is confirmed, and the pool heals with a real worker
+not ok 6 - D1 · the deadline terminates a real noncooperating guest, the exit is confirmed, and the pool heals with a real worker
+  ---
+  duration_ms: 2274.241535
+  type: 'test'
+  location: '/home/travis/.cache/resident-tmp/resident-controls.163267/wasm/resident/resident.test.mjs:107:1'
+  failureType: 'testCodeFailure'
+  error: 'the looping worker did not exit'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    Timeout._onTimeout (file:///home/travis/.cache/resident-tmp/resident-controls.163267/wasm/resident/resident.test.mjs:116:78)
+    listOnTimeout (node:internal/timers:605:17)
+    process.processTimers (node:internal/timers:541:7)
+  ...
+# Subtest: C1 · a queued job is cancelled without ever reaching a worker; the running job completes
+ok 7 - C1 · a queued job is cancelled without ever reaching a worker; the running job completes
+  ---
+  duration_ms: 21.84483
+  type: 'test'
+  ...
+# Subtest: C2 · cancelling a running job terminates its worker (observed exiting), confirms the exit and replaces it
+not ok 8 - C2 · cancelling a running job terminates its worker (observed exiting), confirms the exit and replaces it
+  ---
+  duration_ms: 2047.703588
+  type: 'test'
+  location: '/home/travis/.cache/resident-tmp/resident-controls.163267/wasm/resident/resident.test.mjs:138:1'
+  failureType: 'testCodeFailure'
+  error: 'the stuck worker did not exit'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    Timeout._onTimeout (file:///home/travis/.cache/resident-tmp/resident-controls.163267/wasm/resident/resident.test.mjs:149:78)
+    listOnTimeout (node:internal/timers:605:17)
+    process.processTimers (node:internal/timers:541:7)
+  ...
+# Subtest: Q1 · the queue is bounded: beyond maxQueue a request is refused busy, and close cancels what waited
+ok 9 - Q1 · the queue is bounded: beyond maxQueue a request is refused busy, and close cancels what waited
+  ---
+  duration_ms: 18.904285
+  type: 'test'
+  ...
+# Subtest: W1 · a worker that exits without replying is a typed failure with a confirmed exit, and is replaced
+ok 10 - W1 · a worker that exits without replying is a typed failure with a confirmed exit, and is replaced
+  ---
+  duration_ms: 38.405829
+  type: 'test'
+  ...
+# Subtest: L1 · a reply that arrives after the deadline expired is a deadline, even when the timer was delayed
+not ok 11 - L1 · a reply that arrives after the deadline expired is a deadline, even when the timer was delayed
+  ---
+  duration_ms: 6.111072
+  type: 'test'
+  location: '/home/travis/.cache/resident-tmp/resident-controls.163267/wasm/resident/resident.test.mjs:180:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    0 !== 1
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 0
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/travis/.cache/resident-tmp/resident-controls.163267/wasm/resident/resident.test.mjs:188:82)
+    async Test.run (node:internal/test_runner/test:1113:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:788:7)
+  ...
+# Subtest: R1 · a reply carrying a retired or foreign job id changes nothing; only the live id settles the job
+ok 12 - R1 · a reply carrying a retired or foreign job id changes nothing; only the live id settles the job
+  ---
+  duration_ms: 0.535822
+  type: 'test'
+  ...
+# Subtest: U1 · an unconfirmed exit is indeterminate, shrinks the pool and is not described as replaced
+not ok 13 - U1 · an unconfirmed exit is indeterminate, shrinks the pool and is not described as replaced
+  ---
+  duration_ms: 5.470072
+  type: 'test'
+  location: '/home/travis/.cache/resident-tmp/resident-controls.163267/wasm/resident/resident.test.mjs:207:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + 'deadline'
+    - 'indeterminate'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'indeterminate'
+  actual: 'deadline'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/travis/.cache/resident-tmp/resident-controls.163267/wasm/resident/resident.test.mjs:212:10)
+    async Test.run (node:internal/test_runner/test:1113:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:788:7)
+  ...
+# Subtest: M1 · a substituted module is refused before compilation
+ok 14 - M1 · a substituted module is refused before compilation
+  ---
+  duration_ms: 0.58755
+  type: 'test'
+  ...
+# Subtest: P1 · 200 jobs over a pool of 4: every result a candidate on a fresh instance, the workers accounting for all of them
+ok 15 - P1 · 200 jobs over a pool of 4: every result a candidate on a fresh instance, the workers accounting for all of them
+  ---
+  duration_ms: 88.65146
+  type: 'test'
+  ...
+1..15
+# tests 15
+# suites 0
+# pass 11
+# fail 4
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5282.33355

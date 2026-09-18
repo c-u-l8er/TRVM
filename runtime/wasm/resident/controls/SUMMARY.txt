@@ -1,0 +1,10 @@
+control=unmutated harness_exit=0 (15 pass, 0 fail; failing: none) expected: none → GREEN
+control=no-terminate-on-deadline harness_exit=1 (11 pass, 4 fail; failing: C2,D1,L1,U1,) expected: C2,D1,L1,U1, → RED-AS-EXPECTED
+control=no-replace-after-confirmed-exit harness_exit=1 (12 pass, 3 fail; failing: C2,D1,W1,) expected: C2,D1,W1, → RED-AS-EXPECTED
+control=late-reply-accepted harness_exit=1 (14 pass, 1 fail; failing: L1,) expected: L1, → RED-AS-EXPECTED
+control=unbounded-queue harness_exit=1 (14 pass, 1 fail; failing: Q1,) expected: Q1, → RED-AS-EXPECTED
+control=reuse-instance harness_exit=1 (11 pass, 4 fail; failing: F1,I1,P1,X1,) expected: F1,I1,P1,X1, → RED-AS-EXPECTED
+control=skip-digest-check harness_exit=1 (14 pass, 1 fail; failing: M1,) expected: M1, → RED-AS-EXPECTED
+control=accept-foreign-job-id harness_exit=1 (14 pass, 1 fail; failing: R1,) expected: R1, → RED-AS-EXPECTED
+---
+ALL CONTROLS AS EXPECTED

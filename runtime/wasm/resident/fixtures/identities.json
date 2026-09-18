@@ -1,0 +1,27 @@
+{
+ "chain30-epoch-1": {
+  "term_file": "chain30-epoch-1.ic",
+  "term_bytes": 8850,
+  "term_sha256": "7f2bf85bd692ae6ae968746a2f75ee57aa904815d6d3bf43a76f4fba7bfe0922",
+  "payload_bytes": 3260,
+  "payload_sha256": "2318bd828467fea8f7ecb2e214a0a9fc736c23c08e62feacfa1c7d57d5118eb6",
+  "interactions": 476
+ },
+ "corpus-exp_2p16": {
+  "term_file": "corpus-exp_2p16.ic",
+  "term_bytes": 393,
+  "term_sha256": "38eae05697ea3d59afc8f566c81a990756a2f8dfac04b3c634b62cd4e9833426",
+  "payload_bytes": 262145,
+  "payload_sha256": "aa092c176f8d22e50fe2250cffd6ea6ebb69d28dbda2b3f40d557a5d6ea06fba",
+  "interactions": 131268
+ },
+ "pulser-door-epoch-1": {
+  "term_file": "pulser-door-epoch-1.ic",
+  "term_bytes": 960,
+  "term_sha256": "c38704089b4f84c94ec331682e5d189782a344de46fe5b2f4c13b5d3da15117c",
+  "payload_bytes": 113,
+  "payload_sha256": "f5661da41cd1e57948688b48587ad94dc10eddb91d3ccd2ca951bc6c9f2688c8",
+  "interactions": 61
+ },
+ "_source": "ProjectAmp2 wek/b2/compute/nf_identities.json (2026-09-16): payload = the checked host's output bytes = ic32 stdout without its LF; ic32 = ic_ref = Wasm on all three"
+}

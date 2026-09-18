@@ -1,0 +1,194 @@
+TAP version 13
+# Subtest: I1 · every oracle case reduces on the resident host exactly as on the one-shot host
+not ok 1 - I1 · every oracle case reduces on the resident host exactly as on the one-shot host
+  ---
+  duration_ms: 60.711046
+  type: 'test'
+  location: '/home/travis/.cache/resident-tmp/resident-controls.163267/wasm/resident/resident.test.mjs:40:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      {
+        interactions: 0,
+    +   outputLength: 1
+    -   outputLength: 0
+      }
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    outputLength: 0
+    interactions: 0
+  actual:
+    outputLength: 1
+    interactions: 0
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/travis/.cache/resident-tmp/resident-controls.163267/wasm/resident/resident.test.mjs:49:14)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1113:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3)
+  ...
+# Subtest: I2 · the three sealed worlds reduce to their recorded payload digests and interaction counts
+ok 2 - I2 · the three sealed worlds reduce to their recorded payload digests and interaction counts
+  ---
+  duration_ms: 26.213359
+  type: 'test'
+  ...
+# Subtest: F1 · a job after a 476-interaction job sees a fresh instance: zero output, zero interactions before input
+not ok 3 - F1 · a job after a 476-interaction job sees a fresh instance: zero output, zero interactions before input
+  ---
+  duration_ms: 25.842229
+  type: 'test'
+  location: '/home/travis/.cache/resident-tmp/resident-controls.163267/wasm/resident/resident.test.mjs:72:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      {
+    +   interactions: 476,
+    +   outputLength: 3260
+    -   interactions: 0,
+    -   outputLength: 0
+      }
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    outputLength: 0
+    interactions: 0
+  actual:
+    outputLength: 3260
+    interactions: 476
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/travis/.cache/resident-tmp/resident-controls.163267/wasm/resident/resident.test.mjs:79:12)
+    async Test.run (node:internal/test_runner/test:1113:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:788:7)
+  ...
+# Subtest: X1 · 26 distinct terms on a pool of 4 each come back to their own requester
+not ok 4 - X1 · 26 distinct terms on a pool of 4 each come back to their own requester
+  ---
+  duration_ms: 25.78439
+  type: 'test'
+  location: '/home/travis/.cache/resident-tmp/resident-controls.163267/wasm/resident/resident.test.mjs:84:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    1 !== 4
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 4
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/travis/.cache/resident-tmp/resident-controls.163267/wasm/resident/resident.test.mjs:90:65)
+    async Test.run (node:internal/test_runner/test:1113:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:788:7)
+  ...
+# Subtest: E1 · pre-dispatch refusals create no job and touch no worker
+ok 5 - E1 · pre-dispatch refusals create no job and touch no worker
+  ---
+  duration_ms: 4.286135
+  type: 'test'
+  ...
+# Subtest: D1 · the deadline terminates a real noncooperating guest, the exit is confirmed, and the pool heals with a real worker
+ok 6 - D1 · the deadline terminates a real noncooperating guest, the exit is confirmed, and the pool heals with a real worker
+  ---
+  duration_ms: 286.177617
+  type: 'test'
+  ...
+# Subtest: C1 · a queued job is cancelled without ever reaching a worker; the running job completes
+ok 7 - C1 · a queued job is cancelled without ever reaching a worker; the running job completes
+  ---
+  duration_ms: 17.603799
+  type: 'test'
+  ...
+# Subtest: C2 · cancelling a running job terminates its worker (observed exiting), confirms the exit and replaces it
+ok 8 - C2 · cancelling a running job terminates its worker (observed exiting), confirms the exit and replaces it
+  ---
+  duration_ms: 65.765141
+  type: 'test'
+  ...
+# Subtest: Q1 · the queue is bounded: beyond maxQueue a request is refused busy, and close cancels what waited
+ok 9 - Q1 · the queue is bounded: beyond maxQueue a request is refused busy, and close cancels what waited
+  ---
+  duration_ms: 19.933999
+  type: 'test'
+  ...
+# Subtest: W1 · a worker that exits without replying is a typed failure with a confirmed exit, and is replaced
+ok 10 - W1 · a worker that exits without replying is a typed failure with a confirmed exit, and is replaced
+  ---
+  duration_ms: 31.539779
+  type: 'test'
+  ...
+# Subtest: L1 · a reply that arrives after the deadline expired is a deadline, even when the timer was delayed
+ok 11 - L1 · a reply that arrives after the deadline expired is a deadline, even when the timer was delayed
+  ---
+  duration_ms: 5.704464
+  type: 'test'
+  ...
+# Subtest: R1 · a reply carrying a retired or foreign job id changes nothing; only the live id settles the job
+ok 12 - R1 · a reply carrying a retired or foreign job id changes nothing; only the live id settles the job
+  ---
+  duration_ms: 0.512728
+  type: 'test'
+  ...
+# Subtest: U1 · an unconfirmed exit is indeterminate, shrinks the pool and is not described as replaced
+ok 13 - U1 · an unconfirmed exit is indeterminate, shrinks the pool and is not described as replaced
+  ---
+  duration_ms: 5.458239
+  type: 'test'
+  ...
+# Subtest: M1 · a substituted module is refused before compilation
+ok 14 - M1 · a substituted module is refused before compilation
+  ---
+  duration_ms: 0.638926
+  type: 'test'
+  ...
+# Subtest: P1 · 200 jobs over a pool of 4: every result a candidate on a fresh instance, the workers accounting for all of them
+not ok 15 - P1 · 200 jobs over a pool of 4: every result a candidate on a fresh instance, the workers accounting for all of them
+  ---
+  duration_ms: 26.576465
+  type: 'test'
+  location: '/home/travis/.cache/resident-tmp/resident-controls.163267/wasm/resident/resident.test.mjs:229:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      {
+    +   interactions: 61,
+    +   outputLength: 113
+    -   interactions: 0,
+    -   outputLength: 0
+      }
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    outputLength: 0
+    interactions: 0
+  actual:
+    outputLength: 113
+    interactions: 61
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/travis/.cache/resident-tmp/resident-controls.163267/wasm/resident/resident.test.mjs:234:110)
+    async Test.run (node:internal/test_runner/test:1113:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:788:7)
+  ...
+1..15
+# tests 15
+# suites 0
+# pass 11
+# fail 4
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 617.332564
