@@ -9,10 +9,16 @@ from the C step. The verdict per pair is film-equal AND state-equal on every epo
 scenario, and for every spinner world seeded random scenarios (random rotors biased to the lane extremes, random
 resets, random initial faults) over more epochs than any counter's period.
 
-`--controls`: eleven textual mutants of the emitter, each applied to a copy loaded as a separate module; the same
-pairs are folded and compared with the cached references; a mutant is CAUGHT at the first (world, scenario, epoch)
-whose film diverges. A mutant nothing catches fails the battery -- it means a case is missing, not that the mutant is
-harmless. `--quick` skips ic_ref on the 9.2 MB demo epochs (ic32 still runs there)."""
+`--controls`: textual mutants -- twelve of the emitter and two of the fold's plumbing -- each applied to a copy loaded as
+a separate module; EVERY pair is folded under every mutant and compared with the cached references, so the record says
+which worlds catch a mutant, not only that one did. A mutant nothing catches fails the battery -- it means a case is
+missing, not that the mutant is harmless; and the three mutants added with the 2026-09-18 widening must be caught ONLY by
+the worlds that widening added (a widening whose mutant an older world already catches has not widened anything).
+`--quick` skips ic_ref on the 9.2 MB demo epochs (ic32 still runs there) and folds one fuzz seed.
+
+Widened 2026-09-18 (afternoon): two mailbox worlds with `~~` routes (one delivering, one overflowing its capacity), and a
+spinner at w=33 -- the first lane width over ic32's 16 MiB stdin buffer, reduced through ic32's file mode (`fold.ic32_reparse`)
+and, on its demo scenario, ic_ref (34 s per epoch on this laptop)."""
 import argparse
 import importlib.util
 import json
@@ -30,6 +36,11 @@ SB, O, P = F.SB, F.O, F.P
 SC = SB.SC
 
 PROFILE = "profile forge.world.core.v1\n\n"
+
+
+_MAILBOX_BASE = ("[pulser:p0](every 2){sig_out}\n[relay:r0]{sig_in, sig_out}\n[spinner:sp](w=8, n=4, rotor=quarter_turn_z, configurable){sig_in, socket}\n"
+                 "[orb:ob]{pose}\n[pulser:p1](once at 2){sig_out}\n[pulser:p2](once at 3){sig_out}\n[door:d0]{sig_in}\n")
+_MAILBOX_EDGES = "\n[pulser:p0] --sig--> [relay:r0]\n[relay:r0] --sig--> [spinner:sp]\n[spinner:sp] --socket--> [orb:ob]\n[pulser:p1] --sig--> [door:d0]\n"
 
 
 def chain(n):
@@ -53,9 +64,21 @@ WORLDS = {
     "once-at-5": PROFILE + "[pulser:p1](once at 5){sig_out}\n[relay:r0]{sig_in, sig_out}\n[door:d0]{sig_in}\n\n[pulser:p1] --sig--> [relay:r0]\n[relay:r0] --sig--> [door:d0]\n",
     "fanout": PROFILE + "[pulser:p0](every 2){sig_out}\n[pulser:p1](every 3, phase 1){sig_out}\n[relay:r0]{sig_in, sig_out}\n[spinner:sp](w=8, n=4, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:ob]{pose}\n[door:d0]{sig_in}\n[door:d1]{sig_in}\n\n[pulser:p0] --sig--> [relay:r0]\n[relay:r0] --sig--> [spinner:sp]\n[relay:r0] --sig--> [door:d0]\n[pulser:p1] --sig--> [door:d1]\n[spinner:sp] --socket--> [orb:ob]\n",
     "two-spinners": PROFILE + "[pulser:p0](every 2){sig_out}\n[pulser:p1](every 3){sig_out}\n[spinner:s1](w=8, n=4, rotor=quarter_turn_z, configurable){sig_in, socket}\n[spinner:s2](w=12, n=6, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:o1]{pose}\n[orb:o2]{pose}\n\n[pulser:p0] --sig--> [spinner:s1]\n[pulser:p1] --sig--> [spinner:s2]\n[spinner:s1] --socket--> [orb:o1]\n[spinner:s2] --socket--> [orb:o2]\n",
+    # ---- widened 2026-09-18 (afternoon). A mailbox is claim state, not world state (D8: it contributes nothing physical),
+    # so the compiled STEP never sees it; what these worlds admit is the compiled FOLD's plumbing -- the route claims
+    # `_script_for` folds in and the mailbox block `film_hash_v7` renders -- against the production loop's. A route's
+    # source must be a `once` pulser; its Send is minted under the reserved writer 15.
+    "mailbox-routes": PROFILE + _MAILBOX_BASE + "[mailbox:mb](w=8, cap=2){}\n" + _MAILBOX_EDGES + "[p1] ~~msg~~> [mb] (body=1.2.3.4)\n[p2] ~~late~~> [mb] (body=0.0.0.255)\n",
+    "mailbox-overflow": PROFILE + _MAILBOX_BASE + "[mailbox:mb](w=8, cap=1){}\n" + _MAILBOX_EDGES + "[p1] ~~a~~> [mb] (body=1.2.3.4)\n[p1] ~~b~~> [mb] (body=5.6.7.8)\n",
+    # The first lane width over 32: its epoch term is 39 MB, over ic32's 16 MiB stdin buffer, so the calculus runs through
+    # ic32's file mode (`-reparse`, the same text) and ic_ref on the demo scenario. Lanes to 2^33 make the i128 product
+    # law observable: an i64 product wraps here and nowhere else in the battery.
+    "spinner-w33-n16": PROFILE + "[pulser:p0](every 2){sig_out}\n[spinner:sp](w=33, n=16, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:ob]{pose}\n\n[pulser:p0] --sig--> [spinner:sp]\n[spinner:sp] --socket--> [orb:ob]\n",
 }
 NATIVE_WORLDS = ("golden-demo", "chain30", "spinner-w16-n8-fixed")   # the calculus twin runs on ic32 here
 LARGE_WORLDS = ("golden-demo", "spinner-w16-n8-fixed")                # ~9 MB epoch terms: ic32 is the reference; ic_ref only on the demo scenario
+WIDE_WORLDS = ("spinner-w33-n16",)                                    # > 16 MiB epoch terms: ic32 -reparse is the reference and the twin; ic_ref only on the demo scenario
+MAILBOX_WORLDS = ("mailbox-routes", "mailbox-overflow")
 FUZZ_SEEDS = (20260918, 20260919, 20260920)
 FUZZ_EPOCHS = 24
 
@@ -64,6 +87,10 @@ def random_scenario(view, sem, seed, epochs=FUZZ_EPOCHS):
     rng = random.Random(seed)
     spins, orbs = sorted(view.spinners), list(view.orbs)
     seq, eps = 0, []
+    # writer_id and sequence are 4-bit in ScenarioV1; writer 15 is `WC.ROUTE_WRITER_ID`, reserved for a world's own
+    # routes, and a scenario writing under it is refused against a route-bearing world -- so writers run 1..14 (a
+    # scenario here never reaches seq 224, where the old `% 15` would first have minted writer 15; the fuzz digests of
+    # the 2026-09-18 morning record are unchanged).
 
     def lane(w):
         r = rng.random()
@@ -77,12 +104,12 @@ def random_scenario(view, sem, seed, epochs=FUZZ_EPOCHS):
             if rng.random() < 0.45:
                 seq += 1
                 w = view.spinners[s][0]
-                claims.append({"writer_id": 1 + (seq // 16) % 15, "sequence": seq % 16, "operation": "SetRotor", "target": s,
+                claims.append({"writer_id": 1 + (seq // 16) % 14, "sequence": seq % 16, "operation": "SetRotor", "target": s,
                                "payload": {"rotor": [lane(w) for _ in range(4)]}})
         for o in orbs:
             if rng.random() < 0.2:
                 seq += 1
-                claims.append({"writer_id": 1 + (seq // 16) % 15, "sequence": seq % 16, "operation": "ResetFault", "target": o, "payload": {}})
+                claims.append({"writer_id": 1 + (seq // 16) % 14, "sequence": seq % 16, "operation": "ResetFault", "target": o, "payload": {}})
         eps.append({"epoch": ep, "label": "fuzz %d" % ep, "claims": claims})
     return {"scenario_version": SC.SCENARIO_VERSION, "world_semantic_id": sem,
             "initial_runtime": {"numeric_faults": [o for o in orbs if rng.random() < 0.5]}, "epochs": eps}
@@ -126,9 +153,18 @@ def main():
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--controls", action="store_true")
     ap.add_argument("--out", default=os.path.join(HERE, "results-battery.json"))
+    ap.add_argument("--worlds", default=None, help="comma-separated subset of WORLDS (a development smoke, not the admission)")
     a = ap.parse_args()
+    if a.worlds:
+        keep = set(a.worlds.split(","))
+        unknown = keep - set(WORLDS)
+        if unknown:
+            raise SystemExit("unknown worlds: %s" % sorted(unknown))
+        for k in list(WORLDS):
+            if k not in keep:
+                del WORLDS[k]
     t_start = time.time()
-    receipt = {"measured": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "quick": a.quick, "loadavg": os.getloadavg(), "ic32_path": O.IC32,
+    receipt = {"measured": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "quick": a.quick, "worlds_subset": a.worlds, "loadavg": os.getloadavg(), "ic32_path": O.IC32,
                "pairs": [], "worlds": {}, "controls": None}
     refs = {}       # (name, label) -> reference films (production _run_traj, ic_ref)
     all_ok = True
@@ -137,18 +173,22 @@ def main():
         sem, dig, rows_c, cs = F.compiled_fold(src, scen)
         t_c = time.perf_counter() - t0
         t0 = time.perf_counter()
-        use_native_only = name in LARGE_WORLDS and (a.quick or label != "demo")
-        _, _, films_ref = F.reference_films(src, "ic32" if use_native_only else "ic_ref", scen)
+        wide = name in WIDE_WORLDS
+        native_name = "ic32-reparse" if wide else "ic32"
+        use_native_only = (name in LARGE_WORLDS or wide) and (a.quick or label != "demo")
+        _, _, films_ref = F.reference_films(src, native_name if use_native_only else "ic_ref", scen)
         t_ref = time.perf_counter() - t0
         refs[(name, label)] = films_ref
-        # the calculus twin for states (+ term sizes): ic32 on the native worlds, ic_ref elsewhere
-        reducer = O.native_reduce if name in NATIVE_WORLDS else O.ref_reduce
+        # the calculus twin for states (+ term sizes): ic32 on the native worlds, ic32's file mode on the wide ones, ic_ref elsewhere
         t0 = time.perf_counter()
-        _, _, rows_ic = F.ic_fold(src, reducer, scen)
+        if wide:
+            _, _, rows_ic = F.ic_fold(src, None, scen, split=F.ic32_reparse)
+        else:
+            _, _, rows_ic = F.ic_fold(src, O.native_reduce if name in NATIVE_WORLDS else O.ref_reduce, scen)
         t_ic = time.perf_counter() - t0
         v = compare(name, label, rows_c, films_ref, rows_ic)
-        if name in NATIVE_WORLDS and not use_native_only:
-            _, _, films_nat = F.reference_films(src, "ic32", scen)
+        if (name in NATIVE_WORLDS or wide) and not use_native_only:
+            _, _, films_nat = F.reference_films(src, native_name, scen)
             v["films_equal_ic32"] = films_nat == films_ref and len(films_nat) == len(rows_c)
             if not v["films_equal_ic32"]:
                 all_ok = False
@@ -156,7 +196,8 @@ def main():
                   "compiled_step_us_p50": round(st.median(r["step_s"] for r in rows_c) * 1e6, 2),
                   "ic_step_s_p50": round(st.median(r["step_s"] for r in rows_ic), 4),
                   "ic_reduce_s_p50": round(st.median(r["reduce_s"] for r in rows_ic), 4),
-                  "ic_reducer": "ic32" if name in NATIVE_WORLDS else "ic_ref",
+                  "ic_reducer": "ic32-reparse" if wide else ("ic32" if name in NATIVE_WORLDS else "ic_ref"),
+                  "reference": native_name if use_native_only else "ic_ref",
                   "wall_s": {"compiled_fold": round(t_c, 3), "reference_fold": round(t_ref, 3), "ic_twin_fold": round(t_ic, 3)}})
         ok = v["films_equal"] and v["states_equal"] and v.get("films_equal_ic32", True)
         all_ok &= ok
@@ -170,8 +211,8 @@ def main():
 
     if a.controls:
         receipt["controls"] = run_controls(refs, a.quick)
-        caught = all(c["caught"] for c in receipt["controls"])
-        print("CONTROLS:", "ALL CAUGHT" if caught else "A MUTANT SURVIVED")
+        caught = all(c["caught"] and c["as_expected"] for c in receipt["controls"])
+        print("CONTROLS:", "ALL CAUGHT, EACH BY THE WORLDS EXPECTED" if caught else "A MUTANT SURVIVED OR WAS CAUGHT BY THE WRONG WORLD")
         all_ok &= caught
     receipt["loadavg_after"] = os.getloadavg()
     with open(a.out, "w") as f:
@@ -181,6 +222,7 @@ def main():
 
 
 # ----------------------------------------------------------------------------------------------- mutants
+# (name, file, old, new). The 2026-09-18 widening's three are listed last with the worlds that alone may catch them.
 MUTANTS = [
     ("react-before-commit", "rot_forge(%d, %d, eff, old_pose, &out[%d])", "rot_forge(%d, %d, old_rotor, old_pose, &out[%d])"),
     ("reset-ignored", "const int fbase = ctl[%d] ? 0 : (int)st[%d];", "const int fbase = (ctl[%d], (int)st[%d]);"),
@@ -194,44 +236,77 @@ MUTANTS = [
     ("fault-not-sticky", "out[%d] = fbase | ov; /* sticky fault */", "out[%d] = ov; /* sticky fault */"),
     ("react-without-fire", 'emit("    if (sel) { /* REACT over the committed rotor */")', 'emit("    if (1) { /* REACT over the committed rotor */")'),
 ]
+MUTANTS = [(n, "emit_c.py", o, w) for n, o, w in MUTANTS]
+# The widening's mutants. `narrow-product-i64` forms each rotor*pose product in 64 bits (wrapping, deterministically, via
+# uint64) -- exact for every lane under 2^31.5, so no world of the morning battery can see it; `film-without-mailboxes`
+# renders the film without the world's mailbox table; `script-without-routes` folds the scenario's claims without the
+# world's own route Sends. The last two mutate the FOLD, whose plumbing is what a mailbox world admits.
+WIDENING_MUTANTS = [
+    ("narrow-product-i64", "emit_c.py",
+     "acc += (i128)HAM_SG[c][k] * (sx(rotor[HAM_I[c][k]], w) * sx(pose[HAM_J[c][k]], w)); /* i128 products */",
+     "acc += (i128)HAM_SG[c][k] * (i64)((uint64_t)sx(rotor[HAM_I[c][k]], w) * (uint64_t)sx(pose[HAM_J[c][k]], w)); /* i64 products */",
+     WIDE_WORLDS),
+    ("film-without-mailboxes", "fold.py", "state=claim, mailboxes=seams.film_mailboxes)", "state=claim, mailboxes=None)", MAILBOX_WORLDS),
+    ("script-without-routes", "fold.py", "initial_faults, script = SB._script_for(prog, scen)", "initial_faults, script = SB.SC.scenario_to_script(scen)", MAILBOX_WORLDS),
+]
 
 
-def load_mutant(name, old, new):
-    src = open(os.path.join(HERE, "emit_c.py")).read()
+def load_mutant(name, fname, old, new):
+    """A copy of `fname` with `old` -> `new` (exactly once, else refused), loaded as its own module. A mutant of fold.py
+    imports the unmutated emit_c; a mutant of emit_c.py is installed into the live fold as its `CompiledStep`."""
+    src = open(os.path.join(HERE, fname)).read()
     if src.count(old) != 1:
-        raise RuntimeError("mutant %s: pattern found %d times, refusing" % (name, src.count(old)))
+        raise RuntimeError("mutant %s: pattern found %d times in %s, refusing" % (name, src.count(old), fname))
     path = os.path.join(os.path.expanduser("~/.cache/trvm-compiled"), "mutant_%s.py" % name.replace("-", "_"))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
         f.write(src.replace(old, new))
-    spec = importlib.util.spec_from_file_location("emit_c_mutant_" + name.replace("-", "_"), path)
+    spec = importlib.util.spec_from_file_location("mutant_" + name.replace("-", "_"), path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
 
 
 def run_controls(refs, quick):
+    """Every mutant over EVERY pair: the record carries the full set of catching worlds, the first catch, and whether a
+    pair was caught by a film divergence or by a typed refusal raised inside the fold (a refusal is a catch: the mutant
+    could not produce a film at all). The widening's mutants must be caught by their own worlds and by no other."""
     original = F.CompiledStep
     results = []
     plist = pairs(quick)
-    for name, old, new in MUTANTS:
-        mod = load_mutant(name, old, new)
-        F.CompiledStep = mod.CompiledStep
-        caught_at, folded = None, 0
+    for name, fname, old, new, *only in MUTANTS + WIDENING_MUTANTS:
+        only = only[0] if only else None
+        mod = load_mutant(name, fname, old, new)
+        fold_fn = F.compiled_fold
+        if fname == "emit_c.py":
+            F.CompiledStep = mod.CompiledStep
+        else:
+            fold_fn = mod.compiled_fold
+        first, catches, folded = None, [], 0
         try:
             for wname, src, label, scen in plist:
-                _, _, rows_c, _ = F.compiled_fold(src, scen)
                 folded += 1
+                try:
+                    _, _, rows_c, _ = fold_fn(src, scen)
+                except Exception as e:                      # a typed refusal inside the fold: the mutant made no film
+                    hit = {"world": wname, "scenario": label, "epoch": None, "kind": "refused", "error": "%s: %s" % (type(e).__name__, str(e)[:120])}
+                    catches.append(hit)
+                    first = first or hit
+                    continue
                 for r, f in zip(rows_c, refs[(wname, label)]):
                     if r["film"] != f:
-                        caught_at = {"world": wname, "scenario": label, "epoch": r["t"]}
+                        hit = {"world": wname, "scenario": label, "epoch": r["t"], "kind": "film"}
+                        catches.append(hit)
+                        first = first or hit
                         break
-                if caught_at:
-                    break
         finally:
             F.CompiledStep = original
-        results.append({"mutant": name, "caught": caught_at is not None, "caught_at": caught_at, "pairs_folded_before_catch": folded})
-        print("control=%-26s %s %s" % (name, "CAUGHT" if caught_at else "NOT CAUGHT", json.dumps(caught_at) if caught_at else "(%d pairs folded)" % folded), flush=True)
+        worlds = sorted({c["world"] for c in catches})
+        ok = bool(catches) and (only is None or (set(worlds) <= set(only)))
+        results.append({"mutant": name, "file": fname, "caught": bool(catches), "caught_at": first, "caught_by_worlds": worlds,
+                        "caught_pairs": len(catches), "pairs_folded": folded, "only_by": list(only) if only else None, "as_expected": ok})
+        print("control=%-26s %s %s  by %s%s" % (name, "CAUGHT" if catches else "NOT CAUGHT", json.dumps(first) if first else "(%d pairs folded)" % folded,
+                                              worlds, "" if ok else ("  ** NOT AS EXPECTED (only %s may catch this)" % list(only) if only else "  ** NOT CAUGHT")), flush=True)
     return results
 
 

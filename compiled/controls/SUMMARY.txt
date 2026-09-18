@@ -1,14 +1,17 @@
-# battery.py --controls, 2026-09-18T08:54:22-0500, 41 pairs, all_agree=True
-control=react-before-commit        CAUGHT {"world": "golden-demo", "scenario": "fuzz-20260918", "epoch": 6}
-control=reset-ignored              CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 4}
-control=floor-shift                CAUGHT {"world": "golden-demo", "scenario": "fuzz-20260918", "epoch": 6}
-control=no-saturation              CAUGHT {"world": "golden-demo", "scenario": "fuzz-20260918", "epoch": 8}
-control=wire-cur-stale             CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 1}
-control=relay-hot-from-cur         CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 3}
-control=once-no-latch              CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 4}
-control=onehot-phase-off-by-one    CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 1}
-control=binary-phase-off-by-one    CAUGHT {"world": "binary-40-phase-3", "scenario": "demo", "epoch": 2}
-control=fault-not-sticky           CAUGHT {"world": "golden-demo", "scenario": "fuzz-20260919", "epoch": 4}
-control=react-without-fire         CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 1}
+# battery.py --controls, 2026-09-18T10:23:10-0500, 53 pairs, all_agree=True -- every mutant over every pair; 'by' = the worlds whose films diverged
+control=react-before-commit        CAUGHT {"world": "golden-demo", "scenario": "fuzz-20260918", "epoch": 6}  by fanout,golden-demo,mailbox-overflow,mailbox-routes,spinner-w33-n16,spinner-w4-n2,spinner-w8-n4,two-spinners
+control=reset-ignored              CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 4}  by fanout,golden-demo,mailbox-overflow,mailbox-routes,spinner-w16-n8-fixed,spinner-w33-n16,spinner-w4-n2,spinner-w8-n4,two-spinners
+control=floor-shift                CAUGHT {"world": "golden-demo", "scenario": "fuzz-20260918", "epoch": 6}  by fanout,golden-demo,mailbox-overflow,mailbox-routes,spinner-w16-n8-fixed,spinner-w4-n2,spinner-w8-n4,two-spinners
+control=no-saturation              CAUGHT {"world": "golden-demo", "scenario": "fuzz-20260918", "epoch": 8}  by fanout,golden-demo,mailbox-overflow,mailbox-routes,spinner-w33-n16,spinner-w4-n2,spinner-w8-n4,two-spinners
+control=wire-cur-stale             CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 1}  by binary-40-phase-3,chain10,chain120,chain30,fanout,golden-demo,mailbox-overflow,mailbox-routes,once-at-5,pulser-door,pulser-relay,spinner-w16-n8-fixed,spinner-w33-n16,spinner-w4-n2,spinner-w8-n4,two-spinners
+control=relay-hot-from-cur         CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 3}  by binary-40-phase-3,chain10,chain120,chain30,fanout,golden-demo,mailbox-overflow,mailbox-routes,once-at-5
+control=once-no-latch              CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 4}  by golden-demo,mailbox-overflow,mailbox-routes,once-at-5,pulser-door
+control=onehot-phase-off-by-one    CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 1}  by chain10,chain120,chain30,fanout,golden-demo,mailbox-overflow,mailbox-routes,pulser-relay,spinner-w16-n8-fixed,spinner-w33-n16,spinner-w4-n2,spinner-w8-n4,two-spinners
+control=binary-phase-off-by-one    CAUGHT {"world": "binary-40-phase-3", "scenario": "demo", "epoch": 2}  by binary-40-phase-3
+control=fault-not-sticky           CAUGHT {"world": "golden-demo", "scenario": "fuzz-20260919", "epoch": 4}  by fanout,golden-demo,mailbox-overflow,mailbox-routes,spinner-w16-n8-fixed,spinner-w33-n16,spinner-w4-n2,spinner-w8-n4,two-spinners
+control=react-without-fire         CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 1}  by fanout,golden-demo,mailbox-overflow,mailbox-routes,spinner-w16-n8-fixed,spinner-w33-n16,spinner-w4-n2,spinner-w8-n4,two-spinners
+control=narrow-product-i64         CAUGHT {"world": "spinner-w33-n16", "scenario": "fuzz-20260918", "epoch": 8}  by spinner-w33-n16  only_by=spinner-w33-n16 as_expected=True
+control=film-without-mailboxes     CAUGHT {"world": "mailbox-routes", "scenario": "demo", "epoch": 1}  by mailbox-overflow,mailbox-routes  only_by=mailbox-routes,mailbox-overflow as_expected=True
+control=script-without-routes      CAUGHT {"world": "mailbox-routes", "scenario": "demo", "epoch": 2}  by mailbox-overflow,mailbox-routes  only_by=mailbox-routes,mailbox-overflow as_expected=True
 ---
-ALL CAUGHT
+ALL CAUGHT, EACH BY THE WORLDS EXPECTED
