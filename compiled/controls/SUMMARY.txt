@@ -1,0 +1,14 @@
+# battery.py --controls, 2026-09-18T08:54:22-0500, 41 pairs, all_agree=True
+control=react-before-commit        CAUGHT {"world": "golden-demo", "scenario": "fuzz-20260918", "epoch": 6}
+control=reset-ignored              CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 4}
+control=floor-shift                CAUGHT {"world": "golden-demo", "scenario": "fuzz-20260918", "epoch": 6}
+control=no-saturation              CAUGHT {"world": "golden-demo", "scenario": "fuzz-20260918", "epoch": 8}
+control=wire-cur-stale             CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 1}
+control=relay-hot-from-cur         CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 3}
+control=once-no-latch              CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 4}
+control=onehot-phase-off-by-one    CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 1}
+control=binary-phase-off-by-one    CAUGHT {"world": "binary-40-phase-3", "scenario": "demo", "epoch": 2}
+control=fault-not-sticky           CAUGHT {"world": "golden-demo", "scenario": "fuzz-20260919", "epoch": 4}
+control=react-without-fire         CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 1}
+---
+ALL CAUGHT
