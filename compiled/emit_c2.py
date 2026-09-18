@@ -8,7 +8,9 @@ LAWS of v1 -- the clock/wire/door/relay laws of `compile_step_v6`, COMMIT-then-R
 as the Bend v2 did, with 64-bit words: positions are assigned along each chain (`emit_bend2.signal_layout`) so the two wire
 laws are one masked shift per (source word, target word, displacement) run and `cur' = nxt` a word copy. The MAC is v1's.
 Pointers are `restrict`; the compiler flags are part of the identity (`TRVM_CFLAGS`, default `-O2`), because a build's
-flags change the machine code that is being admitted.
+flags change the machine code that is being admitted. The MAC is specialised by lane width: for w <= 31 every product
+|a*b| <= 2^(2w-2) and the four-term accumulator |acc| <= 2^(2w) <= 2^62 fit int64 exactly, so the row runs in 64-bit
+arithmetic (`mac_row64`); wider spinners keep the i128 row (`mac_row128`). Same laws, same shift, same saturation.
 
 The vector on the wire is the PACKED one (counters, CUR words, NXT words, poses, faults, rotors); the battery speaks v1's
 slot vector, packed and unpacked on the Python side by the same layout function the emitter uses (word = 64). Identity:
@@ -54,7 +56,7 @@ def emit_step_c2(view):
     emit("static const int8_t HAM_SG[4][4] = {%s};" % ", ".join("{%s}" % ", ".join(str(sg) for sg, _, _ in row) for row in HAMILTON))
     emit("static const int8_t HAM_I[4][4] = {%s};" % ", ".join("{%s}" % ", ".join(str(i) for _, i, _ in row) for row in HAMILTON))
     emit("static const int8_t HAM_J[4][4] = {%s};" % ", ".join("{%s}" % ", ".join(str(j) for _, _, j in row) for row in HAMILTON))
-    emit("static inline int mac_row(int w, int n, int c, const i64 *rotor, const i64 *pose, i64 *out) {")
+    emit("static inline int mac_row128(int w, int n, int c, const i64 *rotor, const i64 *pose, i64 *out) {")
     emit("  i128 acc = 0;")
     emit("  for (int k = 0; k < 4; k++) acc += (i128)HAM_SG[c][k] * (sx(rotor[HAM_I[c][k]], w) * sx(pose[HAM_J[c][k]], w)); /* i128 products */")
     emit("  i128 q = acc >= 0 ? (acc >> n) : -((-acc) >> n);")
@@ -64,9 +66,22 @@ def emit_step_c2(view):
     emit("  *out = (i64)(s & (((i128)1 << w) - 1));")
     emit("  return ov;")
     emit("}")
+    emit("/* w <= 31: |a*b| <= 2^(2w-2) and |acc| <= 2^(2w) <= 2^62 fit i64 exactly -- the same law in 64-bit arithmetic */")
+    emit("static inline i64 sx64(i64 v, int w) { return v >= ((i64)1 << (w - 1)) ? v - ((i64)1 << w) : v; }")
+    emit("static inline int mac_row64(int w, int n, int c, const i64 *rotor, const i64 *pose, i64 *out) {")
+    emit("  i64 acc = 0;")
+    emit("  for (int k = 0; k < 4; k++) acc += (i64)HAM_SG[c][k] * (sx64(rotor[HAM_I[c][k]], w) * sx64(pose[HAM_J[c][k]], w)); /* i64 products */")
+    emit("  i64 q = acc >= 0 ? (acc >> n) : -((-acc) >> n);")
+    emit("  i64 lo = -((i64)1 << (w - 1)), hi = ((i64)1 << (w - 1)) - 1;")
+    emit("  int ov = !(lo <= q && q <= hi);")
+    emit("  i64 s = q < lo ? lo : (q > hi ? hi : q);")
+    emit("  *out = s & (((i64)1 << w) - 1);")
+    emit("  return ov;")
+    emit("}")
     emit("static inline int rot_forge(int w, int n, const i64 *rotor, const i64 *pose, i64 *out) {")
     emit("  int fault = 0;")
-    emit("  for (int c = 0; c < 4; c++) fault |= mac_row(w, n, c, rotor, pose, &out[c]);")
+    emit("  if (w <= 31) { for (int c = 0; c < 4; c++) fault |= mac_row64(w, n, c, rotor, pose, &out[c]); }")
+    emit("  else { for (int c = 0; c < 4; c++) fault |= mac_row128(w, n, c, rotor, pose, &out[c]); }")
     emit("  return fault;")
     emit("}")
     emit("int state_width(void) { return %d; }" % pw)

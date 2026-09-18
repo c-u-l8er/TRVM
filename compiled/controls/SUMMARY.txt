@@ -1,7 +1,7 @@
-# battery.py --controls, 2026-09-18T10:23:10-0500, 53 pairs, all_agree=True -- every mutant over every pair; 'by' = the worlds whose films diverged
+# battery.py --controls, 2026-09-18T16:54:25-0500, 54 pairs, all_agree=True -- every mutant over every pair; 'by' = the worlds whose films diverged
 control=react-before-commit        CAUGHT {"world": "golden-demo", "scenario": "fuzz-20260918", "epoch": 6}  by fanout,golden-demo,mailbox-overflow,mailbox-routes,spinner-w33-n16,spinner-w4-n2,spinner-w8-n4,two-spinners
 control=reset-ignored              CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 4}  by fanout,golden-demo,mailbox-overflow,mailbox-routes,spinner-w16-n8-fixed,spinner-w33-n16,spinner-w4-n2,spinner-w8-n4,two-spinners
-control=floor-shift                CAUGHT {"world": "golden-demo", "scenario": "fuzz-20260918", "epoch": 6}  by fanout,golden-demo,mailbox-overflow,mailbox-routes,spinner-w16-n8-fixed,spinner-w4-n2,spinner-w8-n4,two-spinners
+control=floor-shift                CAUGHT {"world": "golden-demo", "scenario": "fuzz-20260918", "epoch": 6}  by fanout,golden-demo,mailbox-overflow,mailbox-routes,spinner-w16-n8-fixed,spinner-w33-n16,spinner-w4-n2,spinner-w8-n4,two-spinners
 control=no-saturation              CAUGHT {"world": "golden-demo", "scenario": "fuzz-20260918", "epoch": 8}  by fanout,golden-demo,mailbox-overflow,mailbox-routes,spinner-w33-n16,spinner-w4-n2,spinner-w8-n4,two-spinners
 control=wire-cur-stale             CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 1}  by binary-40-phase-3,chain10,chain120,chain30,fanout,golden-demo,mailbox-overflow,mailbox-routes,once-at-5,pulser-door,pulser-relay,spinner-w16-n8-fixed,spinner-w33-n16,spinner-w4-n2,spinner-w8-n4,two-spinners
 control=relay-hot-from-cur         CAUGHT {"world": "golden-demo", "scenario": "demo", "epoch": 3}  by binary-40-phase-3,chain10,chain120,chain30,fanout,golden-demo,mailbox-overflow,mailbox-routes,once-at-5

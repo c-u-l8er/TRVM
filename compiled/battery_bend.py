@@ -40,27 +40,16 @@ SB, O, P = F.SB, F.O, F.P
 EMITTERS = {"v1": ("emit_bend.py", EB.BendStep, EB.emit_step_bend), "v2": ("emit_bend2.py", EB2.BendStep2, lambda v: EB2.emit_step_bend2(v)[0]),
             "c2": ("emit_c2.py", EC2.CompiledStep2, lambda v: EC2.emit_step_c2(v)[0])}
 EMITTER = "v1"
-REFS = os.path.join(os.environ.get("TRVM_COMPILED_CACHE") or os.path.expanduser("~/.cache/trvm-compiled"), "refs")
 
 
 def reference(name, src, label, scen, quick):
-    """Production films under the C battery's reducer plan, cached by (sem, scenario digest, reducer)."""
+    """Production films under the C battery's reducer plan, through fold.cached_reference_films."""
     wide = name in B.WIDE_WORLDS
     native_name = "ic32-reparse" if wide else "ic32"
     use_native_only = (name in B.LARGE_WORLDS or wide) and (quick or label != "demo")
     reducer_name = native_name if use_native_only else "ic_ref"
-    prog, s = SB._resolve_scenario(src, scen)
-    key = hashlib.sha256(("%s\n%s\n%s" % (prog.semantic_artifact_id, SB.SC.scenario_digest(s), reducer_name)).encode()).hexdigest()
-    os.makedirs(REFS, exist_ok=True)
-    path = os.path.join(REFS, key + ".json")
-    if os.path.exists(path):
-        d = json.load(open(path))
-        return d["films"], reducer_name, True
-    t0 = time.perf_counter()
-    _, _, films = F.reference_films(src, reducer_name, scen)
-    with open(path, "w") as f:
-        json.dump({"world": name, "scenario": label, "reducer": reducer_name, "films": films, "wall_s": round(time.perf_counter() - t0, 3)}, f)
-    return films, reducer_name, False
+    films, cached = F.cached_reference_films(src, reducer_name, scen)
+    return films, reducer_name, cached
 
 
 def bend_fold(src, scen, step_cls=None):
@@ -191,8 +180,11 @@ MUTANTS_V2 = [
 MUTANTS_C2 = [
     ("react-before-commit", "rot_forge(%d, %d, eff, old_pose, &out[%d])", "rot_forge(%d, %d, old_rotor, old_pose, &out[%d])", "film"),
     ("reset-ignored", "const int fbase = ctl[%d] ? 0 : (int)st[%d];", "const int fbase = (ctl[%d], (int)st[%d]);", "film"),
-    ("floor-shift", "i128 q = acc >= 0 ? (acc >> n) : -((-acc) >> n);", "i128 q = acc >> n;", "film"),
-    ("no-saturation", "i128 s = q < lo ? lo : (q > hi ? hi : q);", "i128 s = q;", "film"),
+    ("floor-shift-128", "i128 q = acc >= 0 ? (acc >> n) : -((-acc) >> n);", "i128 q = acc >> n;", "film"),
+    ("no-saturation-128", "i128 s = q < lo ? lo : (q > hi ? hi : q);", "i128 s = q;", "film"),
+    ("floor-shift-64", "i64 q = acc >= 0 ? (acc >> n) : -((-acc) >> n);", "i64 q = acc >> n;", "film"),
+    ("no-saturation-64", "i64 s = q < lo ? lo : (q > hi ? hi : q);", "i64 s = q;", "film"),
+    ("wide-on-narrow-path", "if (w <= 31) { for", "if (w <= 63) { for", "film"),
     ("nxt-from-cur-words", 'const u64 n%d = (u64)st[%d]; /* NXT word %d */" % (k, nxt0 + k, k)', 'const u64 n%d = (u64)st[%d]; /* NXT word %d */" % (k, cur0 + k, k)', "film"),
     ("cur-not-advanced", 'out[%d] = st[%d]; /* CUR word %d <- NXT */" % (cur0 + k, nxt0 + k, k)', 'out[%d] = st[%d]; /* CUR word %d <- NXT */" % (cur0 + k, cur0 + k, k)', "film"),
     ("run-mask-dropped", 'parts.append("((n%d & 0x%xULL) %s %d)" % (sw, mask, "<<" if disp >= 0 else ">>", abs(disp)))', 'parts.append("(n%d %s %d)" % (sw, "<<" if disp >= 0 else ">>", abs(disp)))', "film"),
@@ -220,8 +212,18 @@ def load_mutant(name, old, new):
 
 def run_controls(refs, quick):
     results = []
-    # chain120 is skipped under mutants only: Bend's checker takes 211 s on its 485-slot pattern, per mutant; its laws are chain30's
-    plist = [(n, s, l, sc) for n, s, l, sc in B.pairs(quick) if n not in B.WIDE_WORLDS and n not in CONTROL_SKIP]
+    # a world the emitter refuses cannot be folded under a mutant; every admitted world is -- the wide world is what
+    # exercises the i128 path of the C step, and the first c2 control run without it let three mutants survive (2026-09-18).
+    # chain120 is skipped for Bend v1 only: its checker takes 211 s on the 485-slot pattern, per mutant; its laws are chain30's.
+    emit_fn = EMITTERS[EMITTER][2]
+    def admitted(name):
+        prog, _ = SB._resolve_scenario(B.WORLDS[name], None)
+        try:
+            emit_fn(P.plan_view(P.artifact_to_compile_plan_v1(prog.sealed_artifact)))
+            return True
+        except ValueError:
+            return False
+    plist = [(n, s, l, sc) for n, s, l, sc in B.pairs(quick) if admitted(n) and not (EMITTER == "v1" and n in CONTROL_SKIP)]
     for name, old, new, predicted in {"v1": MUTANTS, "v2": MUTANTS_V2, "c2": MUTANTS_C2}[EMITTER]:
         step_cls = load_mutant(name, old, new)
         first, catches, folded = None, [], 0

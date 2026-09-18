@@ -115,6 +115,32 @@ def random_scenario(view, sem, seed, epochs=FUZZ_EPOCHS):
             "initial_runtime": {"numeric_faults": [o for o in orbs if rng.random() < 0.5]}, "epochs": eps}
 
 
+def gentle_scenario(view, sem, seed, epochs=FUZZ_EPOCHS):
+    """A wide world's rotors near the unit, so the pose never saturates and the products carry remainders below 2^n.
+    Added 2026-09-18 (night) when the C step's MAC was split by width: on `spinner-w33-n16` the random scenarios' rotors
+    (up to 2^32) saturate the pose to +-2^32 in one reaction, after which every product is a multiple of 2^32 and a
+    floor shift is indistinguishable from the toward-zero one -- `floor-shift-128` survived until this scenario existed."""
+    rng = random.Random(seed)
+    spins, orbs = sorted(view.spinners), list(view.orbs)
+    seq, eps = 0, []
+    for ep in range(1, epochs + 1):
+        claims = []
+        for s in spins:
+            if rng.random() < 0.45:
+                seq += 1
+                w, n = view.spinners[s][0], view.spinners[s][1]
+                unit, full = 1 << n, 1 << w
+                claims.append({"writer_id": 1 + (seq // 16) % 14, "sequence": seq % 16, "operation": "SetRotor", "target": s,
+                               "payload": {"rotor": [(rng.randrange(-unit // 2, unit // 2 + 1) + (unit if l == 0 else 0)) % full for l in range(4)]}})
+        for o in orbs:
+            if rng.random() < 0.2:
+                seq += 1
+                claims.append({"writer_id": 1 + (seq // 16) % 14, "sequence": seq % 16, "operation": "ResetFault", "target": o, "payload": {}})
+        eps.append({"epoch": ep, "label": "gentle %d" % ep, "claims": claims})
+    return {"scenario_version": SC.SCENARIO_VERSION, "world_semantic_id": sem,
+            "initial_runtime": {"numeric_faults": []}, "epochs": eps}
+
+
 def pairs(quick):
     """[(world_name, src, scenario_label, scenario_or_None)]"""
     out = []
@@ -125,6 +151,8 @@ def pairs(quick):
         if view.spinners or any(view.counter_spec(r)[0] != "onehot" for r in view.pulsers):
             for seed in FUZZ_SEEDS[: (1 if quick else 3)]:
                 out.append((name, src, "fuzz-%d" % seed, random_scenario(view, prog.semantic_artifact_id, seed)))
+        if name in WIDE_WORLDS:
+            out.append((name, src, "gentle-%d" % FUZZ_SEEDS[0], gentle_scenario(view, prog.semantic_artifact_id, FUZZ_SEEDS[0])))
     return out
 
 
@@ -176,7 +204,7 @@ def main():
         wide = name in WIDE_WORLDS
         native_name = "ic32-reparse" if wide else "ic32"
         use_native_only = (name in LARGE_WORLDS or wide) and (a.quick or label != "demo")
-        _, _, films_ref = F.reference_films(src, native_name if use_native_only else "ic_ref", scen)
+        films_ref, _cached = F.cached_reference_films(src, native_name if use_native_only else "ic_ref", scen)
         t_ref = time.perf_counter() - t0
         refs[(name, label)] = films_ref
         # the calculus twin for states (+ term sizes): ic32 on the native worlds, ic32's file mode on the wide ones, ic_ref elsewhere

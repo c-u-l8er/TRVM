@@ -5,9 +5,9 @@ worlds; build ONE compiled backend for WRL worlds (Forge IR → C state machine)
 reference on every sealed world** (the compiled-home discipline of `FOUNDATION_LANE.md` §3b: the oracle exists before the
 home does); the 9.2 MB demo epoch as the acceptance test. This directory is that backend and its admission.
 
-Status: **BUILT and ADMITTED on this battery — 17 worlds, 53 (world, scenario) pairs, 983 epochs, film-equal AND
-state-equal on every one; 14 of 14 mutants caught, each by exactly the worlds expected. Development reading on the shared
-laptop.** The same evening, **Bend 2.0.4 was admitted as a fifth representation of the same worlds by the same oracle**
+Status: **BUILT and ADMITTED on this battery — 17 worlds, 54 (world, scenario) pairs, 1,007 epochs, film-equal AND
+state-equal on every one; 14 of 14 mutants caught, each by exactly the worlds expected (the 54th pair is the wide world's
+`gentle` scenario, §2d). Development reading on the shared laptop.** The same evening, **Bend 2.0.4 was admitted as a fifth representation of the same worlds by the same oracle**
 (§2c: 16 of 17 worlds, 49 pairs, 904 epochs; the 33-lane world refused; 12/12 mutants; 9–59× the C step per epoch), and the
 slowdown was then FIXED by a second representation (§2c.1: bit-packed signal words, a division-free MAC — the chains at
 0.3–0.5× the C step, the spinner worlds at 7–9×, admitted again on 49 pairs with 12/12 mutants), and **the C step got its
@@ -199,28 +199,43 @@ not pursued further. Widths: v1 admits 24, v2 admits 23, the C step 63.
 Bend v2 under the C step on chains said the C step had never had a performance pass, not that Bend was faster: v1 C gives
 every wire bit an int64 slot and an assignment. `emit_c2.py` keeps v1's laws and MAC and takes the same representation as
 Bend v2 with **64-bit words** (`emit_bend2.signal_layout` with word = 64: chain120's 485 slots are 9 words), `restrict`
-pointers, and **the compiler flags in the identity** (`cbknd2-` over sem, profile, flags and source; `TRVM_CFLAGS`, default
-`-O2`) because a build's flags change the machine code being admitted. **Admitted by the same oracle (`battery_bend.py
---emitter c2 --controls`, `results-c2-backend.json`): all 53 pairs including the 33-lane world, 983 epochs, 12/12 mutants**
-(v1's numeric and clock mutants, and the three representation mutants).
+pointers, **the compiler flags in the identity** (`cbknd2-` over sem, profile, flags and source; `TRVM_CFLAGS`, default
+`-O2`) because a build's flags change the machine code being admitted, and **the MAC specialised by lane width**: for
+w ≤ 31 every product and the four-term accumulator fit int64 exactly (|acc| ≤ 2^(2w) ≤ 2^62), so the row runs in 64-bit
+arithmetic; wider spinners keep the i128 row. **Admitted by the same oracle (`battery_bend.py --emitter c2 --controls`,
+`results-c2-backend.json`): all 54 pairs including the 33-lane world, 1,007 epochs, 15/15 mutants** — v1's clock mutants,
+the numeric mutants on EACH path (`floor-shift-64/-128`, `no-saturation-64/-128`), the path selector (`wide-on-narrow-path`:
+the i64 row taken at w=33 — caught by the wide world alone, at the same fuzz epoch as the C v1 battery's
+`narrow-product-i64`), and the three representation mutants.
 
-| world | C v1 `-O2` | C v1 `-O3 -march=native` | C v2 `-O2` | C v2 `-O3 -march=native` | Bend v2 |
+**The width split exposed a hole in the battery, and the hole was closed by a scenario, not by loosening a mutant.** The
+first c2 control run let three mutants survive because the control loop still excluded the 33-lane world (a rule inherited
+from the Bend runs, where it is refused); with the wide world folded, `floor-shift-128` STILL survived: at w=33 with n=16
+the random scenarios' rotors (up to 2^32) saturate the pose to ±2^32 within one reaction, after which every product is a
+multiple of 2^32, no remainder is ever left below 2^n, and a floor shift is indistinguishable from the toward-zero one. The
+`gentle-20260918` scenario (`battery.gentle_scenario`: rotors within ±2^(n-1) of the unit, no initial fault, 24 epochs) keeps
+the pose off saturation and catches it at epoch 8. Every wide world carries that scenario now (54 pairs), and the C v1
+battery was re-run over it the same night.
+
+| world | C v1 `-O2` | C v1 `-O3 -march=native` | C v2 `-O2` (packed, width-split MAC) | C v2 `-O3 -march=native` | Bend v2 |
 |---|---:|---:|---:|---:|---:|
-| chain120 | 0.073 µs | 0.067 µs | **0.0027 µs** | 0.0062 µs | 0.060 µs |
-| chain30 | 0.026 µs | 0.026 µs | **0.0020 µs** | 0.0060 µs | below resolution |
-| golden-demo (w=16) | 0.025 µs | **0.0145 µs** | 0.023 µs | 0.025 µs | 0.27 µs |
-| two-spinners | 0.042 µs | **0.020 µs** | 0.039 µs | 0.039 µs | 0.41 µs |
-| spinner-w8-n4 / mailbox-routes | 0.036 / 0.037 µs | 0.018 / 0.019 µs | 0.037 / 0.037 µs | 0.039 / 0.039 µs | 0.28 / 0.30 µs |
-| pulser-relay | 2.0 ns | 1.7 ns | 2.0 ns | 4.8 ns | below resolution |
+| chain120 | 0.068 µs | 0.067 µs | **0.0027 µs** | 0.0054 µs | 0.027 µs |
+| chain30 | 0.017 µs | 0.017 µs | **0.0014 µs** | 0.0044 µs | 0.012 µs |
+| golden-demo (w=16) | 0.026 µs | 0.0123 µs | **0.0146 µs** | 0.0150 µs | 0.18 µs |
+| two-spinners | 0.043 µs | 0.0188 µs | **0.0237 µs** | 0.0207 µs | 0.36 µs |
+| spinner-w8-n4 / mailbox-routes | 0.024 / 0.028 µs | 0.017 / 0.013 µs | **0.0145 / 0.0139 µs** | 0.012 / 0.013 µs | 0.19 / 0.20 µs |
+| pulser-relay | 1.5 ns | 1.5 ns | 1.4 ns | 3.3 ns | below resolution |
 
-(one run, same in-process K-epoch loop, K = 10^6 for C, every fold ending in the same state.) Two separate effects: **the
-packing is worth ~25× on the wired worlds** (chain120 27×, chain30 13×) and nothing on the spinner worlds, where the MAC
-is the cost; **`-O3 -march=native` is worth ~2× on the MAC** (the i128 products) and nothing — or a little worse, at the
-nanosecond scale where this run cannot tell — on the packed chains. The two do not stack in this run (c2 at -O3 reads the
-same as c2 at -O2 on the spinner worlds), which is recorded, not explained. After this pass the C step is 20–25× under
-Bend v2 on chains and 7–20× under it on spinner worlds, i.e. the ratio §2c.1 reported was the C step's missing pass, not
-Bend's ceiling. The flags variant is measured, not adopted: `-march=native` binds the `.so` to this CPU, and the battery's
-admission stays at `-O2` until a flags policy is ruled (the cache is per machine either way).
+(one run, same in-process K-epoch loop, K = 10^6 for C, every fold ending in the same state; the run before the width split
+had C v2 at 0.023 µs on the demo, i.e. equal to v1.) Three separate effects: **the packing is worth ~25× on the wired
+worlds** (chain120 25×, chain30 12×) and nothing on the spinner worlds; **the width-split MAC is worth ~1.8× on the spinner
+worlds** (the i128 products were the cost, and at w ≤ 31 they are exact in i64) and nothing on chains; **`-O3 -march=native`
+on v1 is worth the same ~2× as the width split** — it was the i128 codegen it improved — and nothing more on top of v2
+(c2 at -O3 reads as c2 at -O2 on the MAC worlds; on the packed chains it reads a little worse, at a nanosecond scale this
+run cannot resolve). After this pass the C step at plain `-O2` is 10–20× under Bend v2 on the spinner worlds and 10× under
+it on chains — the ratio §2c.1 reported was the C step's missing pass, not Bend's ceiling. The flags variant stays
+measured, not adopted: `-march=native` binds the `.so` to this CPU, and the battery's admission stays at `-O2` until a
+flags policy is ruled (the cache is per machine either way).
 
 Not widened: lane widths between 34 and 63 are emitted and unadmitted (no world in battery); width 64 is refused;
 `~~` routes with a source that is not a `once` pulser do not exist (the seal refuses them); recurring routes

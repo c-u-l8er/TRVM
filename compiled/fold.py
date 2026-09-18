@@ -109,6 +109,30 @@ def reference_films(src, reducer_name="ic_ref", scenario=None):
     return sem, dig, [r["film"] for r in rows]
 
 
+REFS = os.path.join(os.environ.get("TRVM_COMPILED_CACHE") or os.path.expanduser("~/.cache/trvm-compiled"), "refs")
+
+
+def cached_reference_films(src, reducer_name, scenario=None):
+    """`reference_films`, cached under `~/.cache/trvm-compiled/refs/` by (sem, scenario digest, reducer): the calculus's
+    production films cost ~45 min per full battery and are the same bytes whichever backend is being admitted.
+    Returns (films, cached?). The cache is written atomically."""
+    import json
+    prog, scen = SB._resolve_scenario(src, scenario)
+    key = hashlib.sha256(("%s\n%s\n%s" % (prog.semantic_artifact_id, SB.SC.scenario_digest(scen), reducer_name)).encode()).hexdigest()
+    os.makedirs(REFS, exist_ok=True)
+    path = os.path.join(REFS, key + ".json")
+    if os.path.exists(path):
+        return json.load(open(path))["films"], True
+    t0 = time.perf_counter()
+    _, _, films = reference_films(src, reducer_name, scenario)
+    tmp = path + ".tmp.%d" % os.getpid()
+    with open(tmp, "w") as f:
+        json.dump({"sem": prog.semantic_artifact_id, "scenario_digest": SB.SC.scenario_digest(scen), "reducer": reducer_name, "films": films,
+                   "wall_s": round(time.perf_counter() - t0, 3)}, f)
+    os.replace(tmp, path)
+    return films, False
+
+
 # ----------------------------------------------------------------------------------- ic32 file mode
 # ic32 reads a one-shot term from stdin into a fixed 16 MiB buffer; a spinner at w=33 lowers to a 39 MB step term, so its
 # epochs cannot reach ic32 that way. ic32's `-reparse STEP ARGS` mode reads the step from a file and, per epoch, a config
