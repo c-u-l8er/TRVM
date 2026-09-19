@@ -109,3 +109,31 @@ test('S4 · the stats frame reports the pool and the module digest; closing a co
     c.send({ id: 1, term: '*' }); assert.equal((await c.next()).output, '*');
   } finally { c.close(); }
 });
+
+// T3's transport, on this host: the same daemon behind a TCP port speaks the same frames, and a second client -- here a
+// second loopback connection, on a lab host it would be the LAN -- gets the same digest for the sealed world. `--port 0`
+// asks the kernel for a free port and the announce names the one it BOUND (it used to echo the requested "0"). No
+// guardian owns this daemon (it is started here as ssh would start it on a lab host), which is exactly why a remote
+// kind's lost daemon is stop_unconfirmed by construction.
+test('S5 · over TCP (--port 0): the announce names the bound port, the sealed world reduces to its digest, a queued cancel is honoured, the stats frame names the module', async () => {
+  const d = spawn(process.execPath, [new URL('./residentd.mjs', here).pathname, '--port', '0', '--bind', '127.0.0.1', '--pool', '1', '--max-queue', '2'], { stdio: ['ignore', 'pipe', 'inherit'] });
+  try {
+    const ann = await new Promise((res, rej) => { d.stdout.once('data', b => res(JSON.parse(b.toString().split('\n')[0]))); d.on('exit', c => rej(new Error('daemon exited ' + c))); });
+    const port = Number(ann.residentd.split(':')[1]);
+    assert.match(ann.residentd, /^127\.0\.0\.1:\d+$/); assert.ok(port > 0, 'the announce carries the port the kernel bound'); assert.equal(ann.ready, 1);
+    const id = identities['chain30-epoch-1'];
+    const c = await Conn.open({ host: '127.0.0.1', port });
+    try {
+      c.send({ id: 1, term: fixture(id.term_file) });
+      const r1 = await c.next();
+      assert.equal(r1.id, 1); assert.equal(r1.status, 'candidate'); assert.equal(sha(r1.output), id.payload_sha256);
+      assert.equal(r1.jobRetired, true); assert.equal(r1.workerExited, false);
+      c.send({ id: 2, term: fixture(id.term_file) }); c.send({ id: 3, term: fixture(id.term_file) }); c.send({ id: 3, cancel: true });
+      const got = {}; for (let i = 0; i < 2; i++) { const r = await c.next(); got[r.id] = r; }
+      assert.equal(got[3].status, 'cancelled'); assert.equal(got[2].status, 'candidate'); assert.equal(sha(got[2].output), id.payload_sha256);
+      c.send({ op: 'stats' });
+      const st = await c.next();
+      assert.equal(st.op, 'stats'); assert.equal(st.module_sha256, r1.module_sha256); assert.equal(st.pool, 1);
+    } finally { c.close(); }
+  } finally { d.kill('SIGKILL'); }
+});

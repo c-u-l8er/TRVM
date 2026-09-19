@@ -54,7 +54,7 @@ const server = createServer(sock => {
 const announce = where => console.log(JSON.stringify({ residentd: where, pool, maxQueue, pid: process.pid, module_sha256: host.digest, ready: host.stats().idle }));
 await host.ready(); // no connection is accepted before every worker has announced itself
 if (args.socket) { try { unlinkSync(args.socket); } catch {} server.listen(args.socket, () => announce(args.socket)); }
-else server.listen(Number(args.port ?? 7421), args.bind ?? '127.0.0.1', () => announce(`${args.bind ?? '127.0.0.1'}:${args.port ?? 7421}`));
+else server.listen(Number(args.port ?? 7421), args.bind ?? '127.0.0.1', () => announce(`${server.address().address}:${server.address().port}`));   // the port the kernel BOUND, so `--port 0` is usable
 
 const stop = async () => { server.close(); await host.close(); process.exit(0); };
 process.on('SIGTERM', stop); process.on('SIGINT', stop);

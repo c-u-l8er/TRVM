@@ -342,6 +342,32 @@ a law stated here is proved against Forge (the calculus twin in the fold is stil
 own laws (`fold.py`'s two mutants are the fold's). The task's record in Super (`dt_0087`) opens by itself when T10
 completes (`superlane/unblock.mjs`) and this section is what it will carry.
 
+### 2g. The compiled executor PROCESS, and the tests for what comes next (2026-09-19; T8's substrate half, T3's transport half)
+
+`executor.py` is the process the compiled `trvm.reduce` kind would run per job (`wek/b2/trvm/COMPILED_EXECUTOR_PROPOSAL.md`
+§3): `--request R.json --plan PLAN.json --control CONTROL.ic --state STATE.ic`, one JSON object on stdout. It never sees
+a term. In order: the input bound (plan ≤ 1 MiB, control + state ≤ 64 KiB), the three re-hashes against the request,
+`seal_compile_plan` (the plan must re-hash to the SemanticArtifactID it claims, D22, and that id must be the request's),
+the emitter (a width over 63 is `outside-shapes`), the object's identity (the `.so`'s sha is recorded beside it when
+built and a later mismatch is `stale-object`), Forge's decoders over the state text and a new `dec_config_bundle`
+(the inverse of `enc_config_bundle`: NoChange | SetRotor per controlling spinner, Keep | Reset per orb) — then ONE
+step and `show(parse(enc_state_v6(view, state')))`, the bytes `payload.py` measured to be ic32's own. **`executor_test.py`,
+13/13:** G1c the 30-relay world's epoch 1 → `nf_sha256 2318bd82…`, 3,260 B, byte-equal to the payload file the witness's
+golden receipt carries, `backend_id` the battery's; G2c the Golden demo's epoch 1 → `b755abdf…` (the computation the
+calculus kind refuses at 64 KiB); every epoch of both worlds folded THROUGH the process's own output and filmed equals
+the calculus's cached production films, epoch 1 being `08d6318a…` and `56a2980e…`; two processes, one identity; and the
+falsifiers F-P (a plan edited by one relay; a plan that claims another world), F-S (state, control), F-B (a corrupted
+object — corrupt a COPY and swap directory entries: truncating a mapped `.so` in-process is a SIGBUS, which the first
+version of this test did), F-W (w=64), F-Z (the bound), request-mismatch on each hash and on the kind, and the v2
+executor producing the same bytes under `cbknd2-`. Not built: the bridge kind, the receipt, the forward rule — those are
+T8 in Super, and their specification is parked as red ExUnit cases (`superlane/proposed/t8/`).
+
+**T3's transport half.** `residentd.mjs` behind TCP is proven by `residentd.test.mjs` S5: `--port 0 --bind 127.0.0.1`,
+the announce names the port the kernel BOUND (it used to echo the requested `0`; fixed), the sealed world reduces to
+its digest over the same 4-byte frames, a queued cancel is honoured, the stats frame names the module. No guardian
+owns such a daemon, which is the fact the remote kind's specification (`superlane/proposed/t3/`) is written around: a
+lost daemon is `stop_unconfirmed` by construction.
+
 ## 3. Controls (`battery.py --controls`)
 
 Fourteen mutants (since §2f: eleven LAW mutants derived from `laws.py` and three representation/fold mutants, each a text edit
