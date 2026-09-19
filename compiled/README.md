@@ -285,8 +285,8 @@ whole battery did.
 |---|---:|---:|---|---|---:|
 | `battery.py --controls` (C v1, standing) | 59 | 1,110 | ALL AGREE | 14/14, each by the worlds expected | 41 min (2,429 s of pairs; the mixed world's references computed once by the dev run before it) |
 | `battery_bend.py --emitter c2 --controls` (C v2, standing) | 59 | 1,110 | ALL AGREE | 16/16 as predicted, `path-from-min-width` by `mixed-w8-w33` only (fuzz-20260918 epoch 9) | 5 s (references cached, compiled folds only) |
-| `TRVM_BATTERY_HUGE=1 battery.py --controls --out results-battery-huge.json` | running at this commit | running at this commit | running at this commit | running at this commit | running at this commit |
-| `TRVM_BATTERY_HUGE=1 battery_bend.py --emitter c2 --controls --out results-c2-huge.json` | running at this commit | running at this commit | running at this commit | running at this commit | running at this commit |
+| `TRVM_BATTERY_HUGE=1 battery.py --controls --out results-battery-huge.json` | 61 | 1,120 | ALL AGREE | 15/15, each by the worlds expected (`sx-subtrahend-i64` by `spinner-w63-n31` only, extremes epoch 2; `narrow-product-i64` now by all three worlds with a lane over 32) | 2 h 31 min (9,048 s of pairs: the 63-lane twin on ic_ref, 616 s per epoch; the derived lists) |
+| `TRVM_BATTERY_HUGE=1 battery_bend.py --emitter c2 --controls --out results-c2-huge.json` | 61 | 1,120 | ALL AGREE | 19/19 as predicted (11 law + 8 representation; `sx-subtrahend-i64` by `spinner-w63-n31` only, extremes epoch 2; `path-from-min-width` by `mixed-w8-w33` only) | 7 s (references cached; the derived lists) |
 
 **A run broken by editing the tree under it, recorded.** The first gated C v1 run (started 22:17, the twin on ic_ref)
 re-agreed all 61 pairs — the 63-lane demo at 685 s per epoch and extremes at 669 s, 12,711 s of pairs — and then its
