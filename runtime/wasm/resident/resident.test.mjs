@@ -237,3 +237,16 @@ test('P1 · 200 jobs over a pool of 4: every result a candidate on a fresh insta
     assert.equal(host.stats().served, 200);
   } finally { await host.close(); }
 });
+
+// A deployment fault (2026-09-19, locuchest: the worker's `../experimental/result.mjs` was not copied) used to spin the
+// pool silently -- 155 spawns in 3 s, `ready()` never resolving, the daemon never announcing. Now the third consecutive
+// startup death stops the respawn, `ready()` rejects with the worker's own error, and `reduce` refuses `exhausted`.
+test('D2 · a worker that dies before announcing itself is replaced at most twice; then ready() rejects with its error and reduce refuses exhausted', async () => {
+  const dying = () => new Worker('throw new Error("no such module at startup")', { eval: true });
+  const host = createResidentHost({ pool: 2, maxQueue: 1, createWorker: dying });
+  await assert.rejects(host.ready(), e => e.reason === 'startup-deaths' && /no such module at startup/.test(e.message));
+  const st = host.stats();
+  assert.equal(st.startupDeaths, 3); assert.ok(st.spawned <= 4, 'spawned ' + st.spawned);
+  assert.deepEqual(await host.reduce('*').then(r => [r.status, r.reason]), ['refused', 'exhausted']);
+  await host.close();
+});

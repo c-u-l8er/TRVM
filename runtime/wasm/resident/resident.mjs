@@ -45,7 +45,13 @@ export class ResidentHost {
   #module; #digest; #pool; #maxQueue; #deadlineMs; #createWorker;
   #workers = new Set(); #idle = []; #queue = []; #closed = false;
   #nextWorkerId = 1; #nextJobId = 1; #readyWaiters = [];
-  #stats = { spawned: 0, replaced: 0, unconfirmed: 0, served: 0, refusedBusy: 0, deadlines: 0, cancelled: 0 };
+  #stats = { spawned: 0, replaced: 0, unconfirmed: 0, served: 0, refusedBusy: 0, deadlines: 0, cancelled: 0, startupDeaths: 0 };
+  // A worker that dies BEFORE it announces itself is a deployment or environment fault (a missing module, a refused
+  // wasm), not a job's: replacing it forever would spin silently (measured on a lab host 2026-09-19: 155 spawns in
+  // 3 s, `ready()` never resolving). After this many consecutive startup deaths the pool stops respawning, `ready()`
+  // rejects with the last error, and `reduce` refuses `exhausted`.
+  static MAX_STARTUP_DEATHS = 3;
+  #consecutiveStartupDeaths = 0; #startupError = null;
 
   constructor({ module, digest }, { pool = DEFAULTS.pool, maxQueue = DEFAULTS.maxQueue, deadlineMs = LIMITS.deadlineMs, createWorker } = {}) {
     if (!Number.isInteger(pool) || pool < 1 || !Number.isInteger(maxQueue) || maxQueue < 0) throw Error('pool-options');
@@ -59,10 +65,11 @@ export class ResidentHost {
   get digest() { return this.#digest; }
 
   // Resolves once every live worker has announced itself (jobs submitted earlier simply queue until then).
-  ready() { return new Promise(resolve => { this.#readyWaiters.push(resolve); this.#checkReady(); }); }
+  ready() { return new Promise((resolve, reject) => { this.#readyWaiters.push({ resolve, reject }); this.#checkReady(); }); }
   #checkReady() {
+    if (this.#startupError) { for (const r of this.#readyWaiters.splice(0)) r.reject(this.#startupError); return; }
     if ([...this.#workers].some(w => !w.ready)) return;
-    for (const r of this.#readyWaiters.splice(0)) r(this.stats());
+    for (const r of this.#readyWaiters.splice(0)) r.resolve(this.stats());
   }
 
   stats() {
@@ -77,13 +84,13 @@ export class ResidentHost {
     this.#stats.spawned++;
     this.#workers.add(w);
     worker.on('message', m => this.#onMessage(w, m));
-    worker.on('error', () => this.#onDeath(w, { status: 'failed', reason: 'worker-error' }));
+    worker.on('error', e => this.#onDeath(w, { status: 'failed', reason: 'worker-error' }, e));
     worker.on('exit', () => this.#onDeath(w, { status: 'failed', reason: 'worker-exit-without-result' }));
     return w;
   }
 
   #onMessage(w, m) {
-    if (m?.ready === true && !w.ready) { w.ready = true; this.#release(w); this.#checkReady(); return; }
+    if (m?.ready === true && !w.ready) { w.ready = true; this.#consecutiveStartupDeaths = 0; this.#release(w); this.#checkReady(); return; }
     if (!w.job || m?.id !== w.job.id) return; // a reply for a retired or foreign job id changes nothing
     const { id, ...result } = m;
     // Independently checked clock: a late reply cannot beat an expired deadline even if the timer was delayed.
@@ -91,11 +98,21 @@ export class ResidentHost {
     else w.job.settle({ ...result, workerExited: false, jobRetired: true }, false);
   }
 
-  #onDeath(w, failure) {
+  #onDeath(w, failure, error) {
     if (w.dead) return;
     w.dead = true;
-    if (w.job) w.job.settle({ ...failure }, true);
-    else { this.#workers.delete(w); this.#idle = this.#idle.filter(x => x !== w); if (!this.#closed) { this.#stats.replaced++; this.#spawn(); } }
+    if (w.job) { w.job.settle({ ...failure }, true); return; }
+    this.#workers.delete(w); this.#idle = this.#idle.filter(x => x !== w);
+    if (this.#closed) return;
+    if (!w.ready) {
+      this.#stats.startupDeaths++;
+      if (++this.#consecutiveStartupDeaths >= ResidentHost.MAX_STARTUP_DEATHS) {
+        this.#startupError = Object.assign(new Error('resident workers die before announcing themselves: ' + (error?.message ?? failure.reason)), { reason: 'startup-deaths', cause: error ?? null });
+        this.#checkReady();
+        return;                                     // no replacement: the pool is what is left, and says so
+      }
+    }
+    this.#stats.replaced++; this.#spawn();
   }
 
   #release(w) {
@@ -112,6 +129,7 @@ export class ResidentHost {
     if (signal !== undefined && !(signal instanceof AbortSignal)) return { status: 'refused', reason: 'signal-type' };
     if (signal?.aborted) return { status: 'cancelled' };
     if (this.#closed) return { status: 'refused', reason: 'closed' };
+    if (this.#startupError) return { status: 'refused', reason: 'exhausted', detail: this.#startupError.message };
     if (this.#workers.size === 0) return { status: 'refused', reason: 'exhausted' }; // every worker's exit went unconfirmed
     const job = { input, signal, id: this.#nextJobId++ };
     const done = new Promise(resolve => { job.resolve = resolve; });

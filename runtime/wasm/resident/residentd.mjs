@@ -52,7 +52,7 @@ const server = createServer(sock => {
 });
 
 const announce = where => console.log(JSON.stringify({ residentd: where, pool, maxQueue, pid: process.pid, module_sha256: host.digest, ready: host.stats().idle }));
-await host.ready(); // no connection is accepted before every worker has announced itself
+try { await host.ready(); } catch (e) { console.error(JSON.stringify({ residentd: 'refused', reason: e.reason ?? 'startup', error: e.message })); process.exit(3); } // no connection is accepted before every worker has announced itself; a pool that cannot start says so and exits
 if (args.socket) { try { unlinkSync(args.socket); } catch {} server.listen(args.socket, () => announce(args.socket)); }
 else server.listen(Number(args.port ?? 7421), args.bind ?? '127.0.0.1', () => announce(`${server.address().address}:${server.address().port}`));   // the port the kernel BOUND, so `--port 0` is usable
 
