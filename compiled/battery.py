@@ -74,10 +74,26 @@ WORLDS = {
     # ic32's file mode (`-reparse`, the same text) and ic_ref on the demo scenario. Lanes to 2^33 make the i128 product
     # law observable: an i64 product wraps here and nowhere else in the battery.
     "spinner-w33-n16": PROFILE + "[pulser:p0](every 2){sig_out}\n[spinner:sp](w=33, n=16, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:ob]{pose}\n\n[pulser:p0] --sig--> [spinner:sp]\n[spinner:sp] --socket--> [orb:ob]\n",
+    # ---- widened 2026-09-18 (night): a second world on the i128 path, and the first with BOTH MAC paths in one step (a
+    # w=8 spinner beside a w=33 one). What it admits is the C v2 step's per-spinner path selection: a selector that
+    # takes the WORLD's narrowest width (`path-from-min-width`, battery_bend.py MUTANTS_C2) is right on every
+    # single-width world and on two-spinners (w=8, w=12: both narrow) and wrong here alone. For the C v1 step, which has
+    # one MAC path, this world catches nothing of its own: it is a second wide world, not a widening of v1's claims.
+    "mixed-w8-w33": PROFILE + "[pulser:p0](every 2){sig_out}\n[pulser:p1](every 3){sig_out}\n[spinner:s1](w=8, n=4, rotor=quarter_turn_z, configurable){sig_in, socket}\n[spinner:s2](w=33, n=16, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:o1]{pose}\n[orb:o2]{pose}\n\n[pulser:p0] --sig--> [spinner:s1]\n[pulser:p1] --sig--> [spinner:s2]\n[spinner:s1] --socket--> [orb:o1]\n[spinner:s2] --socket--> [orb:o2]\n",
 }
+# ---- the top of the admitted width range (2026-09-18, night). A w=63 spinner's STEP term is 150 MB and Forge lowers it
+# in ~500 s, so this world is not in the standing battery: it is folded only under TRVM_BATTERY_HUGE=1, on the demo
+# scenario and one three-epoch `extremes` scenario (lanes at the top of the range from epoch 1), never the 24-epoch fuzz.
+# What it admits is the emitter's ORIGINAL bound: `sx` sign-extends by subtracting `(i128)1 << w`, and a subtrahend formed
+# in i64 (`sx-subtrahend-i64`) is exact for every w <= 62 and wrong at 63 alone -- no narrower world can see it.
+HUGE_WORLDS = {
+    "spinner-w63-n31": PROFILE + "[pulser:p0](every 2){sig_out}\n[spinner:sp](w=63, n=31, rotor=quarter_turn_z, configurable){sig_in, socket}\n[orb:ob]{pose}\n\n[pulser:p0] --sig--> [spinner:sp]\n[spinner:sp] --socket--> [orb:ob]\n",
+}
+if os.environ.get("TRVM_BATTERY_HUGE"):
+    WORLDS.update(HUGE_WORLDS)
 NATIVE_WORLDS = ("golden-demo", "chain30", "spinner-w16-n8-fixed")   # the calculus twin runs on ic32 here
 LARGE_WORLDS = ("golden-demo", "spinner-w16-n8-fixed")                # ~9 MB epoch terms: ic32 is the reference; ic_ref only on the demo scenario
-WIDE_WORLDS = ("spinner-w33-n16",)                                    # > 16 MiB epoch terms: ic32 -reparse is the reference and the twin; ic_ref only on the demo scenario
+WIDE_WORLDS = ("spinner-w33-n16", "mixed-w8-w33", "spinner-w63-n31")  # > 16 MiB epoch terms: ic32 -reparse is the reference and the twin; ic_ref only on the demo scenario
 MAILBOX_WORLDS = ("mailbox-routes", "mailbox-overflow")
 FUZZ_SEEDS = (20260918, 20260919, 20260920)
 FUZZ_EPOCHS = 24
@@ -141,6 +157,28 @@ def gentle_scenario(view, sem, seed, epochs=FUZZ_EPOCHS):
             "initial_runtime": {"numeric_faults": []}, "epochs": eps}
 
 
+def extremes_scenario(view, sem, epochs=3):
+    """Every spinner's rotor at the top of its lane range from epoch 1 (the sign bit, the all-ones lane, the unit, the
+    largest positive), then the complement pattern, then a fault reset: three epochs that put a lane >= 2^(w-1) through
+    `sx` at once. The HUGE worlds' only scenario besides the demo (their fuzz would cost hours of calculus per world)."""
+    spins, orbs = sorted(view.spinners), list(view.orbs)
+    eps, seq = [], 0
+    for ep in range(1, epochs + 1):
+        claims = []
+        for s in spins:
+            w, n = view.spinners[s][0], view.spinners[s][1]
+            top, full, unit = 1 << (w - 1), (1 << w) - 1, 1 << n
+            rotor = [top, full, unit, top - 1] if ep % 2 == 1 else [full ^ unit, top, 1, top]
+            seq += 1
+            claims.append({"writer_id": 1 + (seq // 16) % 14, "sequence": seq % 16, "operation": "SetRotor", "target": s, "payload": {"rotor": rotor}})
+        if ep == epochs:
+            for o in orbs:
+                seq += 1
+                claims.append({"writer_id": 1 + (seq // 16) % 14, "sequence": seq % 16, "operation": "ResetFault", "target": o, "payload": {}})
+        eps.append({"epoch": ep, "label": "extremes %d" % ep, "claims": claims})
+    return {"scenario_version": SC.SCENARIO_VERSION, "world_semantic_id": sem, "initial_runtime": {"numeric_faults": []}, "epochs": eps}
+
+
 def pairs(quick):
     """[(world_name, src, scenario_label, scenario_or_None)]"""
     out = []
@@ -148,6 +186,9 @@ def pairs(quick):
         out.append((name, src, "demo", None))
         prog, _ = SB._resolve_scenario(src, None)
         view = P.plan_view(P.artifact_to_compile_plan_v1(prog.sealed_artifact))
+        if name in HUGE_WORLDS:
+            out.append((name, src, "extremes", extremes_scenario(view, prog.semantic_artifact_id)))
+            continue
         if view.spinners or any(view.counter_spec(r)[0] != "onehot" for r in view.pulsers):
             for seed in FUZZ_SEEDS[: (1 if quick else 3)]:
                 out.append((name, src, "fuzz-%d" % seed, random_scenario(view, prog.semantic_artifact_id, seed)))
@@ -202,20 +243,27 @@ def main():
         t_c = time.perf_counter() - t0
         t0 = time.perf_counter()
         wide = name in WIDE_WORLDS
+        huge = name in HUGE_WORLDS
         native_name = "ic32-reparse" if wide else "ic32"
-        use_native_only = (name in LARGE_WORLDS or wide) and (a.quick or label != "demo")
+        # A HUGE world's calculus runs on ic_ref only: its step term is 150-170 MB depending on the process's binder
+        # history (README §2b), and at 170 MB ic32's fixed 16M-slot heap (`static uint32_t HEAPCAP = 1u<<24`,
+        # runtime/c/ic32.c -- the checked-host lane's file, not changed) overflows where 150 MB had fit. ic_ref has no
+        # such cap; it costs ~700 s per epoch here, which is why the world is gated and carries no fuzz scenario.
+        use_native_only = (name in LARGE_WORLDS or wide) and (a.quick or label != "demo") and not huge
         films_ref, _cached = F.cached_reference_films(src, native_name if use_native_only else "ic_ref", scen)
         t_ref = time.perf_counter() - t0
         refs[(name, label)] = films_ref
         # the calculus twin for states (+ term sizes): ic32 on the native worlds, ic32's file mode on the wide ones, ic_ref elsewhere
         t0 = time.perf_counter()
-        if wide:
+        if huge:
+            _, _, rows_ic = F.ic_fold(src, O.ref_reduce, scen)
+        elif wide:
             _, _, rows_ic = F.ic_fold(src, None, scen, split=F.ic32_reparse)
         else:
             _, _, rows_ic = F.ic_fold(src, O.native_reduce if name in NATIVE_WORLDS else O.ref_reduce, scen)
         t_ic = time.perf_counter() - t0
         v = compare(name, label, rows_c, films_ref, rows_ic)
-        if (name in NATIVE_WORLDS or wide) and not use_native_only:
+        if (name in NATIVE_WORLDS or wide) and not use_native_only and not huge:
             _, _, films_nat = F.reference_films(src, native_name, scen)
             v["films_equal_ic32"] = films_nat == films_ref and len(films_nat) == len(rows_c)
             if not v["films_equal_ic32"]:
@@ -224,7 +272,7 @@ def main():
                   "compiled_step_us_p50": round(st.median(r["step_s"] for r in rows_c) * 1e6, 2),
                   "ic_step_s_p50": round(st.median(r["step_s"] for r in rows_ic), 4),
                   "ic_reduce_s_p50": round(st.median(r["reduce_s"] for r in rows_ic), 4),
-                  "ic_reducer": "ic32-reparse" if wide else ("ic32" if name in NATIVE_WORLDS else "ic_ref"),
+                  "ic_reducer": "ic_ref" if huge else ("ic32-reparse" if wide else ("ic32" if name in NATIVE_WORLDS else "ic_ref")),
                   "reference": native_name if use_native_only else "ic_ref",
                   "wall_s": {"compiled_fold": round(t_c, 3), "reference_fold": round(t_ref, 3), "ic_twin_fold": round(t_ic, 3)}})
         ok = v["films_equal"] and v["states_equal"] and v.get("films_equal_ic32", True)
@@ -276,7 +324,13 @@ WIDENING_MUTANTS = [
      WIDE_WORLDS),
     ("film-without-mailboxes", "fold.py", "state=claim, mailboxes=seams.film_mailboxes)", "state=claim, mailboxes=None)", MAILBOX_WORLDS),
     ("script-without-routes", "fold.py", "initial_faults, script = SB._script_for(prog, scen)", "initial_faults, script = SB.SC.scenario_to_script(scen)", MAILBOX_WORLDS),
+    # the emitter's original bound (README §2b): a sign-extension subtrahend formed in i64 is exact for w <= 62; at w = 63
+    # `(i64)1 << 63` is INT64_MIN and the lane comes back 2^63 too large. Only the HUGE world can see it, so this control
+    # runs (and is required) only when that world is folded.
+    ("sx-subtrahend-i64", "emit_c.py", "x - ((i128)1 << w) : x; }", "x - (i128)((i64)1 << w) : x; }", tuple(HUGE_WORLDS)),
 ]
+if not os.environ.get("TRVM_BATTERY_HUGE"):
+    WIDENING_MUTANTS = [m for m in WIDENING_MUTANTS if m[0] != "sx-subtrahend-i64"]
 
 
 def load_mutant(name, fname, old, new):

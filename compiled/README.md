@@ -237,9 +237,61 @@ it on chains — the ratio §2c.1 reported was the C step's missing pass, not Be
 measured, not adopted: `-march=native` binds the `.so` to this CPU, and the battery's admission stays at `-O2` until a
 flags policy is ruled (the cache is per machine either way).
 
-Not widened: lane widths between 34 and 63 are emitted and unadmitted (no world in battery); width 64 is refused;
-`~~` routes with a source that is not a `once` pulser do not exist (the seal refuses them); recurring routes
+Not widened at this point: lane widths between 34 and 63 (§2e admits the two ends of that range the same night); width 64
+is refused; `~~` routes with a source that is not a `once` pulser do not exist (the seal refuses them); recurring routes
 (`forge.world.async.v1`) are deferred by ruling Q3 and not lowered by anything.
+
+### 2e. The wide end of the range — a mixed-width world in the standing battery, and the 63-lane world behind a gate (2026-09-18, night)
+
+The handoff's rule for widening stands: a world, a reference fold, and a mutant only that world catches. Two worlds
+were added, one to the standing battery and one behind an environment gate, because the second costs more than the
+whole battery did.
+
+- **`mixed-w8-w33`** (standing battery; `WIDE_WORLDS`): a w=8 spinner beside a w=33 one, each on its own pulser and orb —
+  the first world whose ONE step takes both of the C v2 step's MAC paths (§2d split the MAC by width, and until this
+  world every step took one path for every spinner in it). Its mutant is the path selector taken from the world's
+  narrowest spinner instead of the row's own width (`path-from-min-width`, `battery_bend.py` `MUTANTS_C2`): exact on every
+  single-width world, exact on `two-spinners` (w=8 and w=12 are both narrow), wrong here alone — caught by
+  `mixed-w8-w33` at fuzz epoch 9 and by no other world (`only_by`, the rule `battery.py` already enforced for
+  its own widening mutants, now enforced in `battery_bend.py` too). For the C v1 step, which has one MAC path, this
+  world catches nothing of its own — `narrow-product-i64`'s catch set grows to {`spinner-w33-n16`, `mixed-w8-w33`}, as a
+  world with a 33-lane spinner must, and nothing is caught by the mixed world alone — so for v1 it is recorded as a second
+  wide world, not a widening of v1's claims. Five pairs, 103 epochs, film- and state-equal under both emitters, ~7–9 s per
+  epoch through ic32's file mode, the compiled step 10–20 µs (the Python round trip, §2c). Its epoch
+  terms are 46–49 MB (the size is process history, §2b: 45.6 MB in one run, 49.0 MB in the next), so like the 33-lane world it reaches the calculus through ic32's file mode.
+- **`spinner-w63-n31`** (`HUGE_WORLDS`, folded only under `TRVM_BATTERY_HUGE=1`, results in `results-battery-huge.json`
+  and `results-c2-huge.json`): the top of the emitter's range. Measured before deciding where it goes: Forge lowers its
+  step term in 450 s (150 MB — the binder counter's history, §2b), one epoch through `ic32 -reparse` is 110 s, and the
+  compiled epoch-1 state agrees with the calculus's. The fuzz scenarios would cost hours of calculus per world, so the
+  gated world carries the demo scenario and one three-epoch `extremes` scenario (`battery.extremes_scenario`: every rotor
+  lane at the top of its range from epoch 1 — the sign bit, all ones, the unit, the largest positive; then the
+  complement pattern; then a fault reset). What it admits is the emitter's ORIGINAL bound, the reason `MAX_LANE_WIDTH`
+  is 63: `sx` sign-extends a lane by subtracting `(i128)1 << w`, and a subtrahend formed in i64 (`sx-subtrahend-i64`,
+  in both `battery.py` and `MUTANTS_C2`) is exact for every w ≤ 62 and wrong at 63 alone, where `(i64)1 << 63` is
+  INT64_MIN and the lane comes back 2^63 too large. Pre-checked before the run: caught at extremes epoch 2 on the
+  63-lane world by both emitters, not caught by the 33-lane world under the same scenario. **The world found a second
+  ic32 capacity** after §2b's 16 MiB stdin buffer: its step term is 150 MB when lowered in a fresh process and 170 MB
+  after the standing battery's 59 lowerings (the binder counter, §2b), and at 170 MB `ic32 -reparse` dies with
+  `FATAL: heap overflow` — `static uint32_t HEAPCAP = 1u<<24`, 16M slots, no runtime knob, the checked-host lane's
+  file, not changed — where the 150 MB term had reduced in 110 s. So the gated world's reference AND twin are ic_ref,
+  the reference implementation, at ~700 s per epoch (the demo's seven epochs took 82 min), which is the second reason
+  it is gated. The standing battery neither
+  folds this world nor lists this mutant (a control that no folded world can catch would print NOT CAUGHT and fail the
+  run for the wrong reason); the gate turns both on together.
+
+**Runs (one each, this laptop, load 5–7 from other sessions):**
+
+| run | pairs | epochs | agree | mutants | wall |
+|---|---:|---:|---|---|---:|
+| `battery.py --controls` (C v1, standing) | 59 | 1,110 | ALL AGREE | 14/14, each by the worlds expected | 41 min (2,429 s of pairs; the mixed world's references computed once by the dev run before it) |
+| `battery_bend.py --emitter c2 --controls` (C v2, standing) | 59 | 1,110 | ALL AGREE | 16/16 as predicted, `path-from-min-width` by `mixed-w8-w33` only (fuzz-20260918 epoch 9) | 5 s (references cached, compiled folds only) |
+| `TRVM_BATTERY_HUGE=1 battery.py --controls --out results-battery-huge.json` | running at this commit | running at this commit | running at this commit | running at this commit | running at this commit |
+| `TRVM_BATTERY_HUGE=1 battery_bend.py --emitter c2 --controls --out results-c2-huge.json` | running at this commit | running at this commit | running at this commit | running at this commit | running at this commit |
+
+Not done, and why: the Bend batteries were not rerun — both Bend emitters refuse any spinner over w=24, so the mixed
+world would only add a `refused` row, and the gated world is refused the same way; widths 34–62 have no world of their
+own (a mutant that only a w=40 world catches has not been found — every bound the emitter has is at 31/32 and 63, and
+those are now covered from both sides); the flags policy for the C build is still Travis's to rule.
 
 ## 3. Controls (`battery.py --controls`)
 
@@ -260,7 +312,7 @@ onehot-phase-off-by-one    CAUGHT golden-demo demo          epoch 1     by 13 wo
 binary-phase-off-by-one    CAUGHT binary-40-phase-3 demo    epoch 2     by binary-40-phase-3 ONLY
 fault-not-sticky           CAUGHT golden-demo fuzz-20260919 epoch 4     by the 9 spinner worlds
 react-without-fire         CAUGHT golden-demo demo          epoch 1     by the 9 spinner worlds
-narrow-product-i64         CAUGHT spinner-w33-n16 fuzz-20260918 epoch 8 by spinner-w33-n16 ONLY   (widening, as expected)
+narrow-product-i64         CAUGHT spinner-w33-n16 fuzz-20260918 epoch 8 by the 2 worlds with a 33-lane spinner ONLY (widening, as expected; mixed-w8-w33 joined the set in §2e)
 film-without-mailboxes     CAUGHT mailbox-routes demo       epoch 1     by the 2 mailbox worlds ONLY (widening, as expected)
 script-without-routes      CAUGHT mailbox-routes demo       epoch 2     by the 2 mailbox worlds ONLY (widening, as expected)
 ```
@@ -269,8 +321,9 @@ Three of the four numeric mutants (toward-zero shift, saturation, commit-before-
 scenarios, not by the demo scenario: the demo's rotors are the unit and full scale, and its products never carry a negative
 remainder or exceed the lane. That is the reason the fuzz exists; without it those three would be "harmless". The catch
 sets are a second kind of evidence: a world that catches nothing a smaller world does not catch is not earning its place,
-and each of the seventeen now catches something in a set no strict subset of the others covers — except the two mailbox
-worlds, which catch the same set as each other by construction (their C is identical) and exist for the capacity fault.
+and each of the seventeen catches something in a set no strict subset of the others covers — except the two mailbox
+worlds, which catch the same set as each other by construction (their C is identical) and exist for the capacity fault —
+and the eighteenth, `mixed-w8-w33`, earns its place under the C v2 controls only (`path-from-min-width`, §2e), not here.
 
 ## 4. What this establishes and what it does not
 
@@ -286,8 +339,9 @@ worlds, which catch the same set as each other by construction (their C is ident
   unchanged reference gate — `wek/b2/trvm/COMPILED_EXECUTOR_PROPOSAL.md`, design only, waiting on the resident host's admission.
 - It is not a replacement for the calculus: the calculus is the semantics, the reference and the identity spine. The
   compiled step is admitted per world by the fold, and a world outside the battery's shapes (a lane width over 63 is refused
-  by the emitter; widths 34–63 and any field kind `state_layout` does not yield today are unadmitted) is refused or
-  unadmitted, not assumed. Mailbox worlds, `~~` routes and w=33 are inside the shapes since §2b.
+  by the emitter; widths 34–62 and any field kind `state_layout` does not yield today are unadmitted) is refused or
+  unadmitted, not assumed. Mailbox worlds, `~~` routes and w=33 are inside the shapes since §2b; a mixed-width world and
+  w=63 (the latter behind `TRVM_BATTERY_HUGE=1`) since §2e.
 - Nothing about Super: no bridge, no executor profile, no receipt. Where this would sit in the vertical witness — as a second
   `trvm.reduce` executor kind whose result the reference gate checks the same way — is a proposal for Codex, not a change.
 - No performance claim beyond the table above: shared laptop, one run, medians over 7–24 epochs.

@@ -46,7 +46,7 @@ def reference(name, src, label, scen, quick):
     """Production films under the C battery's reducer plan, through fold.cached_reference_films."""
     wide = name in B.WIDE_WORLDS
     native_name = "ic32-reparse" if wide else "ic32"
-    use_native_only = (name in B.LARGE_WORLDS or wide) and (quick or label != "demo")
+    use_native_only = (name in B.LARGE_WORLDS or wide) and (quick or label != "demo") and name not in B.HUGE_WORLDS  # ic_ref only for the gated world (battery.py says why)
     reducer_name = native_name if use_native_only else "ic_ref"
     films, cached = F.cached_reference_films(src, reducer_name, scen)
     return films, reducer_name, cached
@@ -123,8 +123,9 @@ def main():
 
     if a.controls:
         receipt["controls"] = run_controls(refs, a.quick)
-        caught = all(c["caught"] for c in receipt["controls"])
-        print("CONTROLS:", "ALL CAUGHT" if caught else "A MUTANT SURVIVED")
+        # a mutant caught by a world its widening did not add, or by the wrong kind, fails the run like a survivor does
+        caught = all(c["caught"] and c["as_predicted"] for c in receipt["controls"])
+        print("CONTROLS:", "ALL CAUGHT, AS PREDICTED" if caught else "A MUTANT SURVIVED, OR WAS CAUGHT BY THE WRONG WORLD OR KIND")
         all_ok &= caught
     if a.bench:
         receipt["bench"] = bench()
@@ -193,7 +194,17 @@ MUTANTS_C2 = [
     ("binary-phase-off-by-one", '/* binary */" % (o, o, ph))', '/* binary */" % (o, o, (ph + 1) % p))', "film"),
     ("fault-not-sticky", "out[%d] = fbase | ov; /* sticky fault */", "out[%d] = ov; /* sticky fault */", "film"),
     ("react-without-fire", 'emit("    if (sel) { /* REACT over the committed rotor */")', 'emit("    if (1) { /* REACT over the committed rotor */")', "film"),
+    # 2026-09-18 (night): the path selector taken from the WORLD's narrowest spinner instead of the row's own width. Exact
+    # on every single-width world and on two-spinners (both narrow); wrong only where a wide spinner shares a step with
+    # a narrow one -- `mixed-w8-w33`, and no other world may catch it.
+    ("path-from-min-width",
+     'emit("  if (w <= 31) { for (int c = 0; c < 4; c++) fault |= mac_row64(w, n, c, rotor, pose, &out[c]); }")',
+     'emit("  if (%d <= 31) { for (int c = 0; c < 4; c++) fault |= mac_row64(w, n, c, rotor, pose, &out[c]); }" % min([view.spinners[s][0] for s in view.spinners] or [0]))',
+     "film", ("mixed-w8-w33",)),
 ]
+if os.environ.get("TRVM_BATTERY_HUGE"):
+    # the same bound mutant as battery.py's, for the v2 step's identical `sx`; only the 63-lane world may catch it
+    MUTANTS_C2.append(("sx-subtrahend-i64", "x - ((i128)1 << w) : x; }", "x - (i128)((i64)1 << w) : x; }", "film", tuple(B.HUGE_WORLDS)))
 
 
 def load_mutant(name, old, new):
@@ -224,7 +235,8 @@ def run_controls(refs, quick):
         except ValueError:
             return False
     plist = [(n, s, l, sc) for n, s, l, sc in B.pairs(quick) if admitted(n) and not (EMITTER == "v1" and n in CONTROL_SKIP)]
-    for name, old, new, predicted in {"v1": MUTANTS, "v2": MUTANTS_V2, "c2": MUTANTS_C2}[EMITTER]:
+    for name, old, new, predicted, *only in {"v1": MUTANTS, "v2": MUTANTS_V2, "c2": MUTANTS_C2}[EMITTER]:
+        only = only[0] if only else None            # a widening's mutant names the worlds that alone may catch it (battery.py's rule)
         step_cls = load_mutant(name, old, new)
         first, catches, folded = None, [], 0
         for wname, src, label, scen in plist:
@@ -244,10 +256,13 @@ def run_controls(refs, quick):
                     break
         kinds = sorted({c["kind"] for c in catches})
         worlds = sorted({c["world"] for c in catches})
+        as_expected = only is None or (bool(catches) and set(worlds) <= set(only))
         results.append({"mutant": name, "predicted": predicted, "caught": bool(catches), "kinds": kinds, "caught_at": first, "caught_by_worlds": worlds,
-                        "caught_pairs": len(catches), "pairs_folded": folded, "as_predicted": bool(catches) and (predicted in kinds)})
-        print("control=%-26s %s %s  by %d worlds, kinds %s%s" % (name, "CAUGHT" if catches else "NOT CAUGHT", json.dumps(first) if first else "", len(worlds), kinds,
-                                                                "" if results[-1]["as_predicted"] else "  ** not as predicted (%s)" % predicted), flush=True)
+                        "caught_pairs": len(catches), "pairs_folded": folded, "only_by": list(only) if only else None,
+                        "as_predicted": bool(catches) and (predicted in kinds) and as_expected})
+        print("control=%-26s %s %s  by %d worlds, kinds %s%s%s" % (name, "CAUGHT" if catches else "NOT CAUGHT", json.dumps(first) if first else "", len(worlds), kinds,
+                                                                  "" if results[-1]["as_predicted"] else "  ** not as predicted (%s)" % predicted,
+                                                                  "" if as_expected else "  ** NOT AS EXPECTED (only %s may catch this)" % list(only)), flush=True)
     return results
 
 
