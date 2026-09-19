@@ -288,15 +288,64 @@ whole battery did.
 | `TRVM_BATTERY_HUGE=1 battery.py --controls --out results-battery-huge.json` | running at this commit | running at this commit | running at this commit | running at this commit | running at this commit |
 | `TRVM_BATTERY_HUGE=1 battery_bend.py --emitter c2 --controls --out results-c2-huge.json` | running at this commit | running at this commit | running at this commit | running at this commit | running at this commit |
 
+**A run broken by editing the tree under it, recorded.** The first gated C v1 run (started 22:17, the twin on ic_ref)
+re-agreed all 61 pairs — the 63-lane demo at 685 s per epoch and extremes at 669 s, 12,711 s of pairs — and then its
+controls refused: `mutant react-before-commit: pattern found 0 times in emit_c.py`. That process had imported the
+battery code of 22:17 and its control loop read the emitter files from disk at control time, by which hour §2f had
+rewired them. The standing rule (never edit the tree mid-run) was broken by this author, and the run's results file was
+never written; its references are cached (the extremes reference, 2,580 s of ic_ref, came from it). The C v1 gated row
+below is the RERUN with the derived lists; the 61 AGREE of the first run stand as the log says.
+
 Not done, and why: the Bend batteries were not rerun — both Bend emitters refuse any spinner over w=24, so the mixed
 world would only add a `refused` row, and the gated world is refused the same way; widths 34–62 have no world of their
 own (a mutant that only a w=40 world catches has not been found — every bound the emitter has is at 31/32 and 63, and
 those are now covered from both sides); the flags policy for the C build is still Travis's to rule.
 
+### 2f. The laws stated once — `laws.py`, four renderings, the mutants derived (2026-09-19; T7 of `SUPER_BUILDS_LANE.md`)
+
+Travis ruled T7 crucial. Until this change the step laws of Forge's `compile_step_v6` and `binlib.golden_rot_forge`
+lived as four hand transcriptions and the battery's mutants as string edits against each emitter's Python
+(`OBSERVER_LAWS_PROPOSAL.md` §0: every mutant is a law with one clause flipped). Now:
+
+- **`laws.py`** states each law ONCE — sixteen `Law` records: statement, the clauses it owns, and its mutants as clause
+  flips (`floor-shift` = clause `shift` → `floor`) or argument flips (`onehot-phase-off-by-one` = `ph → (ph+1) mod p`).
+  Beside them, one renderer per (backend, block): the exact text C v1, C v2, Bend v1 and Bend v2 emit for that block,
+  reading the clauses through `clause(name, default)`. The emitters keep only the layout walk (slots, packed words,
+  wires) and call `render(backend, block, **fields)` for every law-bearing line; `HELPERS` in the Bend emitters is the
+  `mac` block. A mutant is `(law id, name)` and is installed for every backend at once by `laws.mutant(...)`.
+- **The gate: `laws_gate.py`.** `identities.json` holds the sha256 of every world's emitted source under every emitter,
+  recorded BEFORE the refactor (19 worlds × 4 emitters, the gated 63-lane world included; 6 Bend refusals recorded as
+  refusals). `--check` re-emits everything and refuses on any byte moved. **HELD after each emitter was rewired** — so
+  every `cbknd-`, `cbknd2-`, `bbknd-` and `bbknd2-` identity is unchanged, which is T7's "done means".
+- **Equivalence, measured before the old lists were retired:** each old string-edit mutant was applied to the OLD emitter
+  (from git) and its emission compared, world by world, with the derived law mutant's on the new emitter (C with comments
+  stripped, Bend with trailing comments stripped): C v1 11/11 SAME on 19 worlds, C v2 9/9 on 19, Bend v1 11/11 on 16,
+  Bend v2 9/9 on 16. Two old names were the same law seen through the packed representation and are now derived, not
+  listed: `nxt-from-cur-words` = `hot-relay`/`relay-hot-from-cur` (reading the CUR words flips `sink-input` too, said
+  in the table), `cur-not-advanced` = `wire-advance`/`wire-cur-stale`; and Bend's `neg-round-away` = the toward-zero
+  law's flip in sign-magnitude (`mac-toward-zero-shift`/`floor-shift`).
+- **What is NOT a law stays a representation mutant**, a text edit scoped to ONE renderer or emitter function
+  (`battery.scoped_replace`): the i128 product rendering (`narrow-product-i64`), the emitter's width bound
+  (`sx-subtrahend-i64`), C v2's two MAC paths and their selector (`floor-shift-64/-128`, `no-saturation-64/-128`,
+  `wide-on-narrow-path`, `path-from-min-width`), the packed run masks (`run-mask-dropped`), Bend v2's `fin` argument
+  order (`mac-sign-flipped`), Bend's affine pattern (`affine-double-use`), and the two fold mutants. The per-path C v2
+  mutants stay because the law mutant `floor-shift` now flips BOTH paths at once — the per-path ones are what found the
+  battery hole of §2d, and they keep that role.
+- **Dead-control check:** every derived and representation mutant changes the emitted program of at least one admitted
+  world under every backend (a mutant that changes nothing would be a control that can only pass), and the emission is
+  the baseline again after each.
+
+Runs with the derived lists (this laptop, after the gated runs): C v1 `--quick --controls` (33 pairs / 486 epochs, the standing worlds, one fuzz seed): 33 pairs / 486 epochs ALL AGREE, 14/14 mutants (11 law + 3 representation); C v2 standing `--controls`: 59 pairs / 1110 epochs ALL AGREE, 18/18 mutants (11 law + 7 representation); Bend v2 standing `--controls`: 49 pairs / 904 epochs ALL AGREE, 14/14 mutants (11 law + 3 representation), 2 worlds refused; Bend v1 standing `--controls`: 49 pairs / 904 epochs ALL AGREE, 12/12 mutants (11 law + 1 representation), 2 worlds refused
+
+Not claimed: that the law table is the WRL observer layer (`OBSERVER_LAWS_PROPOSAL.md` waits on its rung-5 ruling); that
+a law stated here is proved against Forge (the calculus twin in the fold is still the proof); anything about the fold's
+own laws (`fold.py`'s two mutants are the fold's). The task's record in Super (`dt_0087`) opens by itself when T10
+completes (`superlane/unblock.mjs`) and this section is what it will carry.
+
 ## 3. Controls (`battery.py --controls`)
 
-Fourteen textual mutants — twelve of the emitter, two of the fold — each applied to a copy loaded as its own module (a
-pattern that does not occur exactly once is a refusal), and since the afternoon folded over EVERY pair (the compiled fold is
+Fourteen mutants (since §2f: eleven LAW mutants derived from `laws.py` and three representation/fold mutants, each a text edit
+scoped to one function; a pattern that does not occur exactly once there is a refusal), and since the afternoon folded over EVERY pair (the compiled fold is
 microseconds, so the full catch set costs nothing), so the record says which worlds catch a mutant, not only that one did.
 **Every one caught, and the three widening mutants each caught only by the worlds their widening added** (`controls/SUMMARY.txt`):
 

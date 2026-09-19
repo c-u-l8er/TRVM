@@ -298,74 +298,105 @@ def main():
 
 
 # ----------------------------------------------------------------------------------------------- mutants
-# (name, file, old, new). The 2026-09-18 widening's three are listed last with the worlds that alone may catch them.
-MUTANTS = [
-    ("react-before-commit", "rot_forge(%d, %d, eff, old_pose, &out[%d])", "rot_forge(%d, %d, old_rotor, old_pose, &out[%d])"),
-    ("reset-ignored", "const int fbase = ctl[%d] ? 0 : (int)st[%d];", "const int fbase = (ctl[%d], (int)st[%d]);"),
-    ("floor-shift", "i128 q = acc >= 0 ? (acc >> n) : -((-acc) >> n);", "i128 q = acc >> n;"),
-    ("no-saturation", "i128 s = q < lo ? lo : (q > hi ? hi : q);", "i128 s = q;"),
-    ("wire-cur-stale", "% (o, o + 1, o + 1, _cid(src_of[wr]), wr))", "% (o, o, o + 1, _cid(src_of[wr]), wr))"),
-    ("relay-hot-from-cur", '% (_cid(r), off[("relay", r)] + 1, r))', '% (_cid(r), off[("relay", r)], r))'),
-    ("once-no-latch", 'emit("  const int fire_%d = (!done_%d && k_%d == %d);" % (o, o, o, e))', 'emit("  const int fire_%d = (k_%d == %d);" % (o, o, e))'),
-    ("onehot-phase-off-by-one", '/* one-hot */" % (o, o, ph))', '/* one-hot */" % (o, o, (ph + 1) % p))'),
-    ("binary-phase-off-by-one", '/* binary */" % (o, o, ph))', '/* binary */" % (o, o, (ph + 1) % p))'),
-    ("fault-not-sticky", "out[%d] = fbase | ov; /* sticky fault */", "out[%d] = ov; /* sticky fault */"),
-    ("react-without-fire", 'emit("    if (sel) { /* REACT over the committed rotor */")', 'emit("    if (1) { /* REACT over the committed rotor */")'),
-]
-MUTANTS = [(n, "emit_c.py", o, w) for n, o, w in MUTANTS]
-# The widening's mutants. `narrow-product-i64` forms each rotor*pose product in 64 bits (wrapping, deterministically, via
-# uint64) -- exact for every lane under 2^31.5, so no world of the morning battery can see it; `film-without-mailboxes`
-# renders the film without the world's mailbox table; `script-without-routes` folds the scenario's claims without the
-# world's own route Sends. The last two mutate the FOLD, whose plumbing is what a mailbox world admits.
-WIDENING_MUTANTS = [
-    ("narrow-product-i64", "emit_c.py",
+# Since 2026-09-19 (T7) the LAW mutants are DERIVED from `laws.py`: a mutant is (law id, name), one clause of one law
+# flipped, and it is the same flip in every backend that renders the clause (`laws.mutant`). What remains as a textual
+# edit is a REPRESENTATION mutant -- a choice one emitter makes that is not a law (the i128 product law's rendering, the
+# emitter's width bound, the fold's plumbing) -- and it is scoped to one function of one file so that the same text in
+# another backend's renderer is not touched. Names, files and the worlds that alone may catch a widening's mutant are
+# below; the law mutants' names come from the law table.
+import laws as LAW
+
+LAW_MUTANTS = [(name, law) for law, name in LAW.MUTANTS]           # (mutant name, law id) -- eleven today
+# (name, file, function the edit is scoped to, old, new, only_by)
+REPRESENTATION_MUTANTS = [
+    ("narrow-product-i64", "laws.py", "_c_mac",
      "acc += (i128)HAM_SG[c][k] * (sx(rotor[HAM_I[c][k]], w) * sx(pose[HAM_J[c][k]], w)); /* i128 products */",
      "acc += (i128)HAM_SG[c][k] * (i64)((uint64_t)sx(rotor[HAM_I[c][k]], w) * (uint64_t)sx(pose[HAM_J[c][k]], w)); /* i64 products */",
      WIDE_WORLDS),
-    ("film-without-mailboxes", "fold.py", "state=claim, mailboxes=seams.film_mailboxes)", "state=claim, mailboxes=None)", MAILBOX_WORLDS),
-    ("script-without-routes", "fold.py", "initial_faults, script = SB._script_for(prog, scen)", "initial_faults, script = SB.SC.scenario_to_script(scen)", MAILBOX_WORLDS),
+    ("film-without-mailboxes", "fold.py", None, "state=claim, mailboxes=seams.film_mailboxes)", "state=claim, mailboxes=None)", MAILBOX_WORLDS),
+    ("script-without-routes", "fold.py", None, "initial_faults, script = SB._script_for(prog, scen)", "initial_faults, script = SB.SC.scenario_to_script(scen)", MAILBOX_WORLDS),
     # the emitter's original bound (README §2b): a sign-extension subtrahend formed in i64 is exact for w <= 62; at w = 63
     # `(i64)1 << 63` is INT64_MIN and the lane comes back 2^63 too large. Only the HUGE world can see it, so this control
     # runs (and is required) only when that world is folded.
-    ("sx-subtrahend-i64", "emit_c.py", "x - ((i128)1 << w) : x; }", "x - (i128)((i64)1 << w) : x; }", tuple(HUGE_WORLDS)),
+    ("sx-subtrahend-i64", "laws.py", "_c_mac", "x - ((i128)1 << w) : x; }", "x - (i128)((i64)1 << w) : x; }", tuple(HUGE_WORLDS)),
 ]
 if not os.environ.get("TRVM_BATTERY_HUGE"):
-    WIDENING_MUTANTS = [m for m in WIDENING_MUTANTS if m[0] != "sx-subtrahend-i64"]
+    REPRESENTATION_MUTANTS = [m for m in REPRESENTATION_MUTANTS if m[0] != "sx-subtrahend-i64"]
 
 
-def load_mutant(name, fname, old, new):
-    """A copy of `fname` with `old` -> `new` (exactly once, else refused), loaded as its own module. A mutant of fold.py
-    imports the unmutated emit_c; a mutant of emit_c.py is installed into the live fold as its `CompiledStep`."""
-    src = open(os.path.join(HERE, fname)).read()
-    if src.count(old) != 1:
-        raise RuntimeError("mutant %s: pattern found %d times in %s, refusing" % (name, src.count(old), fname))
+def scoped_replace(src, fn, old, new):
+    """`old` -> `new` exactly once inside `def fn(` ... the next top-level `def`/`RENDER` (or anywhere when fn is None)."""
+    if fn is None:
+        lo, hi = 0, len(src)
+    else:
+        lo = src.index("def %s(" % fn)
+        nxt = [i for i in (src.find("\ndef ", lo + 1), src.find("\nRENDER", lo + 1)) if i > 0]
+        hi = min(nxt) if nxt else len(src)
+    body = src[lo:hi]
+    if body.count(old) != 1:
+        raise RuntimeError("pattern found %d times in %s (%s), refusing" % (body.count(old), fn or "file", old[:40]))
+    return src[:lo] + body.replace(old, new) + src[hi:]
+
+
+def load_mutant(name, fname, fn, old, new):
+    """A copy of `fname` with the scoped edit, loaded as its own module."""
+    src = scoped_replace(open(os.path.join(HERE, fname)).read(), fn, old, new)
     path = os.path.join(os.path.expanduser("~/.cache/trvm-compiled"), "mutant_%s.py" % name.replace("-", "_"))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
-        f.write(src.replace(old, new))
+        f.write(src)
     spec = importlib.util.spec_from_file_location("mutant_" + name.replace("-", "_"), path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
 
 
+class installed:
+    """Install one mutant for the duration: a law mutant through laws.mutant; a laws.py edit by swapping the emitter's
+    LAW module; a fold.py edit by folding through the mutated module (the caller uses `.fold`)."""
+
+    def __init__(self, kind, spec):
+        self.kind, self.spec, self.fold = kind, spec, F.compiled_fold
+
+    def __enter__(self):
+        import emit_c
+        if self.kind == "law":
+            self.cm = LAW.mutant(self.spec[1], self.spec[0])
+            self.cm.__enter__()
+        else:
+            name, fname, fn, old, new, _ = self.spec
+            mod = load_mutant(name, fname, fn, old, new)
+            if fname == "laws.py":
+                self.saved, emit_c.LAW = emit_c.LAW, mod
+            else:
+                self.fold = mod.compiled_fold
+        return self
+
+    def __exit__(self, *a):
+        import emit_c
+        if self.kind == "law":
+            self.cm.__exit__(*a)
+        elif self.spec[1] == "laws.py":
+            emit_c.LAW = self.saved
+
+
+def all_mutants():
+    """[(name, kind, spec, only_by)] -- the law mutants (from the table) then the representation mutants."""
+    out = [(name, "law", (name, law), None) for name, law in LAW_MUTANTS]
+    out += [(m[0], "text", m, m[5]) for m in REPRESENTATION_MUTANTS]
+    return out
+
+
 def run_controls(refs, quick):
     """Every mutant over EVERY pair: the record carries the full set of catching worlds, the first catch, and whether a
     pair was caught by a film divergence or by a typed refusal raised inside the fold (a refusal is a catch: the mutant
     could not produce a film at all). The widening's mutants must be caught by their own worlds and by no other."""
-    original = F.CompiledStep
     results = []
     plist = pairs(quick)
-    for name, fname, old, new, *only in MUTANTS + WIDENING_MUTANTS:
-        only = only[0] if only else None
-        mod = load_mutant(name, fname, old, new)
-        fold_fn = F.compiled_fold
-        if fname == "emit_c.py":
-            F.CompiledStep = mod.CompiledStep
-        else:
-            fold_fn = mod.compiled_fold
+    for name, kind, mspec, only in all_mutants():
         first, catches, folded = None, [], 0
-        try:
+        with installed(kind, mspec) as inst:
+            fold_fn = inst.fold
             for wname, src, label, scen in plist:
                 folded += 1
                 try:
@@ -381,11 +412,10 @@ def run_controls(refs, quick):
                         catches.append(hit)
                         first = first or hit
                         break
-        finally:
-            F.CompiledStep = original
         worlds = sorted({c["world"] for c in catches})
         ok = bool(catches) and (only is None or (set(worlds) <= set(only)))
-        results.append({"mutant": name, "file": fname, "caught": bool(catches), "caught_at": first, "caught_by_worlds": worlds,
+        fname = "laws.py:%s" % mspec[1] if kind == "law" else mspec[1]
+        results.append({"mutant": name, "file": fname, "kind": kind, "caught": bool(catches), "caught_at": first, "caught_by_worlds": worlds,
                         "caught_pairs": len(catches), "pairs_folded": folded, "only_by": list(only) if only else None, "as_expected": ok})
         print("control=%-26s %s %s  by %s%s" % (name, "CAUGHT" if catches else "NOT CAUGHT", json.dumps(first) if first else "(%d pairs folded)" % folded,
                                               worlds, "" if ok else ("  ** NOT AS EXPECTED (only %s may catch this)" % list(only) if only else "  ** NOT CAUGHT")), flush=True)

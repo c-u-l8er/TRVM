@@ -139,86 +139,86 @@ def main():
 # ----------------------------------------------------------------------------------------------- mutants
 CONTROL_SKIP = ("chain120",)
 # (name, old, new, predicted): the C battery's mutants where the Bend law has the same shape, plus Bend's own.
-MUTANTS = [
-    ("react-before-commit", "sx(eff_%d_%d, %s, %s), sx(s%d, %s, %s), %s)\" % (\"True{}\" if sg < 0 else \"False{}\", po, ii, half, full, po + jj",
-     "sx(s%d, %s, %s), sx(s%d, %s, %s), %s)\" % (\"True{}\" if sg < 0 else \"False{}\", ro + ii, half, full, po + jj", "film"),
-    ("reset-ignored", "+fbase_%d = sel(nz(c%d), 0n, s%d)  # COMMIT fault reset\" % (fo, reset_slot, fo)",
-     "+fbase_%d = sel(nz(c%d), s%d, s%d)  # COMMIT fault reset\" % (fo, reset_slot, fo, fo)", "film"),
-    ("no-saturation", "pack(Nat.min(q, hi), Nat.is_gt(q, hi), full)", "pack(Nat.mod(q, full), Nat.is_gt(q, hi), full)", "film"),
-    ("neg-round-away", "sat_neg(Nat.div((neg - pos : Nat), den), lomag, full)", "sat_neg(Nat.div((neg - pos + den - 1n : Nat), den), lomag, full)", "film"),
-    ("wire-cur-stale", 'emit("      o%d = s%d" % (o, o + 1))\n        emit("      o%d = hot_%s  # wire %s"', 'emit("      o%d = s%d" % (o, o))\n        emit("      o%d = hot_%s  # wire %s"', "film"),
-    ("relay-hot-from-cur", '+hot_%s = s%d  # relay %s nxt" % (_cid(r), off[("relay", r)] + 1, r)', '+hot_%s = s%d  # relay %s nxt" % (_cid(r), off[("relay", r)], r)', "film"),
-    ("once-no-latch", "b2n(Bool.and(Nat.is_eq(s%d, 0n), Nat.is_eq(s%d, %s)))\" % (o, o, o + 1, lit(e))", "b2n(Nat.is_eq(s%d, %s))\" % (o, o + 1, lit(e))", "film"),
-    ("onehot-phase-off-by-one", 'b2n(Nat.is_eq(s%d, %s))" % (o, o, lit(ph)))\n            emit("      o%d = Nat.mod((s%d + 1n : Nat), %s)" % (o, o, lit(p)))',
-     'b2n(Nat.is_eq(s%d, %s))" % (o, o, lit((ph + 1) % p)))\n            emit("      o%d = Nat.mod((s%d + 1n : Nat), %s)" % (o, o, lit(p)))', "film"),
-    ("binary-phase-off-by-one", 'b2n(Nat.is_eq(s%d, %s))" % (o, o, lit(ph)))\n            emit("      +sum_%d', 'b2n(Nat.is_eq(s%d, %s))" % (o, o, lit((ph + 1) % p)))\n            emit("      +sum_%d', "film"),
-    ("fault-not-sticky", "sel(nz((fbase_%d + b2n(ov_%d) : Nat)), 1n, 0n), fbase_%d)  # sticky fault\" % (fo, po, fo, po, fo)",
-     "b2n(ov_%d), fbase_%d)  # sticky fault\" % (fo, po, po, fo)", "film"),
-    ("react-without-fire", "+sel_%d = nz(%s)  # spinner %s merged input\" % (po, merge_in(s), s)", "+sel_%d = Bool.or(True{}, nz(%s))  # spinner %s merged input\" % (po, merge_in(s), s)", "film"),
-    ("affine-double-use", 's_pat = "".join("Con{+s%d, "', 's_pat = "".join("Con{s%d, "', "refused"),
-]
+# ----------------------------------------------------------------------------------------------- mutants
+# Since 2026-09-19 (T7) the LAW mutants are derived from `laws.py` -- (law id, name), the same clause flip in every
+# backend that renders it (`laws.mutant`); the equivalence of each old string-edit mutant to its law mutant was checked
+# on every admitted world before the old lists were retired (README §2f). What stays textual is a REPRESENTATION mutant,
+# scoped to one function of one file: Bend's affine pattern, v2's run masks and its sign-magnitude `fin` argument order,
+# the C v2 step's two MAC paths and their selector, and the emitter's width bound.
+import laws as LAW
+from battery import LAW_MUTANTS, scoped_replace
 
-
-MUTANTS_V2 = [
-    ("react-before-commit", "+ua_%d_%d = biased(eff_%d_%d, hu_%d)  # rotor lane + half\" % (po, l, po, l, po)",
-     "+ua_%d_%d = biased(s%d, hu_%d)  # rotor lane + half\" % (po, l, ro + l, po)", "film"),
-    ("reset-ignored", "+fbase_%d = sel(nz(c%d), 0n, s%d)  # COMMIT fault reset\" % (fo, reset_slot, fo)",
-     "+fbase_%d = sel(nz(c%d), s%d, s%d)  # COMMIT fault reset\" % (fo, reset_slot, fo, fo)", "film"),
-    ("mac-sign-flipped", "fin((p_%d_%d, m_%d_%d), den_%d", "fin((m_%d_%d, p_%d_%d), den_%d", "film"),
-    ("nxt-from-cur-words", "+n%d = U32.from_nat(s%d)  # NXT word %d\" % (k, nxt0 + k, k)", "+n%d = U32.from_nat(s%d)  # NXT word %d\" % (k, cur0 + k, k)", "film"),
-    ("run-mask-dropped", 'parts.append("U32.shln(U32.and(n%d, %d), %dn)" % (sw, mask, disp))', 'parts.append("U32.shln(n%d, %dn)" % (sw, disp))', "film"),
-    ("cur-not-advanced", "o%d = s%d  # CUR word %d <- NXT\" % (cur0 + k, nxt0 + k, k)", "o%d = s%d  # CUR word %d <- NXT\" % (cur0 + k, cur0 + k, k)", "film"),
-    ("once-no-latch", "+fb_%d = Bool.and(Nat.is_eq(s%d, 0n), Nat.is_eq(s%d, %s))\" % (o, o, o + 1, lit(e))", "+fb_%d = Nat.is_eq(s%d, %s)\" % (o, o + 1, lit(e))", "film"),
-    ("onehot-phase-off-by-one", '+fb_%d = Nat.is_eq(s%d, %s)" % (o, o, lit(ph)))\n            emit("      o%d = Nat.mod((s%d + 1n : Nat), %s)" % (o, o, lit(p)))',
-     '+fb_%d = Nat.is_eq(s%d, %s)" % (o, o, lit((ph + 1) % p)))\n            emit("      o%d = Nat.mod((s%d + 1n : Nat), %s)" % (o, o, lit(p)))', "film"),
-    ("binary-phase-off-by-one", '+fb_%d = Nat.is_eq(s%d, %s)" % (o, o, lit(ph)))\n            emit("      +sum_%d', '+fb_%d = Nat.is_eq(s%d, %s)" % (o, o, lit((ph + 1) % p)))\n            emit("      +sum_%d', "film"),
-    ("fault-not-sticky", "sel(Bool.or(nz(fbase_%d), ov_%d), 1n, 0n), fbase_%d)  # sticky fault\" % (fo, po, fo, po, fo)", "b2n(ov_%d), fbase_%d)  # sticky fault\" % (fo, po, po, fo)", "film"),
-    ("react-without-fire", "+sel_%d = bit(n%d, %dn)  # spinner %s input fires\" % (po, p // WORD, p % WORD, s)", "+sel_%d = Bool.or(True{}, bit(n%d, %dn))  # spinner %s input fires\" % (po, p // WORD, p % WORD, s)", "film"),
-    ("affine-double-use", 's_pat = "".join("Con{+s%d, "', 's_pat = "".join("Con{s%d, "', "refused"),
-]
-
-
-MUTANTS_C2 = [
-    ("react-before-commit", "rot_forge(%d, %d, eff, old_pose, &out[%d])", "rot_forge(%d, %d, old_rotor, old_pose, &out[%d])", "film"),
-    ("reset-ignored", "const int fbase = ctl[%d] ? 0 : (int)st[%d];", "const int fbase = (ctl[%d], (int)st[%d]);", "film"),
-    ("floor-shift-128", "i128 q = acc >= 0 ? (acc >> n) : -((-acc) >> n);", "i128 q = acc >> n;", "film"),
-    ("no-saturation-128", "i128 s = q < lo ? lo : (q > hi ? hi : q);", "i128 s = q;", "film"),
-    ("floor-shift-64", "i64 q = acc >= 0 ? (acc >> n) : -((-acc) >> n);", "i64 q = acc >> n;", "film"),
-    ("no-saturation-64", "i64 s = q < lo ? lo : (q > hi ? hi : q);", "i64 s = q;", "film"),
-    ("wide-on-narrow-path", "if (w <= 31) { for", "if (w <= 63) { for", "film"),
-    ("nxt-from-cur-words", 'const u64 n%d = (u64)st[%d]; /* NXT word %d */" % (k, nxt0 + k, k)', 'const u64 n%d = (u64)st[%d]; /* NXT word %d */" % (k, cur0 + k, k)', "film"),
-    ("cur-not-advanced", 'out[%d] = st[%d]; /* CUR word %d <- NXT */" % (cur0 + k, nxt0 + k, k)', 'out[%d] = st[%d]; /* CUR word %d <- NXT */" % (cur0 + k, cur0 + k, k)', "film"),
-    ("run-mask-dropped", 'parts.append("((n%d & 0x%xULL) %s %d)" % (sw, mask, "<<" if disp >= 0 else ">>", abs(disp)))', 'parts.append("(n%d %s %d)" % (sw, "<<" if disp >= 0 else ">>", abs(disp)))', "film"),
-    ("once-no-latch", 'emit("  const int fire_%d = (!st[%d] && st[%d] == %d);" % (o, o, o + 1, e))', 'emit("  const int fire_%d = (st[%d] == %d);" % (o, o + 1, e))', "film"),
-    ("onehot-phase-off-by-one", '/* one-hot */" % (o, o, ph))', '/* one-hot */" % (o, o, (ph + 1) % p))', "film"),
-    ("binary-phase-off-by-one", '/* binary */" % (o, o, ph))', '/* binary */" % (o, o, (ph + 1) % p))', "film"),
-    ("fault-not-sticky", "out[%d] = fbase | ov; /* sticky fault */", "out[%d] = ov; /* sticky fault */", "film"),
-    ("react-without-fire", 'emit("    if (sel) { /* REACT over the committed rotor */")', 'emit("    if (1) { /* REACT over the committed rotor */")', "film"),
-    # 2026-09-18 (night): the path selector taken from the WORLD's narrowest spinner instead of the row's own width. Exact
-    # on every single-width world and on two-spinners (both narrow); wrong only where a wide spinner shares a step with
-    # a narrow one -- `mixed-w8-w33`, and no other world may catch it.
-    ("path-from-min-width",
-     'emit("  if (w <= 31) { for (int c = 0; c < 4; c++) fault |= mac_row64(w, n, c, rotor, pose, &out[c]); }")',
-     'emit("  if (%d <= 31) { for (int c = 0; c < 4; c++) fault |= mac_row64(w, n, c, rotor, pose, &out[c]); }" % min([view.spinners[s][0] for s in view.spinners] or [0]))',
-     "film", ("mixed-w8-w33",)),
-]
+REPRESENTATION = {
+    "v1": [("affine-double-use", "emit_bend.py", None, 's_pat = "".join("Con{+s%d, "', 's_pat = "".join("Con{s%d, "', "refused", None)],
+    "v2": [("mac-sign-flipped", "laws.py", "_b2_react", "fin((p_%d_%d, m_%d_%d), den_%d", "fin((m_%d_%d, p_%d_%d), den_%d", "film", None),
+           ("run-mask-dropped", "emit_bend2.py", None, 'parts.append("U32.shln(U32.and(n%d, %d), %dn)" % (sw, mask, disp))', 'parts.append("U32.shln(n%d, %dn)" % (sw, disp))', "film", None),
+           ("affine-double-use", "emit_bend2.py", None, 's_pat = "".join("Con{+s%d, "', 's_pat = "".join("Con{s%d, "', "refused", None)],
+    "c2": [("floor-shift-128", "laws.py", "_c2_mac", '"  i128 q = %s;" % shift128', '"  i128 q = acc >> n;"', "film", None),
+           ("no-saturation-128", "laws.py", "_c2_mac", '"  i128 s = %s;" % sat128', '"  i128 s = q;"', "film", None),
+           ("floor-shift-64", "laws.py", "_c2_mac", '"  i64 q = %s;" % shift64', '"  i64 q = acc >> n;"', "film", None),
+           ("no-saturation-64", "laws.py", "_c2_mac", '"  i64 s = %s;" % sat64', '"  i64 s = q;"', "film", None),
+           ("wide-on-narrow-path", "laws.py", "_c2_mac", '"  if (w <= 31) { for', '"  if (w <= 63) { for', "film", None),
+           # the path selector taken from the WORLD's narrowest spinner instead of the row's own width: exact on every
+           # single-width world and on two-spinners (both narrow); wrong only where a wide spinner shares a step with a
+           # narrow one -- `mixed-w8-w33`, and no other world may catch it.
+           ("path-from-min-width", "laws.py", "_c2_mac", '"  if (w <= 31) { for (int c = 0; c < 4; c++) fault |= mac_row64(w, n, c, rotor, pose, &out[c]); }"',
+            '"  if (%d <= 31) { for (int c = 0; c < 4; c++) fault |= mac_row64(w, n, c, rotor, pose, &out[c]); }" % f["min_w"]', "film", ("mixed-w8-w33",)),
+           ("run-mask-dropped", "emit_c2.py", None, 'parts.append("((n%d & 0x%xULL) %s %d)" % (sw, mask, "<<" if disp >= 0 else ">>", abs(disp)))', 'parts.append("(n%d %s %d)" % (sw, "<<" if disp >= 0 else ">>", abs(disp)))', "film", None)],
+}
 if os.environ.get("TRVM_BATTERY_HUGE"):
     # the same bound mutant as battery.py's, for the v2 step's identical `sx`; only the 63-lane world may catch it
-    MUTANTS_C2.append(("sx-subtrahend-i64", "x - ((i128)1 << w) : x; }", "x - (i128)((i64)1 << w) : x; }", "film", tuple(B.HUGE_WORLDS)))
+    REPRESENTATION["c2"].append(("sx-subtrahend-i64", "laws.py", "_c2_mac", "x - ((i128)1 << w) : x; }", "x - (i128)((i64)1 << w) : x; }", "film", tuple(B.HUGE_WORLDS)))
+# Bend's MAC is sign-magnitude, so the toward-zero and saturation laws render in `fin` and their flips apply (the old
+# `neg-round-away` / `no-saturation`); every law mutant renders in every backend here.
+EMITTER_MODULE = {"v1": EB, "v2": EB2, "c2": EC2}
 
 
-def load_mutant(name, old, new):
-    fname, step_attr = EMITTERS[EMITTER][0], {"v1": "BendStep", "v2": "BendStep2", "c2": "CompiledStep2"}[EMITTER]
-    src = open(os.path.join(HERE, fname)).read()
-    if src.count(old) != 1:
-        raise RuntimeError("mutant %s: pattern found %d times, refusing" % (name, src.count(old)))
+def all_mutants():
+    """[(name, kind, spec, predicted, only_by)] for the selected emitter: law mutants then representation mutants."""
+    out = [(name, "law", (name, law), "film", None) for name, law in LAW_MUTANTS]
+    out += [(m[0], "text", m, m[5], m[6]) for m in REPRESENTATION[EMITTER]]
+    return out
+
+
+def load_mutant(name, fname, fn, old, new):
+    src = scoped_replace(open(os.path.join(HERE, fname)).read(), fn, old, new)
     path = os.path.join(os.path.expanduser("~/.cache/trvm-compiled"), "mutant_bend_%s_%s.py" % (EMITTER, name.replace("-", "_")))
     with open(path, "w") as f:
-        f.write(src.replace(old, new))
+        f.write(src)
     spec = importlib.util.spec_from_file_location("emit_bend_mutant_%s_%s" % (EMITTER, name.replace("-", "_")), path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    return getattr(mod, step_attr)
+    return mod
+
+
+class installed:
+    """One mutant for the duration: a law mutant through laws.mutant; a laws.py edit by swapping the emitter's LAW
+    module; an emitter-file edit by loading the mutated copy as the step class. `.step_cls` is what to fold with."""
+
+    def __init__(self, kind, spec):
+        self.kind, self.spec, self.module = kind, spec, None
+        self.step_cls = EMITTERS[EMITTER][1]
+
+    def __enter__(self):
+        mod = EMITTER_MODULE[EMITTER]
+        if self.kind == "law":
+            self.cm = LAW.mutant(self.spec[1], self.spec[0])
+            self.cm.__enter__()
+        else:
+            name, fname, fn, old, new = self.spec[:5]
+            m = self.module = load_mutant(name, fname, fn, old, new)
+            if fname == "laws.py":
+                self.saved, mod.LAW = mod.LAW, m
+            else:
+                self.step_cls = getattr(m, {"v1": "BendStep", "v2": "BendStep2", "c2": "CompiledStep2"}[EMITTER])
+        return self
+
+    def __exit__(self, *a):
+        mod = EMITTER_MODULE[EMITTER]
+        if self.kind == "law":
+            self.cm.__exit__(*a)
+        elif self.spec[1] == "laws.py":
+            mod.LAW = self.saved
 
 
 def run_controls(refs, quick):
@@ -235,29 +235,28 @@ def run_controls(refs, quick):
         except ValueError:
             return False
     plist = [(n, s, l, sc) for n, s, l, sc in B.pairs(quick) if admitted(n) and not (EMITTER == "v1" and n in CONTROL_SKIP)]
-    for name, old, new, predicted, *only in {"v1": MUTANTS, "v2": MUTANTS_V2, "c2": MUTANTS_C2}[EMITTER]:
-        only = only[0] if only else None            # a widening's mutant names the worlds that alone may catch it (battery.py's rule)
-        step_cls = load_mutant(name, old, new)
+    for name, kind, mspec, predicted, only in all_mutants():
         first, catches, folded = None, [], 0
-        for wname, src, label, scen in plist:
-            folded += 1
-            try:
-                _, _, rows_b, _ = bend_fold(src, scen, step_cls)
-            except Exception as e:
-                hit = {"world": wname, "scenario": label, "epoch": None, "kind": "refused", "error": "%s: %s" % (type(e).__name__, str(e)[:160])}
-                catches.append(hit)
-                first = first or hit
-                continue
-            for r, f in zip(rows_b, refs[(wname, label)]):
-                if r["film"] != f:
-                    hit = {"world": wname, "scenario": label, "epoch": r["t"], "kind": "film"}
+        with installed(kind, mspec) as inst:
+            for wname, src, label, scen in plist:
+                folded += 1
+                try:
+                    _, _, rows_b, _ = bend_fold(src, scen, inst.step_cls)
+                except Exception as e:
+                    hit = {"world": wname, "scenario": label, "epoch": None, "kind": "refused", "error": "%s: %s" % (type(e).__name__, str(e)[:160])}
                     catches.append(hit)
                     first = first or hit
-                    break
+                    continue
+                for r, f in zip(rows_b, refs[(wname, label)]):
+                    if r["film"] != f:
+                        hit = {"world": wname, "scenario": label, "epoch": r["t"], "kind": "film"}
+                        catches.append(hit)
+                        first = first or hit
+                        break
         kinds = sorted({c["kind"] for c in catches})
         worlds = sorted({c["world"] for c in catches})
         as_expected = only is None or (bool(catches) and set(worlds) <= set(only))
-        results.append({"mutant": name, "predicted": predicted, "caught": bool(catches), "kinds": kinds, "caught_at": first, "caught_by_worlds": worlds,
+        results.append({"mutant": name, "kind": kind, "law": mspec[1] if kind == "law" else None, "predicted": predicted, "caught": bool(catches), "kinds": kinds, "caught_at": first, "caught_by_worlds": worlds,
                         "caught_pairs": len(catches), "pairs_folded": folded, "only_by": list(only) if only else None,
                         "as_predicted": bool(catches) and (predicted in kinds) and as_expected})
         print("control=%-26s %s %s  by %d worlds, kinds %s%s%s" % (name, "CAUGHT" if catches else "NOT CAUGHT", json.dumps(first) if first else "", len(worlds), kinds,

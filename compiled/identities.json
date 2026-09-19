@@ -1,0 +1,360 @@
+{
+ "note": "sha256 of each world's emitted source under each emitter; laws_gate.py --check refuses drift",
+ "worlds": {
+  "binary-40-phase-3": {
+   "bend": {
+    "bytes": 3689,
+    "source_sha256": "6446a65b8c4910b1a421de2c2da5d8b9b37ba16425fa272a234608589e2419da"
+   },
+   "bend2": {
+    "bytes": 4020,
+    "source_sha256": "fe9be50a9d2a99b801afc93adee86c64c7c87aa523bcca28231ea963fa3ca11f"
+   },
+   "c": {
+    "bytes": 2161,
+    "source_sha256": "41a45b75b39be781bce338a63157e628556767af7eb7167d41551c5bc430e87e"
+   },
+   "c2": {
+    "bytes": 2576,
+    "source_sha256": "b2478b57cdb429a7751bf3e3577c94c4f3245ea86032e66068c96276957538a7"
+   },
+   "sem": "sem-26d00ac14b20e769f278a72b4a699230fab2304935ddab6e540baa8cc7bdda3e"
+  },
+  "chain10": {
+   "bend": {
+    "bytes": 5388,
+    "source_sha256": "36fe6e272fe77c99219c55639ba8efd99a7c695e605608f5ef824e676bfa646f"
+   },
+   "bend2": {
+    "bytes": 3956,
+    "source_sha256": "6e3ee0cdd2b0a24b1759b5f8218a97c12eb334af6520dab708c1938de074d6f7"
+   },
+   "c": {
+    "bytes": 3639,
+    "source_sha256": "444229bb5357f14639b483ae2dfc452ed339afed6b20319044a038e947c997fd"
+   },
+   "c2": {
+    "bytes": 2530,
+    "source_sha256": "65e7df3ffe06d353b36b74a94fb9d1fc054c1ccf1ebb2297b54415c68f9b8296"
+   },
+   "sem": "sem-9f4a96023daa714c6489658c31fdca764582c079fefd9d4e5df699ae0119d009"
+  },
+  "chain120": {
+   "bend": {
+    "bytes": 29378,
+    "source_sha256": "6e5432f7c811d97ef091a9b74241d8a60a4156a0ce5a3ea03d226f2886d1ed85"
+   },
+   "bend2": {
+    "bytes": 5593,
+    "source_sha256": "cb4e995ba4df03a79622e216f0f9b63710c8e29e75dabc248bb8557e8f4ab6bc"
+   },
+   "c": {
+    "bytes": 23890,
+    "source_sha256": "37357350ea3b599921e71af06f371f0426a3a9ad08bf68c5fa687da852444041"
+   },
+   "c2": {
+    "bytes": 3134,
+    "source_sha256": "61a26f73c6d51a509388176b4f8a119f332234f1865b062afcc36515909692bf"
+   },
+   "sem": "sem-48f8b268c92d60b3e33256667352b6a1198adbc705e9edf2dd3afa1b36941058"
+  },
+  "chain30": {
+   "bend": {
+    "bytes": 9549,
+    "source_sha256": "64e29d688b1b70b9c0c362678575651d307592ffeb30e9fb3767e0424b33b75c"
+   },
+   "bend2": {
+    "bytes": 4187,
+    "source_sha256": "ace1ade3feaea863cb25ceb553e9ecdcb7547e033e9f73d21aac7a3f1a086af6"
+   },
+   "c": {
+    "bytes": 7211,
+    "source_sha256": "7c2336d8bbca6ebed77bfeac782c654850f7da3d5f1099344d35856da91dd8ff"
+   },
+   "c2": {
+    "bytes": 2540,
+    "source_sha256": "295541844c28a3a8bd6c2a7c6550ed55cdb96ddf6d30fa347527cb084370b3de"
+   },
+   "sem": "sem-ffe90cdd6e75d6f692053fbfbe6c7139dd7496bc0aa6e278e9e5bd05fe911127"
+  },
+  "fanout": {
+   "bend": {
+    "bytes": 7001,
+    "source_sha256": "ce329b6e7fd5fd27d7355f1666705f464aa6d05a565e1adaf97dbf6045f7207f"
+   },
+   "bend2": {
+    "bytes": 7658,
+    "source_sha256": "19f8067cee806b0837217ea581e67cf033cfdd5499b449844ada94940b3c53b7"
+   },
+   "c": {
+    "bytes": 3153,
+    "source_sha256": "d7c21f12d3b4e99b4492339cc042cc6d77c32e699daa97c0c704797cb25af0ab"
+   },
+   "c2": {
+    "bytes": 3389,
+    "source_sha256": "45927bbe99558f8ee8355775b38e5013d3c6cb95e6a16d19c61cd675028ea04f"
+   },
+   "sem": "sem-2ae8045aa846ea97dd7c8ec6518b23eecaa9209e275e456787bac4b4bb954357"
+  },
+  "golden-demo": {
+   "bend": {
+    "bytes": 6956,
+    "source_sha256": "718a5340b97b95b6f8c3a6238e27048a1bbff0481517ce0bc4b0b63ed4167629"
+   },
+   "bend2": {
+    "bytes": 7734,
+    "source_sha256": "fc66b3fad78ee3632fcc9d3f1cafe65108b42964bdc1d103e9816b3bedf1c866"
+   },
+   "c": {
+    "bytes": 3084,
+    "source_sha256": "a6f4234cafa023787e27df201cf04c8e4562fa98b65096ead54edb2b4cb8f625"
+   },
+   "c2": {
+    "bytes": 3393,
+    "source_sha256": "a136b816c8d4f498dd7534020e8a5a0c72107181736c7fd71b8538d002f6df34"
+   },
+   "sem": "sem-8ae91fe9cbc5fd086ce4356d587c403211e5c7b2b3ebdd316496367429ecfe4a"
+  },
+  "mailbox-overflow": {
+   "bend": {
+    "bytes": 7195,
+    "source_sha256": "8b9f8ea996f25912baebceefe0a7cf4ee83d3e80a1b3154001213c92d3948495"
+   },
+   "bend2": {
+    "bytes": 7966,
+    "source_sha256": "32a4f5bd66c4e4357c62fca7418b0e15f223999bab17089116bf5174d05bd0cc"
+   },
+   "c": {
+    "bytes": 3272,
+    "source_sha256": "eaef13aa9553d38a014e37d87e0174f87c096e9ad455c5549eecc659dfd95ccb"
+   },
+   "c2": {
+    "bytes": 3541,
+    "source_sha256": "03b0d1d0a536f63425430ffc71d77900a910dc9120f8485b2f55ac967dbd685f"
+   },
+   "sem": "sem-bcff5a8e5a8fa9259c68d73a6ad031cdbf0038461b41dc194a4a47dd5fbf3e32"
+  },
+  "mailbox-routes": {
+   "bend": {
+    "bytes": 7195,
+    "source_sha256": "8b9f8ea996f25912baebceefe0a7cf4ee83d3e80a1b3154001213c92d3948495"
+   },
+   "bend2": {
+    "bytes": 7966,
+    "source_sha256": "32a4f5bd66c4e4357c62fca7418b0e15f223999bab17089116bf5174d05bd0cc"
+   },
+   "c": {
+    "bytes": 3272,
+    "source_sha256": "eaef13aa9553d38a014e37d87e0174f87c096e9ad455c5549eecc659dfd95ccb"
+   },
+   "c2": {
+    "bytes": 3541,
+    "source_sha256": "03b0d1d0a536f63425430ffc71d77900a910dc9120f8485b2f55ac967dbd685f"
+   },
+   "sem": "sem-24dc1e0fa445e26abc7dc660726eb323d8a1b1e1b6ae2230c845d299f068e51b"
+  },
+  "mixed-w8-w33": {
+   "bend": {
+    "refused": "emit_bend: lane width 33 of spinner s2 is outside 1..24 (Bend's Nat is 48 bits)"
+   },
+   "bend2": {
+    "refused": "emit_bend2: lane width 33 of spinner s2 is outside 1..23 (the biased accumulator must fit 48 bits)"
+   },
+   "c": {
+    "bytes": 3517,
+    "source_sha256": "d5f126c0690124c1f417298075fadfb06ffd3303729fa27187898e780e4604a2"
+   },
+   "c2": {
+    "bytes": 4051,
+    "source_sha256": "5fe81e496460340039b47d9dedbb9d35264abab68f2ce8886ce8b7511ee16ad0"
+   },
+   "sem": "sem-2c53faa8b50e633b5db6947a952251ed9840a37a16a3c545db01ccfd980ad513"
+  },
+  "once-at-5": {
+   "bend": {
+    "bytes": 3713,
+    "source_sha256": "3fb8d87836282d11d0aae145033b47706631cd0ef66c0667fa2acd65a6b3f46b"
+   },
+   "bend2": {
+    "bytes": 4042,
+    "source_sha256": "046014db5da15ec2402ed491034025f3dd0c92b4ba0a97249566b7727bef0684"
+   },
+   "c": {
+    "bytes": 2154,
+    "source_sha256": "b8ddd4da361996f3fa3ee0791986bb27c63af14c0bdc59b870d5b2a9a309fd0b"
+   },
+   "c2": {
+    "bytes": 2550,
+    "source_sha256": "0f07d3bee6f8b35ca659305beb2f9d02428f326995056dbc3cf8999f17567fde"
+   },
+   "sem": "sem-2f84750b05dd913cbc7c3bed87c093647ce9dcbc1496e976f69f18af61195cab"
+  },
+  "pulser-door": {
+   "bend": {
+    "bytes": 3532,
+    "source_sha256": "b27ed93aac1bf8ea45c1ddfa28f28a6a2c8716f774ee432075069739f813ee79"
+   },
+   "bend2": {
+    "bytes": 4042,
+    "source_sha256": "3ad0d535d187b0a00e5b973879d1cd6589a7ab1c5c19ea1cab615f5cf770d7d8"
+   },
+   "c": {
+    "bytes": 1991,
+    "source_sha256": "16e8b56bbcf021c5ce2b50303851bae86d3033ebe47e94281f446a9b4aca8d4c"
+   },
+   "c2": {
+    "bytes": 2550,
+    "source_sha256": "6966d8e6f3bc8756388a060f6316dc9484b92884d5de8ff45d8b4ad17f1223dd"
+   },
+   "sem": "sem-cc9ef76b45ca3ad2f7037e0e883c4e2da1a1117f9a5647c7fd20feec8bf8a268"
+  },
+  "pulser-relay": {
+   "bend": {
+    "bytes": 3439,
+    "source_sha256": "c1ca5294fa5fa219cd2e9d1f7f0001fc1d174cd095bdbb478e292e2db8c45de0"
+   },
+   "bend2": {
+    "bytes": 3950,
+    "source_sha256": "0b419003622a39a78dc607a911eeb5c01a3c8fb2ec82fa85626cf750173e87a0"
+   },
+   "c": {
+    "bytes": 1949,
+    "source_sha256": "3b0cb729c8dc3051ff8687cb366aaa64fe5d90868ffc00143a7c4d414cffc6f1"
+   },
+   "c2": {
+    "bytes": 2525,
+    "source_sha256": "c624f03a3d281fafd45132b78a508fe82a02437be53185c37c3956ae55a68f19"
+   },
+   "sem": "sem-90b3d0eb276d00c7d037ca05b1a47a935e7759e0337b8f43257a0513225b4b54"
+  },
+  "relay-only": {
+   "bend": {
+    "bytes": 3193,
+    "source_sha256": "419fa0781d621e05f516ba658001909f3c19b5202f374d2cdc8c74b72b6d419f"
+   },
+   "bend2": {
+    "bytes": 3725,
+    "source_sha256": "b98877931d36c762c908dafa0a2c912848b163731ec93f4c6d361dc1291ae998"
+   },
+   "c": {
+    "bytes": 1713,
+    "source_sha256": "dc6f3c0b2690a451cb32e9ff547e90ab74384a0770653f7a6a537138197c9544"
+   },
+   "c2": {
+    "bytes": 2364,
+    "source_sha256": "5bcc370f9d4440a4709827cabfcce860466e248aa60f0eb5af86f4adc03cd94e"
+   },
+   "sem": "sem-fea8cc9151434f7537fdf29940a9ecd5674dc5b8bfa63c9f7eef86a0d384028b"
+  },
+  "spinner-w16-n8-fixed": {
+   "bend": {
+    "bytes": 6160,
+    "source_sha256": "efe5a7c2a514481be161500d65e5d0d7324121b462953098d16877a39a45b381"
+   },
+   "bend2": {
+    "bytes": 7389,
+    "source_sha256": "45cb653afd4bb4ccf6c241833bea746a90f9d21d02c2c462bf96c5489d169dc9"
+   },
+   "c": {
+    "bytes": 2585,
+    "source_sha256": "2e4519ac15d2162aa89550ccf964331dedcceb6dae9b8c20d9774a62a7be2403"
+   },
+   "c2": {
+    "bytes": 3201,
+    "source_sha256": "14dfc0b4689ce086235984b5b518e06f9272b5337698c4d84bb7d251d05a2783"
+   },
+   "sem": "sem-dc209ea0cebf0a851c9042bf60833e6afeeef65d0dc0f1b4a4aedc05f07531a7"
+  },
+  "spinner-w33-n16": {
+   "bend": {
+    "refused": "emit_bend: lane width 33 of spinner sp is outside 1..24 (Bend's Nat is 48 bits)"
+   },
+   "bend2": {
+    "refused": "emit_bend2: lane width 33 of spinner sp is outside 1..23 (the biased accumulator must fit 48 bits)"
+   },
+   "c": {
+    "bytes": 2586,
+    "source_sha256": "b8cc557a6c061f506e77bff6ea20dcf42d433c05b5884317cb68193c087e4913"
+   },
+   "c2": {
+    "bytes": 3202,
+    "source_sha256": "6e96fbfe663cfecb94add0dac79cd284adda0f8638f26457a10e8f3ae8ddef76"
+   },
+   "sem": "sem-f8072c2a031878c3387824200f92ff743fa420efe6029d0af7a4b01b9d548593"
+  },
+  "spinner-w4-n2": {
+   "bend": {
+    "bytes": 6135,
+    "source_sha256": "255d29e3d793cdb6f1456ffe1e523e4a6ab50937ede928d899ca43848dc77e06"
+   },
+   "bend2": {
+    "bytes": 7360,
+    "source_sha256": "6b11f4bff64fe459da587f497d2b422f845f49f4192e4f0423c8893e2cc6a315"
+   },
+   "c": {
+    "bytes": 2584,
+    "source_sha256": "984e83aee4ceae13f14be481e746eeeb391050fb4a07ef44c3e9ac9aa3ba5b84"
+   },
+   "c2": {
+    "bytes": 3200,
+    "source_sha256": "cda9d992c8f48a81f5ef4d04709fc3e7ef4a3fe806f9548b44e0ee53bf9c5661"
+   },
+   "sem": "sem-08ab511ac7529280366aaeb9e2e48381b34af04851dadb2a824a013d71f4818a"
+  },
+  "spinner-w63-n31": {
+   "bend": {
+    "refused": "emit_bend: lane width 63 of spinner sp is outside 1..24 (Bend's Nat is 48 bits)"
+   },
+   "bend2": {
+    "refused": "emit_bend2: lane width 63 of spinner sp is outside 1..23 (the biased accumulator must fit 48 bits)"
+   },
+   "c": {
+    "bytes": 2586,
+    "source_sha256": "13c1b2f76e686eaf70635549ae7165c287c3d63ff53a8183164037ac8fdaafde"
+   },
+   "c2": {
+    "bytes": 3202,
+    "source_sha256": "ac1695433f02681fbcea6967e3f76eeb46ccf5d248e14b4ff4e058a3046b00da"
+   },
+   "sem": "sem-d9733890328168f348e59753950623ed0984694d5f0f92aa1dfeef03af0ee5d6"
+  },
+  "spinner-w8-n4": {
+   "bend": {
+    "bytes": 6144,
+    "source_sha256": "206bea4d1c373dd70455af686784c05853f2413c4dc7adfd5e822c74f1672036"
+   },
+   "bend2": {
+    "bytes": 7371,
+    "source_sha256": "c2ad426ad76e7a92996b1b09519e1ebea40a42b56434058572efd24bc772fc7f"
+   },
+   "c": {
+    "bytes": 2584,
+    "source_sha256": "85ea38b3d2dea00030807ad626a7c653802078877c66a1d9274b90ea6311a204"
+   },
+   "c2": {
+    "bytes": 3200,
+    "source_sha256": "87ed03a6a2a02a8dd679e5e550951a820873e99db95b4992ab3ba0192d08a136"
+   },
+   "sem": "sem-b0026a609080b976de46abb07077834a04749076b50b758fa1d965c08c678307"
+  },
+  "two-spinners": {
+   "bend": {
+    "bytes": 9387,
+    "source_sha256": "73088a7403fa4fdc49db32b55dd06ee7e094f7a20af6854a3d13ed28ebba3182"
+   },
+   "bend2": {
+    "bytes": 11088,
+    "source_sha256": "67d0c1f5df7804f6ee65439000f437003a58f6d72f81f158becdfff7602c1558"
+   },
+   "c": {
+    "bytes": 3516,
+    "source_sha256": "061b8d0a612ba9d80c6650d7dedd407d3f6de60f8f9b9aceb290e17e3ed0b7eb"
+   },
+   "c2": {
+    "bytes": 4050,
+    "source_sha256": "08361d426e3adf6622b97e48eed303e1db5ac3fcd15bb7025a5c830fcbdbca93"
+   },
+   "sem": "sem-5b430ff05b9c3011afaf66abc159908c95dd8ed66c1fd874601a3099cafbd8ba"
+  }
+ }
+}

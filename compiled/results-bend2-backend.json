@@ -1,11 +1,11 @@
 {
- "measured": "2026-09-18T13:42:29-0500",
+ "measured": "2026-09-19T02:09:41-0500",
  "quick": false,
  "emitter": "v2",
  "loadavg": [
-  3.955078125,
-  3.892578125,
-  4.06005859375
+  3.13916015625,
+  3.28271484375,
+  3.61279296875
  ],
  "bend": "bend 2.0.4",
  "ic32_path": "/home/travis/ProjectAmp2/TRVM/forge/../runtime/c/ic32",
@@ -22,8 +22,8 @@
    "backend_id": "bbknd2-9fa3dda2016442003da4b5e09f898aa21f1ded0494f0fe5c8ab4bbfa7da0db44",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.79,
-   "c_step_us_p50": 13.37,
+   "bend_epoch_wall_ms_p50": 1.03,
+   "c_step_us_p50": 13.59,
    "wall_s": 0.01
   },
   {
@@ -38,9 +38,9 @@
    "backend_id": "bbknd2-9fa3dda2016442003da4b5e09f898aa21f1ded0494f0fe5c8ab4bbfa7da0db44",
    "reference": "ic32",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.81,
-   "c_step_us_p50": 12.52,
-   "wall_s": 0.026
+   "bend_epoch_wall_ms_p50": 0.91,
+   "c_step_us_p50": 11.82,
+   "wall_s": 0.027
   },
   {
    "world": "golden-demo",
@@ -54,9 +54,9 @@
    "backend_id": "bbknd2-9fa3dda2016442003da4b5e09f898aa21f1ded0494f0fe5c8ab4bbfa7da0db44",
    "reference": "ic32",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.95,
-   "c_step_us_p50": 13.08,
-   "wall_s": 0.032
+   "bend_epoch_wall_ms_p50": 1.04,
+   "c_step_us_p50": 8.1,
+   "wall_s": 0.031
   },
   {
    "world": "golden-demo",
@@ -70,9 +70,9 @@
    "backend_id": "bbknd2-9fa3dda2016442003da4b5e09f898aa21f1ded0494f0fe5c8ab4bbfa7da0db44",
    "reference": "ic32",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.83,
-   "c_step_us_p50": 11.93,
-   "wall_s": 0.027
+   "bend_epoch_wall_ms_p50": 0.88,
+   "c_step_us_p50": 11.62,
+   "wall_s": 0.029
   },
   {
    "world": "chain10",
@@ -86,9 +86,9 @@
    "backend_id": "bbknd2-d103e2f74f2b99c6d715fa52164e1359d6ebdfd3602c00ef65612780a69787d7",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.91,
-   "c_step_us_p50": 13.03,
-   "wall_s": 0.541
+   "bend_epoch_wall_ms_p50": 0.99,
+   "c_step_us_p50": 12.46,
+   "wall_s": 0.011
   },
   {
    "world": "chain30",
@@ -102,9 +102,9 @@
    "backend_id": "bbknd2-03d245606500279ba0ad3d5c4d4a6b1ddacf83941c207a416b9d6e103f94ee13",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.16,
-   "c_step_us_p50": 54.4,
-   "wall_s": 0.011
+   "bend_epoch_wall_ms_p50": 0.88,
+   "c_step_us_p50": 26.28,
+   "wall_s": 0.009
   },
   {
    "world": "chain120",
@@ -118,9 +118,9 @@
    "backend_id": "bbknd2-9361c636c1794cec114641fc28bf3978f5e05525682e3fc68c94005221a6f2f4",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.33,
-   "c_step_us_p50": 91.41,
-   "wall_s": 0.019
+   "bend_epoch_wall_ms_p50": 1.25,
+   "c_step_us_p50": 91.62,
+   "wall_s": 0.016
   },
   {
    "world": "pulser-relay",
@@ -134,9 +134,9 @@
    "backend_id": "bbknd2-d7e6e62cdc513ec23ffb233ac8fa02c949b1feab3a832d5c715dfadf109da4e7",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.12,
-   "c_step_us_p50": 5.1,
-   "wall_s": 0.01
+   "bend_epoch_wall_ms_p50": 1.05,
+   "c_step_us_p50": 4.78,
+   "wall_s": 0.011
   },
   {
    "world": "pulser-door",
@@ -150,9 +150,9 @@
    "backend_id": "bbknd2-0220727dd31b2c271fe9e1827cc3a99d364a5ce3ab23173913ed2ed7c70e060a",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.02,
-   "c_step_us_p50": 5.46,
-   "wall_s": 0.552
+   "bend_epoch_wall_ms_p50": 0.95,
+   "c_step_us_p50": 5.02,
+   "wall_s": 0.009
   },
   {
    "world": "pulser-door",
@@ -166,9 +166,9 @@
    "backend_id": "bbknd2-0220727dd31b2c271fe9e1827cc3a99d364a5ce3ab23173913ed2ed7c70e060a",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.0,
-   "c_step_us_p50": 4.33,
-   "wall_s": 0.027
+   "bend_epoch_wall_ms_p50": 0.95,
+   "c_step_us_p50": 4.18,
+   "wall_s": 0.028
   },
   {
    "world": "pulser-door",
@@ -182,9 +182,9 @@
    "backend_id": "bbknd2-0220727dd31b2c271fe9e1827cc3a99d364a5ce3ab23173913ed2ed7c70e060a",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.83,
-   "c_step_us_p50": 4.18,
-   "wall_s": 0.022
+   "bend_epoch_wall_ms_p50": 0.85,
+   "c_step_us_p50": 3.95,
+   "wall_s": 0.021
   },
   {
    "world": "pulser-door",
@@ -198,9 +198,9 @@
    "backend_id": "bbknd2-0220727dd31b2c271fe9e1827cc3a99d364a5ce3ab23173913ed2ed7c70e060a",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.78,
-   "c_step_us_p50": 3.58,
-   "wall_s": 0.021
+   "bend_epoch_wall_ms_p50": 0.73,
+   "c_step_us_p50": 3.93,
+   "wall_s": 0.022
   },
   {
    "world": "relay-only",
@@ -214,9 +214,9 @@
    "backend_id": "bbknd2-812f5893bb3a0eee21bcc550fc797c4cdfdb96cc62bd0a209b9e2e2236a50acc",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.01,
-   "c_step_us_p50": 3.74,
-   "wall_s": 0.497
+   "bend_epoch_wall_ms_p50": 0.78,
+   "c_step_us_p50": 3.51,
+   "wall_s": 0.007
   },
   {
    "world": "spinner-w4-n2",
@@ -230,9 +230,9 @@
    "backend_id": "bbknd2-fa44348ec4ec4f4dea97365c038eaa5c1c52d29eed90d6a231addf97748bcc5d",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.97,
-   "c_step_us_p50": 10.61,
-   "wall_s": 0.667
+   "bend_epoch_wall_ms_p50": 0.72,
+   "c_step_us_p50": 9.78,
+   "wall_s": 0.007
   },
   {
    "world": "spinner-w4-n2",
@@ -246,9 +246,9 @@
    "backend_id": "bbknd2-fa44348ec4ec4f4dea97365c038eaa5c1c52d29eed90d6a231addf97748bcc5d",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.02,
-   "c_step_us_p50": 9.34,
-   "wall_s": 0.031
+   "bend_epoch_wall_ms_p50": 0.67,
+   "c_step_us_p50": 9.28,
+   "wall_s": 0.023
   },
   {
    "world": "spinner-w4-n2",
@@ -262,9 +262,9 @@
    "backend_id": "bbknd2-fa44348ec4ec4f4dea97365c038eaa5c1c52d29eed90d6a231addf97748bcc5d",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.07,
-   "c_step_us_p50": 11.72,
-   "wall_s": 0.033
+   "bend_epoch_wall_ms_p50": 0.71,
+   "c_step_us_p50": 9.35,
+   "wall_s": 0.023
   },
   {
    "world": "spinner-w4-n2",
@@ -278,9 +278,9 @@
    "backend_id": "bbknd2-fa44348ec4ec4f4dea97365c038eaa5c1c52d29eed90d6a231addf97748bcc5d",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.87,
-   "c_step_us_p50": 11.79,
-   "wall_s": 0.028
+   "bend_epoch_wall_ms_p50": 0.78,
+   "c_step_us_p50": 9.26,
+   "wall_s": 0.024
   },
   {
    "world": "spinner-w8-n4",
@@ -294,8 +294,8 @@
    "backend_id": "bbknd2-19c1373d294ce7bb1c99c2829021c6bbd3d10b7b98170dd0b8c8948da32f0bf5",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.97,
-   "c_step_us_p50": 12.18,
+   "bend_epoch_wall_ms_p50": 0.88,
+   "c_step_us_p50": 9.99,
    "wall_s": 0.009
   },
   {
@@ -310,9 +310,9 @@
    "backend_id": "bbknd2-19c1373d294ce7bb1c99c2829021c6bbd3d10b7b98170dd0b8c8948da32f0bf5",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.93,
-   "c_step_us_p50": 11.06,
-   "wall_s": 0.033
+   "bend_epoch_wall_ms_p50": 0.68,
+   "c_step_us_p50": 9.18,
+   "wall_s": 0.023
   },
   {
    "world": "spinner-w8-n4",
@@ -326,9 +326,9 @@
    "backend_id": "bbknd2-19c1373d294ce7bb1c99c2829021c6bbd3d10b7b98170dd0b8c8948da32f0bf5",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.04,
-   "c_step_us_p50": 11.17,
-   "wall_s": 0.031
+   "bend_epoch_wall_ms_p50": 0.68,
+   "c_step_us_p50": 9.33,
+   "wall_s": 0.024
   },
   {
    "world": "spinner-w8-n4",
@@ -342,9 +342,9 @@
    "backend_id": "bbknd2-19c1373d294ce7bb1c99c2829021c6bbd3d10b7b98170dd0b8c8948da32f0bf5",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.95,
-   "c_step_us_p50": 9.16,
-   "wall_s": 0.03
+   "bend_epoch_wall_ms_p50": 0.68,
+   "c_step_us_p50": 9.66,
+   "wall_s": 0.022
   },
   {
    "world": "spinner-w16-n8-fixed",
@@ -358,9 +358,9 @@
    "backend_id": "bbknd2-71aa364c881e8c0ae03a1e30cbac9a6f15bd12c66eec48ba692f49943dd92da2",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.13,
-   "c_step_us_p50": 11.79,
-   "wall_s": 0.843
+   "bend_epoch_wall_ms_p50": 0.75,
+   "c_step_us_p50": 10.04,
+   "wall_s": 0.008
   },
   {
    "world": "spinner-w16-n8-fixed",
@@ -374,9 +374,9 @@
    "backend_id": "bbknd2-71aa364c881e8c0ae03a1e30cbac9a6f15bd12c66eec48ba692f49943dd92da2",
    "reference": "ic32",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.92,
-   "c_step_us_p50": 11.22,
-   "wall_s": 0.031
+   "bend_epoch_wall_ms_p50": 0.66,
+   "c_step_us_p50": 9.45,
+   "wall_s": 0.022
   },
   {
    "world": "spinner-w16-n8-fixed",
@@ -390,9 +390,9 @@
    "backend_id": "bbknd2-71aa364c881e8c0ae03a1e30cbac9a6f15bd12c66eec48ba692f49943dd92da2",
    "reference": "ic32",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.89,
-   "c_step_us_p50": 11.21,
-   "wall_s": 0.029
+   "bend_epoch_wall_ms_p50": 0.68,
+   "c_step_us_p50": 9.51,
+   "wall_s": 0.023
   },
   {
    "world": "spinner-w16-n8-fixed",
@@ -406,9 +406,9 @@
    "backend_id": "bbknd2-71aa364c881e8c0ae03a1e30cbac9a6f15bd12c66eec48ba692f49943dd92da2",
    "reference": "ic32",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.91,
-   "c_step_us_p50": 11.45,
-   "wall_s": 0.029
+   "bend_epoch_wall_ms_p50": 0.71,
+   "c_step_us_p50": 9.7,
+   "wall_s": 0.024
   },
   {
    "world": "binary-40-phase-3",
@@ -422,9 +422,9 @@
    "backend_id": "bbknd2-548567606624cc8113d3579a345ede67c1704c44824374eb1fcbf656e3d17878",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.44,
-   "c_step_us_p50": 7.35,
-   "wall_s": 0.709
+   "bend_epoch_wall_ms_p50": 0.74,
+   "c_step_us_p50": 3.84,
+   "wall_s": 0.007
   },
   {
    "world": "binary-40-phase-3",
@@ -438,9 +438,9 @@
    "backend_id": "bbknd2-548567606624cc8113d3579a345ede67c1704c44824374eb1fcbf656e3d17878",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.03,
-   "c_step_us_p50": 6.05,
-   "wall_s": 0.032
+   "bend_epoch_wall_ms_p50": 0.67,
+   "c_step_us_p50": 4.76,
+   "wall_s": 0.017
   },
   {
    "world": "binary-40-phase-3",
@@ -454,9 +454,9 @@
    "backend_id": "bbknd2-548567606624cc8113d3579a345ede67c1704c44824374eb1fcbf656e3d17878",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.02,
-   "c_step_us_p50": 5.57,
-   "wall_s": 0.031
+   "bend_epoch_wall_ms_p50": 0.69,
+   "c_step_us_p50": 4.38,
+   "wall_s": 0.019
   },
   {
    "world": "binary-40-phase-3",
@@ -470,9 +470,9 @@
    "backend_id": "bbknd2-548567606624cc8113d3579a345ede67c1704c44824374eb1fcbf656e3d17878",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.03,
-   "c_step_us_p50": 4.29,
-   "wall_s": 0.028
+   "bend_epoch_wall_ms_p50": 0.71,
+   "c_step_us_p50": 4.36,
+   "wall_s": 0.02
   },
   {
    "world": "once-at-5",
@@ -486,9 +486,9 @@
    "backend_id": "bbknd2-a2b06cb8d69aae41805102159d11e2790b2d18c89f1027984dd5e09370afe2d7",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.12,
-   "c_step_us_p50": 7.02,
-   "wall_s": 0.715
+   "bend_epoch_wall_ms_p50": 0.78,
+   "c_step_us_p50": 4.1,
+   "wall_s": 0.007
   },
   {
    "world": "once-at-5",
@@ -502,9 +502,9 @@
    "backend_id": "bbknd2-a2b06cb8d69aae41805102159d11e2790b2d18c89f1027984dd5e09370afe2d7",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.09,
-   "c_step_us_p50": 6.13,
-   "wall_s": 0.028
+   "bend_epoch_wall_ms_p50": 0.63,
+   "c_step_us_p50": 4.93,
+   "wall_s": 0.017
   },
   {
    "world": "once-at-5",
@@ -518,9 +518,9 @@
    "backend_id": "bbknd2-a2b06cb8d69aae41805102159d11e2790b2d18c89f1027984dd5e09370afe2d7",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.89,
-   "c_step_us_p50": 6.11,
-   "wall_s": 0.024
+   "bend_epoch_wall_ms_p50": 0.65,
+   "c_step_us_p50": 4.75,
+   "wall_s": 0.018
   },
   {
    "world": "once-at-5",
@@ -534,9 +534,9 @@
    "backend_id": "bbknd2-a2b06cb8d69aae41805102159d11e2790b2d18c89f1027984dd5e09370afe2d7",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.9,
-   "c_step_us_p50": 4.24,
-   "wall_s": 0.024
+   "bend_epoch_wall_ms_p50": 0.62,
+   "c_step_us_p50": 4.57,
+   "wall_s": 0.018
   },
   {
    "world": "fanout",
@@ -550,9 +550,9 @@
    "backend_id": "bbknd2-95bbb448ca69a22245c339c26380217e759b707968145cfaca7397e957cb597f",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.04,
-   "c_step_us_p50": 16.56,
-   "wall_s": 0.01
+   "bend_epoch_wall_ms_p50": 0.64,
+   "c_step_us_p50": 13.96,
+   "wall_s": 0.007
   },
   {
    "world": "fanout",
@@ -566,9 +566,9 @@
    "backend_id": "bbknd2-95bbb448ca69a22245c339c26380217e759b707968145cfaca7397e957cb597f",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.0,
-   "c_step_us_p50": 15.27,
-   "wall_s": 0.031
+   "bend_epoch_wall_ms_p50": 0.63,
+   "c_step_us_p50": 12.27,
+   "wall_s": 0.021
   },
   {
    "world": "fanout",
@@ -582,9 +582,9 @@
    "backend_id": "bbknd2-95bbb448ca69a22245c339c26380217e759b707968145cfaca7397e957cb597f",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.01,
-   "c_step_us_p50": 15.05,
-   "wall_s": 0.031
+   "bend_epoch_wall_ms_p50": 0.66,
+   "c_step_us_p50": 12.38,
+   "wall_s": 0.023
   },
   {
    "world": "fanout",
@@ -598,9 +598,9 @@
    "backend_id": "bbknd2-95bbb448ca69a22245c339c26380217e759b707968145cfaca7397e957cb597f",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.11,
-   "c_step_us_p50": 14.76,
-   "wall_s": 0.035
+   "bend_epoch_wall_ms_p50": 0.65,
+   "c_step_us_p50": 8.74,
+   "wall_s": 0.021
   },
   {
    "world": "two-spinners",
@@ -614,9 +614,9 @@
    "backend_id": "bbknd2-9fd6551bf9bf54ec5a5c94206ef0e0c1cca6ad6a56b5761ca6a02b5c25072d8a",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.23,
-   "c_step_us_p50": 17.31,
-   "wall_s": 0.012
+   "bend_epoch_wall_ms_p50": 0.72,
+   "c_step_us_p50": 17.44,
+   "wall_s": 0.009
   },
   {
    "world": "two-spinners",
@@ -630,9 +630,9 @@
    "backend_id": "bbknd2-9fd6551bf9bf54ec5a5c94206ef0e0c1cca6ad6a56b5761ca6a02b5c25072d8a",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.18,
-   "c_step_us_p50": 17.99,
-   "wall_s": 0.038
+   "bend_epoch_wall_ms_p50": 0.76,
+   "c_step_us_p50": 14.61,
+   "wall_s": 0.026
   },
   {
    "world": "two-spinners",
@@ -646,9 +646,9 @@
    "backend_id": "bbknd2-9fd6551bf9bf54ec5a5c94206ef0e0c1cca6ad6a56b5761ca6a02b5c25072d8a",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.13,
-   "c_step_us_p50": 17.69,
-   "wall_s": 0.037
+   "bend_epoch_wall_ms_p50": 0.74,
+   "c_step_us_p50": 14.72,
+   "wall_s": 0.025
   },
   {
    "world": "two-spinners",
@@ -662,9 +662,9 @@
    "backend_id": "bbknd2-9fd6551bf9bf54ec5a5c94206ef0e0c1cca6ad6a56b5761ca6a02b5c25072d8a",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.97,
-   "c_step_us_p50": 17.41,
-   "wall_s": 0.031
+   "bend_epoch_wall_ms_p50": 0.71,
+   "c_step_us_p50": 14.87,
+   "wall_s": 0.024
   },
   {
    "world": "mailbox-routes",
@@ -678,9 +678,9 @@
    "backend_id": "bbknd2-aaf461c5f0b6b6d3858a4bed0fc1feaf849efa42e043a34640543764143f2995",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.96,
-   "c_step_us_p50": 16.43,
-   "wall_s": 0.009
+   "bend_epoch_wall_ms_p50": 0.87,
+   "c_step_us_p50": 13.79,
+   "wall_s": 0.01
   },
   {
    "world": "mailbox-routes",
@@ -694,9 +694,9 @@
    "backend_id": "bbknd2-aaf461c5f0b6b6d3858a4bed0fc1feaf849efa42e043a34640543764143f2995",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.08,
-   "c_step_us_p50": 14.78,
-   "wall_s": 0.036
+   "bend_epoch_wall_ms_p50": 0.7,
+   "c_step_us_p50": 13.53,
+   "wall_s": 0.025
   },
   {
    "world": "mailbox-routes",
@@ -710,9 +710,9 @@
    "backend_id": "bbknd2-aaf461c5f0b6b6d3858a4bed0fc1feaf849efa42e043a34640543764143f2995",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.0,
-   "c_step_us_p50": 14.71,
-   "wall_s": 0.034
+   "bend_epoch_wall_ms_p50": 0.73,
+   "c_step_us_p50": 12.59,
+   "wall_s": 0.025
   },
   {
    "world": "mailbox-routes",
@@ -726,9 +726,9 @@
    "backend_id": "bbknd2-aaf461c5f0b6b6d3858a4bed0fc1feaf849efa42e043a34640543764143f2995",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.88,
-   "c_step_us_p50": 11.53,
-   "wall_s": 0.03
+   "bend_epoch_wall_ms_p50": 0.87,
+   "c_step_us_p50": 12.72,
+   "wall_s": 0.027
   },
   {
    "world": "mailbox-overflow",
@@ -743,8 +743,8 @@
    "reference": "ic_ref",
    "reference_cached": true,
    "bend_epoch_wall_ms_p50": 0.99,
-   "c_step_us_p50": 16.4,
-   "wall_s": 0.01
+   "c_step_us_p50": 13.52,
+   "wall_s": 0.009
   },
   {
    "world": "mailbox-overflow",
@@ -758,9 +758,9 @@
    "backend_id": "bbknd2-24b674e1161344b0e0539df840bd5778c262f45ec7c1ed7bc27727d43f3958fd",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.94,
-   "c_step_us_p50": 15.33,
-   "wall_s": 0.032
+   "bend_epoch_wall_ms_p50": 0.8,
+   "c_step_us_p50": 12.76,
+   "wall_s": 0.027
   },
   {
    "world": "mailbox-overflow",
@@ -774,9 +774,9 @@
    "backend_id": "bbknd2-24b674e1161344b0e0539df840bd5778c262f45ec7c1ed7bc27727d43f3958fd",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 0.92,
-   "c_step_us_p50": 14.17,
-   "wall_s": 0.031
+   "bend_epoch_wall_ms_p50": 0.94,
+   "c_step_us_p50": 12.25,
+   "wall_s": 0.03
   },
   {
    "world": "mailbox-overflow",
@@ -790,9 +790,9 @@
    "backend_id": "bbknd2-24b674e1161344b0e0539df840bd5778c262f45ec7c1ed7bc27727d43f3958fd",
    "reference": "ic_ref",
    "reference_cached": true,
-   "bend_epoch_wall_ms_p50": 1.04,
-   "c_step_us_p50": 14.85,
-   "wall_s": 0.034
+   "bend_epoch_wall_ms_p50": 0.94,
+   "c_step_us_p50": 12.53,
+   "wall_s": 0.028
   }
  ],
  "worlds": {
@@ -910,11 +910,14 @@
   }
  },
  "refused": {
-  "spinner-w33-n16": "emit_bend2: lane width 33 of spinner sp is outside 1..23 (the biased accumulator must fit 48 bits)"
+  "spinner-w33-n16": "emit_bend2: lane width 33 of spinner sp is outside 1..23 (the biased accumulator must fit 48 bits)",
+  "mixed-w8-w33": "emit_bend2: lane width 33 of spinner s2 is outside 1..23 (the biased accumulator must fit 48 bits)"
  },
  "controls": [
   {
-   "mutant": "react-before-commit",
+   "mutant": "onehot-phase-off-by-one",
+   "kind": "law",
+   "law": "clock-onehot",
    "predicted": "film",
    "caught": true,
    "kinds": [
@@ -922,25 +925,157 @@
    ],
    "caught_at": {
     "world": "golden-demo",
-    "scenario": "fuzz-20260918",
-    "epoch": 6,
+    "scenario": "demo",
+    "epoch": 1,
     "kind": "film"
    },
    "caught_by_worlds": [
+    "chain10",
+    "chain120",
+    "chain30",
     "fanout",
     "golden-demo",
     "mailbox-overflow",
     "mailbox-routes",
+    "pulser-relay",
+    "spinner-w16-n8-fixed",
     "spinner-w4-n2",
     "spinner-w8-n4",
     "two-spinners"
    ],
-   "caught_pairs": 21,
-   "pairs_folded": 48,
+   "caught_pairs": 36,
+   "pairs_folded": 49,
+   "only_by": null,
+   "as_predicted": true
+  },
+  {
+   "mutant": "binary-phase-off-by-one",
+   "kind": "law",
+   "law": "clock-binary",
+   "predicted": "film",
+   "caught": true,
+   "kinds": [
+    "film"
+   ],
+   "caught_at": {
+    "world": "binary-40-phase-3",
+    "scenario": "demo",
+    "epoch": 2,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "binary-40-phase-3"
+   ],
+   "caught_pairs": 4,
+   "pairs_folded": 49,
+   "only_by": null,
+   "as_predicted": true
+  },
+  {
+   "mutant": "once-no-latch",
+   "kind": "law",
+   "law": "clock-once",
+   "predicted": "film",
+   "caught": true,
+   "kinds": [
+    "film"
+   ],
+   "caught_at": {
+    "world": "golden-demo",
+    "scenario": "demo",
+    "epoch": 4,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "golden-demo",
+    "mailbox-overflow",
+    "mailbox-routes",
+    "once-at-5",
+    "pulser-door"
+   ],
+   "caught_pairs": 19,
+   "pairs_folded": 49,
+   "only_by": null,
+   "as_predicted": true
+  },
+  {
+   "mutant": "relay-hot-from-cur",
+   "kind": "law",
+   "law": "hot-relay",
+   "predicted": "film",
+   "caught": true,
+   "kinds": [
+    "film"
+   ],
+   "caught_at": {
+    "world": "golden-demo",
+    "scenario": "demo",
+    "epoch": 1,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "binary-40-phase-3",
+    "chain10",
+    "chain120",
+    "chain30",
+    "fanout",
+    "golden-demo",
+    "mailbox-overflow",
+    "mailbox-routes",
+    "once-at-5",
+    "pulser-door",
+    "pulser-relay",
+    "spinner-w16-n8-fixed",
+    "spinner-w4-n2",
+    "spinner-w8-n4",
+    "two-spinners"
+   ],
+   "caught_pairs": 48,
+   "pairs_folded": 49,
+   "only_by": null,
+   "as_predicted": true
+  },
+  {
+   "mutant": "wire-cur-stale",
+   "kind": "law",
+   "law": "wire-advance",
+   "predicted": "film",
+   "caught": true,
+   "kinds": [
+    "film"
+   ],
+   "caught_at": {
+    "world": "golden-demo",
+    "scenario": "demo",
+    "epoch": 1,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "binary-40-phase-3",
+    "chain10",
+    "chain120",
+    "chain30",
+    "fanout",
+    "golden-demo",
+    "mailbox-overflow",
+    "mailbox-routes",
+    "once-at-5",
+    "pulser-door",
+    "pulser-relay",
+    "spinner-w16-n8-fixed",
+    "spinner-w4-n2",
+    "spinner-w8-n4",
+    "two-spinners"
+   ],
+   "caught_pairs": 48,
+   "pairs_folded": 49,
+   "only_by": null,
    "as_predicted": true
   },
   {
    "mutant": "reset-ignored",
+   "kind": "law",
+   "law": "commit-fault-reset",
    "predicted": "film",
    "caught": true,
    "kinds": [
@@ -963,11 +1098,14 @@
     "two-spinners"
    ],
    "caught_pairs": 13,
-   "pairs_folded": 48,
+   "pairs_folded": 49,
+   "only_by": null,
    "as_predicted": true
   },
   {
-   "mutant": "mac-sign-flipped",
+   "mutant": "react-without-fire",
+   "kind": "law",
+   "law": "react-only-if-fires",
    "predicted": "film",
    "caught": true,
    "kinds": [
@@ -976,7 +1114,7 @@
    "caught_at": {
     "world": "golden-demo",
     "scenario": "demo",
-    "epoch": 4,
+    "epoch": 1,
     "kind": "film"
    },
    "caught_by_worlds": [
@@ -990,11 +1128,14 @@
     "two-spinners"
    ],
    "caught_pairs": 32,
-   "pairs_folded": 48,
+   "pairs_folded": 49,
+   "only_by": null,
    "as_predicted": true
   },
   {
-   "mutant": "nxt-from-cur-words",
+   "mutant": "react-before-commit",
+   "kind": "law",
+   "law": "react-uses-committed-rotor",
    "predicted": "film",
    "caught": true,
    "kinds": [
@@ -1002,162 +1143,28 @@
    ],
    "caught_at": {
     "world": "golden-demo",
-    "scenario": "demo",
-    "epoch": 1,
+    "scenario": "fuzz-20260918",
+    "epoch": 6,
     "kind": "film"
    },
    "caught_by_worlds": [
-    "binary-40-phase-3",
-    "chain10",
-    "chain30",
     "fanout",
     "golden-demo",
     "mailbox-overflow",
     "mailbox-routes",
-    "once-at-5",
-    "pulser-door",
-    "pulser-relay",
-    "spinner-w16-n8-fixed",
     "spinner-w4-n2",
     "spinner-w8-n4",
     "two-spinners"
    ],
-   "caught_pairs": 47,
-   "pairs_folded": 48,
-   "as_predicted": true
-  },
-  {
-   "mutant": "run-mask-dropped",
-   "predicted": "film",
-   "caught": true,
-   "kinds": [
-    "film"
-   ],
-   "caught_at": {
-    "world": "golden-demo",
-    "scenario": "demo",
-    "epoch": 4,
-    "kind": "film"
-   },
-   "caught_by_worlds": [
-    "fanout",
-    "golden-demo",
-    "mailbox-overflow",
-    "mailbox-routes"
-   ],
-   "caught_pairs": 16,
-   "pairs_folded": 48,
-   "as_predicted": true
-  },
-  {
-   "mutant": "cur-not-advanced",
-   "predicted": "film",
-   "caught": true,
-   "kinds": [
-    "film"
-   ],
-   "caught_at": {
-    "world": "golden-demo",
-    "scenario": "demo",
-    "epoch": 1,
-    "kind": "film"
-   },
-   "caught_by_worlds": [
-    "binary-40-phase-3",
-    "chain10",
-    "chain30",
-    "fanout",
-    "golden-demo",
-    "mailbox-overflow",
-    "mailbox-routes",
-    "once-at-5",
-    "pulser-door",
-    "pulser-relay",
-    "spinner-w16-n8-fixed",
-    "spinner-w4-n2",
-    "spinner-w8-n4",
-    "two-spinners"
-   ],
-   "caught_pairs": 47,
-   "pairs_folded": 48,
-   "as_predicted": true
-  },
-  {
-   "mutant": "once-no-latch",
-   "predicted": "film",
-   "caught": true,
-   "kinds": [
-    "film"
-   ],
-   "caught_at": {
-    "world": "golden-demo",
-    "scenario": "demo",
-    "epoch": 4,
-    "kind": "film"
-   },
-   "caught_by_worlds": [
-    "golden-demo",
-    "mailbox-overflow",
-    "mailbox-routes",
-    "once-at-5",
-    "pulser-door"
-   ],
-   "caught_pairs": 19,
-   "pairs_folded": 48,
-   "as_predicted": true
-  },
-  {
-   "mutant": "onehot-phase-off-by-one",
-   "predicted": "film",
-   "caught": true,
-   "kinds": [
-    "film"
-   ],
-   "caught_at": {
-    "world": "golden-demo",
-    "scenario": "demo",
-    "epoch": 1,
-    "kind": "film"
-   },
-   "caught_by_worlds": [
-    "chain10",
-    "chain30",
-    "fanout",
-    "golden-demo",
-    "mailbox-overflow",
-    "mailbox-routes",
-    "pulser-relay",
-    "spinner-w16-n8-fixed",
-    "spinner-w4-n2",
-    "spinner-w8-n4",
-    "two-spinners"
-   ],
-   "caught_pairs": 35,
-   "pairs_folded": 48,
-   "as_predicted": true
-  },
-  {
-   "mutant": "binary-phase-off-by-one",
-   "predicted": "film",
-   "caught": true,
-   "kinds": [
-    "film"
-   ],
-   "caught_at": {
-    "world": "binary-40-phase-3",
-    "scenario": "demo",
-    "epoch": 2,
-    "kind": "film"
-   },
-   "caught_by_worlds": [
-    "binary-40-phase-3"
-   ],
-   "caught_pairs": 4,
-   "pairs_folded": 48,
+   "caught_pairs": 21,
+   "pairs_folded": 49,
+   "only_by": null,
    "as_predicted": true
   },
   {
    "mutant": "fault-not-sticky",
+   "kind": "law",
+   "law": "sticky-fault",
    "predicted": "film",
    "caught": true,
    "kinds": [
@@ -1180,11 +1187,73 @@
     "two-spinners"
    ],
    "caught_pairs": 18,
-   "pairs_folded": 48,
+   "pairs_folded": 49,
+   "only_by": null,
    "as_predicted": true
   },
   {
-   "mutant": "react-without-fire",
+   "mutant": "floor-shift",
+   "kind": "law",
+   "law": "mac-toward-zero-shift",
+   "predicted": "film",
+   "caught": true,
+   "kinds": [
+    "film"
+   ],
+   "caught_at": {
+    "world": "golden-demo",
+    "scenario": "fuzz-20260918",
+    "epoch": 6,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "fanout",
+    "golden-demo",
+    "mailbox-overflow",
+    "mailbox-routes",
+    "spinner-w16-n8-fixed",
+    "spinner-w4-n2",
+    "spinner-w8-n4",
+    "two-spinners"
+   ],
+   "caught_pairs": 22,
+   "pairs_folded": 49,
+   "only_by": null,
+   "as_predicted": true
+  },
+  {
+   "mutant": "no-saturation",
+   "kind": "law",
+   "law": "mac-saturation",
+   "predicted": "film",
+   "caught": true,
+   "kinds": [
+    "film"
+   ],
+   "caught_at": {
+    "world": "golden-demo",
+    "scenario": "fuzz-20260918",
+    "epoch": 8,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "fanout",
+    "golden-demo",
+    "mailbox-overflow",
+    "mailbox-routes",
+    "spinner-w4-n2",
+    "spinner-w8-n4",
+    "two-spinners"
+   ],
+   "caught_pairs": 25,
+   "pairs_folded": 49,
+   "only_by": null,
+   "as_predicted": true
+  },
+  {
+   "mutant": "mac-sign-flipped",
+   "kind": "text",
+   "law": null,
    "predicted": "film",
    "caught": true,
    "kinds": [
@@ -1193,7 +1262,7 @@
    "caught_at": {
     "world": "golden-demo",
     "scenario": "demo",
-    "epoch": 1,
+    "epoch": 4,
     "kind": "film"
    },
    "caught_by_worlds": [
@@ -1207,11 +1276,40 @@
     "two-spinners"
    ],
    "caught_pairs": 32,
-   "pairs_folded": 48,
+   "pairs_folded": 49,
+   "only_by": null,
+   "as_predicted": true
+  },
+  {
+   "mutant": "run-mask-dropped",
+   "kind": "text",
+   "law": null,
+   "predicted": "film",
+   "caught": true,
+   "kinds": [
+    "film"
+   ],
+   "caught_at": {
+    "world": "golden-demo",
+    "scenario": "demo",
+    "epoch": 4,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "fanout",
+    "golden-demo",
+    "mailbox-overflow",
+    "mailbox-routes"
+   ],
+   "caught_pairs": 16,
+   "pairs_folded": 49,
+   "only_by": null,
    "as_predicted": true
   },
   {
    "mutant": "affine-double-use",
+   "kind": "text",
+   "law": null,
    "predicted": "refused",
    "caught": true,
    "kinds": [
@@ -1227,6 +1325,7 @@
    "caught_by_worlds": [
     "binary-40-phase-3",
     "chain10",
+    "chain120",
     "chain30",
     "fanout",
     "golden-demo",
@@ -1241,16 +1340,17 @@
     "spinner-w8-n4",
     "two-spinners"
    ],
-   "caught_pairs": 48,
-   "pairs_folded": 48,
+   "caught_pairs": 49,
+   "pairs_folded": 49,
+   "only_by": null,
    "as_predicted": true
   }
  ],
  "bench": null,
  "all_agree": true,
  "loadavg_after": [
-  4.60009765625,
-  4.1025390625,
-  4.1162109375
+  3.623046875,
+  3.3798828125,
+  3.62890625
  ]
 }

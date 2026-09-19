@@ -1,0 +1,1223 @@
+{
+ "measured": "2026-09-19T01:50:00-0500",
+ "quick": true,
+ "worlds_subset": null,
+ "loadavg": [
+  3.513671875,
+  4.0146484375,
+  4.39013671875
+ ],
+ "ic32_path": "/home/travis/ProjectAmp2/TRVM/forge/../runtime/c/ic32",
+ "pairs": [
+  {
+   "world": "golden-demo",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-8ae91fe9cbc5fd086ce4356d587c403211e5c7b2b3ebdd316496367429ecfe4a",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-97b6c52d6bc6935934b21b5f8e3b8ac4717669f472171fa7ac8b64b6ff8c04da",
+   "term_bytes_epoch1": 9509628,
+   "compiled_step_us_p50": 9.81,
+   "ic_step_s_p50": 0.2371,
+   "ic_reduce_s_p50": 0.2243,
+   "ic_reducer": "ic32",
+   "reference": "ic32",
+   "wall_s": {
+    "compiled_fold": 0.002,
+    "reference_fold": 2.614,
+    "ic_twin_fold": 2.247
+   }
+  },
+  {
+   "world": "golden-demo",
+   "scenario": "fuzz-20260918",
+   "epochs": 24,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-8ae91fe9cbc5fd086ce4356d587c403211e5c7b2b3ebdd316496367429ecfe4a",
+   "scenario_digest": "scen-c1241a3103e8b1e558f39ef7e899d2486321fba1a18d223ecf396adc6ac13f9e",
+   "backend_id": "cbknd-97b6c52d6bc6935934b21b5f8e3b8ac4717669f472171fa7ac8b64b6ff8c04da",
+   "term_bytes_epoch1": 9508558,
+   "compiled_step_us_p50": 8.45,
+   "ic_step_s_p50": 0.2316,
+   "ic_reduce_s_p50": 0.2274,
+   "ic_reducer": "ic32",
+   "reference": "ic32",
+   "wall_s": {
+    "compiled_fold": 0.004,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 6.297
+   }
+  },
+  {
+   "world": "chain10",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-9f4a96023daa714c6489658c31fdca764582c079fefd9d4e5df699ae0119d009",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-36066a5a6d44d9a07dc901ec0ae951092a46657042ee4e4d46c693b408a666d8",
+   "term_bytes_epoch1": 4361,
+   "compiled_step_us_p50": 8.92,
+   "ic_step_s_p50": 0.0011,
+   "ic_reduce_s_p50": 0.001,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.002,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 0.009
+   }
+  },
+  {
+   "world": "chain30",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "films_equal_ic32": true,
+   "sem": "sem-ffe90cdd6e75d6f692053fbfbe6c7139dd7496bc0aa6e278e9e5bd05fe911127",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-2a9e0be6709ed33a48aa22528878215a88214f7a71455e4b5ec267f316e5f107",
+   "term_bytes_epoch1": 11721,
+   "compiled_step_us_p50": 18.35,
+   "ic_step_s_p50": 0.0026,
+   "ic_reduce_s_p50": 0.0024,
+   "ic_reducer": "ic32",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.002,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 0.019
+   }
+  },
+  {
+   "world": "chain120",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-48f8b268c92d60b3e33256667352b6a1198adbc705e9edf2dd3afa1b36941058",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-e3aa488fcef58124e97bd3e7c4eb4a08244eb351fce8ba37ed1559fa945cfa05",
+   "term_bytes_epoch1": 44841,
+   "compiled_step_us_p50": 91.47,
+   "ic_step_s_p50": 0.0258,
+   "ic_reduce_s_p50": 0.0248,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.007,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 0.187
+   }
+  },
+  {
+   "world": "pulser-relay",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-90b3d0eb276d00c7d037ca05b1a47a935e7759e0337b8f43257a0513225b4b54",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-5f16ce622e9c14dec7aba6aa08e8975baec5b1ea5ee2be68d3e20b119c710b10",
+   "term_bytes_epoch1": 681,
+   "compiled_step_us_p50": 3.67,
+   "ic_step_s_p50": 0.0002,
+   "ic_reduce_s_p50": 0.0001,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.001,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 0.002
+   }
+  },
+  {
+   "world": "pulser-door",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-cc9ef76b45ca3ad2f7037e0e883c4e2da1a1117f9a5647c7fd20feec8bf8a268",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-530e58cecbe7eb8fc599bfa57bdaac3fd761833fe20622649a979b3b40e13169",
+   "term_bytes_epoch1": 1301,
+   "compiled_step_us_p50": 3.53,
+   "ic_step_s_p50": 0.0003,
+   "ic_reduce_s_p50": 0.0003,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.001,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 0.003
+   }
+  },
+  {
+   "world": "pulser-door",
+   "scenario": "fuzz-20260918",
+   "epochs": 24,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-cc9ef76b45ca3ad2f7037e0e883c4e2da1a1117f9a5647c7fd20feec8bf8a268",
+   "scenario_digest": "scen-f710b2f4fb50136d8d86d9539a7393f3e38936e65b8a36e605d268ff4e7f5dc3",
+   "backend_id": "cbknd-530e58cecbe7eb8fc599bfa57bdaac3fd761833fe20622649a979b3b40e13169",
+   "term_bytes_epoch1": 1301,
+   "compiled_step_us_p50": 2.71,
+   "ic_step_s_p50": 0.0003,
+   "ic_reduce_s_p50": 0.0003,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.001,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 0.008
+   }
+  },
+  {
+   "world": "relay-only",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-fea8cc9151434f7537fdf29940a9ecd5674dc5b8bfa63c9f7eef86a0d384028b",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-dfb387f9948bb8c9feaf9cdc2cca085cef576b1a4003faef654444b7aa40f1ea",
+   "term_bytes_epoch1": 312,
+   "compiled_step_us_p50": 2.64,
+   "ic_step_s_p50": 0.0001,
+   "ic_reduce_s_p50": 0.0001,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.001,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 0.001
+   }
+  },
+  {
+   "world": "spinner-w4-n2",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-08ab511ac7529280366aaeb9e2e48381b34af04851dadb2a824a013d71f4818a",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-8dd451b31a5a8a937a6998fb726209c285c0b7390164f36bdd53f34912b87afe",
+   "term_bytes_epoch1": 693642,
+   "compiled_step_us_p50": 7.34,
+   "ic_step_s_p50": 0.1428,
+   "ic_reduce_s_p50": 0.1424,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.001,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 1.097
+   }
+  },
+  {
+   "world": "spinner-w4-n2",
+   "scenario": "fuzz-20260918",
+   "epochs": 24,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-08ab511ac7529280366aaeb9e2e48381b34af04851dadb2a824a013d71f4818a",
+   "scenario_digest": "scen-68bd3da5915385173b1348c37a7af1053dd17b9d16736e937bee1c87c120dbfd",
+   "backend_id": "cbknd-8dd451b31a5a8a937a6998fb726209c285c0b7390164f36bdd53f34912b87afe",
+   "term_bytes_epoch1": 694949,
+   "compiled_step_us_p50": 6.72,
+   "ic_step_s_p50": 0.1677,
+   "ic_reduce_s_p50": 0.1673,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.003,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 4.029
+   }
+  },
+  {
+   "world": "spinner-w8-n4",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-b0026a609080b976de46abb07077834a04749076b50b758fa1d965c08c678307",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-1e3b72bce018a4104856c52698efdb56aeacec46fb17f22da93036ae20abdd3c",
+   "term_bytes_epoch1": 2601957,
+   "compiled_step_us_p50": 7.72,
+   "ic_step_s_p50": 0.6558,
+   "ic_reduce_s_p50": 0.6161,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.001,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 5.362
+   }
+  },
+  {
+   "world": "spinner-w8-n4",
+   "scenario": "fuzz-20260918",
+   "epochs": 24,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-b0026a609080b976de46abb07077834a04749076b50b758fa1d965c08c678307",
+   "scenario_digest": "scen-74a7782c7ceba6432946f730c359ae405051aeace087a8da0bbde1f5ea561d8c",
+   "backend_id": "cbknd-1e3b72bce018a4104856c52698efdb56aeacec46fb17f22da93036ae20abdd3c",
+   "term_bytes_epoch1": 2601357,
+   "compiled_step_us_p50": 6.92,
+   "ic_step_s_p50": 0.8133,
+   "ic_reduce_s_p50": 0.7833,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.004,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 19.407
+   }
+  },
+  {
+   "world": "spinner-w16-n8-fixed",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-dc209ea0cebf0a851c9042bf60833e6afeeef65d0dc0f1b4a4aedc05f07531a7",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-37525b8f4859b718e70fe50d55fccf2e22658826cbd184a0dbcf8b94603158e1",
+   "term_bytes_epoch1": 10168157,
+   "compiled_step_us_p50": 7.19,
+   "ic_step_s_p50": 0.2365,
+   "ic_reduce_s_p50": 0.2311,
+   "ic_reducer": "ic32",
+   "reference": "ic32",
+   "wall_s": {
+    "compiled_fold": 0.001,
+    "reference_fold": 2.35,
+    "ic_twin_fold": 2.385
+   }
+  },
+  {
+   "world": "spinner-w16-n8-fixed",
+   "scenario": "fuzz-20260918",
+   "epochs": 24,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-dc209ea0cebf0a851c9042bf60833e6afeeef65d0dc0f1b4a4aedc05f07531a7",
+   "scenario_digest": "scen-c1241a3103e8b1e558f39ef7e899d2486321fba1a18d223ecf396adc6ac13f9e",
+   "backend_id": "cbknd-37525b8f4859b718e70fe50d55fccf2e22658826cbd184a0dbcf8b94603158e1",
+   "term_bytes_epoch1": 10168157,
+   "compiled_step_us_p50": 6.54,
+   "ic_step_s_p50": 0.2399,
+   "ic_reduce_s_p50": 0.2335,
+   "ic_reducer": "ic32",
+   "reference": "ic32",
+   "wall_s": {
+    "compiled_fold": 0.003,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 6.483
+   }
+  },
+  {
+   "world": "binary-40-phase-3",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-26d00ac14b20e769f278a72b4a699230fab2304935ddab6e540baa8cc7bdda3e",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-2f6bae2cbbf62e0f28575fa19347877801644b412ee09ca781114adbe0f6417b",
+   "term_bytes_epoch1": 3693,
+   "compiled_step_us_p50": 3.88,
+   "ic_step_s_p50": 0.0008,
+   "ic_reduce_s_p50": 0.0008,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.001,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 0.007
+   }
+  },
+  {
+   "world": "binary-40-phase-3",
+   "scenario": "fuzz-20260918",
+   "epochs": 24,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-26d00ac14b20e769f278a72b4a699230fab2304935ddab6e540baa8cc7bdda3e",
+   "scenario_digest": "scen-f710b2f4fb50136d8d86d9539a7393f3e38936e65b8a36e605d268ff4e7f5dc3",
+   "backend_id": "cbknd-2f6bae2cbbf62e0f28575fa19347877801644b412ee09ca781114adbe0f6417b",
+   "term_bytes_epoch1": 3693,
+   "compiled_step_us_p50": 3.08,
+   "ic_step_s_p50": 0.0009,
+   "ic_reduce_s_p50": 0.0009,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.001,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 0.022
+   }
+  },
+  {
+   "world": "once-at-5",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-2f84750b05dd913cbc7c3bed87c093647ce9dcbc1496e976f69f18af61195cab",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-e80e5c5b98f1fa6e36b9374250e682d514d55d213b7310cef8855283ee77d1f8",
+   "term_bytes_epoch1": 2138,
+   "compiled_step_us_p50": 4.41,
+   "ic_step_s_p50": 0.0005,
+   "ic_reduce_s_p50": 0.0005,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.001,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 0.004
+   }
+  },
+  {
+   "world": "once-at-5",
+   "scenario": "fuzz-20260918",
+   "epochs": 24,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-2f84750b05dd913cbc7c3bed87c093647ce9dcbc1496e976f69f18af61195cab",
+   "scenario_digest": "scen-f710b2f4fb50136d8d86d9539a7393f3e38936e65b8a36e605d268ff4e7f5dc3",
+   "backend_id": "cbknd-e80e5c5b98f1fa6e36b9374250e682d514d55d213b7310cef8855283ee77d1f8",
+   "term_bytes_epoch1": 2138,
+   "compiled_step_us_p50": 3.31,
+   "ic_step_s_p50": 0.0005,
+   "ic_reduce_s_p50": 0.0005,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.001,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 0.013
+   }
+  },
+  {
+   "world": "fanout",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-2ae8045aa846ea97dd7c8ec6518b23eecaa9209e275e456787bac4b4bb954357",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-5c0b57a175df6642379fe2d0e137dc6d7dfca0c7a5244be06b8d05324358e398",
+   "term_bytes_epoch1": 2603362,
+   "compiled_step_us_p50": 10.15,
+   "ic_step_s_p50": 0.6418,
+   "ic_reduce_s_p50": 0.6405,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.001,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 5.082
+   }
+  },
+  {
+   "world": "fanout",
+   "scenario": "fuzz-20260918",
+   "epochs": 24,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-2ae8045aa846ea97dd7c8ec6518b23eecaa9209e275e456787bac4b4bb954357",
+   "scenario_digest": "scen-74a7782c7ceba6432946f730c359ae405051aeace087a8da0bbde1f5ea561d8c",
+   "backend_id": "cbknd-5c0b57a175df6642379fe2d0e137dc6d7dfca0c7a5244be06b8d05324358e398",
+   "term_bytes_epoch1": 2602762,
+   "compiled_step_us_p50": 8.77,
+   "ic_step_s_p50": 0.6643,
+   "ic_reduce_s_p50": 0.663,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.004,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 18.971
+   }
+  },
+  {
+   "world": "two-spinners",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-5b430ff05b9c3011afaf66abc159908c95dd8ed66c1fd874601a3099cafbd8ba",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-7f80c05cebd7aae8e33aa86e4ccfce99f2b530540923aa76a02fb2a2823bc11b",
+   "term_bytes_epoch1": 8399645,
+   "compiled_step_us_p50": 10.8,
+   "ic_step_s_p50": 3.2315,
+   "ic_reduce_s_p50": 3.2278,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.002,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 23.357
+   }
+  },
+  {
+   "world": "two-spinners",
+   "scenario": "fuzz-20260918",
+   "epochs": 24,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-5b430ff05b9c3011afaf66abc159908c95dd8ed66c1fd874601a3099cafbd8ba",
+   "scenario_digest": "scen-c15b27b5a451b377eb7a71222acf67377504a8722facd2163f97ffec587ee931",
+   "backend_id": "cbknd-7f80c05cebd7aae8e33aa86e4ccfce99f2b530540923aa76a02fb2a2823bc11b",
+   "term_bytes_epoch1": 8466671,
+   "compiled_step_us_p50": 10.18,
+   "ic_step_s_p50": 3.4691,
+   "ic_reduce_s_p50": 3.4653,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.005,
+    "reference_fold": 0.001,
+    "ic_twin_fold": 84.705
+   }
+  },
+  {
+   "world": "mailbox-routes",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-24dc1e0fa445e26abc7dc660726eb323d8a1b1e1b6ae2230c845d299f068e51b",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-32d481a9bfe76c6eed41c177a71447b48de99a4a81db8f31fe8cdb3e8d510179",
+   "term_bytes_epoch1": 2637519,
+   "compiled_step_us_p50": 9.95,
+   "ic_step_s_p50": 0.6611,
+   "ic_reduce_s_p50": 0.6442,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.002,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 5.446
+   }
+  },
+  {
+   "world": "mailbox-routes",
+   "scenario": "fuzz-20260918",
+   "epochs": 24,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-24dc1e0fa445e26abc7dc660726eb323d8a1b1e1b6ae2230c845d299f068e51b",
+   "scenario_digest": "scen-74a7782c7ceba6432946f730c359ae405051aeace087a8da0bbde1f5ea561d8c",
+   "backend_id": "cbknd-32d481a9bfe76c6eed41c177a71447b48de99a4a81db8f31fe8cdb3e8d510179",
+   "term_bytes_epoch1": 2636919,
+   "compiled_step_us_p50": 8.93,
+   "ic_step_s_p50": 0.6755,
+   "ic_reduce_s_p50": 0.6742,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.005,
+    "reference_fold": 0.001,
+    "ic_twin_fold": 19.632
+   }
+  },
+  {
+   "world": "mailbox-overflow",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-bcff5a8e5a8fa9259c68d73a6ad031cdbf0038461b41dc194a4a47dd5fbf3e32",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-9dca47819bfaa162488848ca75e362c1aecbe0a55c710c7c3f7d01e0b5c4b927",
+   "term_bytes_epoch1": 2637519,
+   "compiled_step_us_p50": 9.68,
+   "ic_step_s_p50": 0.6871,
+   "ic_reduce_s_p50": 0.6659,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.002,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 5.321
+   }
+  },
+  {
+   "world": "mailbox-overflow",
+   "scenario": "fuzz-20260918",
+   "epochs": 24,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-bcff5a8e5a8fa9259c68d73a6ad031cdbf0038461b41dc194a4a47dd5fbf3e32",
+   "scenario_digest": "scen-74a7782c7ceba6432946f730c359ae405051aeace087a8da0bbde1f5ea561d8c",
+   "backend_id": "cbknd-9dca47819bfaa162488848ca75e362c1aecbe0a55c710c7c3f7d01e0b5c4b927",
+   "term_bytes_epoch1": 2636919,
+   "compiled_step_us_p50": 8.94,
+   "ic_step_s_p50": 0.6879,
+   "ic_reduce_s_p50": 0.6629,
+   "ic_reducer": "ic_ref",
+   "reference": "ic_ref",
+   "wall_s": {
+    "compiled_fold": 0.005,
+    "reference_fold": 0.001,
+    "ic_twin_fold": 19.464
+   }
+  },
+  {
+   "world": "spinner-w33-n16",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-f8072c2a031878c3387824200f92ff743fa420efe6029d0af7a4b01b9d548593",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-b1bc8f6924c1f46aa8f0dad1cc8592ec1f66a85f6a2ffb4f3a696858b2887baa",
+   "term_bytes_epoch1": 43426588,
+   "compiled_step_us_p50": 12.21,
+   "ic_step_s_p50": 6.5819,
+   "ic_reduce_s_p50": 6.5598,
+   "ic_reducer": "ic32-reparse",
+   "reference": "ic32-reparse",
+   "wall_s": {
+    "compiled_fold": 0.002,
+    "reference_fold": 58.096,
+    "ic_twin_fold": 58.191
+   }
+  },
+  {
+   "world": "spinner-w33-n16",
+   "scenario": "fuzz-20260918",
+   "epochs": 24,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-f8072c2a031878c3387824200f92ff743fa420efe6029d0af7a4b01b9d548593",
+   "scenario_digest": "scen-ed4ebae16b22971575c5ffb2997a78094ea4d4b4f62957c8928037f45e6bd0a4",
+   "backend_id": "cbknd-b1bc8f6924c1f46aa8f0dad1cc8592ec1f66a85f6a2ffb4f3a696858b2887baa",
+   "term_bytes_epoch1": 43424488,
+   "compiled_step_us_p50": 6.55,
+   "ic_step_s_p50": 6.5908,
+   "ic_reduce_s_p50": 6.5451,
+   "ic_reducer": "ic32-reparse",
+   "reference": "ic32-reparse",
+   "wall_s": {
+    "compiled_fold": 0.003,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 172.86
+   }
+  },
+  {
+   "world": "spinner-w33-n16",
+   "scenario": "gentle-20260918",
+   "epochs": 24,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-f8072c2a031878c3387824200f92ff743fa420efe6029d0af7a4b01b9d548593",
+   "scenario_digest": "scen-d43a81f70b78da15358eb96ccd15809e40b1531c7ac0f69023821707cab23566",
+   "backend_id": "cbknd-b1bc8f6924c1f46aa8f0dad1cc8592ec1f66a85f6a2ffb4f3a696858b2887baa",
+   "term_bytes_epoch1": 43424488,
+   "compiled_step_us_p50": 6.22,
+   "ic_step_s_p50": 6.8463,
+   "ic_reduce_s_p50": 6.8223,
+   "ic_reducer": "ic32-reparse",
+   "reference": "ic32-reparse",
+   "wall_s": {
+    "compiled_fold": 0.003,
+    "reference_fold": 0.0,
+    "ic_twin_fold": 176.513
+   }
+  },
+  {
+   "world": "mixed-w8-w33",
+   "scenario": "demo",
+   "epochs": 7,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-2c53faa8b50e633b5db6947a952251ed9840a37a16a3c545db01ccfd980ad513",
+   "scenario_digest": "scen-2be578f63401d0a424be78f069cc81278efcb3469ae405ec66a2a340c26b8842",
+   "backend_id": "cbknd-dd75c0d3baaf08cfcea8435e9334dbdb0694eb05eded97a680aee164e004de9d",
+   "term_bytes_epoch1": 49023446,
+   "compiled_step_us_p50": 9.8,
+   "ic_step_s_p50": 6.6207,
+   "ic_reduce_s_p50": 6.5825,
+   "ic_reducer": "ic32-reparse",
+   "reference": "ic32-reparse",
+   "wall_s": {
+    "compiled_fold": 0.001,
+    "reference_fold": 58.871,
+    "ic_twin_fold": 59.862
+   }
+  },
+  {
+   "world": "mixed-w8-w33",
+   "scenario": "fuzz-20260918",
+   "epochs": 24,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-2c53faa8b50e633b5db6947a952251ed9840a37a16a3c545db01ccfd980ad513",
+   "scenario_digest": "scen-1014f1c176a55935419e420635bbafce905d2323bb2be2e82317c334e1696ea7",
+   "backend_id": "cbknd-dd75c0d3baaf08cfcea8435e9334dbdb0694eb05eded97a680aee164e004de9d",
+   "term_bytes_epoch1": 49023446,
+   "compiled_step_us_p50": 9.83,
+   "ic_step_s_p50": 6.7865,
+   "ic_reduce_s_p50": 6.6657,
+   "ic_reducer": "ic32-reparse",
+   "reference": "ic32-reparse",
+   "wall_s": {
+    "compiled_fold": 0.005,
+    "reference_fold": 0.001,
+    "ic_twin_fold": 178.096
+   }
+  },
+  {
+   "world": "mixed-w8-w33",
+   "scenario": "gentle-20260918",
+   "epochs": 24,
+   "films_equal": true,
+   "states_equal": true,
+   "first_divergence": null,
+   "sem": "sem-2c53faa8b50e633b5db6947a952251ed9840a37a16a3c545db01ccfd980ad513",
+   "scenario_digest": "scen-b23e52476d037e833cafa22da425a29e0f5e899216d70d08e7ac278aea99faf8",
+   "backend_id": "cbknd-dd75c0d3baaf08cfcea8435e9334dbdb0694eb05eded97a680aee164e004de9d",
+   "term_bytes_epoch1": 49023446,
+   "compiled_step_us_p50": 9.91,
+   "ic_step_s_p50": 6.7732,
+   "ic_reduce_s_p50": 6.7474,
+   "ic_reducer": "ic32-reparse",
+   "reference": "ic32-reparse",
+   "wall_s": {
+    "compiled_fold": 0.005,
+    "reference_fold": 0.001,
+    "ic_twin_fold": 177.592
+   }
+  }
+ ],
+ "worlds": {
+  "golden-demo": {
+   "sem": "sem-8ae91fe9cbc5fd086ce4356d587c403211e5c7b2b3ebdd316496367429ecfe4a",
+   "backend_id": "cbknd-97b6c52d6bc6935934b21b5f8e3b8ac4717669f472171fa7ac8b64b6ff8c04da",
+   "source_sha256": "a6f4234cafa023787e27df201cf04c8e4562fa98b65096ead54edb2b4cb8f625",
+   "state_width": 22
+  },
+  "chain10": {
+   "sem": "sem-9f4a96023daa714c6489658c31fdca764582c079fefd9d4e5df699ae0119d009",
+   "backend_id": "cbknd-36066a5a6d44d9a07dc901ec0ae951092a46657042ee4e4d46c693b408a666d8",
+   "source_sha256": "444229bb5357f14639b483ae2dfc452ed339afed6b20319044a038e947c997fd",
+   "state_width": 45
+  },
+  "chain30": {
+   "sem": "sem-ffe90cdd6e75d6f692053fbfbe6c7139dd7496bc0aa6e278e9e5bd05fe911127",
+   "backend_id": "cbknd-2a9e0be6709ed33a48aa22528878215a88214f7a71455e4b5ec267f316e5f107",
+   "source_sha256": "7c2336d8bbca6ebed77bfeac782c654850f7da3d5f1099344d35856da91dd8ff",
+   "state_width": 125
+  },
+  "chain120": {
+   "sem": "sem-48f8b268c92d60b3e33256667352b6a1198adbc705e9edf2dd3afa1b36941058",
+   "backend_id": "cbknd-e3aa488fcef58124e97bd3e7c4eb4a08244eb351fce8ba37ed1559fa945cfa05",
+   "source_sha256": "37357350ea3b599921e71af06f371f0426a3a9ad08bf68c5fa687da852444041",
+   "state_width": 485
+  },
+  "pulser-relay": {
+   "sem": "sem-90b3d0eb276d00c7d037ca05b1a47a935e7759e0337b8f43257a0513225b4b54",
+   "backend_id": "cbknd-5f16ce622e9c14dec7aba6aa08e8975baec5b1ea5ee2be68d3e20b119c710b10",
+   "source_sha256": "3b0cb729c8dc3051ff8687cb366aaa64fe5d90868ffc00143a7c4d414cffc6f1",
+   "state_width": 5
+  },
+  "pulser-door": {
+   "sem": "sem-cc9ef76b45ca3ad2f7037e0e883c4e2da1a1117f9a5647c7fd20feec8bf8a268",
+   "backend_id": "cbknd-530e58cecbe7eb8fc599bfa57bdaac3fd761833fe20622649a979b3b40e13169",
+   "source_sha256": "16e8b56bbcf021c5ce2b50303851bae86d3033ebe47e94281f446a9b4aca8d4c",
+   "state_width": 6
+  },
+  "relay-only": {
+   "sem": "sem-fea8cc9151434f7537fdf29940a9ecd5674dc5b8bfa63c9f7eef86a0d384028b",
+   "backend_id": "cbknd-dfb387f9948bb8c9feaf9cdc2cca085cef576b1a4003faef654444b7aa40f1ea",
+   "source_sha256": "dc6f3c0b2690a451cb32e9ff547e90ab74384a0770653f7a6a537138197c9544",
+   "state_width": 2
+  },
+  "spinner-w4-n2": {
+   "sem": "sem-08ab511ac7529280366aaeb9e2e48381b34af04851dadb2a824a013d71f4818a",
+   "backend_id": "cbknd-8dd451b31a5a8a937a6998fb726209c285c0b7390164f36bdd53f34912b87afe",
+   "source_sha256": "984e83aee4ceae13f14be481e746eeeb391050fb4a07ef44c3e9ac9aa3ba5b84",
+   "state_width": 12
+  },
+  "spinner-w8-n4": {
+   "sem": "sem-b0026a609080b976de46abb07077834a04749076b50b758fa1d965c08c678307",
+   "backend_id": "cbknd-1e3b72bce018a4104856c52698efdb56aeacec46fb17f22da93036ae20abdd3c",
+   "source_sha256": "85ea38b3d2dea00030807ad626a7c653802078877c66a1d9274b90ea6311a204",
+   "state_width": 12
+  },
+  "spinner-w16-n8-fixed": {
+   "sem": "sem-dc209ea0cebf0a851c9042bf60833e6afeeef65d0dc0f1b4a4aedc05f07531a7",
+   "backend_id": "cbknd-37525b8f4859b718e70fe50d55fccf2e22658826cbd184a0dbcf8b94603158e1",
+   "source_sha256": "2e4519ac15d2162aa89550ccf964331dedcceb6dae9b8c20d9774a62a7be2403",
+   "state_width": 12
+  },
+  "binary-40-phase-3": {
+   "sem": "sem-26d00ac14b20e769f278a72b4a699230fab2304935ddab6e540baa8cc7bdda3e",
+   "backend_id": "cbknd-2f6bae2cbbf62e0f28575fa19347877801644b412ee09ca781114adbe0f6417b",
+   "source_sha256": "41a45b75b39be781bce338a63157e628556767af7eb7167d41551c5bc430e87e",
+   "state_width": 9
+  },
+  "once-at-5": {
+   "sem": "sem-2f84750b05dd913cbc7c3bed87c093647ce9dcbc1496e976f69f18af61195cab",
+   "backend_id": "cbknd-e80e5c5b98f1fa6e36b9374250e682d514d55d213b7310cef8855283ee77d1f8",
+   "source_sha256": "b8ddd4da361996f3fa3ee0791986bb27c63af14c0bdc59b870d5b2a9a309fd0b",
+   "state_width": 10
+  },
+  "fanout": {
+   "sem": "sem-2ae8045aa846ea97dd7c8ec6518b23eecaa9209e275e456787bac4b4bb954357",
+   "backend_id": "cbknd-5c0b57a175df6642379fe2d0e137dc6d7dfca0c7a5244be06b8d05324358e398",
+   "source_sha256": "d7c21f12d3b4e99b4492339cc042cc6d77c32e699daa97c0c704797cb25af0ab",
+   "state_width": 25
+  },
+  "two-spinners": {
+   "sem": "sem-5b430ff05b9c3011afaf66abc159908c95dd8ed66c1fd874601a3099cafbd8ba",
+   "backend_id": "cbknd-7f80c05cebd7aae8e33aa86e4ccfce99f2b530540923aa76a02fb2a2823bc11b",
+   "source_sha256": "061b8d0a612ba9d80c6650d7dedd407d3f6de60f8f9b9aceb290e17e3ed0b7eb",
+   "state_width": 24
+  },
+  "mailbox-routes": {
+   "sem": "sem-24dc1e0fa445e26abc7dc660726eb323d8a1b1e1b6ae2230c845d299f068e51b",
+   "backend_id": "cbknd-32d481a9bfe76c6eed41c177a71447b48de99a4a81db8f31fe8cdb3e8d510179",
+   "source_sha256": "eaef13aa9553d38a014e37d87e0174f87c096e9ad455c5549eecc659dfd95ccb",
+   "state_width": 24
+  },
+  "mailbox-overflow": {
+   "sem": "sem-bcff5a8e5a8fa9259c68d73a6ad031cdbf0038461b41dc194a4a47dd5fbf3e32",
+   "backend_id": "cbknd-9dca47819bfaa162488848ca75e362c1aecbe0a55c710c7c3f7d01e0b5c4b927",
+   "source_sha256": "eaef13aa9553d38a014e37d87e0174f87c096e9ad455c5549eecc659dfd95ccb",
+   "state_width": 24
+  },
+  "spinner-w33-n16": {
+   "sem": "sem-f8072c2a031878c3387824200f92ff743fa420efe6029d0af7a4b01b9d548593",
+   "backend_id": "cbknd-b1bc8f6924c1f46aa8f0dad1cc8592ec1f66a85f6a2ffb4f3a696858b2887baa",
+   "source_sha256": "b8cc557a6c061f506e77bff6ea20dcf42d433c05b5884317cb68193c087e4913",
+   "state_width": 12
+  },
+  "mixed-w8-w33": {
+   "sem": "sem-2c53faa8b50e633b5db6947a952251ed9840a37a16a3c545db01ccfd980ad513",
+   "backend_id": "cbknd-dd75c0d3baaf08cfcea8435e9334dbdb0694eb05eded97a680aee164e004de9d",
+   "source_sha256": "d5f126c0690124c1f417298075fadfb06ffd3303729fa27187898e780e4604a2",
+   "state_width": 24
+  }
+ },
+ "controls": [
+  {
+   "mutant": "onehot-phase-off-by-one",
+   "file": "laws.py:clock-onehot",
+   "kind": "law",
+   "caught": true,
+   "caught_at": {
+    "world": "golden-demo",
+    "scenario": "demo",
+    "epoch": 1,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "chain10",
+    "chain120",
+    "chain30",
+    "fanout",
+    "golden-demo",
+    "mailbox-overflow",
+    "mailbox-routes",
+    "mixed-w8-w33",
+    "pulser-relay",
+    "spinner-w16-n8-fixed",
+    "spinner-w33-n16",
+    "spinner-w4-n2",
+    "spinner-w8-n4",
+    "two-spinners"
+   ],
+   "caught_pairs": 26,
+   "pairs_folded": 33,
+   "only_by": null,
+   "as_expected": true
+  },
+  {
+   "mutant": "binary-phase-off-by-one",
+   "file": "laws.py:clock-binary",
+   "kind": "law",
+   "caught": true,
+   "caught_at": {
+    "world": "binary-40-phase-3",
+    "scenario": "demo",
+    "epoch": 2,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "binary-40-phase-3"
+   ],
+   "caught_pairs": 2,
+   "pairs_folded": 33,
+   "only_by": null,
+   "as_expected": true
+  },
+  {
+   "mutant": "once-no-latch",
+   "file": "laws.py:clock-once",
+   "kind": "law",
+   "caught": true,
+   "caught_at": {
+    "world": "golden-demo",
+    "scenario": "demo",
+    "epoch": 4,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "golden-demo",
+    "mailbox-overflow",
+    "mailbox-routes",
+    "once-at-5",
+    "pulser-door"
+   ],
+   "caught_pairs": 9,
+   "pairs_folded": 33,
+   "only_by": null,
+   "as_expected": true
+  },
+  {
+   "mutant": "relay-hot-from-cur",
+   "file": "laws.py:hot-relay",
+   "kind": "law",
+   "caught": true,
+   "caught_at": {
+    "world": "golden-demo",
+    "scenario": "demo",
+    "epoch": 3,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "binary-40-phase-3",
+    "chain10",
+    "chain120",
+    "chain30",
+    "fanout",
+    "golden-demo",
+    "mailbox-overflow",
+    "mailbox-routes",
+    "once-at-5"
+   ],
+   "caught_pairs": 15,
+   "pairs_folded": 33,
+   "only_by": null,
+   "as_expected": true
+  },
+  {
+   "mutant": "wire-cur-stale",
+   "file": "laws.py:wire-advance",
+   "kind": "law",
+   "caught": true,
+   "caught_at": {
+    "world": "golden-demo",
+    "scenario": "demo",
+    "epoch": 1,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "binary-40-phase-3",
+    "chain10",
+    "chain120",
+    "chain30",
+    "fanout",
+    "golden-demo",
+    "mailbox-overflow",
+    "mailbox-routes",
+    "mixed-w8-w33",
+    "once-at-5",
+    "pulser-door",
+    "pulser-relay",
+    "spinner-w16-n8-fixed",
+    "spinner-w33-n16",
+    "spinner-w4-n2",
+    "spinner-w8-n4",
+    "two-spinners"
+   ],
+   "caught_pairs": 32,
+   "pairs_folded": 33,
+   "only_by": null,
+   "as_expected": true
+  },
+  {
+   "mutant": "reset-ignored",
+   "file": "laws.py:commit-fault-reset",
+   "kind": "law",
+   "caught": true,
+   "caught_at": {
+    "world": "golden-demo",
+    "scenario": "demo",
+    "epoch": 4,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "fanout",
+    "golden-demo",
+    "mailbox-overflow",
+    "mailbox-routes",
+    "spinner-w16-n8-fixed",
+    "spinner-w33-n16",
+    "spinner-w4-n2"
+   ],
+   "caught_pairs": 7,
+   "pairs_folded": 33,
+   "only_by": null,
+   "as_expected": true
+  },
+  {
+   "mutant": "react-without-fire",
+   "file": "laws.py:react-only-if-fires",
+   "kind": "law",
+   "caught": true,
+   "caught_at": {
+    "world": "golden-demo",
+    "scenario": "demo",
+    "epoch": 1,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "fanout",
+    "golden-demo",
+    "mailbox-overflow",
+    "mailbox-routes",
+    "mixed-w8-w33",
+    "spinner-w16-n8-fixed",
+    "spinner-w33-n16",
+    "spinner-w4-n2",
+    "spinner-w8-n4",
+    "two-spinners"
+   ],
+   "caught_pairs": 22,
+   "pairs_folded": 33,
+   "only_by": null,
+   "as_expected": true
+  },
+  {
+   "mutant": "react-before-commit",
+   "file": "laws.py:react-uses-committed-rotor",
+   "kind": "law",
+   "caught": true,
+   "caught_at": {
+    "world": "golden-demo",
+    "scenario": "fuzz-20260918",
+    "epoch": 6,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "fanout",
+    "golden-demo",
+    "mailbox-overflow",
+    "mailbox-routes",
+    "mixed-w8-w33",
+    "spinner-w33-n16",
+    "spinner-w4-n2",
+    "spinner-w8-n4",
+    "two-spinners"
+   ],
+   "caught_pairs": 11,
+   "pairs_folded": 33,
+   "only_by": null,
+   "as_expected": true
+  },
+  {
+   "mutant": "fault-not-sticky",
+   "file": "laws.py:sticky-fault",
+   "kind": "law",
+   "caught": true,
+   "caught_at": {
+    "world": "spinner-w4-n2",
+    "scenario": "demo",
+    "epoch": 2,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "mixed-w8-w33",
+    "spinner-w16-n8-fixed",
+    "spinner-w33-n16",
+    "spinner-w4-n2",
+    "spinner-w8-n4",
+    "two-spinners"
+   ],
+   "caught_pairs": 7,
+   "pairs_folded": 33,
+   "only_by": null,
+   "as_expected": true
+  },
+  {
+   "mutant": "floor-shift",
+   "file": "laws.py:mac-toward-zero-shift",
+   "kind": "law",
+   "caught": true,
+   "caught_at": {
+    "world": "golden-demo",
+    "scenario": "fuzz-20260918",
+    "epoch": 6,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "fanout",
+    "golden-demo",
+    "mailbox-overflow",
+    "mailbox-routes",
+    "mixed-w8-w33",
+    "spinner-w16-n8-fixed",
+    "spinner-w33-n16",
+    "spinner-w4-n2",
+    "spinner-w8-n4",
+    "two-spinners"
+   ],
+   "caught_pairs": 14,
+   "pairs_folded": 33,
+   "only_by": null,
+   "as_expected": true
+  },
+  {
+   "mutant": "no-saturation",
+   "file": "laws.py:mac-saturation",
+   "kind": "law",
+   "caught": true,
+   "caught_at": {
+    "world": "golden-demo",
+    "scenario": "fuzz-20260918",
+    "epoch": 8,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "fanout",
+    "golden-demo",
+    "mailbox-overflow",
+    "mailbox-routes",
+    "mixed-w8-w33",
+    "spinner-w33-n16",
+    "spinner-w4-n2",
+    "spinner-w8-n4",
+    "two-spinners"
+   ],
+   "caught_pairs": 13,
+   "pairs_folded": 33,
+   "only_by": null,
+   "as_expected": true
+  },
+  {
+   "mutant": "narrow-product-i64",
+   "file": "laws.py",
+   "kind": "text",
+   "caught": true,
+   "caught_at": {
+    "world": "spinner-w33-n16",
+    "scenario": "fuzz-20260918",
+    "epoch": 8,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "mixed-w8-w33",
+    "spinner-w33-n16"
+   ],
+   "caught_pairs": 2,
+   "pairs_folded": 33,
+   "only_by": [
+    "spinner-w33-n16",
+    "mixed-w8-w33",
+    "spinner-w63-n31"
+   ],
+   "as_expected": true
+  },
+  {
+   "mutant": "film-without-mailboxes",
+   "file": "fold.py",
+   "kind": "text",
+   "caught": true,
+   "caught_at": {
+    "world": "mailbox-routes",
+    "scenario": "demo",
+    "epoch": 1,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "mailbox-overflow",
+    "mailbox-routes"
+   ],
+   "caught_pairs": 4,
+   "pairs_folded": 33,
+   "only_by": [
+    "mailbox-routes",
+    "mailbox-overflow"
+   ],
+   "as_expected": true
+  },
+  {
+   "mutant": "script-without-routes",
+   "file": "fold.py",
+   "kind": "text",
+   "caught": true,
+   "caught_at": {
+    "world": "mailbox-routes",
+    "scenario": "demo",
+    "epoch": 2,
+    "kind": "film"
+   },
+   "caught_by_worlds": [
+    "mailbox-overflow",
+    "mailbox-routes"
+   ],
+   "caught_pairs": 4,
+   "pairs_folded": 33,
+   "only_by": [
+    "mailbox-routes",
+    "mailbox-overflow"
+   ],
+   "as_expected": true
+  }
+ ],
+ "all_agree": true,
+ "loadavg_after": [
+  3.1513671875,
+  3.28759765625,
+  3.6162109375
+ ]
+}
