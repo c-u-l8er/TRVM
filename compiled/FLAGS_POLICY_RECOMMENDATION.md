@@ -1,3 +1,7 @@
+> **SUPERSEDED 2026-09-19 — Travis ruled "adopt as recommended". The policy is `FLAGS_POLICY.md` beside
+> this file; it is what to read and what to cite. This page is kept unaltered as the packet that was ruled
+> on, because a ruling is only as good as the alternatives it was given.**
+
 # The C backend's compiler flags — a RECOMMENDATION for Travis's ruling, not a policy (2026-09-18, night)
 
 The handoff lists "a compiler-flags policy for the C backend" as Travis's decision. This is the one page that lets it be

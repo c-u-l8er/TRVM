@@ -22,6 +22,7 @@ Control vector: per controlling spinner in ORB order (exactly `compiler.enc_conf
 import ctypes
 import hashlib
 import os
+import re
 import subprocess
 import tempfile
 
@@ -150,18 +151,77 @@ def _cid(role):
     return "".join(ch if ch.isalnum() else "_%02x" % ord(ch) for ch in role)
 
 
+
+# -------------------------------------------------------------------------------------------- the toolchain's identity
+_TOOLCHAIN = {}
+
+
+def toolchain_identity(flags, cc="gcc"):
+    """What the COMPILER contributes to a built step's identity (`FLAGS_POLICY.md` choice 5, ruled 2026-09-19).
+
+    A flag string is not machine code. `-march=native` hashes as the six letters "native" while the compiler
+    resolves it to the build machine's CPU (`znver5` on this laptop), so two hosts can share a `cbknd2-` id and
+    disagree in every instruction; and a gcc upgrade leaves the id untouched entirely. Three lines, every one of
+    them read back FROM the compiler with the flags applied, never guessed:
+
+        cc <the --version first line>
+        target <-dumpmachine>
+        march=<resolved> mtune=<resolved>       # from `-Q --help=target`, which is what resolves `native`
+
+    Deterministic for a fixed (cc, flags) on a fixed toolchain; memoised, because `-Q --help=target` is a
+    subprocess and the battery builds one step per world. A compiler that does not answer `-Q --help=target`
+    (clang does not) records the two lines it does answer and `march=<unresolved>`: that is strictly more than
+    the flag string alone, and it is said here rather than hidden, because an identity that silently degrades is
+    the defect this function exists to close.
+    """
+    key = (cc, tuple(flags))
+    if key in _TOOLCHAIN:
+        return _TOOLCHAIN[key]
+
+    def run(args):
+        try:
+            p = subprocess.run([cc] + args, capture_output=True, text=True)
+            return (p.stdout or "") + (p.stderr or "")
+        except OSError as e:
+            return "<%s: %s>" % (cc, e)
+
+    version = (run(["--version"]).splitlines() or ["<no --version>"])[0].strip()
+    target = (run(["-dumpmachine"]).splitlines() or ["<no -dumpmachine>"])[0].strip()
+    resolved = {}
+    for line in run(list(flags) + ["-Q", "--help=target"]).splitlines():
+        m = re.match(r"\s+-m(arch|tune)=\s+(\S+)\s*$", line)
+        if m:
+            resolved.setdefault(m.group(1), m.group(2))
+    text = "cc %s\ntarget %s\nmarch=%s mtune=%s\n" % (
+        version, target, resolved.get("arch", "<unresolved>"), resolved.get("tune", "<unresolved>"))
+    _TOOLCHAIN[key] = text
+    return text
+
+
+def toolchain_dir(flags, cc="gcc"):
+    """The object cache, namespaced by the toolchain that built it.
+
+    The cache key stays sha256(source) for v1 and sha256(flags + source) for v2 -- both are reported as
+    `source_sha256` and neither moves -- but the OBJECT for one key under two compilers is two objects. Without
+    this namespace a gcc upgrade serves the old `.so` to the new identity, which would make choice 5's identity
+    change worse than no change at all: a new id on old bytes.
+    """
+    d = os.path.join(CACHE, "tc-" + hashlib.sha256(toolchain_identity(flags, cc).encode()).hexdigest()[:16])
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
 def backend_id(sem_id, source):
     return "cbknd-" + hashlib.sha256((sem_id + "\n" + PROFILE + "\n" + source).encode()).hexdigest()
 
 
 def build(source, cc="gcc"):
     """Content-addressed build: the .so is keyed by the sha256 of the source; temp compile then atomic rename."""
-    os.makedirs(CACHE, exist_ok=True)
     key = hashlib.sha256(source.encode()).hexdigest()
-    so = os.path.join(CACHE, key + ".so")
+    so = os.path.join(toolchain_dir(["-O2"], cc), key + ".so")
     if os.path.exists(so):
         return so, key, False
-    with tempfile.TemporaryDirectory(dir=CACHE) as td:
+    with tempfile.TemporaryDirectory(dir=os.path.dirname(so)) as td:
         csrc = os.path.join(td, "step.c")
         with open(csrc, "w") as f:
             f.write(source)

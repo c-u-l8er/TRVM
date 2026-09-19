@@ -237,6 +237,21 @@ it on chains — the ratio §2c.1 reported was the C step's missing pass, not Be
 measured, not adopted: `-march=native` binds the `.so` to this CPU, and the battery's admission stays at `-O2` until a
 flags policy is ruled (the cache is per machine either way).
 
+**RULED 2026-09-19 — the flags policy is `FLAGS_POLICY.md`** (Travis: "adopt as recommended"; the packet it ruled on is
+`FLAGS_POLICY_RECOMMENDATION.md`, kept and banded). `-O2` stays the admitted baseline, `-march=native` is never admitted
+(a bench row only), `-O3` and `-frecord-gcc-switches` are not admitted, and a portable `x86-64-v3` identity is left
+unadopted for want of a measured need. **What changed in the code is choice 5: `cbknd2-` now hashes the TOOLCHAIN too** —
+the compiler's `--version` line, its target triple, and the `-march`/`-mtune` the compiler RESOLVES the flags to, read
+back from the compiler with the flags applied (`emit_c.toolchain_identity`). The paragraph above says the flags are in the
+identity; they were, and that was not enough: `-march=native` hashed as the word "native" while gcc here resolves it to
+`znver5`, so two machines could share one id over two machine codes and a gcc upgrade kept the old id. The object cache is
+now namespaced by the toolchain for the same reason (otherwise choice 5 would hand a new id to an old `.so`); the reported
+`source_sha256` is untouched and did not move for any world. **Re-run on the day: `battery_bend.py --emitter c2
+--controls` ALL AGREE, 59 pairs, 0 refused, CONTROLS ALL CAUGHT; all 18 `cbknd2-` ids moved, 0 `source_sha256` moved;
+`laws_gate.py --check` HELD before and after (19×4 byte-identical — the identity moved, no emitted program did);
+`flags_identity_test.py` 10/10, written against the defect (each case computes the pre-ruling formula alongside the new
+one and asserts the old one could not have seen the difference).**
+
 Not widened at this point: lane widths between 34 and 63 (§2e admits the two ends of that range the same night); width 64
 is refused; `~~` routes with a source that is not a `once` pulser do not exist (the seal refuses them); recurring routes
 (`forge.world.async.v1`) are deferred by ruling Q3 and not lowered by anything.

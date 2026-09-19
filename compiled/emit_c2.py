@@ -14,7 +14,10 @@ arithmetic (`mac_row64`); wider spinners keep the i128 row (`mac_row128`). Same 
 
 The vector on the wire is the PACKED one (counters, CUR words, NXT words, poses, faults, rotors); the battery speaks v1's
 slot vector, packed and unpacked on the Python side by the same layout function the emitter uses (word = 64). Identity:
-`cbknd2-` + sha256(SemanticArtifactID + `compiled.c.step.v2` + flags + the emitted source).
+`cbknd2-` + sha256(SemanticArtifactID + `compiled.c.step.v2` + flags + the TOOLCHAIN + the emitted source),
+the toolchain being the compiler's `--version` line, its target triple and the `-march`/`-mtune` it RESOLVES the
+flags to -- `FLAGS_POLICY.md` choice 5, ruled 2026-09-19, because `-march=native` hashes as the word "native"
+while the code it produces is this CPU's.
 """
 import ctypes
 import hashlib
@@ -22,7 +25,7 @@ import os
 import subprocess
 import tempfile
 
-from emit_c import slot_map, control_layout, CompiledStep, MAX_LANE_WIDTH, CACHE
+from emit_c import slot_map, control_layout, CompiledStep, MAX_LANE_WIDTH, toolchain_identity, toolchain_dir
 import laws as LAW
 from emit_bend2 import packed_layout, pack_vector, unpack_vector
 
@@ -124,17 +127,25 @@ def emit_step_c2(view):
     return "\n".join(L) + "\n", pw
 
 
-def backend_id(sem_id, source, flags):
-    return "cbknd2-" + hashlib.sha256((sem_id + "\n" + PROFILE + "\n" + " ".join(flags) + "\n" + source).encode()).hexdigest()
+def backend_id(sem_id, source, flags, cc="gcc"):
+    """`cbknd2-` + sha256(sem, profile, flags, TOOLCHAIN, source).
+
+    The toolchain line is choice 5 of `FLAGS_POLICY.md`, ruled 2026-09-19: the flag string says `native`, the
+    compiler means `znver5`, and until this was hashed two machines could carry one id over two machine codes --
+    and a gcc upgrade carried the old id over new code. `toolchain_identity` reads the compiler's own answer with
+    these flags applied. Every `cbknd2-` id moved when this landed; that is what a re-run of the battery records.
+    """
+    return "cbknd2-" + hashlib.sha256(
+        (sem_id + "\n" + PROFILE + "\n" + " ".join(flags) + "\n" + toolchain_identity(flags, cc) + source).encode()
+    ).hexdigest()
 
 
 def build(source, flags, cc="gcc"):
-    os.makedirs(CACHE, exist_ok=True)
     key = hashlib.sha256((" ".join(flags) + "\n" + source).encode()).hexdigest()
-    so = os.path.join(CACHE, key + ".so")
+    so = os.path.join(toolchain_dir(flags, cc), key + ".so")
     if os.path.exists(so):
         return so, key, False
-    with tempfile.TemporaryDirectory(dir=CACHE) as td:
+    with tempfile.TemporaryDirectory(dir=os.path.dirname(so)) as td:
         csrc = os.path.join(td, "step.c")
         with open(csrc, "w") as f:
             f.write(source)
@@ -147,15 +158,17 @@ def build(source, flags, cc="gcc"):
 class CompiledStep2(CompiledStep):
     """v2: the packed vector in the .so, v1's slot vector to the battery."""
 
-    def __init__(self, view, sem_id="", flags=None):
+    def __init__(self, view, sem_id="", flags=None, cc="gcc"):
         self.view = view
         self.flags = list(flags or CFLAGS)
+        self.cc = cc
+        self.toolchain = toolchain_identity(self.flags, cc)
         self.fields, self.width = slot_map(view)
         self.ctrl, self.orbs = control_layout(view)
         self.layout = packed_layout(view, WORD)
         self.source, self.packed_width = emit_step_c2(view)
-        self.backend_id = backend_id(sem_id, self.source, self.flags)
-        self.so_path, self.source_sha256, self.built_now = build(self.source, self.flags)
+        self.backend_id = backend_id(sem_id, self.source, self.flags, cc)
+        self.so_path, self.source_sha256, self.built_now = build(self.source, self.flags, cc)
         self._lib = ctypes.CDLL(self.so_path)
         assert self._lib.state_width() == self.packed_width
         assert self._lib.control_width() == 5 * len(self.ctrl) + len(self.orbs)
