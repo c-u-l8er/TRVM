@@ -69,6 +69,7 @@ def main():
     ap.add_argument("--bench-only", action="store_true", help="redo the bench rows into the existing results file; no admission")
     ap.add_argument("--out", default=None)
     ap.add_argument("--worlds", default=None)
+    ap.add_argument("--force", action="store_true", help="replace a BROADER record deliberately (battery.refuse_narrowing)")
     ap.add_argument("--emitter", default="v1", choices=list(EMITTERS), help="v1: one cons per slot, sign-magnitude MAC; v2: bit-packed signal words, biased branch-free MAC")
     a = ap.parse_args()
     global EMITTER
@@ -87,11 +88,16 @@ def main():
             json.dump(r, f, indent=1)
         print("wrote", a.out)
         return 0
+    # the same refusal as battery.py, for the same reason: these files are the admission record for their
+    # emitter and `--quick`/`--worlds` default to the same `--out` a full run writes
+    replaced = B.refuse_narrowing(a.out, [(n, l) for n, _s, l, _sc in B.pairs(a.quick)], a.force)
     t_start = time.time()
     env = dict(os.environ, BEND_NO_TELEMETRY="1", PATH=os.path.expanduser("~/.bun/bin") + ":" + os.environ.get("PATH", ""))
     import subprocess
     ver = subprocess.run([EB.BEND, "--version"], capture_output=True, text=True, env=env).stdout.strip()
-    receipt = {"measured": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "quick": a.quick, "emitter": EMITTER, "loadavg": os.getloadavg(), "bend": ver,
+    receipt = {"measured": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "quick": a.quick, "emitter": EMITTER,
+               "huge": bool(os.environ.get("TRVM_BATTERY_HUGE")), "replaced": replaced,
+               "loadavg": os.getloadavg(), "bend": ver,
                "ic32_path": O.IC32, "pairs": [], "worlds": {}, "refused": {}, "controls": None, "bench": None}
     refs, all_ok = {}, True
     for name, src, label, scen in B.pairs(a.quick):

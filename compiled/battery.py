@@ -217,12 +217,59 @@ def compare(name, label, rows_c, films_ref, rows_ic=None):
     return verdict
 
 
+
+# ------------------------------------------------------------- a receipt must not be replaced by a narrower one
+def receipt_coverage(receipt):
+    """The (world, scenario) pairs a receipt says it folded. This is what "how much was admitted" means; the
+    `quick` / `worlds_subset` / `huge` flags only describe how that set was arrived at."""
+    return {(p.get("world"), p.get("scenario")) for p in receipt.get("pairs", []) if p.get("world")}
+
+
+def refuse_narrowing(out_path, planned, force=False):
+    """Refuse, BEFORE folding anything, to overwrite a receipt that covers strictly more than this run will.
+
+    A results file is the admission record -- it is what `README.md` and `FOUNDATION_LANE.md` quote when they say
+    how many pairs agreed. `--quick` and `--worlds` default to the SAME `--out` as a full run, so a development
+    smoke silently replaced the record of the run that was actually admitted, and the only evidence was a smaller
+    number nobody had reason to re-read. (Measured 2026-09-19: a `--quick` run wrote 33 pairs over a 59-pair
+    record and was caught by hand, not by anything here.)
+
+    The comparison is the pair SET, not a flag or a count, so it catches every way of narrowing at once: quick
+    over full, a `--worlds` subset over the standing battery, and a non-HUGE run over a gated one. A run that
+    covers as much, or more, or something disjoint, writes as before. `--force` writes anyway and the receipt
+    then says what it replaced, because a deliberate narrowing is a decision and should read like one.
+
+    Returns the note to put on the receipt (`None` when nothing was replaced). Raises SystemExit on a refusal.
+    """
+    if not os.path.exists(out_path):
+        return None
+    try:
+        with open(out_path) as f:
+            existing = json.load(f)
+    except (ValueError, OSError):
+        return None                      # not a receipt this function can reason about; leave it to the writer
+    had = receipt_coverage(existing)
+    missing = had - set(planned)
+    if not missing:
+        return None
+    detail = "%s covers %d pairs; this run covers %d and would drop %d (e.g. %s)" % (
+        os.path.basename(out_path), len(had), len(planned), len(missing),
+        ", ".join("%s/%s" % p for p in sorted(missing)[:3]))
+    if not force:
+        raise SystemExit(
+            "REFUSED: this run would NARROW the record it writes.\n  %s\n"
+            "  Write it somewhere of its own (--out results-battery-<what-this-is>.json), or --force to replace\n"
+            "  the broader record deliberately." % detail)
+    return {"replaced_broader": detail, "replaced_pairs": len(had)}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--controls", action="store_true")
     ap.add_argument("--out", default=os.path.join(HERE, "results-battery.json"))
     ap.add_argument("--worlds", default=None, help="comma-separated subset of WORLDS (a development smoke, not the admission)")
+    ap.add_argument("--force", action="store_true", help="replace a BROADER record deliberately; the receipt then says what it replaced")
     a = ap.parse_args()
     if a.worlds:
         keep = set(a.worlds.split(","))
@@ -232,8 +279,14 @@ def main():
         for k in list(WORLDS):
             if k not in keep:
                 del WORLDS[k]
+    plan = [(name, label) for name, _src, label, _scen in pairs(a.quick)]
+    replaced = refuse_narrowing(a.out, plan, a.force)
     t_start = time.time()
-    receipt = {"measured": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "quick": a.quick, "worlds_subset": a.worlds, "loadavg": os.getloadavg(), "ic32_path": O.IC32,
+    # `huge` was NOT on the receipt until 2026-09-19: a 61-pair/19-world gated run and a 59-pair/18-world
+    # standing run were distinguishable only by counting, in the file that IS the admission record.
+    receipt = {"measured": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "quick": a.quick, "worlds_subset": a.worlds,
+               "huge": bool(os.environ.get("TRVM_BATTERY_HUGE")), "replaced": replaced,
+               "loadavg": os.getloadavg(), "ic32_path": O.IC32,
                "pairs": [], "worlds": {}, "controls": None}
     refs = {}       # (name, label) -> reference films (production _run_traj, ic_ref)
     all_ok = True

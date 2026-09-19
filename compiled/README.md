@@ -422,6 +422,44 @@ from the world's CURRENT sealed plan and cannot go stale against the emitter), t
 the second half of it is that both bundles produce the calculus's exact bytes: `2318bd82…` (3,260 B) and
 `b755abdf…` (2,999 B).
 
+### 2i. A receipt must not be replaced by a narrower one (2026-09-19; T7's round through Super)
+
+**The defect, found by hitting it.** `battery.py --quick` and `--worlds` default to the SAME `--out` as a full
+run, so a development smoke silently overwrote `results-battery.json` — the file this README and
+`FOUNDATION_LANE.md` quote when they say how many pairs agreed — replacing a **59-pair `quick: false`** record
+with a **33-pair `quick: true`** one. Nothing refused it and nothing warned; the only evidence was a smaller
+number nobody had reason to re-read. It was caught by hand, and the file restored with `git checkout`, while
+applying the flags ruling. `battery_bend.py` had the same default and the same hazard for
+`results-c2-backend.json`, `results-bend-backend.json` and `results-bend2-backend.json`.
+
+That is two faults at once: a gate going quiet, and a **measurement-identity** fault — the record stops saying
+what was actually admitted, which is the same family as the law table §2f exists to protect.
+
+**The refusal.** `battery.refuse_narrowing` runs **before anything is folded** (0.26 s, not twenty minutes) and
+compares the **pair SET**, never a flag or a count, so it catches every way of narrowing with one rule: `--quick`
+over full, a `--worlds` subset over the standing battery, and a non-gated run over a `TRVM_BATTERY_HUGE` one.
+A run that covers as much, more, or something disjoint writes as before. `--force` writes anyway and the receipt
+then carries `replaced` — what it replaced and how many pairs — because a deliberate narrowing is a decision and
+should read like one.
+
+```
+REFUSED: this run would NARROW the record it writes.
+  results-battery.json covers 59 pairs; this run covers 33 and would drop 26 (e.g. binary-40-phase-3/fuzz-20260919, …)
+  Write it somewhere of its own (--out results-battery-<what-this-is>.json), or --force to replace
+  the broader record deliberately.
+```
+
+**Also fixed here: `huge` was never on the receipt.** A 61-pair/19-world gated run and a 59-pair/18-world
+standing run were distinguishable only by counting `worlds`, in the file that IS the admission record. Both
+batteries now record `huge` (and `replaced`) beside `quick` and `worlds_subset`.
+
+**Measured:** `battery_receipt_test.py` **13/13**, written against the defect — five cases construct a narrowing
+that used to pass silently, five assert the refusal does **not** over-reach (an equal run, a broader run, a
+disjoint addition, no file yet, and a file that is not a receipt, which must be left to the writer or a stray
+file would block the battery), and three use the **committed receipts as the regression fixture**: the real
+59-pair record refuses the real 33-pair one, the real gated record refuses the standing one, and each real
+record accepts itself. `laws_gate.py --check` **HELD** (19 × 4 byte-identical — no emitter was touched).
+
 ## 3. Controls (`battery.py --controls`)
 
 Fourteen mutants (since §2f: eleven LAW mutants derived from `laws.py` and three representation/fold mutants, each a text edit
