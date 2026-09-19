@@ -383,6 +383,45 @@ its digest over the same 4-byte frames, a queued cancel is honoured, the stats f
 owns such a daemon, which is the fact the remote kind's specification (`superlane/proposed/t3/`) is written around: a
 lost daemon is `stop_unconfirmed` by construction.
 
+### 2h. T8 RULED and BUILT through to Super — one-shot, and three things the proposal did not know (2026-09-19)
+
+Travis ruled T8 on 2026-09-19: **one-shot now, resident later.** The proposal
+(`wek/b2/trvm/COMPILED_EXECUTOR_PROPOSAL.md`) is therefore banded as ruled, and the Super side exists on super-live
+(`HyperSurface.CompiledExecutor`, the bridge kind `{:managed_compiled, …}`, `Ampd.TrvmReduce`'s compiled contract,
+`ampd/test/b2_trvm_compiled_kind_test.exs` **9/9**, the b2 neighbours **44/44** with nothing skipped). Building it
+found three things measurement had to settle, none of which the design could have asserted from this side:
+
+1. **The guardian's argv is fixed at three, so the four inputs travel as ONE bundle.** `node_guardian.rs` runs
+   `Command::new(argv[0]).args(argv[1..4])` and says of itself *"Never accepts request-selected argv"* — a
+   guardian-owned child gets one free argument and one input path, which is why `reduce-file.mjs` takes one file
+   too. `executor.py` therefore gained a second, fixed-argv form — `python3 executor.py <c|c2> BUNDLE.json` —
+   whose bundle carries the request plus the plan, control and state **base64'd**, because the three `sha256`s are
+   over exact bytes and a transport that can normalise a newline can move a hash. §3's "carried beside the
+   request" did not say in how many files; against this guardian the answer is one.
+2. **A refusal loses its name unless it is written down.** The guardian forwards the child's stdout ONLY when the
+   child exits 0; a refusal exits 3 and the guardian returns 67 with no bytes. So every refusal the process makes
+   — `plan-not-bound`, `input-decoding`, `outside-shapes`, `stale-object`, `request-mismatch` — would have reached
+   the Lane as one undifferentiated `executor_failed`. In the fixed-argv form `executor.py` now also writes its
+   outcome to `<bundle>.outcome` in the scratch directory the owner made and removes, and the owner reads it only
+   on a status that means the child was reaped.
+3. **`plan_sha256` and `sem` are two identities, and a byte edit is not a world edit.** Appending one space to the
+   plan's canonical bytes moves `plan_sha256` and the fold is still **admitted**, with `sem` unchanged and the
+   witness's `nf_sha256` produced — because `wrl_plan._plan_to_artifact` re-hashes the *parsed* plan. The refusal
+   `plan-not-bound` needs a content edit (one relay fewer). Both are now cases on the Super side (`F-Pw` and
+   `F-P`); the first was written expecting a refusal and measured an admission, which is the finding.
+
+A fourth, smaller: the one-shot compiled kind has **one** exit witness, not two. The Node kind has the host's own
+`workerExited` (its Worker thread ended) *and* the guardian's reap; the compiled child IS the work, so it stamps
+`childReaped: true` and never `workerExited`, which here would be the same fact counted twice.
+
+**New here:** `make_bundle.py` (one job bundle for a battery world, so a caller outside Python builds its fixture
+from the world's CURRENT sealed plan and cannot go stale against the emitter), the bundle and sidecar forms of
+`executor.py`, and five more cases in `executor_test.py` (**20/20**, from 13). Measured on the day: chain30's epoch
+1 bundle is 7,487 B and the Golden demo's is 7,487 B too — where the Golden demo's *term* for the same epoch is
+**9.5 MB and is refused by the checked host at 64 KiB before parsing**. That ratio is the kind's whole reason, and
+the second half of it is that both bundles produce the calculus's exact bytes: `2318bd82…` (3,260 B) and
+`b755abdf…` (2,999 B).
+
 ## 3. Controls (`battery.py --controls`)
 
 Fourteen mutants (since §2f: eleven LAW mutants derived from `laws.py` and three representation/fold mutants, each a text edit

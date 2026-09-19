@@ -3,6 +3,18 @@
 term -- to the calculus's canonical normal-form bytes, so `nf_sha256` and the film oracle are the witness's, unchanged.
 
     python3 executor.py --request R.json --plan PLAN.json --control CONTROL.ic --state STATE.ic [--emitter c|c2]
+    python3 executor.py <c|c2> BUNDLE.json                  # the FIXED-ARGV form, for a guardian-owned one-shot job
+
+The second form exists because of a constraint measured on the Super side rather than assumed: the node guardian
+(`super` `tools/hypersurface/node_guardian.rs`) runs `Command::new(argv[0]).args(argv[1..4])` and says of itself
+"Never accepts request-selected argv" -- so a guardian-owned child gets exactly one free argument and one input path,
+which is why `reduce-file.mjs` takes one file too. The four inputs therefore travel as ONE bundle, each base64'd so
+that the transport cannot alter a byte of what is hashed:
+
+    {"bundle": 1, "request": {...}, "plan_b64": "...", "control_b64": "...", "state_b64": "..."}
+
+The checks, the refusals and the candidate are identical in both forms; only the reading differs. `bundle_bytes`
+builds one (it is what the bridge's fixture preparation calls).
 
 `stdout` is ONE JSON object: `{"status": "candidate", ...}` or `{"status": "refused", "reason": ...}`. Every refusal
 happens BEFORE any step and names its reason; a candidate carries the re-hashes of the three inputs it actually read,
@@ -19,6 +31,7 @@ Checks, in order (the falsifiers of §5):
   input-decoding    the previous payload or the control text does not parse/decode against this plan (F-S)
 """
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -138,20 +151,82 @@ def run(request, plan_bytes, control_text, state_text, emitter="c"):
     }
 
 
-def main(argv=None):
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--request", required=True)
-    ap.add_argument("--plan", required=True)
-    ap.add_argument("--control", required=True)
-    ap.add_argument("--state", required=True)
-    ap.add_argument("--emitter", default="c", choices=list(KINDS))
-    a = ap.parse_args(argv)
+def bundle_bytes(request, plan_bytes, control_text, state_text):
+    """The one file a guardian-owned child is handed. Base64, not inline text: `plan_sha256` and the other two are
+    taken over exact bytes, and a transport that can normalise a newline is a transport that can move a hash."""
+    return json.dumps({
+        "bundle": 1, "request": request,
+        "plan_b64": base64.b64encode(plan_bytes).decode(),
+        "control_b64": base64.b64encode(control_text.encode()).decode(),
+        "state_b64": base64.b64encode(state_text.encode()).decode(),
+    }, sort_keys=True).encode()
+
+
+def read_bundle(path):
     try:
-        req = json.load(open(a.request))
-        out = run(req, open(a.plan, "rb").read(), open(a.control, encoding="utf-8").read(), open(a.state, encoding="utf-8").read(), a.emitter)
+        raw = open(path, "rb").read()
+    except Exception as e:
+        raise Refused("bundle-malformed", {"error": type(e).__name__})
+    return read_bundle_bytes(raw)
+
+
+def read_bundle_bytes(raw):
+    """Refuse a malformed bundle the way every other input is refused: before any step, with a reason."""
+    try:
+        b = json.loads(raw.decode("utf-8"))
+    except Exception as e:
+        raise Refused("bundle-malformed", {"error": type(e).__name__})
+    if not isinstance(b, dict) or b.get("bundle") != 1:
+        raise Refused("bundle-malformed", {"field": "bundle", "read": b.get("bundle") if isinstance(b, dict) else None})
+    out = [b.get("request")]
+    for k in ("plan_b64", "control_b64", "state_b64"):
+        v = b.get(k)
+        if not isinstance(v, str):
+            raise Refused("bundle-malformed", {"field": k})
+        try:
+            out.append(base64.b64decode(v, validate=True))
+        except Exception:
+            raise Refused("bundle-malformed", {"field": k, "error": "base64"})
+    if not isinstance(out[0], dict) or not isinstance(out[0].get("params"), dict):
+        raise Refused("bundle-malformed", {"field": "request"})
+    try:
+        return out[0], out[1], out[2].decode("utf-8"), out[3].decode("utf-8")
+    except UnicodeDecodeError:
+        raise Refused("bundle-malformed", {"field": "control_b64/state_b64", "error": "utf-8"})
+
+
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    bundle = None
+    try:
+        if len(argv) == 2 and argv[0] in KINDS:                     # the guardian's fixed-argv form
+            bundle = argv[1]
+            req, plan, control, state = read_bundle(bundle)
+            out = run(req, plan, control, state, argv[0])
+        else:
+            ap = argparse.ArgumentParser()
+            ap.add_argument("--request", required=True)
+            ap.add_argument("--plan", required=True)
+            ap.add_argument("--control", required=True)
+            ap.add_argument("--state", required=True)
+            ap.add_argument("--emitter", default="c", choices=list(KINDS))
+            a = ap.parse_args(argv)
+            req = json.load(open(a.request))
+            out = run(req, open(a.plan, "rb").read(), open(a.control, encoding="utf-8").read(), open(a.state, encoding="utf-8").read(), a.emitter)
     except Refused as r:
         out = {"status": "refused", "reason": r.reason, "detail": r.detail}
-    sys.stdout.write(json.dumps(out, sort_keys=True) + "\n")
+    body = json.dumps(out, sort_keys=True)
+    if bundle is not None:
+        # The guardian forwards this process's stdout ONLY when it exits 0 (`node_guardian.rs`: a non-zero child is
+        # status 67 and no bytes). A refusal is a non-zero exit by design -- and a refusal whose REASON is lost is a
+        # refusal the harness cannot tell from any other, so the outcome is also written beside the bundle, in the
+        # scratch directory the owner made and removes. Best effort: an unwritable scratch must not change the verdict.
+        try:
+            with open(bundle + ".outcome", "w") as f:
+                f.write(body + "\n")
+        except OSError:
+            pass
+    sys.stdout.write(body + "\n")
     return 0 if out["status"] == "candidate" else 3
 
 

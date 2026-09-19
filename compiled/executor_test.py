@@ -197,5 +197,122 @@ class Falsifiers(unittest.TestCase):
         self.assertTrue(r["backend_id"].startswith("cbknd2-") and r["flags"] == ["-O2"])
 
 
+class GuardianArgv(unittest.TestCase):
+    """The fixed-argv (bundle) form, and WHY it exists.
+
+    Measured on the Super side, not assumed: `tools/hypersurface/node_guardian.rs` runs
+    `Command::new(argv[0]).args(argv[1..4])` and states "Never accepts request-selected argv" -- so a guardian-owned
+    child is handed exactly one free argument and one input path (which is why `reduce-file.mjs` takes one file).
+    `COMPILED_EXECUTOR_PROPOSAL.md` §3 says the plan, the control and the state travel "beside the request" and does
+    not say in how many files; on this executor host the answer is one. These cases pin that the bundle form is the
+    SAME executor -- identical bytes out -- and that a bad bundle is refused before any step, like every other input.
+    """
+
+    def setUp(self):
+        self.sem, self.dig, self.sealed, self.eps = prepare(B.WORLDS["chain30"])
+        self.e = self.eps[0]
+        self.plan = self.sealed.canonical_bytes
+        self.req = request(self.sem, self.dig, 1, self.plan, self.e["control"], self.e["state"])
+
+    def spawn(self, argv):
+        return subprocess.run([sys.executable, os.path.join(HERE, "executor.py")] + argv, capture_output=True, text=True)
+
+    def test_bundle_form_is_byte_identical_to_the_four_file_form(self):
+        with tempfile.TemporaryDirectory() as d:
+            paths = {k: os.path.join(d, k) for k in ("request", "plan", "control", "state")}
+            open(paths["plan"], "wb").write(self.plan)
+            open(paths["control"], "w").write(self.e["control"])
+            open(paths["state"], "w").write(self.e["state"])
+            json.dump(self.req, open(paths["request"], "w"))
+            four = self.spawn(["--request", paths["request"], "--plan", paths["plan"],
+                               "--control", paths["control"], "--state", paths["state"]])
+            bpath = os.path.join(d, "bundle.json")
+            open(bpath, "wb").write(X.bundle_bytes(self.req, self.plan, self.e["control"], self.e["state"]))
+            one = self.spawn(["c", bpath])
+        self.assertEqual((four.returncode, one.returncode), (0, 0), (four.stderr[-300:], one.stderr[-300:]))
+        self.assertEqual(four.stdout, one.stdout, "the bundle form is a different executor")
+        self.assertEqual(json.loads(one.stdout)["nf_sha256"], CHAIN30_NF)
+
+    def test_the_child_takes_exactly_the_guardian_s_two_arguments(self):
+        """`args(argv[1..4])` after `argv[0]` = the interpreter means the script sees two arguments and no more."""
+        with tempfile.TemporaryDirectory() as d:
+            bpath = os.path.join(d, "bundle.json")
+            open(bpath, "wb").write(X.bundle_bytes(self.req, self.plan, self.e["control"], self.e["state"]))
+            self.assertEqual(len(["c", bpath]), 2)
+            self.assertEqual(self.spawn(["c", bpath]).returncode, 0)
+            self.assertEqual(json.loads(self.spawn(["c2", bpath]).stdout)["reason"], "request-mismatch")
+
+    def test_base64_carries_the_exact_bytes_the_hashes_are_over(self):
+        """A plan whose bytes end in a newline must hash as those bytes on the far side of the transport."""
+        plan = self.plan + b"\n"
+        req = request(self.sem, self.dig, 1, plan, self.e["control"], self.e["state"])
+        r, p, c, s = X.read_bundle_bytes(X.bundle_bytes(req, plan, self.e["control"], self.e["state"]))
+        self.assertEqual(p, plan)
+        self.assertEqual(sha(p), req["params"]["plan_sha256"])
+        self.assertEqual((c, s), (self.e["control"], self.e["state"]))
+
+    def test_a_malformed_bundle_is_refused_before_any_step(self):
+        import base64 as B64
+        good = json.loads(X.bundle_bytes(self.req, self.plan, self.e["control"], self.e["state"]).decode())
+        cases = {
+            "not json": b"{",
+            "wrong version": json.dumps(dict(good, bundle=2)).encode(),
+            "missing field": json.dumps({k: v for k, v in good.items() if k != "control_b64"}).encode(),
+            "not base64": json.dumps(dict(good, state_b64="not base64!!")).encode(),
+            "not utf-8": json.dumps(dict(good, control_b64=B64.b64encode(b"\xff\xfe").decode())).encode(),
+            "no request": json.dumps(dict(good, request={})).encode(),
+        }
+        with tempfile.TemporaryDirectory() as d:
+            for name, raw in cases.items():
+                bpath = os.path.join(d, "b.json")
+                open(bpath, "wb").write(raw)
+                out = self.spawn(["c", bpath])
+                self.assertEqual(out.returncode, 3, name)
+                self.assertEqual(json.loads(out.stdout)["reason"], "bundle-malformed", name)
+
+    def test_the_outcome_is_written_beside_the_bundle_so_a_refusal_keeps_its_reason(self):
+        """`node_guardian.rs` forwards stdout only on exit 0, and a refusal exits 3 -- so without this file the
+        owner sees `executor_failed` and never which check refused. Both a candidate and a refusal write it."""
+        with tempfile.TemporaryDirectory() as d:
+            bpath = os.path.join(d, "b.json")
+            open(bpath, "wb").write(X.bundle_bytes(self.req, self.plan, self.e["control"], self.e["state"]))
+            out = self.spawn(["c", bpath])
+            self.assertEqual(out.returncode, 0)
+            self.assertEqual(json.load(open(bpath + ".outcome")), json.loads(out.stdout))
+
+            bad = dict(self.req)
+            bad["params"] = dict(self.req["params"], plan_sha256="0" * 64)
+            open(bpath, "wb").write(X.bundle_bytes(bad, self.plan, self.e["control"], self.e["state"]))
+            os.remove(bpath + ".outcome")
+            out = self.spawn(["c", bpath])
+            self.assertEqual(out.returncode, 3)
+            side = json.load(open(bpath + ".outcome"))
+            self.assertEqual((side["status"], side["reason"], side["detail"]["field"]),
+                             ("refused", "request-mismatch", "plan_sha256"))
+            self.assertEqual(side, json.loads(out.stdout))
+
+    def test_the_four_file_form_writes_no_sidecar(self):
+        """Only the guardian's form needs it; the four-file form's caller already has stdout."""
+        with tempfile.TemporaryDirectory() as d:
+            paths = {k: os.path.join(d, k) for k in ("request", "plan", "control", "state")}
+            open(paths["plan"], "wb").write(self.plan)
+            open(paths["control"], "w").write(self.e["control"])
+            open(paths["state"], "w").write(self.e["state"])
+            json.dump(self.req, open(paths["request"], "w"))
+            self.spawn(["--request", paths["request"], "--plan", paths["plan"],
+                        "--control", paths["control"], "--state", paths["state"]])
+            self.assertEqual([f for f in os.listdir(d) if f.endswith(".outcome")], [])
+
+    def test_a_bundle_whose_hashes_do_not_match_is_still_request_mismatch(self):
+        """The bundle changes the reading, not the checks: §3's re-hash of what the process actually read."""
+        with tempfile.TemporaryDirectory() as d:
+            bpath = os.path.join(d, "b.json")
+            open(bpath, "wb").write(X.bundle_bytes(self.req, self.plan, self.e["control"], self.e["state"] + " "))
+            out = self.spawn(["c", bpath])
+            self.assertEqual(out.returncode, 3)
+            body = json.loads(out.stdout)
+            self.assertEqual((body["reason"], body["detail"]["field"]), ("request-mismatch", "state_sha256"))
+
+
 if __name__ == "__main__":
     unittest.main()
