@@ -574,6 +574,63 @@ end to end** for the whole epoch, against the interpreter's 0.0001–8.57 s. Mak
 resident — `COMPILED_EXECUTOR_PROPOSAL.md` §6, still Travis's — now compounds against a floor of tens of
 microseconds rather than the ~1 ms the render used to impose.
 
+### 2k. The gated world, and three things the oracle got wrong before it could render it (2026-09-20)
+
+`payload.py` had never rendered `spinner-w63-n31`. The standing record covers the worlds `battery.WORLDS`
+yields without `TRVM_BATTERY_HUGE=1`, so the widest world in the tree — the one whose 63-bit lanes are exactly
+where a bit loop is wrong or nowhere — had no payload receipt. Running it to get one **refused**, and the three
+faults behind that refusal are worth more than the row it was after.
+
+**It is anchored now: 19 worlds, every one identical** (`results-payload-huge.json`, `--epochs 1`, the gated
+world on ic_ref at **569 s** for its single epoch). `spinner-w63-n31` epoch 1 renders to **10,641 B**,
+sha256 `798a7114…`, and the C printer, the Python path and ic_ref's own printed line all agree on those bytes.
+
+**Fault one — two spellings of one rule, and the one that disagreed refused a world the other folds.**
+`payload.py` chose a world's reducer from the **step term's size**: over ic32's 16 MiB stdin buffer meant file
+mode, under it meant stdin. That is right for the two 33-lane worlds and wrong for the 63-lane one, whose
+*reduction* — not its text — exceeds ic32's **fixed 16M-slot heap** (`static uint32_t HEAPCAP = 1u<<24`,
+`runtime/c/ic32.c`, no env override). ic32 answered `FATAL: heap overflow`, exit 2, having rendered nothing.
+**`battery.py` already knew this** and gates every `HUGE_WORLDS` member onto ic_ref for precisely this reason,
+with the reason written out at `battery.py:301-305`. So the rule existed twice, the copies disagreed, and the
+copy that was wrong was the one in the file whose whole job is to be an oracle. `payload.reducer_for` now asks
+`battery.py` instead of deciding for itself — the same de-fork `compiler.state_layout` exists to be.
+
+**Fault two — a 150 MB step file written non-atomically.** `payload.py` wrote the wide worlds' step with a
+plain `open(...,"w")` and guarded reuse with `os.path.exists`. A run interrupted while writing leaves a
+**truncated** step that every later run silently reuses, and `os.path.exists` cannot tell the difference; the
+symptom would surface as a parse error in a world that had been fine. `fold.ic32_reparse` writes tmp then
+`os.replace` for exactly this reason and `payload.py` did not. It does now. (Nothing was corrupted — the fault
+was latent, and it was found by reading the two functions side by side while chasing fault one.)
+
+**Fault three — the refusal had lost its name.** `RuntimeError("ic32 -reparse rc=%d")` carried no stderr, so
+`rc=2` cost a by-hand re-run to learn it said "FATAL: heap overflow". `fold.ic32_reparse` carries `stderr[:200]`.
+Both refusals do now. This is the same principle T8 established for the executor's sidecar: a refusal that drops
+its reason is a refusal that has lost its name.
+
+**And a measurement confound that would have been published as a 9,408× speed-up.** With the gated world
+finally rendering, its Python render read **901,299 µs** against the C printer's 95.8 µs. Measured on a clean
+heap it is **2,296 µs** — the reading was **392× too high**. The cause is that the loop reduced the calculus
+*first*, and `spinner-w63-n31` is the one world whose reducer is **in-process ic_ref** rather than an ic32
+**subprocess**: a subprocess frees its heap on exit, so no ic32 world was ever affected, but a 569 s in-process
+reduction leaves the allocator in no state to time anything. **Fixed by ordering rather than by a footnote** —
+both renderings now run before the reducer allocates. Re-run clean, w63 reads **2,459.7 µs** against the C
+printer's 88.8 µs, and the 18 ic32 worlds move by a median 0.92× in both directions (0.34–1.31, single-epoch
+noise on a shared laptop), which is the control that says the ordering changed nothing for them.
+**`results-payload.json` is therefore untouched by this** and §2j's table stands.
+
+**What the confound-hunt incidentally settled: the cost was never the printing.** Timing the Python path's
+three conversions separately, on three worlds that share nothing structurally:
+
+| world | nf bytes | `enc_state_v6` | **`parse`** | `show` | total | C printer |
+|---|---:|---:|---:|---:|---:|---:|
+| spinner-w63-n31 | 10,641 | 97.0 µs (4 %) | **1,796.3 µs (78 %)** | 409.7 µs (18 %) | 2,296.6 | **19.6 µs** |
+| mixed-w8-w33 | 7,146 | 59.9 (4 %) | **1,201.3 (77 %)** | 281.0 (18 %) | 1,563.0 | **14.3** |
+| chain120 | 13,681 | 141.6 (4 %) | **2,523.2 (78 %)** | 577.4 (18 %) | 3,229.5 | **18.4** |
+
+**78 % of it was building the AST that `show` then walked**, and that split is the same to within a percentage
+point on all three. So a faster Python `show` could have bought at most 18 %; what had to go was the middle
+conversion, and "state → canonical text in **one pass**" was the right shape rather than a convenient one.
+
 ## 3. Controls (`battery.py --controls`)
 
 Fourteen mutants (since §2f: eleven LAW mutants derived from `laws.py` and three representation/fold mutants, each a text edit
@@ -613,8 +670,9 @@ and the eighteenth, `mixed-w8-w33`, earns its place under the C v2 controls only
   (`runtime/wasm/resident/`) would still pay 0.2 s for, and a 33-lane spinner whose 46 MB epochs ic32 cannot even read from
   stdin. A WRL world that fits the battery's shapes can now be folded in microseconds with the calculus as the oracle beside it.
 - **Its state renders to the calculus's exact normal-form bytes** (`payload.py` → `results-payload.json`):
-  `ic_ref.show(ic_ref.parse(enc_state_v6(view, state)))` is byte-identical to the line ic32 prints for the same epoch on every
-  epoch of every world's demo scenario (**18 worlds, 126 epochs** as of 2026-09-20; the 30-relay world's epoch 1 renders to the
+  `ic_ref.show(ic_ref.parse(enc_state_v6(view, state)))` is byte-identical to the line the calculus prints for the same epoch on
+  every epoch of every world's demo scenario (**18 worlds, 126 epochs**, and **all 19 including the gated 63-lane world** at
+  one epoch — §2k — as of 2026-09-20; the 30-relay world's epoch 1 renders to the
   3,260 B whose sha256 `2318bd82…` the vertical witness receipts). **Since §2j that rendering is C and costs 3.2–22.3 µs, not
   the 33–4,602 µs Python took** — and `payload.py` now proves BOTH paths against ic32's line and against each other, so the
   old claim is not weakened by the new one. This is what lets the compiled step be proposed as a second `trvm.reduce` executor
@@ -638,6 +696,7 @@ cd TRVM/compiled
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery.py --quick             # ~10 min: ic32 on the large worlds, one fuzz seed, ic32 file mode on the wide world
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery.py --controls          # ~55 min: the full run above + the fourteen mutants over every pair
 PYTHONDONTWRITEBYTECODE=1 python3 -B payload.py                     # ~5 min: the compiled state as the calculus's normal-form bytes, every world, through BOTH printers
+TRVM_BATTERY_HUGE=1 PYTHONDONTWRITEBYTECODE=1 python3 -B payload.py --epochs 1 --out results-payload-huge.json   # +10 min: the 63-lane world too, on ic_ref (ic32's 16M-slot heap refuses it -- §2k)
 PYTHONDONTWRITEBYTECODE=1 python3 -B printer_test.py                # the C printer alone: the four shapes, the naming order, the 63-bit lane, the buffer growth
 PYTHONDONTWRITEBYTECODE=1 python3 -B laws_gate.py --check           # the printer is a SEPARATE object: this must stay HELD across any printer change
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery.py --quick --worlds mailbox-routes,spinner-w33-n16   # a development subset; not an admission
