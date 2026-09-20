@@ -184,9 +184,11 @@ class CompiledStep2(CompiledStep):
     def unpack(self, vals):
         return unpack_vector(self.view, list(vals), self.layout)
 
-    def step(self, st, cfg_map, resets=None):
-        a, c = self.encode(st), self.control(cfg_map, resets)
+    def step_raw(self, a, c):
+        """v1's slot vector in and out, with v2's packing on the inside -- so one printer serves both emitters."""
         pin, pout = self._Packed(*self.pack(a)), self._Packed()
         self._lib.step_v6(pin, c, pout)
-        out = self._Arr(*self.unpack(pout))
-        return self.decode(out)
+        return self._Arr(*self.unpack(pout))
+
+    def step(self, st, cfg_map, resets=None):
+        return self.decode(self.step_raw(self.encode(st), self.control(cfg_map, resets)))

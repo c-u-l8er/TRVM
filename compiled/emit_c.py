@@ -299,7 +299,15 @@ class CompiledStep:
             c[5 * len(self.ctrl) + i] = 1 if (resets or {}).get(o) else 0
         return c
 
-    def step(self, st, cfg_map, resets=None):
-        a, c, out = self.encode(st), self.control(cfg_map, resets), self._Arr()
+    def step_raw(self, a, c):
+        """The C call alone: slot vector in, slot vector out, no dict on either side.
+
+        The state vector IS the compiled state, so a caller that renders it (`printer.CanonicalPrinter`)
+        or chains another epoch onto it never needs the dict -- `step` keeps the dict shape for the
+        battery, which compares states field by field against the calculus's decoded ones."""
+        out = self._Arr()
         self._lib.step_v6(a, c, out)
-        return self.decode(out)
+        return out
+
+    def step(self, st, cfg_map, resets=None):
+        return self.decode(self.step_raw(self.encode(st), self.control(cfg_map, resets)))

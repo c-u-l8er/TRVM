@@ -48,6 +48,7 @@ import compiler as C                  # noqa: E402
 import binlib as BL                   # noqa: E402
 from lower_e2a import _spine, _dec_bool   # noqa: E402
 from ic_ref import parse, show, reset_runtime, Lam, App, Var   # noqa: E402
+import printer as PR                 # noqa: E402
 
 PLAN_BYTES = 1 << 20
 INPUT_BYTES = 65536
@@ -86,6 +87,12 @@ def dec_config_bundle(view, term):
 
 
 def render(view, world):
+    """The reference rendering, kept: state dict -> term text -> AST -> canonical text, all in Python.
+
+    `printer.CanonicalPrinter` is what the process actually uses (one pass from the step's own state
+    vector, 10-240x faster); this stays as the thing that path is checked against, by `payload.py` on
+    every world of every epoch and by `executor_test.py` on the two witness terms.
+    """
     reset_runtime()
     return show(parse(C.enc_state_v6(view, world)))
 
@@ -138,15 +145,20 @@ def run(request, plan_bytes, control_text, state_text, emitter="c"):
         cfg_map, resets = dec_config_bundle(view, parse(control_text))
     except Exception as e:
         raise Refused("input-decoding", {"error": "%s: %s" % (type(e).__name__, str(e)[:200])})
-    world2 = cs.step(world, cfg_map, resets)
-    nf = render(view, world2)
-    nfb = nf.encode()
+    # The step's own state vector goes straight to the canonical bytes: no dict, no term text, no AST.
+    # The printer is a SEPARATE object from the step (`printer.py`), so its identity is recorded beside
+    # the step's rather than folded into it -- the receipt names both pieces of code that ran.
+    pr = PR.CanonicalPrinter(view)
+    a_out = cs.step_raw(cs.encode(world), cs.control(cfg_map, resets))
+    nfb = pr.render(a_out)
+    nf = nfb.decode()
     return {
         "status": "candidate", "kind": KINDS[emitter],
         "sem": sealed.semantic_artifact_id, "scenario_digest": params.get("scenario_digest"), "epoch": params.get("epoch"),
         **hashes,
         "nf_sha256": sha(nfb), "nf_bytes": len(nfb), "output": nf,
         "backend_id": cs.backend_id, "source_sha256": cs.source_sha256, "so_sha256": so_sha, "flags": flags,
+        "printer_id": pr.printer_id, "printer_source_sha256": pr.source_sha256,
         "state_width": cs.width, "compile_plan_digest": sealed.compile_plan_digest,
     }
 

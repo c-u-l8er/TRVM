@@ -12,6 +12,14 @@ re-encoded with Forge's own codec (`compiler.enc_state_v6`) and printed by the r
 term `((step cfg) state)`. Also measured: the cost of that rendering, which is what the compiled executor kind would pay on
 top of its microsecond step. Worlds whose epoch term exceeds ic32's 16 MiB stdin buffer are rendered through the same
 `-reparse` file mode the battery uses.
+
+SINCE THE C PRINTER (2026-09-20) this checks TWO renderings against ic32's line, not one, because the cost it measured is
+the reason the C printer exists: the Python path was 49-5,686 us against a step of 15-160 us, so a `trvm.reduce` receipt
+cost 10-70x more to PRINT than to compute (`BENCHMARK_LANE.md` section B2-perf). `printer.CanonicalPrinter` walks the
+compiled step's own int64 state vector straight to the same bytes in one pass. Three equalities are now asserted per
+epoch and all three must hold for the run to pass: the C printer against ic32 (`identical`), the Python path against ic32
+(`py_identical`, the old claim, unchanged), and the two paths against each other (`c_equals_py`). The columns are
+`render_us` (C) beside `render_py_us` (Python), so one run carries its own before and after.
 """
 import argparse
 import hashlib
@@ -27,6 +35,7 @@ sys.path.insert(0, HERE)
 sys.dont_write_bytecode = True
 import fold as F                       # noqa: E402
 import battery as B                    # noqa: E402
+import printer as PR                   # noqa: E402
 from ic_ref import show                # noqa: E402
 C, O = F.C, F.O
 
@@ -54,15 +63,16 @@ def ic32_line(step, ec, stt, wide):
     return r.stdout.decode().strip().splitlines()[0]
 
 
-def render(view, world):
-    """The compiled executor's payload: Forge's encoding of the state, printed canonically."""
+def render_py(view, world):
+    """The Python rendering this measurement exists to replace: state dict -> term text -> AST -> canonical text."""
     O.reset_runtime()
-    return show(O.parse(C.enc_state_v6(view, world)))
+    return show(O.parse(C.enc_state_v6(view, world))).encode()
 
 
 def one_world(name, src, epochs):
     sem, view, dig, script, world, claim, seams = F._prepare(src, None)
     cs = F.CompiledStep(view, sem)
+    pr = PR.CanonicalPrinter(view)
     step, _ = C.compile_step_v6(view)
     wide = len(step.encode()) > (1 << 24) - (1 << 16)
     rows = []
@@ -71,25 +81,44 @@ def one_world(name, src, epochs):
         claim, cfg_map, resets = F.FD.admit_step_sealed(claim, batch, ep, view, seams)
         ec, stt = C.enc_config_bundle(view, cfg_map, resets), C.enc_state_v6(view, world)
         t0 = time.perf_counter()
-        line = ic32_line(step, ec, stt, wide)
+        line = ic32_line(step, ec, stt, wide).encode()
         t_ic = time.perf_counter() - t0
+        # the step, in the three pieces the old `step_us` column summed: the dict in, the C call, the dict out
         t0 = time.perf_counter()
-        world_c = cs.step(world, cfg_map, resets)
-        t_step = time.perf_counter() - t0
+        a_in, ctl = cs.encode(world), cs.control(cfg_map, resets)
+        t_enc = time.perf_counter() - t0
         t0 = time.perf_counter()
-        payload = render(view, world_c)
+        a_out = cs.step_raw(a_in, ctl)
+        t_c = time.perf_counter() - t0
+        t0 = time.perf_counter()
+        world_c = cs.decode(a_out)
+        t_dec = time.perf_counter() - t0
+        # the rendering, both ways: the C printer over the step's own vector, and the Python path it replaces
+        t0 = time.perf_counter()
+        payload = pr.render(a_out)
         t_render = time.perf_counter() - t0
-        rows.append({"epoch": ep, "identical": payload == line, "nf_bytes": len(line.encode()),
-                     "nf_sha256": hashlib.sha256(line.encode()).hexdigest(),
-                     "payload_sha256": hashlib.sha256(payload.encode()).hexdigest(),
-                     "step_us": round(t_step * 1e6, 2), "render_us": round(t_render * 1e6, 1), "ic32_s": round(t_ic, 4),
-                     "decoded_state_equal": C.dec_state_v6(view, O.parse(line)) == world_c})
+        t0 = time.perf_counter()
+        payload_py = render_py(view, world_c)
+        t_render_py = time.perf_counter() - t0
+        rows.append({"epoch": ep, "identical": payload == line, "py_identical": payload_py == line,
+                     "c_equals_py": payload == payload_py, "nf_bytes": len(line),
+                     "nf_sha256": hashlib.sha256(line).hexdigest(),
+                     "payload_sha256": hashlib.sha256(payload).hexdigest(),
+                     "step_us": round((t_enc + t_c + t_dec) * 1e6, 2), "step_c_us": round(t_c * 1e6, 2),
+                     "render_us": round(t_render * 1e6, 1), "render_py_us": round(t_render_py * 1e6, 1),
+                     "ic32_s": round(t_ic, 4),
+                     "decoded_state_equal": C.dec_state_v6(view, O.parse(line.decode())) == world_c})
         world = world_c                              # the compiled state is the chain; the calculus checks every epoch
-    return {"world": name, "sem": sem, "backend_id": cs.backend_id, "term_bytes": len(step.encode()) + len(ec) + len(stt) + 6,
+    return {"world": name, "sem": sem, "backend_id": cs.backend_id, "printer_id": pr.printer_id,
+            "term_bytes": len(step.encode()) + len(ec) + len(stt) + 6,
             "ic32_mode": "-reparse (file)" if wide else "stdin", "epochs": len(rows),
             "all_identical": all(r["identical"] for r in rows), "all_states_equal": all(r["decoded_state_equal"] for r in rows),
+            "all_py_identical": all(r["py_identical"] for r in rows), "all_c_equals_py": all(r["c_equals_py"] for r in rows),
             "nf_bytes_epoch1": rows[0]["nf_bytes"], "nf_sha256_epoch1": rows[0]["nf_sha256"],
-            "render_us_p50": round(st.median(r["render_us"] for r in rows), 1), "step_us_p50": round(st.median(r["step_us"] for r in rows), 2),
+            "render_us_p50": round(st.median(r["render_us"] for r in rows), 1),
+            "render_py_us_p50": round(st.median(r["render_py_us"] for r in rows), 1),
+            "step_us_p50": round(st.median(r["step_us"] for r in rows), 2),
+            "step_c_us_p50": round(st.median(r["step_c_us"] for r in rows), 2),
             "ic32_s_p50": round(st.median(r["ic32_s"] for r in rows), 4), "rows": rows}
 
 
@@ -98,15 +127,17 @@ def main():
     ap.add_argument("--epochs", type=int, default=7)
     ap.add_argument("--out", default=os.path.join(HERE, "results-payload.json"))
     a = ap.parse_args()
-    out = {"measured": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "loadavg": os.getloadavg(), "ic32_path": O.IC32, "worlds": []}
+    out = {"measured": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "loadavg": os.getloadavg(), "ic32_path": O.IC32,
+           "printer_id": PR.printer_id(), "worlds": []}
     ok = True
     for name, src in B.WORLDS.items():
         w = one_world(name, src, a.epochs)
-        ok &= w["all_identical"] and w["all_states_equal"]
+        ok &= w["all_identical"] and w["all_states_equal"] and w["all_py_identical"] and w["all_c_equals_py"]
         out["worlds"].append(w)
-        print("%-20s %-16s epochs %d  nf %6d B  step %7.2f us  render %8.1f us  ic32 %8.4f s  %s" % (
-            name, w["ic32_mode"], w["epochs"], w["nf_bytes_epoch1"], w["step_us_p50"], w["render_us_p50"], w["ic32_s_p50"],
-            "IDENTICAL" if w["all_identical"] else "DIFFER"), flush=True)
+        print("%-20s %-16s epochs %d  nf %6d B  step %7.2f us  render C %7.1f us  py %8.1f us  %5.0fx  ic32 %8.4f s  %s" % (
+            name, w["ic32_mode"], w["epochs"], w["nf_bytes_epoch1"], w["step_us_p50"], w["render_us_p50"],
+            w["render_py_us_p50"], w["render_py_us_p50"] / max(w["render_us_p50"], 1e-9), w["ic32_s_p50"],
+            "IDENTICAL" if w["all_identical"] and w["all_py_identical"] and w["all_c_equals_py"] else "DIFFER"), flush=True)
     out["all_identical"] = ok
     with open(a.out, "w") as f:
         json.dump(out, f, indent=1)

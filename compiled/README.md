@@ -460,6 +460,120 @@ file would block the battery), and three use the **committed receipts as the reg
 59-pair record refuses the real 33-pair one, the real gated record refuses the standing one, and each real
 record accepts itself. `laws_gate.py --check` **HELD** (19 × 4 byte-identical — no emitter was touched).
 
+### 2j. The C canonical printer — the render was the bottleneck, and it was never in the step (2026-09-20)
+
+**What said this was worth building.** `BENCHMARK_LANE.md` §B2·perf put this backend's own receipts side by
+side for the first time — `results-battery.json`'s 59 pairs joined to `results-payload.json` — and the join
+said something §4 had written down without drawing the conclusion: the compiled step beat the calculus by a
+median **4,424×**, but a `trvm.reduce` receipt needs the *canonical bytes*, and producing them was
+`ic_ref.show(ic_ref.parse(enc_state_v6(view, state)))`, entirely Python. End to end the median was **297×**
+and **1× on chain30**, the vertical witness's own world. From the other end, B5 measured the compiled
+one-shot executor at a flat ~82 ms p50 on *both* chain30 and the Golden demo. Two measurements from opposite
+directions agreed: the compiled floor's speed was gated by a Python printer, not by the compiled step.
+
+**The first decision was where to put it, and it was made explicitly rather than defaulted into.**
+`print_state.c` is a **separate, world-independent object beside the step**, not printer code inside the
+emitted step. Four reasons, in the order they decided it:
+
+1. **The emitted step's source sha256 IS the admitted artifact's identity** (`cbknd-`/`cbknd2-`), and the
+   battery admits a step by *film- and state-equality against the calculus*. A printer changes no film and no
+   state. In-step, every C identity would move — and would move again on every future printer change — to buy
+   nothing the battery checks, and each move costs a battery re-run to restore the record.
+2. **The printer is world-independent by construction.** `enc_state_v6` emits four shapes and nothing else, so
+   what varies per world is a field descriptor, not code. One object, one identity, versus 19 emitted printers
+   each needing its own build and hash.
+3. **Only the two C emitters could carry one.** `bend`/`bend2` could not, so in-step would make "a step" mean
+   different things per backend.
+4. Both consumers — `payload.py`'s oracle and `executor.py`'s `trvm.reduce` kind — want the printer without
+   regard to which emitter produced the step, and a resident host would want it loaded once for many worlds.
+
+The cost of separateness is one extra FFI crossing against a render that was costing 33–4,602 µs. **The
+falsifier for that decision is `laws_gate.py --check`, and it HELD (19 worlds × 4 emitters byte-identical)
+after the work: no emitted program moved, so no `cbknd-`/`cbknd2-`/`bbknd-`/`bbknd2-` identity moved and the
+admission record stands.** The printer carries its own identity, `cprn-` over its own source, and
+`executor.py`'s receipt now names it beside the step's (`printer_id`, `printer_source_sha256`) — two pieces of
+code ran, so two are recorded. It is built by `emit_c.build` at the **admitted `-O2`** into the same
+toolchain-namespaced cache, under `FLAGS_POLICY.md` like everything else here; `-march=native` is not admitted
+for a printer either.
+
+**The hard part was the naming, and it is the whole of the correspondence.** `ic_ref.show` renames every
+binder in **first-encounter order over the whole term** — `a`..`z`, then `v26`, `v27`, … — so one wrong
+traversal step shifts every name after it. What makes a single forward pass sufficient is that `show` names a
+`Lam`'s binder *before* walking its body and an `App`'s function *before* its argument, and `enc_state_v6`'s
+output contains no `Era`, no `Sup`, no `Dup` and no free variable: for those shapes a binder's name index is
+exactly **the number of binders emitted before it in the output text**, which is one counter. The four shapes:
+
+```
+TUP(p0..pk-1)  ->  λf.  "("*k  f  (" " pi ")")*k        (k = 0: λf.f)
+BOOL(b)        ->  λn0.λn1.(b ? n0 : n1)
+ENUM(size,i)   ->  λn0. … λn(size-1). n(i)
+PAIR(x,y)      ==  TUP(x,y), byte for byte
+```
+
+and each field of `compiler.state_layout` is one of: `ENUM(period, slot)` for a one-hot counter, a TUP of the
+counter's bits LSB-first for a binary one, `TUP(BOOL(done), bits of k)` for a once-clock, `TUP(BOOL,BOOL)` for
+a wire/door/relay, `TUP(4 × TUP(w bits))` for a pose or a rotor, `BOOL` for a fault. The λ is two UTF-8 bytes
+and the comparison is bytes. The descriptor is read off **`emit_c.slot_map`'s own field list**, so the printer
+never re-walks the layout on its own — a layout change moves both or neither.
+
+**Admitted by the oracle that already existed, not by a new one.** `payload.py` now checks **three**
+equalities per epoch and all three must hold: the C printer against the line ic32 prints, the Python path
+against that same line (the old claim, unchanged), and the two paths against each other. **18 worlds × 7
+epochs = 126 epochs, EVERY ONE IDENTICAL**, including the Golden demo and both 33-lane worlds through ic32's
+`-reparse` file mode; `spinner-w63-n31` was checked the same way under `TRVM_BATTERY_HUGE=1`. `chain30`
+epoch 1 still renders to the 3,260 B whose sha256 `2318bd82…` the vertical witness receipts, and
+`executor_test.py` is **20/20** with the executor rendering through C.
+
+**And the refactor `step_raw` required was put through the admission oracle, not argued about.**
+`CompiledStep.step` now routes through `step_raw`, and `CompiledStep2` overrides it with its packing, so both
+folds changed shape even though no emitted byte did. Re-run on the day, each to its own `--out` so the standing
+records were not touched: **`battery.py` ALL AGREE — 59 pairs, 18 worlds, 1,110 epochs, 3,008 s**
+(`results-battery-cprinter-check.json`), the **same pair set** as `results-battery.json` and **zero
+`backend_id`s moved**; **`battery_bend.py --emitter c2` ALL AGREE — 59 pairs, 0 refused**
+(`results-c2-cprinter-check.json`). `battery_receipt_test.py` 13/13 and `flags_identity_test.py` 10/10 are
+unchanged. **`results-battery.json` and `results-c2-backend.json` were deliberately left alone**: nothing they
+record moved, and replacing a record that carries its controls with a fresh one that does not is the narrowing
+§2i refuses.
+
+**`printer_test.py` is the printer's own suite and it is not a second oracle** — where it checks a rendering it
+checks it against `show(parse(enc_state_v6(...)))`, the same reference `payload.py` uses, or against bytes
+derived by hand from `show`'s rule and written into the assertion. **12/12**, and it pins the five things a
+scenario run never reaches: **152 random states over 19 worlds** (lanes at their extremes, bit patterns at
+all-zeros and all-ones), the **63-bit lane** at 0/−1/±2^62 where a signed right shift and a two's-complement bit
+part company, the **name crossover at 26** (`λz.` then `λv26.`, and never `λv25.`), the **buffer-growth path**,
+and the three refusals (unknown kind, width outside 1..63, enum index outside its size).
+
+| world | render Python | render C | × | step (round trip) | C call alone |
+|---|---:|---:|---:|---:|---:|
+| chain120 | 4,601.5 µs | **21.7 µs** | 212× | 165.7 µs | 12.0 µs |
+| mixed-w8-w33 | 2,056.2 | **22.3** | 92× | 63.9 | 12.2 |
+| spinner-w33-n16 | 1,491.0 | **19.7** | 76× | 57.0 | 11.0 |
+| chain30 | 1,130.3 | **9.5** | 119× | 40.3 | 7.3 |
+| two-spinners | 915.4 | **16.5** | 55× | 60.0 | 11.6 |
+| golden-demo | 807.4 | **17.2** | 47× | 59.0 | 11.5 |
+| relay-only | 32.7 | **3.2** | 10× | 6.5 | 2.8 |
+
+(`results-payload.json`, one run, shared laptop, medians over 7 epochs — **an oracle's timing columns, not a
+benchmark**; a perf harness with a fixed task boundary is separate work.) The render is now **3.2–22.3 µs**
+(median 14.4) where it was **32.7–4,601.5 µs** (median 524.4): **10–212× per world, median 37×.**
+
+**What this moved, in the terms §B2·perf set out** — the same join, re-derived against the new record:
+
+| | before | after |
+|---|---:|---:|
+| step alone vs the interpreter | 4,424× | 4,501× (unchanged; same step, new run) |
+| **step + render** — what a receipt costs | **297×** | **3,471×** |
+| the same with no state dict at all | — | **9,076×** |
+| **chain30**, the vertical witness's own world | **1×** | **36×** (107× with no dict) |
+
+**And the bottleneck moved, which is the finding this build hands on.** The render is no longer the expensive
+half: the *Python round trip around the step* is. `cs.step` costs 6.5–165.7 µs of encode/decode to wrap a C
+call of **2.78–12.22 µs**, against a render of 3.2–22.3 µs. `CompiledStep.step_raw` (slot vector in, slot
+vector out, added here and used by the executor and by `payload.py`) is the path that skips it: **6.0–34.5 µs
+end to end** for the whole epoch, against the interpreter's 0.0001–8.57 s. Making the compiled executor
+resident — `COMPILED_EXECUTOR_PROPOSAL.md` §6, still Travis's — now compounds against a floor of tens of
+microseconds rather than the ~1 ms the render used to impose.
+
 ## 3. Controls (`battery.py --controls`)
 
 Fourteen mutants (since §2f: eleven LAW mutants derived from `laws.py` and three representation/fold mutants, each a text edit
@@ -500,10 +614,12 @@ and the eighteenth, `mixed-w8-w33`, earns its place under the C v2 controls only
   stdin. A WRL world that fits the battery's shapes can now be folded in microseconds with the calculus as the oracle beside it.
 - **Its state renders to the calculus's exact normal-form bytes** (`payload.py` → `results-payload.json`):
   `ic_ref.show(ic_ref.parse(enc_state_v6(view, state)))` is byte-identical to the line ic32 prints for the same epoch on every
-  epoch of every world's demo scenario (17 worlds, 119 epochs; the 30-relay world's epoch 1 renders to the 3,260 B whose
-  sha256 `2318bd82…` the vertical witness receipts). The rendering costs 0.03–4.6 ms in Python (chain120 the largest), 10–70×
-  the step. This is what lets the compiled step be proposed as a second `trvm.reduce` executor kind under the witness's
-  unchanged reference gate — `wek/b2/trvm/COMPILED_EXECUTOR_PROPOSAL.md`, design only, waiting on the resident host's admission.
+  epoch of every world's demo scenario (**18 worlds, 126 epochs** as of 2026-09-20; the 30-relay world's epoch 1 renders to the
+  3,260 B whose sha256 `2318bd82…` the vertical witness receipts). **Since §2j that rendering is C and costs 3.2–22.3 µs, not
+  the 33–4,602 µs Python took** — and `payload.py` now proves BOTH paths against ic32's line and against each other, so the
+  old claim is not weakened by the new one. This is what lets the compiled step be proposed as a second `trvm.reduce` executor
+  kind under the witness's unchanged reference gate — `wek/b2/trvm/COMPILED_EXECUTOR_PROPOSAL.md`, design only, waiting on the
+  resident host's admission.
 - It is not a replacement for the calculus: the calculus is the semantics, the reference and the identity spine. The
   compiled step is admitted per world by the fold, and a world outside the battery's shapes (a lane width over 63 is refused
   by the emitter; widths 34–62 and any field kind `state_layout` does not yield today are unadmitted) is refused or
@@ -511,7 +627,9 @@ and the eighteenth, `mixed-w8-w33`, earns its place under the C v2 controls only
   w=63 (the latter behind `TRVM_BATTERY_HUGE=1`) since §2e.
 - Nothing about Super: no bridge, no executor profile, no receipt. Where this would sit in the vertical witness — as a second
   `trvm.reduce` executor kind whose result the reference gate checks the same way — is a proposal for Codex, not a change.
-- No performance claim beyond the table above: shared laptop, one run, medians over 7–24 epochs.
+- No performance claim beyond the tables above: shared laptop, one run, medians over 7–24 epochs. **That applies to §2j's
+  printer numbers too** — they are `payload.py`'s, and `payload.py` is an oracle, not a benchmark
+  (`BENCHMARK_LANE.md` §1, B2 vs B3).
 
 ## 5. Reproduce
 
@@ -519,7 +637,9 @@ and the eighteenth, `mixed-w8-w33`, earns its place under the C v2 controls only
 cd TRVM/compiled
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery.py --quick             # ~10 min: ic32 on the large worlds, one fuzz seed, ic32 file mode on the wide world
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery.py --controls          # ~55 min: the full run above + the fourteen mutants over every pair
-PYTHONDONTWRITEBYTECODE=1 python3 -B payload.py                     # ~2 min: the compiled state as the calculus's normal-form bytes, every world
+PYTHONDONTWRITEBYTECODE=1 python3 -B payload.py                     # ~5 min: the compiled state as the calculus's normal-form bytes, every world, through BOTH printers
+PYTHONDONTWRITEBYTECODE=1 python3 -B printer_test.py                # the C printer alone: the four shapes, the naming order, the 63-bit lane, the buffer growth
+PYTHONDONTWRITEBYTECODE=1 python3 -B laws_gate.py --check           # the printer is a SEPARATE object: this must stay HELD across any printer change
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery.py --quick --worlds mailbox-routes,spinner-w33-n16   # a development subset; not an admission
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery_bend.py --controls --bench   # the Bend row: ~12 min once the reference films are cached under ~/.cache/trvm-compiled/refs/ (~45 min the first time)
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery_bend.py --emitter v2 --controls   # the packed representation: results-bend2-backend.json, ~1 min with cached refs
