@@ -270,8 +270,17 @@ int64_t trvm_print_abi(void) { return TRVM_PRINT_ABI; }
  * binders walked so far -- no table. The CONTROL text is not: it is `compiler.enc_config_bundle`'s raw output and
  * carries Forge's own generated names (`lam tf3.((tf3 lam tf1.(tf1 lam cnc.lam csr.cnc)) ...)`). So the control
  * walk binds names into a small table and matches uses against it. Two disciplines in one file, each because of
- * what its input actually is; a control text is a few hundred bytes and a few hundred binders, so the table is a
- * fixed array and a text that exceeds it is refused rather than grown. */
+ * what its input actually is.
+ *
+ * THE BOUND, derived and then measured rather than picked. A control's binders are
+ *   2 (the two TUPs) + per controlling spinner 2 (the Scott sum) + per SET rotor 4*(2w+1)+1 + per orb 2,
+ * so the term that matters is the SET rotors: at w=63 one of them is ~511 binders and everything else is noise.
+ * 2048 therefore admits about FOUR simultaneously-set 63-bit rotors, and that is the honest way to state it.
+ * Measured over every pair `battery.pairs(False)` folds -- 1,120 (pair, epoch) controls, demo, fuzz, gentle and
+ * extremes -- the worst is `spinner-w63-n31` at 516 binders / 3,438 bytes (one set rotor at w=63), so the tree's
+ * widest world sits at 4.0x headroom and nothing falls back. A world with five or more controlled 63-lane
+ * spinners all set in one epoch would exceed it, be REFUSED here, and fall back to the Python decoder -- correct,
+ * slower, and visible in the candidate's `reader` field, which is what that fallback is for. */
 #define CTRL_BINDERS 2048
 #define E_BINDERS (-6)
 

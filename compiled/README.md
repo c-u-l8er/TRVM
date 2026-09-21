@@ -652,7 +652,18 @@ as cheap as its acceptances.
 *payload*, so its binders are `show`'s and the name at any position is known from the count of binders walked so
 far — no table. The **control** text is not: it is `enc_config_bundle`'s raw output carrying Forge's own generated
 names (`λtf3.((tf3 λtf1.(tf1 λcnc.λcsr.cnc)) …)`), so that walk binds names into a small fixed table and matches
-uses against it. A control text is a few hundred bytes; a text that exceeds the table is refused, not grown.
+uses against it. Assuming canonical names there was the first version, and the first world it met refused it.
+
+**That table's bound was then derived and measured rather than left at a round number.** A control's binders are
+`2 + 2·(controlling spinners) + 2·(orbs) + (4·(2w+1)+1) per SET rotor`, so the set rotors are the only term that
+matters: one at w=63 is ~511 binders. `CTRL_BINDERS = 2048` therefore admits about **four simultaneously-set
+63-bit rotors**, which is the honest way to state it. Measured over **every pair `battery.pairs(False)` folds —
+1,120 (pair, epoch) controls across demo, fuzz, gentle and extremes — the C reader agreed with
+`CompiledStep.control` on all 1,120, and the worst case is `spinner-w63-n31` at 516 binders / 3,438 bytes: 4.0×
+headroom, zero fallbacks.** A world with five or more controlled 63-lane spinners all set in one epoch would
+exceed it, be refused, and fall back to the Python decoder — correct, slower, and visible in the candidate's
+`reader` field, which is exactly what that fallback is for. R8 pins the headroom so a world that grows past the
+bound, or a bound that shrinks, shows up as a failing case rather than as a silent fallback in production.
 
 **The acceptance set is deliberately unchanged.** The state reader accepts a string **iff the printer could have
 written it for this layout**, which is *tighter* than `dec_state_v6(parse(…))`: an alpha-variant parses in Python

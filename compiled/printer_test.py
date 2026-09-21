@@ -247,6 +247,28 @@ class Reader(unittest.TestCase):
         self.assertNotEqual(canon, raw.encode())                 # a different spelling of the same control
         self.assertEqual(list(pr.read_control(canon)), list(from_raw))
 
+    def test_R8_the_control_binder_bound_has_measured_headroom(self):
+        """`CTRL_BINDERS` is 2048 and a control past it falls back to Python. This pins what the tree's WIDEST
+        world actually needs, so a world that grows past the bound, or a bound that shrinks, is visible here
+        rather than as a silent fallback in production."""
+        worst = (0, None)
+        for name in ("spinner-w63-n31", "spinner-w33-n16", "mixed-w8-w33", "two-spinners", "golden-demo"):
+            if name not in B.WORLDS:
+                continue
+            sem, view, dig, script, world, claim, seams = F._prepare(B.WORLDS[name], None)
+            cs, pr = F.CompiledStep(view, sem), PR.CanonicalPrinter(view)
+            for e, (_lbl, batch) in enumerate(script[:7]):
+                claim, cfg, rs = F.FD.admit_step_sealed(claim, batch, 1 + e, view, seams)
+                text = C.enc_config_bundle(view, cfg, rs)
+                n = text.count("\u03bb")
+                if n > worst[0]:
+                    worst = (n, "%s epoch %d" % (name, 1 + e))
+                self.assertEqual(list(pr.read_control(text)), list(cs.control(cfg, rs)), name)
+                world = cs.step(world, cfg, rs)
+        self.assertGreater(worst[0], 400, "the 63-lane world should be the worst and should be substantial")
+        self.assertLess(worst[0], 2048, "a control now needs more binders than the reader's table admits")
+        print("  worst control: %d binders (%s), bound 2048, headroom %.1fx" % (worst[0], worst[1], 2048 / worst[0]))
+
     def test_R7_a_malformed_control_is_refused(self):
         sem, view, dig, script, world, claim, seams = F._prepare(B.WORLDS["spinner-w8-n4"], None)
         pr = PR.CanonicalPrinter(view)
