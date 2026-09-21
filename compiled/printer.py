@@ -32,11 +32,13 @@ sys.dont_write_bytecode = True
 import emit_c as EC                                        # noqa: E402
 
 SOURCE_PATH = os.path.join(HERE, "print_state.c")
-ABI = 1
+ABI = 3
 
 # the field kinds of print_state.c, in `compiler.state_layout` terms
 K_ONEHOT, K_BINP, K_ONCE, K_PAIR, K_POSE, K_FAULT, K_ROTOR = range(7)
-_ERRORS = {-1: "unknown field kind", -2: "width outside 1..63", -3: "enum index outside its size"}
+_ERRORS = {-1: "unknown field kind", -2: "width outside 1..63 (or a state vector shorter than the layout)",
+           -3: "enum index outside its size", -4: "not what the printer would have written",
+           -5: "it matched, and then there was more"}
 
 
 def descriptor(view):
@@ -106,6 +108,17 @@ def _lib(cc="gcc"):
         lib.trvm_print_state.argtypes = [ctypes.POINTER(ctypes.c_int64), ctypes.c_int64,
                                          ctypes.POINTER(ctypes.c_int64), ctypes.c_char_p, ctypes.c_int64]
         lib.trvm_print_state.restype = ctypes.c_int64
+        lib.trvm_read_state.argtypes = [ctypes.POINTER(ctypes.c_int64), ctypes.c_int64,
+                                        ctypes.c_char_p, ctypes.c_int64,
+                                        ctypes.POINTER(ctypes.c_int64), ctypes.c_int64]
+        lib.trvm_read_state.restype = ctypes.c_int64
+        for fn in (lib.trvm_print_control, lib.trvm_read_control):
+            fn.restype = ctypes.c_int64
+        lib.trvm_print_control.argtypes = [ctypes.POINTER(ctypes.c_int64), ctypes.c_int64, ctypes.c_int64,
+                                           ctypes.POINTER(ctypes.c_int64), ctypes.c_char_p, ctypes.c_int64]
+        lib.trvm_read_control.argtypes = [ctypes.POINTER(ctypes.c_int64), ctypes.c_int64, ctypes.c_int64,
+                                          ctypes.c_char_p, ctypes.c_int64,
+                                          ctypes.POINTER(ctypes.c_int64), ctypes.c_int64]
         _LIB[cc] = (lib, so, sha, built, "cprn-" + hashlib.sha256(src.encode()).hexdigest())
     return _LIB[cc]
 
@@ -121,6 +134,11 @@ class CanonicalPrinter:
         self.view = view
         desc, self.nfields, self.width = descriptor(view)
         self._desc = (ctypes.c_int64 * len(desc))(*desc)
+        # the EpochControl walk, read off `emit_c.control_layout` -- the same source `CompiledStep.control` uses
+        ctrl, orbs = EC.control_layout(view)
+        self.nctrl, self.norbs = len(ctrl), len(orbs)
+        self.control_width = 5 * self.nctrl + self.norbs
+        self._widths = (ctypes.c_int64 * max(1, self.nctrl))(*[view.spinners[sp][0] for sp in ctrl])
         self._lib, self.so_path, self.source_sha256, self.built_now, self.printer_id = _lib(cc)
         self._cap = 1 << 12
         self._buf = ctypes.create_string_buffer(self._cap)
@@ -143,3 +161,50 @@ class CanonicalPrinter:
     def render_state(self, cs, st):
         """`render` from the state DICT, for a caller that has no slot vector -- it pays `cs.encode` first."""
         return self.render(cs.encode(st))
+
+    def read_control(self, text):
+        """The epoch control text -> `CompiledStep.control`'s vector, skipping `dec_config_bundle` AND `control`.
+
+        The last Python conversion on the hot path. On the spinner worlds the control carries a rotor pose per
+        controlling spinner, so its text is 978-1,862 B and `ic_ref.parse` alone was 312-638 us a job -- on
+        chain30, whose control is 36 B, it was 13.
+        """
+        if isinstance(text, str):
+            text = text.encode()
+        buf = (ctypes.c_int64 * max(1, self.control_width))()
+        rc = self._lib.trvm_read_control(self._widths, self.nctrl, self.norbs, text, len(text), buf, self.control_width)
+        if rc != 0:
+            raise ValueError("printer refused to read control: %s (code %d)" % (_ERRORS.get(rc, "?"), rc))
+        # exactly `control_width` wide, which is 0 for a world with no orb -- `CompiledStep.control` returns an
+        # empty vector there, and a one-element array that happens to hold 0 is not the same object.
+        return (ctypes.c_int64 * self.control_width)(*buf[:self.control_width])
+
+    def render_control(self, ctl):
+        """The inverse of `read_control`, for the round-trip check that keeps the two directions honest."""
+        n = self._lib.trvm_print_control(self._widths, self.nctrl, self.norbs, ctl, self._buf, self._cap)
+        if n < 0:
+            raise ValueError("printer refused: %s (code %d)" % (_ERRORS.get(n, "?"), n))
+        if n > self._cap:
+            while self._cap < n:
+                self._cap *= 2
+            self._buf = ctypes.create_string_buffer(self._cap)
+            n = self._lib.trvm_print_control(self._widths, self.nctrl, self.norbs, ctl, self._buf, self._cap)
+        return self._buf.raw[:n]
+
+    def read(self, payload):
+        """The inverse: canonical normal-form bytes -> the compiled step's state vector.
+
+        This replaces `compiler.dec_state_v6(ic_ref.parse(text))`, which was measured at 805-3,422 us of parse plus
+        52-286 us of decode and was **86-93 % of a warm job on the resident host** (`RESIDENT.md` §4b) once the C
+        printer had taken the output side to microseconds. It builds no term: `print_state.c`'s walk run in READ
+        mode matches the bytes the printer would have written and recovers the value wherever the printer chose a
+        name from one. So it accepts a string if and only if the printer could have produced it for THIS layout --
+        a well-formed term for another world's layout is refused at the byte where it first differs.
+        """
+        if isinstance(payload, str):
+            payload = payload.encode()
+        a = (ctypes.c_int64 * self.width)()
+        rc = self._lib.trvm_read_state(self._desc, self.nfields, payload, len(payload), a, self.width)
+        if rc != 0:
+            raise ValueError("printer refused to read: %s (code %d)" % (_ERRORS.get(rc, "?"), rc))
+        return a

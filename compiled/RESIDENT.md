@@ -82,39 +82,39 @@ acceptable barrier for it. This host cannot make that decision either.
 digest**, so what is compared is the same computation. Latency is per job from the caller's side, queue wait
 included; throughput is jobs divided by the wall time the batch took.
 
-| world | one-shot (a process per job) | resident, in-process C=1 | over a Unix socket C=1 | in-process C=8 | socket C=8 |
-|---|---:|---:|---:|---:|---:|
-| **chain30** (the witness's world) | **66.03 ms** | **0.95 ms** | 1.49 ms | 13.71 ms · 1,936 j/s | 2.37 ms · 1,628 j/s |
-| golden-demo (9.5 MB term) | 65.73 | **1.04** | 1.74 | 13.91 · 1,945 j/s | 2.54 · 1,678 j/s |
-| spinner-w33-n16 (46 MB term) | 64.73 | **1.91** | 2.79 | 16.07 · 1,611 j/s | 3.64 · 1,274 j/s |
-| chain120 | 73.72 | **3.61** | 5.14 | 33.54 · 824 j/s | 5.74 · 738 j/s |
+| world | one-shot (a process per job) | resident, in-process C=1 | over a Unix socket C=1 | vs the floor |
+|---|---:|---:|---:|---:|
+| **chain30** (the witness's world) | **74.66 ms** | **0.17 ms** | 0.36 ms | **439×** |
+| golden-demo (9.5 MB term) | 68.17 | **0.20** | 0.43 | 341× |
+| spinner-w33-n16 (46 MB term) | 68.58 | **0.23** | 0.53 | 298× |
+| chain120 | 75.08 | **0.36** | 1.09 | 209× |
 
-**69× on chain30** in-process, 44× over the socket; and the span is no longer flat across worlds, which is itself
-the point — once Python's startup is gone, what is left is proportional to the world. The C=8 rows trade latency for
-throughput: eight jobs deep on eight workers, per-job latency is queue wait plus service, and throughput roughly
-doubles. (`jobs_per_s` was briefly `len(lat)/sum(lat)` — the inverse of the mean latency, which is right only when
-jobs do not overlap; it reported the C=8 rows as *slower* than C=1 while they were twice as fast. It is wall-clock.)
+**The span is flat and small across every world** — 0.17–0.36 ms, where the one-shot kind was ~82 ms flat. That is
+the same shape of finding twice over: a flat number is a number dominated by something other than the work. It was
+82 ms flat because Python was starting; when this host was first built it was 0.95–3.61 ms and the spread was the
+Python *reader*; with `README.md` §2l's C reader in place both are gone.
 
 **A development reading on a shared laptop, not a benchmark.** `BENCHMARK_LANE.md` §1's B2/B3 split applies here
 exactly as it applies to the battery's timing columns.
 
-### 4b. What now dominates, and it is the mirror image of what the C printer fixed
+### 4b. What now dominates, and it is no longer anything this host can remove
 
-Per-job phases on the warm path (p50, µs):
+When this host was first built the answer was the reader: **86–93 % of a warm job was `ic_ref.parse`** reading the
+previous payload back in. That is what `README.md` §2l went and fixed, in both directions — the state text and the
+epoch control — and the table above is the result. The phases now (p50, µs):
 
-| world | prepare | object check | **decode (input)** | step | render (output) | total |
+| world | prepare | **object check** | decode (both inputs) | step | render | host total |
 |---|---:|---:|---:|---:|---:|---:|
-| chain30 | 0.9 | 36.0 | **699.5 (86 %)** | 14.9 | 6.0 | 817.4 |
-| golden-demo | 0.9 | 34.7 | **826.2 (89 %)** | 9.4 | 6.2 | 928.8 |
-| spinner-w33-n16 | 1.1 | 40.5 | **1,615.5 (92 %)** | 10.5 | 8.5 | 1,759.6 |
-| chain120 | 1.2 | 50.0 | **3,130.4 (93 %)** | 39.1 | 12.8 | 3,379.7 |
+| chain30 | 0.5 | **25.7** | 13.1 | 1.5 | 5.5 | 91.0 |
+| golden-demo | 0.6 | **27.5** | 18.3 | 1.4 | 6.0 | 103.9 |
+| spinner-w33-n16 | 0.5 | **27.2** | 22.7 | 1.3 | 7.9 | 126.1 |
+| chain120 | 0.8 | **35.1** | 27.1 | 1.8 | 12.4 | 173.6 |
 
-**86–93 % of a warm job is `ic_ref.parse` reading the previous payload back in.** §2j took the *output* side from
-33–4,602 µs to 3–22 µs with a C printer; the *input* side is still three Python conversions in the other direction
-(canonical text → AST → state dict → slot vector). The step is 9–39 µs and the render 6–13 µs; everything else is
-the reader. **A C reader — the printer's inverse, over the same four shapes and the same layout descriptor — would
-take a warm job from ~1 ms to well under 100 µs**, and it is the same size of job the printer was. That is the next
-build this hands on, and it was measured here rather than guessed.
+**The per-job `.so` re-hash is now the single largest phase**, and it stays. It is F-B, and residency must not mean
+checking an object once and trusting it forever (§3, B2). The gap between the phases and the host total is the
+worker's own frame handling — base64 and JSON — which is the transport's cost, not the executor's. `step_us` fell
+from 14.9 µs to 1.5 for a reason worth stating: it used to include `CompiledStep.encode` turning a state dict into
+slots, and there is no dict on this path any more — the reader hands the step its vector directly.
 
 ## 5. Harness and controls
 
@@ -124,6 +124,7 @@ build this hands on, and it was measured here rather than guessed.
 |---|---|
 | I1 | chain30 epoch 1 warm still renders to `2318bd82…`/3,260 B, the vertical witness's golden receipt |
 | I2 | four worlds: every **field** of the warm candidate equals the one-shot candidate's, not merely the digest |
+| (both) | every case above also passes under `TRVM_READER_CHECK=1`, which runs the C reader and the Python decoder on **every** job and refuses on disagreement |
 | I3 | both C emitters, each reporting its own kind |
 | N1 | no emitted object over 19 worlds × 2 emitters carries a mutable object of its own |
 | N1b | the same compiler given a `static int64_t` is refused — a check that cannot fail is not a check |

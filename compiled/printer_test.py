@@ -164,6 +164,99 @@ class AgainstTheReference(unittest.TestCase):
             self.assertEqual(pr.render(a), reference(view, cs.decode(a)), "63-bit lane at %d" % v)
 
 
+class Reader(unittest.TestCase):
+    """R -- the walk run backwards. It is checked against the Python path it replaces, never against itself."""
+
+    def test_R1_every_world_random_states_read_back_as_the_python_decoder_would(self):
+        rnd = random.Random(20260921)
+        checked = 0
+        for name, src in B.WORLDS.items():
+            sem, view, dig, script, world, claim, seams = F._prepare(src, None)
+            cs = F.CompiledStep(view, sem)
+            pr = PR.CanonicalPrinter(view)
+            desc, nfields, width = PR.descriptor(view)
+            for _ in range(6):
+                a = (ctypes.c_int64 * width)(*random_slots(desc, nfields, width, rnd))
+                text = pr.render(a)
+                got = pr.read(text)
+                O.reset_runtime()
+                want = cs.encode(C.dec_state_v6(view, O.parse(text.decode())))
+                self.assertEqual(list(got), list(want), "%s: the C reader and dec_state_v6(parse(...))" % name)
+                self.assertEqual(pr.render(got), text, "%s: reading then printing is not the identity" % name)
+                checked += 1
+        self.assertGreaterEqual(checked, 6 * 19)
+        print("\n  %d random states over %d worlds read back exactly as Python reads them" % (checked, len(B.WORLDS)))
+
+    def _chain30(self):
+        sem, view, dig, script, world, claim, seams = F._prepare(B.WORLDS["chain30"], None)
+        return F.CompiledStep(view, sem), PR.CanonicalPrinter(view), view
+
+    def test_R2_a_trailing_byte_is_refused(self):
+        cs, pr, view = self._chain30()
+        text = pr.render(cs.encode(F.init_state_v6(view)))
+        pr.read(text)                                            # the control: it is accepted as it stands
+        with self.assertRaises(ValueError) as cm:
+            pr.read(text + b" ")
+        self.assertIn("and then there was more", str(cm.exception))
+
+    def test_R3_a_state_for_another_world_is_refused(self):
+        """Not "parses and then fails to fit": refused at the byte where it first differs from THIS layout."""
+        cs, pr, _ = self._chain30()
+        sem2, view2, *_ = F._prepare(B.WORLDS["golden-demo"], None)
+        other = PR.CanonicalPrinter(view2).render(F.CompiledStep(view2, sem2).encode(F.init_state_v6(view2)))
+        with self.assertRaises(ValueError):
+            pr.read(other)
+
+    def test_R4_a_non_canonical_spelling_is_refused_and_that_is_the_documented_tightening(self):
+        """`executor.run` falls back to Python for exactly this, so the ACCEPTANCE SET does not change."""
+        cs, pr, view = self._chain30()
+        text = pr.render(cs.encode(F.init_state_v6(view))).decode()
+        renamed = text.replace("λa.", "λzz.", 1).replace("(a ", "(zz ", 1)
+        self.assertNotEqual(renamed, text)
+        O.reset_runtime()
+        C.dec_state_v6(view, O.parse(renamed))                   # Python accepts the alpha-variant
+        with self.assertRaises(ValueError):
+            pr.read(renamed.encode())                            # the reader does not
+
+    def test_R5_the_control_reader_equals_CompiledStep_control_on_every_world(self):
+        checked, worlds = 0, set()
+        for name, src in B.WORLDS.items():
+            sem, view, dig, script, world, claim, seams = F._prepare(src, None)
+            cs = F.CompiledStep(view, sem)
+            pr = PR.CanonicalPrinter(view)
+            for e, (_lbl, batch) in enumerate(script[:4]):
+                claim, cfg, rs = F.FD.admit_step_sealed(claim, batch, 1 + e, view, seams)
+                text = C.enc_config_bundle(view, cfg, rs)
+                self.assertEqual(list(pr.read_control(text)), list(cs.control(cfg, rs)), "%s epoch %d" % (name, 1 + e))
+                checked += 1
+                worlds.add(name)
+                world = cs.step(world, cfg, rs)
+        self.assertEqual(len(worlds), len(B.WORLDS))
+        print("  control read on %d (world, epoch) pairs over %d worlds" % (checked, len(worlds)))
+
+    def test_R6_the_control_walk_takes_forge_s_names_AND_its_own(self):
+        """The control text is NOT canonical -- it carries `λtf3.`/`λcnc.` -- so that walk binds names. The
+        canonical re-print must read back to the same vector, which is the two directions agreeing."""
+        sem, view, dig, script, world, claim, seams = F._prepare(B.WORLDS["spinner-w8-n4"], None)
+        cs, pr = F.CompiledStep(view, sem), PR.CanonicalPrinter(view)
+        claim, cfg, rs = F.FD.admit_step_sealed(claim, script[0][1], 1, view, seams)
+        raw = C.enc_config_bundle(view, cfg, rs)
+        self.assertIn("λtf", raw)                                # Forge's names, not show's
+        from_raw = pr.read_control(raw)
+        canon = pr.render_control(from_raw)
+        self.assertNotEqual(canon, raw.encode())                 # a different spelling of the same control
+        self.assertEqual(list(pr.read_control(canon)), list(from_raw))
+
+    def test_R7_a_malformed_control_is_refused(self):
+        sem, view, dig, script, world, claim, seams = F._prepare(B.WORLDS["spinner-w8-n4"], None)
+        pr = PR.CanonicalPrinter(view)
+        claim, cfg, rs = F.FD.admit_step_sealed(claim, script[0][1], 1, view, seams)
+        raw = C.enc_config_bundle(view, cfg, rs)
+        for bad in (raw + " ", raw[:-1], raw.replace("λ", "", 1)):
+            with self.assertRaises(ValueError):
+                pr.read_control(bad)
+
+
 class Identity(unittest.TestCase):
 
     def test_the_printer_has_its_own_identity_and_it_is_not_a_backend_id(self):

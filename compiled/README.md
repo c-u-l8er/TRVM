@@ -631,6 +631,61 @@ three conversions separately, on three worlds that share nothing structurally:
 point on all three. So a faster Python `show` could have bought at most 18 %; what had to go was the middle
 conversion, and "state → canonical text in **one pass**" was the right shape rather than a convenient one.
 
+### 2l. The reader — the same walk run backwards, and the last Python conversion off the hot path (2026-09-20)
+
+§2j took the **output** side of a `trvm.reduce` job to microseconds and handed on a measurement: the render was no
+longer the expensive half. `RESIDENT.md` §4b then measured the resident host and found the other half — **86–93 % of
+a warm job was `ic_ref.parse` reading the previous payload back in**, to undo bytes this process had just written.
+This is the inverse, and it finishes the job: **both inputs and the output of a compiled epoch are now C.**
+
+**It is not a second traversal, and that is the whole design.** `trvm_read_state` is `trvm_print_state`'s walk with
+`w->mode` set to READ: every place the printer writes a token the reader matches it, and every place the printer
+writes a **name chosen by a value** — a `BOOL`'s body, an `ENUM`'s body — the reader reads that name back and
+recovers the value. Two traversals of one grammar would be two spellings of one rule, and §2k is what that costs.
+One walk cannot disagree with itself.
+
+It builds no term. So a state that is well formed but belongs to **another world's layout** is refused at the byte
+where it first differs, rather than parsing into an AST that then fails to fit — which is also why its refusals are
+as cheap as its acceptances.
+
+**Two name disciplines, each because of what its input actually is.** The **state** text is always a previous
+*payload*, so its binders are `show`'s and the name at any position is known from the count of binders walked so
+far — no table. The **control** text is not: it is `enc_config_bundle`'s raw output carrying Forge's own generated
+names (`λtf3.((tf3 λtf1.(tf1 λcnc.λcsr.cnc)) …)`), so that walk binds names into a small fixed table and matches
+uses against it. A control text is a few hundred bytes; a text that exceeds the table is refused, not grown.
+
+**The acceptance set is deliberately unchanged.** The state reader accepts a string **iff the printer could have
+written it for this layout**, which is *tighter* than `dec_state_v6(parse(…))`: an alpha-variant parses in Python
+and is refused here (R4 asserts both halves of that). In this protocol the state *is* the previous normal form and
+is canonical by construction, so the tighter rule would almost certainly do — but **narrowing what an executor
+accepts is a contract change and not one to make in passing.** So a refusal from either reader falls back to the
+Python path, and the candidate says which ran (`reader: "c" | "python"`), because a fallback nobody can see hides
+both a contract surprise and a defect in the reader. `TRVM_READER_CHECK=1` runs **both** and refuses on
+disagreement; the harnesses run green under it.
+
+**Measured** (`resident_spans.py`, warm job p50, shared laptop — an oracle's numbers, not a benchmark):
+
+| world | one-shot | resident, before | + state reader | **+ control reader** | vs the one-shot floor |
+|---|---:|---:|---:|---:|---:|
+| **chain30** | 74.66 ms | 0.95 ms | 0.24 | **0.17 ms** | **439×** |
+| golden-demo (9.5 MB term) | 68.17 | 1.04 | 0.43 | **0.20** | 341× |
+| spinner-w33-n16 (46 MB term) | 68.58 | 1.91 | 1.11 | **0.23** | 298× |
+| chain120 | 75.08 | 3.61 | 0.41 | **0.36** | 209× |
+
+The control reader is what closes the gap on the **spinner** worlds specifically (w33 1.11 → 0.23 ms): their control
+carries a rotor pose per controlling spinner, so its text is 978–1,862 B and `ic_ref.parse` alone was 312–638 µs a
+job, against 13 µs on chain30 whose control is 36 B. **The span is now flat and small across every world** —
+0.17–0.36 ms where it was 82 ms flat for the one-shot kind, which is the same shape of finding twice: a flat number
+is a number dominated by something other than the work.
+
+**What is left, named rather than optimised away.** The warm job's phases are now `prepare` 0.5–0.8 µs,
+**`object_check` 25.7–35.1 µs**, `decode` 13.1–27.1, `step` 1.3–1.8, `render` 5.5–12.4. **The per-job `.so`
+re-hash is now the single largest phase** — it is F-B, it is deliberate, and residency must not mean checking an
+object once and trusting it forever, so it stays. The rest of the ~91–174 µs the host reports is the worker's own
+frame handling (base64 + JSON), which is the transport's cost and not the executor's. (`step_us` fell from 14.9 to
+1.5 µs for a reason worth saying: it used to include `CompiledStep.encode` turning a state dict into slots, and
+there is no dict any more — the reader hands the step its vector directly.)
+
 ## 3. Controls (`battery.py --controls`)
 
 Fourteen mutants (since §2f: eleven LAW mutants derived from `laws.py` and three representation/fold mutants, each a text edit
@@ -697,7 +752,8 @@ PYTHONDONTWRITEBYTECODE=1 python3 -B battery.py --quick             # ~10 min: i
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery.py --controls          # ~55 min: the full run above + the fourteen mutants over every pair
 PYTHONDONTWRITEBYTECODE=1 python3 -B payload.py                     # ~5 min: the compiled state as the calculus's normal-form bytes, every world, through BOTH printers
 TRVM_BATTERY_HUGE=1 PYTHONDONTWRITEBYTECODE=1 python3 -B payload.py --epochs 1 --out results-payload-huge.json   # +10 min: the 63-lane world too, on ic_ref (ic32's 16M-slot heap refuses it -- §2k)
-PYTHONDONTWRITEBYTECODE=1 python3 -B printer_test.py                # the C printer alone: the four shapes, the naming order, the 63-bit lane, the buffer growth
+PYTHONDONTWRITEBYTECODE=1 python3 -B printer_test.py                # the C printer AND reader: the four shapes, the naming order, the 63-bit lane, the buffer growth, the round trip
+TRVM_READER_CHECK=1 PYTHONDONTWRITEBYTECODE=1 python3 -B executor_test.py   # both readers run and compared on every job; a disagreement is a refusal
 PYTHONDONTWRITEBYTECODE=1 python3 -B laws_gate.py --check           # the printer is a SEPARATE object: this must stay HELD across any printer change
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery.py --quick --worlds mailbox-routes,spinner-w33-n16   # a development subset; not an admission
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery_bend.py --controls --bench   # the Bend row: ~12 min once the reference films are cached under ~/.cache/trvm-compiled/refs/ (~45 min the first time)

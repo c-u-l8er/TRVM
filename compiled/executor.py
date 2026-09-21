@@ -179,18 +179,64 @@ def run(request, plan_bytes, control_text, state_text, emitter="c", cache=None, 
     so_sha = check_object(cs)
     t["object_check_us"] = round((time.perf_counter() - t0) * 1e6, 1)
     t0 = time.perf_counter()
+    # The STATE comes in through the C reader (`printer.CanonicalPrinter.read`) -- `print_state.c`'s own walk run
+    # backwards, so it cannot disagree with the printer. It was 86-93 % of a warm job on the resident host
+    # (`RESIDENT.md` §4b): 805-3,422 us of `ic_ref.parse` plus 52-286 us of `dec_state_v6`, to undo bytes this
+    # process had just written.
+    #
+    # THE ACCEPTANCE SET IS DELIBERATELY UNCHANGED. The C reader accepts a string iff the printer could have
+    # written it for this layout, which is TIGHTER than `dec_state_v6(parse(...))`: a semantically equal term
+    # spelled non-canonically parses in Python and is refused by the reader. In this protocol the state IS the
+    # previous normal form and is canonical by construction, so the tighter rule would almost certainly do -- but
+    # narrowing what an executor accepts is a contract change and is not one to make in passing. So a refusal from
+    # the reader FALLS BACK to the Python path and the result says which ran (`reader`), because a fallback nobody
+    # can see is a fallback that hides both a contract surprise and a defect in the reader.
+    reader = "c"
+    a_in = None
     try:
-        reset_runtime()
-        world = C.dec_state_v6(view, parse(state_text))
-        cfg_map, resets = dec_config_bundle(view, parse(control_text))
-    except Exception as e:
-        raise Refused("input-decoding", {"error": "%s: %s" % (type(e).__name__, str(e)[:200])})
+        a_in = pr.read(state_text)
+    except ValueError:
+        reader = "python"
+    if a_in is None or os.environ.get("TRVM_READER_CHECK"):
+        try:
+            reset_runtime()
+            py_in = cs.encode(C.dec_state_v6(view, parse(state_text)))
+        except Exception as e:
+            raise Refused("input-decoding", {"error": "%s: %s" % (type(e).__name__, str(e)[:200])})
+        if a_in is None:
+            a_in = py_in
+        elif list(py_in) != list(a_in):
+            # TRVM_READER_CHECK=1 runs both and compares. It is off by default because it costs the whole saving,
+            # and on in the harness, where a disagreement must be a refusal rather than a quieter wrong answer.
+            raise Refused("input-decoding", {"error": "reader disagreement", "c": list(a_in)[:8], "python": list(py_in)[:8]})
+    # The CONTROL goes the same way, and it is the last Python conversion on this path. Its text is NOT canonical
+    # -- it is `enc_config_bundle`'s raw output with Forge's own binder names -- so that walk binds names rather
+    # than assuming them; `print_state.c` says why in its own comment. On the spinner worlds the control carries a
+    # rotor pose per controlling spinner and `ic_ref.parse` alone was 312-638 us a job.
+    c_ctl = None
+    try:
+        c_ctl = pr.read_control(control_text)
+    except ValueError:
+        reader = "python" if reader == "c" else reader
+    if c_ctl is None or os.environ.get("TRVM_READER_CHECK"):
+        try:
+            reset_runtime()
+            cfg_map, resets = dec_config_bundle(view, parse(control_text))
+            py_ctl = cs.control(cfg_map, resets)
+        except Exception as e:
+            raise Refused("input-decoding", {"error": "%s: %s" % (type(e).__name__, str(e)[:200])})
+        if c_ctl is None:
+            c_ctl = py_ctl
+        elif list(py_ctl) != list(c_ctl):
+            raise Refused("input-decoding", {"error": "control reader disagreement",
+                                             "c": list(c_ctl)[:8], "python": list(py_ctl)[:8]})
     t["decode_us"] = round((time.perf_counter() - t0) * 1e6, 1)
+    t["reader"] = reader
     # The step's own state vector goes straight to the canonical bytes: no dict, no term text, no AST.
     # The printer is a SEPARATE object from the step (`printer.py`), so its identity is recorded beside
     # the step's rather than folded into it -- the receipt names both pieces of code that ran.
     t0 = time.perf_counter()
-    a_out = cs.step_raw(cs.encode(world), cs.control(cfg_map, resets))
+    a_out = cs.step_raw(a_in, c_ctl)
     t["step_us"] = round((time.perf_counter() - t0) * 1e6, 1)
     t0 = time.perf_counter()
     nfb = pr.render(a_out)
@@ -202,7 +248,7 @@ def run(request, plan_bytes, control_text, state_text, emitter="c", cache=None, 
         **hashes,
         "nf_sha256": sha(nfb), "nf_bytes": len(nfb), "output": nf,
         "backend_id": cs.backend_id, "source_sha256": cs.source_sha256, "so_sha256": so_sha, "flags": flags,
-        "printer_id": pr.printer_id, "printer_source_sha256": pr.source_sha256,
+        "printer_id": pr.printer_id, "printer_source_sha256": pr.source_sha256, "reader": reader,
         "state_width": cs.width, "compile_plan_digest": sealed.compile_plan_digest,
     }
 
