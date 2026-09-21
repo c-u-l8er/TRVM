@@ -1,0 +1,3 @@
+control=unmutated                              AGREE    expected AGREE    AS-EXPECTED
+control=reader-swaps-the-two-bool-binders      DIVERGE  expected DIVERGE  AS-EXPECTED   first divergence at epoch 1
+control=reader-allows-a-trailing-byte          AGREE    expected AGREE    AS-EXPECTED

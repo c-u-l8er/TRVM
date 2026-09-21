@@ -686,6 +686,54 @@ frame handling (base64 + JSON), which is the transport's cost and not the execut
 1.5 µs for a reason worth saying: it used to include `CompiledStep.encode` turning a state dict into slots, and
 there is no dict any more — the reader hands the step its vector directly.)
 
+### 2m. The loop nobody was running: the executor's output as its own next input (2026-09-20)
+
+Three things checked the compiled executor and none of them checked the thing it actually does. `payload.py` chains
+the compiled **state** and renders it at every epoch, so the printer is checked against the calculus everywhere —
+but the rendered bytes are never fed back in. `executor_test.py` and `resident_test.py` run **single jobs** on four
+worlds. **The loop the vertical witness runs — epoch N's `output` becoming epoch N+1's `state` — had never been
+run end to end on any world.** That is precisely where §2l's reader meets §2j's printer, and where a disagreement
+between them compounds instead of showing once.
+
+`executor_chain.py` runs it, over every world, with **two independent trajectories compared at every epoch**: the
+fold's own chain over the state **dict** (no text, no executor anywhere in it) and the executor's, which starts
+from the rendered initial payload and thereafter **reads only what it last wrote**. The *first* divergence is
+reported rather than a count, because a divergence at epoch k makes every epoch after k differ and a count would
+just be measuring how many epochs were left.
+
+**EVERY EPOCH OF EVERY WORLD AGREES — 19 worlds × 7 epochs = 133 epochs**, the gated 63-lane world included, and
+every epoch went through the C reader with no fallback. Four passes, all green:
+
+| pass | what it adds |
+|---|---|
+| in-process one-shot | the executor as a guardian runs it today |
+| `--resident` | the warm path, 0.34–0.6 ms a job |
+| `--emitter c2` | **the packed emitter produces the same `nf_sha256` at every epoch of every world as `c` does** — a cross-emitter agreement over a whole trajectory, not one job |
+| `TRVM_READER_CHECK=1` | the C reader and the Python decoder run on **every** job and a disagreement is a refusal |
+
+**It is affordable only because of the reader.** A warm job is 0.17–0.36 ms, so the battery is a couple of seconds
+of executor time. Through the one-shot kind at 82 ms it would have been the kind of check one runs once and then
+stops running — which is the kind of check that rots.
+
+**What it is not.** The calculus is not in this loop at all; it does not replace `battery.py`. It checks that the
+executor path — bundle, reader, step, printer — is a **fixed point of the fold it is supposed to reproduce**. The
+printer is checked against ic32 by `payload.py`, which is a different question and still the one that matters most.
+
+**Can it fail?** `controls/run_chain_controls.py`, a matched pair rather than a list:
+
+```
+control=unmutated                              AGREE    expected AGREE    AS-EXPECTED
+control=reader-swaps-the-two-bool-binders      DIVERGE  expected DIVERGE  AS-EXPECTED   first divergence at epoch 1
+control=reader-allows-a-trailing-byte          AGREE    expected AGREE    AS-EXPECTED
+```
+
+The first mutant is a quiet corruption of every bit the reader takes in — the exact failure this battery exists to
+catch, and one that a check looking at a single job's output would miss, because the printer would faithfully print
+whatever the step was handed. **The second must NOT fire**: dropping the trailing-byte check loosens what the
+reader *accepts* without changing what it *computes* for input it already accepted. A battery that went red on
+that one would be a tripwire for any edit rather than a check on the trajectory, and would say nothing when it did
+fire. Both behaved as written.
+
 ## 3. Controls (`battery.py --controls`)
 
 Fourteen mutants (since §2f: eleven LAW mutants derived from `laws.py` and three representation/fold mutants, each a text edit
@@ -754,6 +802,8 @@ PYTHONDONTWRITEBYTECODE=1 python3 -B payload.py                     # ~5 min: th
 TRVM_BATTERY_HUGE=1 PYTHONDONTWRITEBYTECODE=1 python3 -B payload.py --epochs 1 --out results-payload-huge.json   # +10 min: the 63-lane world too, on ic_ref (ic32's 16M-slot heap refuses it -- §2k)
 PYTHONDONTWRITEBYTECODE=1 python3 -B printer_test.py                # the C printer AND reader: the four shapes, the naming order, the 63-bit lane, the buffer growth, the round trip
 TRVM_READER_CHECK=1 PYTHONDONTWRITEBYTECODE=1 python3 -B executor_test.py   # both readers run and compared on every job; a disagreement is a refusal
+PYTHONDONTWRITEBYTECODE=1 python3 -B executor_chain.py [--resident] [--emitter c2]   # §2m: the executor's output as its own next input, every world, ~10 s
+PYTHONDONTWRITEBYTECODE=1 python3 -B controls/run_chain_controls.py   # and the matched pair showing that battery can go red
 PYTHONDONTWRITEBYTECODE=1 python3 -B laws_gate.py --check           # the printer is a SEPARATE object: this must stay HELD across any printer change
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery.py --quick --worlds mailbox-routes,spinner-w33-n16   # a development subset; not an admission
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery_bend.py --controls --bench   # the Bend row: ~12 min once the reference films are cached under ~/.cache/trvm-compiled/refs/ (~45 min the first time)
