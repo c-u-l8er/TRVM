@@ -36,6 +36,7 @@ import hashlib
 import json
 import os
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 for p in (HERE, os.path.join(HERE, "..", "forge"), os.path.join(HERE, "..", "runtime", "python")):
@@ -98,23 +99,20 @@ def render(view, world):
 
 
 # ------------------------------------------------------------------ the process
-def run(request, plan_bytes, control_text, state_text, emitter="c"):
-    params = request["params"]
-    if len(plan_bytes) > PLAN_BYTES or len(control_text.encode()) + len(state_text.encode()) > INPUT_BYTES:
-        raise Refused("input-limit", {"plan_bytes": len(plan_bytes), "control_bytes": len(control_text.encode()), "state_bytes": len(state_text.encode())})
-    hashes = {"plan_sha256": sha(plan_bytes), "control_sha256": sha(control_text.encode()), "state_sha256": sha(state_text.encode())}
-    for k, v in hashes.items():
-        if params.get(k) != v:
-            raise Refused("request-mismatch", {"field": k, "request": params.get(k), "read": v})
-    if params.get("kind") != KINDS[emitter]:
-        raise Refused("request-mismatch", {"field": "kind", "request": params.get("kind"), "executor": KINDS[emitter]})
+def prepare(plan_bytes, emitter="c"):
+    """Everything that depends ONLY on the plan bytes: the D22 seal, the view, the built step, the printer.
+
+    Split out so a RESIDENT host can keep it across jobs (`resident.py`) without a second copy of anything. It is
+    keyed by the sha256 of the exact plan bytes, so a cached seal is the seal OF THOSE BYTES and F-P is preserved
+    on the warm path exactly as on the cold one: same bytes, same seal, same SemanticArtifactID to compare against
+    the request's claim. The `.so` check is NOT in here -- it is a check on a file that can change under a live
+    process, so it runs per job (`check_object`).
+    """
     try:
         plan = WC.deserialize_artifact(plan_bytes)
         sealed = P.seal_compile_plan(plan)           # D22: the plan must re-hash to the id it claims
     except Exception as e:
         raise Refused("plan-not-bound", {"error": "%s: %s" % (type(e).__name__, str(e)[:200])})
-    if sealed.semantic_artifact_id != params.get("sem"):
-        raise Refused("plan-not-bound", {"claims": sealed.semantic_artifact_id, "request": params.get("sem")})
     view = P.plan_view(sealed.canonical_plan)
     try:
         if emitter == "c":
@@ -127,7 +125,17 @@ def run(request, plan_bytes, control_text, state_text, emitter="c"):
             flags = list(cs.flags)
     except ValueError as e:
         raise Refused("outside-shapes", {"error": str(e)[:200]})
-    # F-B: the object's identity is recorded beside it when it is built; a later mismatch is a stale object
+    return {"sealed": sealed, "view": view, "cs": cs, "flags": flags, "pr": PR.CanonicalPrinter(view)}
+
+
+def check_object(cs):
+    """F-B, and it runs PER JOB even on a resident host's warm path.
+
+    Residency must not mean checking the object once and trusting it forever: the `.so` is a file, and a file can be
+    replaced under a process that has already mapped it. What this proves is what it always proved -- that the bytes
+    on disk still hash to what was recorded beside them when they were built -- no more (the mapped pages are not
+    re-read), and the one-shot executor makes exactly the same check, so the warm path is not weaker than the cold one.
+    """
     with open(cs.so_path, "rb") as f:
         so_sha = sha(f.read())
     sidecar = cs.so_path + ".sha256"
@@ -139,18 +147,54 @@ def run(request, plan_bytes, control_text, state_text, emitter="c"):
     else:
         with open(sidecar, "w") as f:
             f.write(so_sha + "\n")
+    return so_sha
+
+
+def run(request, plan_bytes, control_text, state_text, emitter="c", cache=None, timing=None):
+    """One job. `cache` (a dict) lets a resident host keep `prepare`'s result across jobs; `timing` (a dict) is
+    filled with this job's phase costs in microseconds if one is passed. Neither changes a single check."""
+    params = request["params"]
+    if len(plan_bytes) > PLAN_BYTES or len(control_text.encode()) + len(state_text.encode()) > INPUT_BYTES:
+        raise Refused("input-limit", {"plan_bytes": len(plan_bytes), "control_bytes": len(control_text.encode()), "state_bytes": len(state_text.encode())})
+    hashes = {"plan_sha256": sha(plan_bytes), "control_sha256": sha(control_text.encode()), "state_sha256": sha(state_text.encode())}
+    for k, v in hashes.items():
+        if params.get(k) != v:
+            raise Refused("request-mismatch", {"field": k, "request": params.get(k), "read": v})
+    if params.get("kind") != KINDS[emitter]:
+        raise Refused("request-mismatch", {"field": "kind", "request": params.get("kind"), "executor": KINDS[emitter]})
+    t = timing if timing is not None else {}
+    t0 = time.perf_counter()
+    key = (hashes["plan_sha256"], emitter)
+    p = cache.get(key) if cache is not None else None
+    t["plan_cached"] = p is not None
+    if p is None:
+        p = prepare(plan_bytes, emitter)
+        if cache is not None:
+            cache[key] = p
+    sealed, view, cs, flags, pr = p["sealed"], p["view"], p["cs"], p["flags"], p["pr"]
+    t["prepare_us"] = round((time.perf_counter() - t0) * 1e6, 1)
+    if sealed.semantic_artifact_id != params.get("sem"):
+        raise Refused("plan-not-bound", {"claims": sealed.semantic_artifact_id, "request": params.get("sem")})
+    t0 = time.perf_counter()
+    so_sha = check_object(cs)
+    t["object_check_us"] = round((time.perf_counter() - t0) * 1e6, 1)
+    t0 = time.perf_counter()
     try:
         reset_runtime()
         world = C.dec_state_v6(view, parse(state_text))
         cfg_map, resets = dec_config_bundle(view, parse(control_text))
     except Exception as e:
         raise Refused("input-decoding", {"error": "%s: %s" % (type(e).__name__, str(e)[:200])})
+    t["decode_us"] = round((time.perf_counter() - t0) * 1e6, 1)
     # The step's own state vector goes straight to the canonical bytes: no dict, no term text, no AST.
     # The printer is a SEPARATE object from the step (`printer.py`), so its identity is recorded beside
     # the step's rather than folded into it -- the receipt names both pieces of code that ran.
-    pr = PR.CanonicalPrinter(view)
+    t0 = time.perf_counter()
     a_out = cs.step_raw(cs.encode(world), cs.control(cfg_map, resets))
+    t["step_us"] = round((time.perf_counter() - t0) * 1e6, 1)
+    t0 = time.perf_counter()
     nfb = pr.render(a_out)
+    t["render_us"] = round((time.perf_counter() - t0) * 1e6, 1)
     nf = nfb.decode()
     return {
         "status": "candidate", "kind": KINDS[emitter],

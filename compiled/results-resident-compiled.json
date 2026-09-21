@@ -1,0 +1,272 @@
+{
+ "measured": "2026-09-20T19:29:09-0500",
+ "loadavg": [
+  3.46484375,
+  3.34521484375,
+  3.20849609375
+ ],
+ "jobs": 40,
+ "note": "a development reading on a shared laptop, not a benchmark (BENCHMARK_LANE.md section 1, B2 vs B3)",
+ "worlds": [
+  {
+   "world": "chain30",
+   "nf_sha256": "2318bd828467fea8f7ecb2e214a0a9fc736c23c08e62feacfa1c7d57d5118eb6",
+   "nf_bytes": 3260,
+   "warm_phases_us_p50": {
+    "prepare_us": 0.9,
+    "object_check_us": 36.0,
+    "decode_us": 699.5,
+    "step_us": 14.9,
+    "render_us": 6.0,
+    "total_us": 817.4
+   },
+   "rows": [
+    {
+     "row": "one-shot: a Python process per job (the guardian's shape today)",
+     "jobs": 8,
+     "p50_ms": 66.035,
+     "p99_ms": 68.107,
+     "min_ms": 63.055,
+     "mean_ms": 65.494,
+     "wall_ms": 524.4,
+     "jobs_per_s": 15.3
+    },
+    {
+     "row": "resident, in-process, C=1",
+     "jobs": 40,
+     "p50_ms": 0.954,
+     "p99_ms": 1.581,
+     "min_ms": 0.766,
+     "mean_ms": 1.044,
+     "wall_ms": 41.9,
+     "jobs_per_s": 955.0
+    },
+    {
+     "row": "resident, in-process, C=8",
+     "jobs": 40,
+     "p50_ms": 13.713,
+     "p99_ms": 17.276,
+     "min_ms": 1.982,
+     "mean_ms": 12.803,
+     "wall_ms": 20.7,
+     "jobs_per_s": 1936.4
+    },
+    {
+     "row": "resident over a Unix socket, C=1",
+     "jobs": 40,
+     "p50_ms": 1.49,
+     "p99_ms": 13.335,
+     "min_ms": 1.283,
+     "mean_ms": 1.822,
+     "wall_ms": 73.2,
+     "jobs_per_s": 546.6
+    },
+    {
+     "row": "resident over a Unix socket, C=8",
+     "jobs": 40,
+     "p50_ms": 2.366,
+     "p99_ms": 14.834,
+     "min_ms": 1.653,
+     "mean_ms": 4.363,
+     "wall_ms": 24.6,
+     "jobs_per_s": 1627.8
+    }
+   ]
+  },
+  {
+   "world": "golden-demo",
+   "nf_sha256": "b755abdf955c4c243c288dcabf15041a4a691021a1a1f6ade0595fcc2ccceca1",
+   "nf_bytes": 2999,
+   "warm_phases_us_p50": {
+    "prepare_us": 0.9,
+    "object_check_us": 34.7,
+    "decode_us": 826.2,
+    "step_us": 9.4,
+    "render_us": 6.2,
+    "total_us": 928.8
+   },
+   "rows": [
+    {
+     "row": "one-shot: a Python process per job (the guardian's shape today)",
+     "jobs": 8,
+     "p50_ms": 65.734,
+     "p99_ms": 72.734,
+     "min_ms": 60.522,
+     "mean_ms": 66.23,
+     "wall_ms": 530.4,
+     "jobs_per_s": 15.1
+    },
+    {
+     "row": "resident, in-process, C=1",
+     "jobs": 40,
+     "p50_ms": 1.039,
+     "p99_ms": 1.906,
+     "min_ms": 0.933,
+     "mean_ms": 1.181,
+     "wall_ms": 47.4,
+     "jobs_per_s": 844.6
+    },
+    {
+     "row": "resident, in-process, C=8",
+     "jobs": 40,
+     "p50_ms": 13.913,
+     "p99_ms": 17.424,
+     "min_ms": 1.706,
+     "mean_ms": 12.727,
+     "wall_ms": 20.6,
+     "jobs_per_s": 1944.6
+    },
+    {
+     "row": "resident over a Unix socket, C=1",
+     "jobs": 40,
+     "p50_ms": 1.74,
+     "p99_ms": 12.65,
+     "min_ms": 1.446,
+     "mean_ms": 2.048,
+     "wall_ms": 82.2,
+     "jobs_per_s": 486.6
+    },
+    {
+     "row": "resident over a Unix socket, C=8",
+     "jobs": 40,
+     "p50_ms": 2.535,
+     "p99_ms": 13.051,
+     "min_ms": 1.723,
+     "mean_ms": 4.156,
+     "wall_ms": 23.8,
+     "jobs_per_s": 1677.5
+    }
+   ]
+  },
+  {
+   "world": "chain120",
+   "nf_sha256": "7f1062308dc97101981cc336b5f6774816a3744eddfeece97bc84fb8e63629bc",
+   "nf_bytes": 13681,
+   "warm_phases_us_p50": {
+    "prepare_us": 1.2,
+    "object_check_us": 50.0,
+    "decode_us": 3130.4,
+    "step_us": 39.1,
+    "render_us": 12.8,
+    "total_us": 3379.7
+   },
+   "rows": [
+    {
+     "row": "one-shot: a Python process per job (the guardian's shape today)",
+     "jobs": 8,
+     "p50_ms": 73.721,
+     "p99_ms": 84.35,
+     "min_ms": 66.015,
+     "mean_ms": 73.852,
+     "wall_ms": 591.4,
+     "jobs_per_s": 13.5
+    },
+    {
+     "row": "resident, in-process, C=1",
+     "jobs": 40,
+     "p50_ms": 3.61,
+     "p99_ms": 4.949,
+     "min_ms": 2.928,
+     "mean_ms": 3.717,
+     "wall_ms": 148.8,
+     "jobs_per_s": 268.8
+    },
+    {
+     "row": "resident, in-process, C=8",
+     "jobs": 40,
+     "p50_ms": 33.537,
+     "p99_ms": 45.541,
+     "min_ms": 4.818,
+     "mean_ms": 32.718,
+     "wall_ms": 48.5,
+     "jobs_per_s": 823.9
+    },
+    {
+     "row": "resident over a Unix socket, C=1",
+     "jobs": 40,
+     "p50_ms": 5.138,
+     "p99_ms": 24.319,
+     "min_ms": 3.81,
+     "mean_ms": 5.664,
+     "wall_ms": 226.9,
+     "jobs_per_s": 176.3
+    },
+    {
+     "row": "resident over a Unix socket, C=8",
+     "jobs": 40,
+     "p50_ms": 5.737,
+     "p99_ms": 29.12,
+     "min_ms": 3.992,
+     "mean_ms": 9.302,
+     "wall_ms": 54.2,
+     "jobs_per_s": 738.1
+    }
+   ]
+  },
+  {
+   "world": "spinner-w33-n16",
+   "nf_sha256": "9f06d15fa1bb7f04b91e4a8c39991d206e7d3e5afe002451730bb9cc31f16004",
+   "nf_bytes": 5559,
+   "warm_phases_us_p50": {
+    "prepare_us": 1.1,
+    "object_check_us": 40.5,
+    "decode_us": 1615.5,
+    "step_us": 10.5,
+    "render_us": 8.5,
+    "total_us": 1759.6
+   },
+   "rows": [
+    {
+     "row": "one-shot: a Python process per job (the guardian's shape today)",
+     "jobs": 8,
+     "p50_ms": 64.732,
+     "p99_ms": 69.106,
+     "min_ms": 58.646,
+     "mean_ms": 63.958,
+     "wall_ms": 512.2,
+     "jobs_per_s": 15.6
+    },
+    {
+     "row": "resident, in-process, C=1",
+     "jobs": 40,
+     "p50_ms": 1.912,
+     "p99_ms": 2.737,
+     "min_ms": 1.657,
+     "mean_ms": 2.027,
+     "wall_ms": 81.2,
+     "jobs_per_s": 492.6
+    },
+    {
+     "row": "resident, in-process, C=8",
+     "jobs": 40,
+     "p50_ms": 16.068,
+     "p99_ms": 21.989,
+     "min_ms": 2.888,
+     "mean_ms": 16.037,
+     "wall_ms": 24.8,
+     "jobs_per_s": 1611.0
+    },
+    {
+     "row": "resident over a Unix socket, C=1",
+     "jobs": 40,
+     "p50_ms": 2.795,
+     "p99_ms": 13.109,
+     "min_ms": 2.548,
+     "mean_ms": 3.124,
+     "wall_ms": 125.2,
+     "jobs_per_s": 319.4
+    },
+    {
+     "row": "resident over a Unix socket, C=8",
+     "jobs": 40,
+     "p50_ms": 3.641,
+     "p99_ms": 15.534,
+     "min_ms": 2.579,
+     "mean_ms": 5.58,
+     "wall_ms": 31.4,
+     "jobs_per_s": 1273.9
+    }
+   ]
+  }
+ ]
+}
