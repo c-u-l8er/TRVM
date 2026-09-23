@@ -28,6 +28,7 @@ import argparse
 import base64
 import json
 import os
+import signal
 import socket
 import socketserver
 import sys
@@ -156,6 +157,16 @@ def main(argv=None):
         where = "%s:%d" % srv.server_address[:2]          # the port the kernel BOUND, not the one requested
     print(json.dumps({"residentd": where, "pid": os.getpid(), "pool": a.pool, "max_queue": a.max_queue,
                       "emitter": a.emitter, "kind": HOST.stats()["kind"], "ready": HOST.stats()["idle"]}), flush=True)
+
+    # OWNERSHIP ENDS WITH THE OWNER. A SIGTERM used to end this process at once, `finally` never ran, and every
+    # worker was left to its own devices: an idle one exits on EOF, a HELD one (SIGSTOP, as the lifecycle cases
+    # hold them) does not, and a worker that had already died stayed a zombie of a parent that no longer waited.
+    # Measured 2026-09-23 by a consumer's teardown that asserts confirmed absence: it found exactly such a zombie.
+    # TERM now takes the same road as ^C: the loop ends, `HOST.close()` SIGKILLs and `waitpid`s every worker.
+    def _term(signum, _frame):
+        raise KeyboardInterrupt("SIGTERM")
+
+    signal.signal(signal.SIGTERM, _term)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

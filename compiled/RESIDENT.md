@@ -118,7 +118,7 @@ slots, and there is no dict on this path any more — the reader hands the step 
 
 ## 5. Harness and controls
 
-`python3 -B resident_test.py` — **24 cases, ~2 s**:
+`python3 -B resident_test.py` — **28 cases, ~13 s** (the table below is the original 24; §7 lists the four added 2026-09-23 and the one rewritten):
 
 | case | establishes |
 |---|---|
@@ -174,11 +174,49 @@ is no guest state, and `no_writable_state` proves it per object rather than infe
 `.so` cache is per-worker-process by construction, so §6's "owned by the executor's Carrier, not shared" is a
 deployment choice (`TRVM_COMPILED_CACHE`) rather than a redesign.
 
-## 7. Reproduce
+## 7. Lifecycle, settled against a consumer (2026-09-23)
+
+The checkpoint after Super's client first ran this daemon (`wek/b2/trvm/RESIDENT_LIFECYCLE.md`, the consumer's
+record) asked for cancellation, deadlines, worker death, queued cancellation, races, connection loss and safe
+replacement — through Super's actual client, with the daemon's word on each. Building those cases found **three
+defects in this host** and one naming choice, each fixed where it lives and each with a harness case that goes red
+on the defect:
+
+| found | what was wrong | fix | case |
+|---|---|---|---|
+| a queued job's cancel was bounded by **someone else's work** | `_acquire` waited on the condition with no look at the cancel flag, so a queued job's cancel was honoured only when a worker freed — with the one worker held by a running job, not until *that* job's deadline (10 s by default). A client with a 3 s cancel bound gave up and reported the stop unconfirmed for a job that had never touched a worker. | `_acquire(…, cancel)` wakes in 50 ms slices while a cancel is possible and returns `cancelled`; the reply is `cancelled/queued/workerExited:false` and counts `cancelled_queued` | C2, S6 |
+| a **replacement worker was listed idle twice** | `_spawn` appended the new worker to `_idle`, then `_retire` released it again after its announce. On a pool of one, two concurrent jobs after any replacement were both dispatched to the same worker; each parent thread read the other's reply, `foreign-job-id`, and the worker was killed for answering out of order. Visible from outside as `stats()` reporting `idle: 2, live: 1`. | `_spawn(idle=False)` for a replacement; it is idle only once it has announced itself | D1 (books), D2 (two concurrent jobs after a replacement, both candidates, nothing killed) |
+| **SIGTERM ended the daemon without ending its workers** | `finally` never ran; an idle worker exited on EOF, a HELD one did not, and a worker that had already died stayed a zombie of a parent that no longer waited. Found by the consumer's teardown, which asserts confirmed absence and named exactly such a zombie. | TERM takes ^C's road: the loop ends and `HOST.close()` SIGKILLs and `waitpid`s every worker | every S case's teardown |
+| `worker-read` named the **symptom**, not the cause | a worker killed with unread input on its socket answers the parent with a reset rather than EOF, so the same death was `worker-exited` or `worker-read` depending on which the kernel chose | when the exit is confirmed and the read failed with an `OSError`, the reason is `worker-exited`; `worker-read` is kept for a frame this parent could not read from a worker whose exit was not what ended the read | W1 (rewritten: the worker now dies **under** a dispatched job; W2 is the idle death) |
+
+And one addition: an **idle worker that died on its own** is found at dispatch — `poll()`, which is also the reap —
+and replaced before any job is written to the corpse (`died_idle`), rather than by the next job failing. `stats()`
+now carries `worker_pids`, so a consumer can tell replacement from survival by pid rather than by count, and the
+counters `cancelled_queued`, `cancelled_running`, `died_idle`.
+
+**The reply shapes, as a consumer must match them** (this is the table Super's client now encodes, by name):
+
+| reply | means | witness |
+|---|---|---|
+| `candidate` · `jobRetired:true` · `workerExited:false` | the warm path; the worker is alive and this id is retired | the worker's own reply after `run` returned |
+| `cancelled` · `stage:running` · `workerExited:true` · `killed_confirmed:true` | the running job's worker was SIGKILLed and reaped | `waitpid` returned |
+| `cancelled` · `stage:queued` · `workerExited:false` | the job left the queue; **no worker ever took it** — there is no exit to report and none may be demanded | the pool's own bookkeeping; `worker_pids` unchanged |
+| `refused` · `reason:deadline` · `workerExited:true` · `killed_confirmed:true` | the host's own deadline killed and reaped the worker | `waitpid` returned |
+| `failed` · `reason:worker-exited` · `workerExited:true` | the worker died under the job; its owner reaped it | `waitpid` returned |
+| `refused` · `reason:request-mismatch` / `plan-not-bound` / … · `jobRetired:true` | the worker refused, and stays alive | its own reply |
+| `indeterminate` (or `indeterminate:true` on any of the above) | the host asked and `waitpid` did not return in its bound; the pool is one worker smaller | **none** — and that is the point |
+
+A closed connection is none of these: it is the absence of a reply, and it says nothing about the worker. Measured
+on the consumer's side by killing the daemon under a held job — every socket closed, and the native worker was still
+alive.
+
+Harness: **28 cases** (`resident_test.py`), plus the seven mutant controls unchanged.
+
+## 8. Reproduce
 
 ```bash
 cd TRVM/compiled
-PYTHONDONTWRITEBYTECODE=1 python3 -B resident_test.py                        # 24 cases, ~2 s
+PYTHONDONTWRITEBYTECODE=1 python3 -B resident_test.py                        # 28 cases, ~13 s
 PYTHONDONTWRITEBYTECODE=1 python3 -B controls/run_resident_controls.py       # seven mutants, ~3 min
 PYTHONDONTWRITEBYTECODE=1 python3 -B resident_spans.py --jobs 40             # the table above, ~2 min
 PYTHONDONTWRITEBYTECODE=1 python3 -B residentd.py --socket /tmp/rc.sock --pool 4   # the daemon

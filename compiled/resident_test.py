@@ -11,6 +11,7 @@ statement instead.
 import base64
 import json
 import os
+import signal
 import socket
 import subprocess
 import sys
@@ -283,25 +284,139 @@ class Cancellation(unittest.TestCase):
             self.assertEqual(h.stats()["live"], 2)                   # replaced
             self.assertEqual(h.stats()["replaced"], 1)
             self.assertNotEqual({w.proc.pid for w in h._live}, before)
+            # the pool's books after a replacement: no worker listed idle twice, none idle that is not live
+            self.assertEqual(len(h._idle), len(set(id(w) for w in h._idle)))
+            self.assertLessEqual(h.stats()["idle"], h.stats()["live"])
             ok = h.submit(bundle("chain30")[0], job_id="D1b")
             self.assertEqual(ok["status"], "candidate")              # and the replacement is a REAL worker
         finally:
             h.close()
 
-    def test_W1_a_worker_that_dies_without_replying_is_typed_and_replaced(self):
+    def test_D2_after_a_replacement_two_concurrent_jobs_on_one_worker_are_serialised_not_shared(self):
+        """The defect this pins: a replacement worker was listed idle TWICE, so on a pool of one, two concurrent
+        jobs after a replacement were both dispatched to the same worker and each parent thread read the other's
+        reply (`foreign-job-id`, then a kill). Two concurrent jobs after a replacement must both be candidates,
+        served in turn by the one live worker, with nothing killed."""
         h = ResidentCompiledHost(pool=1, max_queue=4)
         try:
             h.ready()
-            h._live[0].proc.kill()
-            h._live[0].proc.wait(timeout=10)
-            r = h.submit(bundle("chain30")[0], job_id="W1")
-            self.assertEqual(r["status"], "failed")
-            self.assertIn(r["reason"], ("worker-exited", "worker-write", "worker-read"))
-            self.assertIs(r["workerExited"], True)
+            r = h.submit(bundle("chain120")[0], job_id="D2", deadline_s=0.001)
+            self.assertEqual(r["reason"], "deadline")
             deadline = time.monotonic() + 30
             while h.stats()["live"] < 1 and time.monotonic() < deadline:
                 time.sleep(0.05)
-            self.assertEqual(h.submit(bundle("chain30")[0], job_id="W1b")["status"], "candidate")
+            st = h.stats()
+            self.assertEqual((st["live"], st["idle"], st["replaced"]), (1, 1, 1))
+            out = []
+            ts = [threading.Thread(target=lambda i=i: out.append(h.submit(bundle("chain30")[0], job_id="D2-%d" % i)))
+                  for i in range(2)]
+            for t in ts:
+                t.start()
+            for t in ts:
+                t.join(timeout=60)
+            self.assertEqual([o["status"] for o in out], ["candidate", "candidate"], out)
+            self.assertEqual({o["worker"]["pid"] for o in out}, set(h.stats()["worker_pids"]))
+            self.assertEqual(h.stats()["killed"], 1)                 # only the deadline's kill; no foreign-id kill
+        finally:
+            h.close()
+
+    def test_W1_a_worker_that_dies_without_replying_is_typed_and_replaced(self):
+        """The worker dies UNDER a job -- held so the job is dispatched and cannot complete, then killed. Until
+        2026-09-23 this case killed an IDLE worker and let the next job find the corpse; W2 now covers that, and
+        finds it at dispatch, so the job here has to be the one the worker was holding when it died."""
+        h = ResidentCompiledHost(pool=1, max_queue=4)
+        try:
+            h.ready()
+            [old] = h.stats()["worker_pids"]
+            os.kill(old, signal.SIGSTOP)
+            r = {}
+            t = threading.Thread(target=lambda: r.update(h.submit(bundle("chain30")[0], job_id="W1", deadline_s=30)))
+            t.start()
+            deadline = time.monotonic() + 10
+            while h.stats()["idle"] != 0 and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertEqual(h.stats()["idle"], 0)                        # dispatched to the held worker
+            os.kill(old, signal.SIGKILL)                                  # a stopped process still dies of SIGKILL
+            t.join(timeout=30)
+            self.assertEqual(r["status"], "failed")
+            self.assertEqual(r["reason"], "worker-exited")
+            self.assertIs(r["workerExited"], True)                        # `waitpid` returned
+            self.assertIs(r["indeterminate"], False)
+            deadline = time.monotonic() + 30
+            while h.stats()["live"] < 1 and time.monotonic() < deadline:
+                time.sleep(0.05)
+            st = h.stats()
+            self.assertEqual((st["live"], st["replaced"]), (1, 1))
+            self.assertNotEqual(st["worker_pids"], [old])
+            ok = h.submit(bundle("chain30")[0], job_id="W1b")
+            self.assertEqual(ok["status"], "candidate")
+            self.assertEqual(ok["worker"]["pid"], st["worker_pids"][0])   # served by the replacement, by pid
+        finally:
+            h.close()
+
+    def test_C2_a_queued_job_is_cancelled_while_the_only_worker_is_held_and_the_worker_is_untouched(self):
+        """C1 sets the cancel BEFORE submitting, so it never establishes that a job already waiting in the queue is
+        answered while it waits. Measured before `_acquire` honoured the cancel: the queued job's cancel was not
+        answered until the running job ended (its deadline). Here the one worker is HELD (SIGSTOP, so it cannot
+        reply and the running job cannot end), the queued job's cancel must be answered while the worker is still
+        held, and the worker must be exactly the one that was there before: same pid, nothing killed."""
+        h = ResidentCompiledHost(pool=1, max_queue=4)
+        try:
+            h.ready()
+            pid = h.stats()["worker_pids"][0]
+            os.kill(pid, signal.SIGSTOP)
+            try:
+                a, b = {}, {}
+                ta = threading.Thread(target=lambda: a.update(h.submit(bundle("chain30")[0], job_id="C2-a", deadline_s=30)))
+                ta.start()
+                deadline = time.monotonic() + 10
+                while h.stats()["idle"] != 0 and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertEqual(h.stats()["idle"], 0)                     # A is DISPATCHED to the held worker
+                ev = threading.Event()
+                tb = threading.Thread(target=lambda: b.update(h.submit(bundle("chain30")[0], job_id="C2-b", cancel=ev)))
+                tb.start()
+                while h.stats()["waiting"] != 1 and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertEqual(h.stats()["waiting"], 1)                  # B is QUEUED, established, not assumed
+                ev.set()
+                tb.join(timeout=2)                                        # answered while the worker is still held
+                self.assertFalse(tb.is_alive(), "a queued job's cancel must be answered while it waits")
+                self.assertEqual((b["status"], b["stage"]), ("cancelled", "queued"))
+                self.assertIs(b["workerExited"], False)
+                st = h.stats()
+                self.assertEqual(st["killed"], 0)
+                self.assertEqual(st["cancelled_queued"], 1)
+                self.assertEqual(st["worker_pids"], [pid])                # the held worker was never touched
+            finally:
+                os.kill(pid, signal.SIGCONT)
+            ta.join(timeout=30)
+            self.assertEqual(a["status"], "candidate")                    # and A, released, completes on that pid
+            self.assertEqual(a["worker"]["pid"], pid)
+        finally:
+            h.close()
+
+    def test_W2_an_idle_worker_that_died_is_replaced_at_dispatch_and_the_job_does_not_fail(self):
+        """W1 kills the worker and lets the NEXT JOB discover it as a typed failure. A death while idle is
+        discoverable before any job is written to the corpse: `poll()` at dispatch, which is also the reap."""
+        h = ResidentCompiledHost(pool=1, max_queue=4)
+        try:
+            h.ready()
+            [old] = h.stats()["worker_pids"]
+            os.kill(old, signal.SIGKILL)
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:                            # let it die; do not reap it ourselves
+                try:
+                    os.kill(old, 0)
+                    time.sleep(0.01)
+                except ProcessLookupError:
+                    break
+            r = h.submit(bundle("chain30")[0], job_id="W2")
+            self.assertEqual(r["status"], "candidate", r)
+            self.assertNotEqual(r["worker"]["pid"], old)
+            st = h.stats()
+            self.assertEqual((st["died_idle"], st["replaced"], st["live"]), (1, 1, 1))
+            self.assertEqual(st["worker_pids"], [r["worker"]["pid"]])
         finally:
             h.close()
 
@@ -431,6 +546,46 @@ class OverTheSocket(unittest.TestCase):
         st = recv_frame(s2)
         self.assertEqual(st["live"], 2)
         self.assertFalse(st["closed"])
+
+    def test_S6_a_queued_job_cancelled_over_the_wire_is_answered_while_the_workers_are_held(self):
+        """C2 through the daemon's own connection handler: both workers held, two jobs dispatched, a third queued,
+        its cancel frame answered `cancelled/queued/workerExited:false` while the workers are still held, and
+        the pool's pids unchanged afterwards."""
+        s = self.conn()
+        send_frame(s, {"op": "stats"})
+        pids = recv_frame(s)["worker_pids"]
+        self.assertEqual(len(pids), 2)
+        b, _ = bundle("chain30")
+        f = base64.b64encode(b).decode()
+        for pid in pids:
+            os.kill(pid, signal.SIGSTOP)
+        try:
+            send_frame(s, {"id": 1, "bundle_b64": f})
+            send_frame(s, {"id": 2, "bundle_b64": f})
+            send_frame(s, {"id": 3, "bundle_b64": f})
+            probe = self.conn()
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                send_frame(probe, {"op": "stats"})
+                st = recv_frame(probe)
+                if st["idle"] == 0 and st["waiting"] == 1:
+                    break
+                time.sleep(0.01)
+            self.assertEqual((st["idle"], st["waiting"]), (0, 1))
+            send_frame(s, {"id": 3, "cancel": True})
+            s.settimeout(2)
+            r = recv_frame(s)                                               # the ONLY reply possible while held
+            self.assertEqual((r["id"], r["status"], r["stage"], r["workerExited"]), (3, "cancelled", "queued", False))
+            send_frame(probe, {"op": "stats"})
+            st = recv_frame(probe)
+            self.assertEqual(st["worker_pids"], sorted(pids))
+            self.assertEqual(st["killed"], 0)
+        finally:
+            for pid in pids:
+                os.kill(pid, signal.SIGCONT)
+        s.settimeout(30)
+        got = sorted(recv_frame(s)["id"] for _ in range(2))
+        self.assertEqual(got, [1, 2])
 
 
 if __name__ == "__main__":

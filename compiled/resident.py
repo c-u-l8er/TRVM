@@ -232,7 +232,8 @@ class ResidentCompiledHost:
         self._waiting = 0
         self._closed = False
         self._next_idx = 0
-        self._counts = {"served": 0, "replaced": 0, "unconfirmed": 0, "busy": 0, "exhausted": 0, "killed": 0}
+        self._counts = {"served": 0, "replaced": 0, "unconfirmed": 0, "busy": 0, "exhausted": 0, "killed": 0,
+                        "cancelled_queued": 0, "cancelled_running": 0, "died_idle": 0}
         self._ready_err = None
         for _ in range(pool):
             self._spawn()
@@ -240,11 +241,18 @@ class ResidentCompiledHost:
         self._ready = False
 
     # ---- lifecycle
-    def _spawn(self):
+    def _spawn(self, idle=True):
+        """A new worker, LIVE at once and IDLE only if the caller says so. At construction every worker is idle
+        before `ready()` has heard from it (the announce is awaited there, before any job). A REPLACEMENT is not:
+        `_retire` releases it only after its own announce -- and until 2026-09-23 `_spawn` put it in `_idle` as
+        well, so every replacement sat in the idle list TWICE and one worker could be dispatched to two jobs at
+        once (each parent thread then read the other's reply: `foreign-job-id`, and a kill). Found by a consumer
+        reading `stats()` and seeing `idle: 2, live: 1`."""
         w = _Worker(self._next_idx, self.emitter)
         self._next_idx += 1
         self._live.append(w)
-        self._idle.append(w)
+        if idle:
+            self._idle.append(w)
         return w
 
     def ready(self):
@@ -275,7 +283,7 @@ class ResidentCompiledHost:
             w.kill_and_reap()
 
     # ---- dispatch
-    def _acquire(self, queue_timeout_s):
+    def _acquire(self, queue_timeout_s, cancel=None):
         with self._cv:
             if self._closed:
                 return "closed"
@@ -294,8 +302,18 @@ class ResidentCompiledHost:
                     if not self._live:
                         self._counts["exhausted"] += 1
                         return "exhausted"
-                    if not self._cv.wait(timeout=max(0.0, end - time.monotonic())):
+                    # A queued job's cancel is honoured HERE, while it waits -- not when a worker finally frees.
+                    # Measured before this existed (2026-09-23, the Super lifecycle cases): with the one worker held
+                    # by a running job, a queued job's cancel was not answered until THAT job ended -- its deadline,
+                    # 10 s by default -- so "cancel before dispatch" was bounded by someone else's work, and a client
+                    # with a 3 s cancel bound gave up and reported the stop unconfirmed for a job that had never
+                    # touched a worker.
+                    if cancel is not None and cancel.is_set():
+                        return "cancelled"
+                    remaining = end - time.monotonic()
+                    if remaining <= 0:
                         return "queue-timeout"
+                    self._cv.wait(timeout=min(remaining, 0.05) if cancel is not None else remaining)
                 return self._idle.pop()
             finally:
                 self._waiting -= 1
@@ -321,7 +339,7 @@ class ResidentCompiledHost:
             return
         with self._cv:
             if len(self._live) < self.pool_size:
-                w2 = self._spawn()
+                w2 = self._spawn(idle=False)              # idle only once it has announced itself, below
                 self._counts["replaced"] += 1
             else:
                 w2 = None
@@ -342,17 +360,43 @@ class ResidentCompiledHost:
                         self._live.remove(w2)
                 w2.kill_and_reap()
 
+    def _cancelled_queued(self, job_id):
+        """The reply for a job that left the queue: no worker was written to, so there is no exit to report and
+        `workerExited: false` is the truth, not a gap. A consumer must not demand an exit for a worker that never
+        took the job."""
+        with self._cv:
+            self._counts["cancelled_queued"] += 1
+        return {"status": "cancelled", "id": job_id, "stage": "queued", "workerExited": False}
+
     def submit(self, bundle, deadline_s=10.0, queue_timeout_s=30.0, job_id=None, cancel=None):
         """One job. `bundle` is `executor.bundle_bytes(...)`. `cancel` is a `threading.Event`; setting it while the
         job is RUNNING kills its worker, because a native step cannot be asked to stop."""
         if not self._ready:
             self.ready()
-        w = self._acquire(queue_timeout_s)
-        if isinstance(w, str):
-            return {"status": "refused", "reason": w, "id": job_id}
+        while True:
+            w = self._acquire(queue_timeout_s, cancel)
+            if w == "cancelled":
+                return self._cancelled_queued(job_id)
+            if isinstance(w, str):
+                return {"status": "refused", "reason": w, "id": job_id}
+            if w.proc.poll() is not None:
+                # An IDLE worker that died on its own (a signal, the OOM killer) is found here, at dispatch, and
+                # replaced -- the job goes to the replacement rather than failing on a corpse. `poll()` having
+                # returned IS the reap (it is `waitpid` with WNOHANG), so the retirement is confirmed by the same
+                # witness as every other. Before this the death was found by the next job failing `worker-write`.
+                with self._cv:
+                    self._counts["died_idle"] += 1
+                try:
+                    w.sock.close()
+                except OSError:
+                    pass
+                self._retire(w, True)
+                continue
+            break
         if cancel is not None and cancel.is_set():
+            # set between the acquire and here: the worker was never written to, so it goes straight back
             self._release(w)
-            return {"status": "cancelled", "id": job_id, "stage": "queued", "workerExited": False}
+            return self._cancelled_queued(job_id)
         t0 = time.perf_counter()
         try:
             send_frame(w.sock, {"id": job_id, "bundle_b64": base64.b64encode(bundle).decode(), "emitter": self.emitter})
@@ -371,7 +415,9 @@ class ResidentCompiledHost:
                 reply = recv_frame(w.sock)
             except socket.timeout:
                 if cancel is not None and cancel.is_set():
-                    self._counts["killed"] += 1
+                    with self._cv:
+                        self._counts["killed"] += 1
+                        self._counts["cancelled_running"] += 1
                     confirmed = w.kill_and_reap()
                     self._retire(w, confirmed)
                     return {"status": "cancelled", "id": job_id, "stage": "running",
@@ -380,7 +426,13 @@ class ResidentCompiledHost:
             except (OSError, ValueError) as e:
                 confirmed = w.kill_and_reap()
                 self._retire(w, confirmed)
-                return {"status": "failed", "reason": "worker-read", "detail": str(e)[:200], "id": job_id,
+                # The reason names the CAUSE where the cause is known. A worker killed with unread input on its
+                # socket answers the parent with a reset rather than EOF; both are the same fact -- the worker
+                # is gone and `waitpid` said so -- and a consumer's journal should not have to know which
+                # symptom the kernel chose. `worker-read` is kept for what it actually is: a frame this parent
+                # could not read (oversized, malformed) from a worker whose exit was NOT what ended the read.
+                reason = "worker-exited" if (confirmed and isinstance(e, OSError)) else "worker-read"
+                return {"status": "failed", "reason": reason, "detail": str(e)[:200], "id": job_id,
                         "workerExited": confirmed, "indeterminate": not confirmed}
             finally:
                 try:
@@ -419,7 +471,9 @@ class ResidentCompiledHost:
         with self._cv:
             return {"pool": self.pool_size, "live": len(self._live), "idle": len(self._idle),
                     "waiting": self._waiting, "max_queue": self.max_queue, "emitter": self.emitter,
-                    "kind": KINDS[self.emitter], "closed": self._closed, **self._counts}
+                    "kind": KINDS[self.emitter], "closed": self._closed,
+                    # the worker IDENTITIES, so a consumer can tell replacement from survival by pid, not by count
+                    "worker_pids": sorted(w.proc.pid for w in self._live), **self._counts}
 
 
 def _main(argv):
