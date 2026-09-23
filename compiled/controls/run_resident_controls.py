@@ -27,12 +27,14 @@ TRVM = os.path.dirname(SRC)
 SUMMARY = os.path.join(HERE, "RESIDENT_SUMMARY.txt")
 
 CONTROLS = [
+    # 2026-09-23: D2 (two concurrent jobs after a replacement) needs the deadline's kill and the replacement;
+    # W2 (an idle worker died) needs the replacement. Their expectations were derived, then run.
     ("unmutated", None, None, None, set(), "="),
     ("no-kill-on-deadline", "resident.py",
      "        try:\n            self.proc.kill()\n        except ProcessLookupError:\n            pass\n",
-     "        try:\n            pass\n        except ProcessLookupError:\n            pass\n", {"D1"}, "="),
+     "        try:\n            pass\n        except ProcessLookupError:\n            pass\n", {"D1", "D2"}, "="),
     ("no-replace-after-confirmed-exit", "resident.py",
-     "            if len(self._live) < self.pool_size:", "            if False:", {"D1", "W1"}, "="),
+     "            if len(self._live) < self.pool_size:", "            if False:", {"D1", "D2", "W1", "W2"}, "="),
     ("unbounded-queue", "resident.py",
      "            if not self._idle and self._waiting >= self.max_queue:", "            if False:", {"Q1"}, "="),
     ("worker-replies-wrong-id", "resident.py",

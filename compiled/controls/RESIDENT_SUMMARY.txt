@@ -1,7 +1,7 @@
 control=unmutated                        GREEN
-control=no-kill-on-deadline              failing: D1                           expected= D1               RED-AS-EXPECTED
-control=no-replace-after-confirmed-exit  failing: D1,W1                        expected= D1,W1            RED-AS-EXPECTED
+control=no-kill-on-deadline              failing: D1,D2                        expected= D1,D2            RED-AS-EXPECTED
+control=no-replace-after-confirmed-exit  failing: D1,D2,W1,W2                  expected= D1,D2,W1,W2      RED-AS-EXPECTED
 control=unbounded-queue                  failing: Q1                           expected= Q1               RED-AS-EXPECTED
-control=worker-replies-wrong-id          failing: B2,D1,E1,E2,E3,E4,I1,I2,I3,N2,S1,S2,W1,X1 expected>= I1               RED-AS-EXPECTED
+control=worker-replies-wrong-id          failing: B2,C2,D1,D2,E1,E2,E3,E4,I1,I2,I3,N2,S1,S2,S6,W1,W2,X1 expected>= I1               RED-AS-EXPECTED
 control=skip-object-check                failing: B1                           expected= B1               RED-AS-EXPECTED
 control=writable-state-allowed           failing: N1b                          expected= N1b              RED-AS-EXPECTED
