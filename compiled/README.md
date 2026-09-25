@@ -745,6 +745,31 @@ reader *accepts* without changing what it *computes* for input it already accept
 that one would be a tripwire for any edit rather than a check on the trajectory, and would say nothing when it did
 fire. Both behaved as written.
 
+### 2n. B6 — the world advanced N dependent steps, C against Bend, per CPU-second (2026-09-25)
+
+§2m closed the loop at seven epochs. `advance.py` runs it at 100,000: one world, a seeded control script of N epochs,
+**each step's input the state the previous step wrote**, as a PROCESS doing the same job in all four admitted
+representations (`c1` `emit_c`, `c2` `emit_c2`, `bend1` `emit_bend`, `bend2` `emit_bend2`) on the same bytes — the
+initial state as decimal words, the script as one text line per epoch, the final state out. The C step is the admitted
+`.so`, `dlopen`ed by `advance_driver.c`; the Bend step is the admitted source up to `def reps(` with a driver tail that
+reads the script file (`advance.BEND_TAIL`; the step text asserted byte-identical). Each child runs under
+`advance_launch.c`, whose `wait4` gives CPU (user + system, all threads) and max RSS — from a ~1 MB launcher, because Linux
+keeps the RSS high-water mark across exec and a child of the Python harness otherwise reads >= 30 MB whatever it does.
+
+**Verified, not just timed:** `c1` and `c2` emit every state to N and must agree at every step; the Bend ones every state
+over a width-bounded prefix; 24 sampled steps are replayed through the calculus (ic32 on `compile_step_v6`'s term) —
+the check that does not share `laws.py` with the four; and every timed final state must be the verified one. The
+controls are generated control VECTORS, not claims: Forge's claim state admits six operations per world lifetime
+(`admit.MAX_EVENTS`). **All 16 standing worlds verified.** Per verified step on one pinned Zen 5 core (quiet run after
+the window, 5 reps): the C step alone 1.1–96 ns; the whole process per step C v2 6–129 ns, **Bend v2 6.8–18.8x that (median 8.4x)**, Bend v1
+5.7–74x C v1; Bend UNPINNED (its default thread pool) 1.6–2.3x slower than pinned with CPU ≈ wall — a dependent chain gives
+it nothing to parallelise; memory C 4–14 MB, Bend 20–144 MB. Record and full table: `wek/b2/trvm/ADVANCE.md` §1.
+
+`advance_chain.py` turns one world's verified trajectory into the fixture for the same loop THROUGH SUPER (harness test
+A: each effect's state is the previous receipt's output): plan, initial state, per-epoch control text (Forge's binder
+counter `lower_e2a._VAR` reset per control, or the same control is different bytes every call), and the digest every
+epoch must produce. `ADVANCE.md` §4.
+
 ## 3. Controls (`battery.py --controls`)
 
 Fourteen mutants (since §2f: eleven LAW mutants derived from `laws.py` and three representation/fold mutants, each a text edit
@@ -815,6 +840,8 @@ PYTHONDONTWRITEBYTECODE=1 python3 -B printer_test.py                # the C prin
 TRVM_READER_CHECK=1 PYTHONDONTWRITEBYTECODE=1 python3 -B executor_test.py   # both readers run and compared on every job; a disagreement is a refusal
 PYTHONDONTWRITEBYTECODE=1 python3 -B executor_chain.py [--resident] [--emitter c2]   # §2m: the executor's output as its own next input, every world, ~10 s
 PYTHONDONTWRITEBYTECODE=1 python3 -B controls/run_chain_controls.py   # and the matched pair showing that battery can go red
+PATH=~/.bun/bin:$PATH PYTHONDONTWRITEBYTECODE=1 python3 -B advance.py --sizes 1,10000,100000 --reps 3 --calculus 24   # §2n: B6, C vs Bend, verified, CPU + RSS (~10 min)
+PYTHONDONTWRITEBYTECODE=1 python3 -B advance_chain.py --world golden-demo --steps 3000 --out fx.json      # §2n: the through-Super chain's fixture
 PYTHONDONTWRITEBYTECODE=1 python3 -B laws_gate.py --check           # the printer is a SEPARATE object: this must stay HELD across any printer change
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery.py --quick --worlds mailbox-routes,spinner-w33-n16   # a development subset; not an admission
 PYTHONDONTWRITEBYTECODE=1 python3 -B battery_bend.py --controls --bench   # the Bend row: ~12 min once the reference films are cached under ~/.cache/trvm-compiled/refs/ (~45 min the first time)
