@@ -783,10 +783,11 @@ byte-identical to mailbox-routes' under the B6 script (the overflow path is neve
 trajectories, not 16. Record: `wek/b2/trvm/ADVANCE.md` §1b.
 
 **`batch_price.py` + `batch_price.c` — what a K-step `trvm.reduce` would pay per step, operation by operation.** In
-process, no FFI in any loop, wall and thread CPU, on each world's own trajectory: the step (golden-demo 77.5 ns), reading
-an epoch's control TEXT (0.82 µs), extending a sha256 chain over the raw state vector (0.21 µs; 2.3 µs at chain120's
-3,880 B), canonical render + sha256 (5.8 µs; 25 µs at chain120), BLAKE3 (slower than SHA-256 at every size here — below
-~4 KB it cannot use its parallel chunks). `results-batch-price.json`; the model that combines them with the measured
+process, no FFI in any loop, wall and thread CPU, on each world's own trajectory, at load ~3: the step (golden-demo
+48 ns), reading an epoch's control TEXT (0.47 µs), extending a sha256 chain over the raw state vector (0.13 µs; 1.7 µs at
+chain120's 3,880 B), canonical render + sha256 (3.3 µs; 15 µs at chain120), BLAKE3 (slower than SHA-256 at every size
+here — below ~4 KB it cannot use its parallel chunks). A first run at load 5–7 read 35–45 % higher on every operation.
+`results-batch-price.json`; the model that combines them with the measured
 per-effect cost is `wek/b2/trvm/BATCH_CONTRACT.md`.
 
 ## 3. Controls (`battery.py --controls`)
