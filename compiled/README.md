@@ -757,8 +757,9 @@ reads the script file (`advance.BEND_TAIL`; the step text asserted byte-identica
 keeps the RSS high-water mark across exec and a child of the Python harness otherwise reads >= 30 MB whatever it does.
 
 **Verified, not just timed:** `c1` and `c2` emit every state to N and must agree at every step; the Bend ones every state
-over a width-bounded prefix; 24 sampled steps are replayed through the calculus (ic32 on `compile_step_v6`'s term) —
-the check that does not share `laws.py` with the four; and every timed final state must be the verified one. The
+over a width-bounded prefix *(the timing run's scope — closed by `advance_verify.py`, below)*; 24 sampled steps are
+replayed through the calculus (ic32 on `compile_step_v6`'s term) — the check that does not share `laws.py` with the
+four, and a SAMPLE; and every timed final state must be the verified one. The
 controls are generated control VECTORS, not claims: Forge's claim state admits six operations per world lifetime
 (`admit.MAX_EVENTS`). **All 16 standing worlds verified.** Per verified step on one pinned Zen 5 core (quiet run after
 the window, 5 reps): the C step alone 1.1–96 ns; the whole process per step C v2 6–129 ns, **Bend v2 6.8–18.8x that (median 8.4x)**, Bend v1
@@ -769,6 +770,24 @@ it nothing to parallelise; memory C 4–14 MB, Bend 20–144 MB. Record and full
 A: each effect's state is the previous receipt's output): plan, initial state, per-epoch control text (Forge's binder
 counter `lower_e2a._VAR` reset per control, or the same control is different bytes every call), and the digest every
 epoch must produce. `ADVANCE.md` §4.
+
+**`advance_verify.py` — every state of every backend (2026-09-25 evening, GPT's B6 review).** The Bend prefix above
+left a gap: a wrong intermediate Bend transition that later reconverged would pass. This compares **every one of the
+100,000 states of all four backends** without holding them: c1's states reduced to a sha256 each; the Bend backends run
+as the admitted step text + a verification tail (`VERIFY_TAIL`) that recomputes the world from ITS OWN initial state
+and prints only a window of states, windows of 2 M words tiling 1..N (chain120 on bend1: 25 windows). And a control:
+a one-slot perturbation after step 50,000 that the world's own dynamics erase within 1–9 steps, injected into the same
+binary — required: endpoint check PASS, full comparison FAIL at exactly 50,000. **All 16 worlds: every state agrees;
+every control separates** (`results-advance-verify.json`, ~11 min). Found: mailbox-overflow's trajectory is
+byte-identical to mailbox-routes' under the B6 script (the overflow path is never taken), so B6 has 15 distinct
+trajectories, not 16. Record: `wek/b2/trvm/ADVANCE.md` §1b.
+
+**`batch_price.py` + `batch_price.c` — what a K-step `trvm.reduce` would pay per step, operation by operation.** In
+process, no FFI in any loop, wall and thread CPU, on each world's own trajectory: the step (golden-demo 77.5 ns), reading
+an epoch's control TEXT (0.82 µs), extending a sha256 chain over the raw state vector (0.21 µs; 2.3 µs at chain120's
+3,880 B), canonical render + sha256 (5.8 µs; 25 µs at chain120), BLAKE3 (slower than SHA-256 at every size here — below
+~4 KB it cannot use its parallel chunks). `results-batch-price.json`; the model that combines them with the measured
+per-effect cost is `wek/b2/trvm/BATCH_CONTRACT.md`.
 
 ## 3. Controls (`battery.py --controls`)
 

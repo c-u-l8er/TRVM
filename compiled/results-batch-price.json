@@ -1,0 +1,526 @@
+{
+ "benchmark": "B6 follow-up -- per-step price of a K-step trvm.reduce's operations (in-process C)",
+ "measured": "2026-09-25T17:01:38-0500",
+ "loadavg_start": [
+  3.55224609375,
+  3.96533203125,
+  6.03173828125
+ ],
+ "pin_cpu": "2",
+ "steps": 20000,
+ "reps": 7,
+ "seed": 20260925,
+ "batch_price_c_sha256_16": "fc75ccda186a0186",
+ "openssl": "OpenSSL 3.6.4 25 Aug 2026 (Library: OpenSSL 3.6.4 25 Aug 2026)",
+ "worlds": [
+  {
+   "n": 20000,
+   "width": 2,
+   "control_width": 0,
+   "final_fnv": "9a691300c548b8fb",
+   "state_bytes_raw": 16,
+   "render_bytes_mean": 37.0,
+   "control_text_bytes_mean": 21.0,
+   "ops": {
+    "step": {
+     "wall_ns": 1.57,
+     "cpu_ns": 1.56,
+     "wall_ns_min": 1.55
+    },
+    "sha256_raw": {
+     "wall_ns": 74.79,
+     "cpu_ns": 74.47,
+     "wall_ns_min": 68.48
+    },
+    "chain_raw": {
+     "wall_ns": 48.87,
+     "cpu_ns": 48.66,
+     "wall_ns_min": 48.68
+    },
+    "blake3_raw": {
+     "wall_ns": 95.59,
+     "cpu_ns": 95.42,
+     "wall_ns_min": 95.17
+    },
+    "render": {
+     "wall_ns": 29.34,
+     "cpu_ns": 29.31,
+     "wall_ns_min": 28.94
+    },
+    "render_sha256": {
+     "wall_ns": 106.42,
+     "cpu_ns": 106.16,
+     "wall_ns_min": 106.0
+    },
+    "read_control": {
+     "wall_ns": 27.07,
+     "cpu_ns": 27.06,
+     "wall_ns_min": 26.79
+    },
+    "read_state": {
+     "wall_ns": 23.38,
+     "cpu_ns": 23.26,
+     "wall_ns_min": 23.2
+    },
+    "loop_vec_chain": {
+     "wall_ns": 50.6,
+     "cpu_ns": 50.47,
+     "wall_ns_min": 49.89
+    },
+    "loop_txt_chain": {
+     "wall_ns": 74.7,
+     "cpu_ns": 74.58,
+     "wall_ns_min": 74.28
+    },
+    "loop_txt_canon": {
+     "wall_ns": 133.87,
+     "cpu_ns": 133.63,
+     "wall_ns_min": 133.6
+    }
+   },
+   "sink": 0,
+   "final_state_agrees": true,
+   "world": "relay-only",
+   "slots": 2,
+   "backend_id": "cbknd-dfb387f9948bb8c9feaf9cdc2cca085cef576b1a4003faef654444b7aa40f1ea",
+   "printer_id": "cprn-679ebff535780ce17a207eeb352231e18619c6ce11d743f038771d522e1f68b9"
+  },
+  {
+   "n": 20000,
+   "width": 125,
+   "control_width": 0,
+   "final_fnv": "65007e84a12d80eb",
+   "state_bytes_raw": 1000,
+   "render_bytes_mean": 3259.5,
+   "control_text_bytes_mean": 21.0,
+   "ops": {
+    "step": {
+     "wall_ns": 16.29,
+     "cpu_ns": 16.21,
+     "wall_ns_min": 16.19
+    },
+    "sha256_raw": {
+     "wall_ns": 472.96,
+     "cpu_ns": 471.33,
+     "wall_ns_min": 468.84
+    },
+    "chain_raw": {
+     "wall_ns": 488.88,
+     "cpu_ns": 487.41,
+     "wall_ns_min": 483.68
+    },
+    "blake3_raw": {
+     "wall_ns": 1123.87,
+     "cpu_ns": 1121.05,
+     "wall_ns_min": 1120.63
+    },
+    "render": {
+     "wall_ns": 2488.06,
+     "cpu_ns": 2481.26,
+     "wall_ns_min": 2476.77
+    },
+    "render_sha256": {
+     "wall_ns": 3643.85,
+     "cpu_ns": 3634.4,
+     "wall_ns_min": 3627.66
+    },
+    "read_control": {
+     "wall_ns": 27.62,
+     "cpu_ns": 27.52,
+     "wall_ns_min": 26.97
+    },
+    "read_state": {
+     "wall_ns": 2400.5,
+     "cpu_ns": 2390.64,
+     "wall_ns_min": 2373.51
+    },
+    "loop_vec_chain": {
+     "wall_ns": 497.52,
+     "cpu_ns": 495.94,
+     "wall_ns_min": 496.05
+    },
+    "loop_txt_chain": {
+     "wall_ns": 526.85,
+     "cpu_ns": 525.23,
+     "wall_ns_min": 524.9
+    },
+    "loop_txt_canon": {
+     "wall_ns": 3873.45,
+     "cpu_ns": 3864.95,
+     "wall_ns_min": 3774.59
+    }
+   },
+   "sink": 0,
+   "final_state_agrees": true,
+   "world": "chain30",
+   "slots": 125,
+   "backend_id": "cbknd-2a9e0be6709ed33a48aa22528878215a88214f7a71455e4b5ec267f316e5f107",
+   "printer_id": "cprn-679ebff535780ce17a207eeb352231e18619c6ce11d743f038771d522e1f68b9"
+  },
+  {
+   "n": 20000,
+   "width": 485,
+   "control_width": 0,
+   "final_fnv": "cfb6a84f9f9ff94b",
+   "state_bytes_raw": 3880,
+   "render_bytes_mean": 13680.0,
+   "control_text_bytes_mean": 21.0,
+   "ops": {
+    "step": {
+     "wall_ns": 64.68,
+     "cpu_ns": 64.57,
+     "wall_ns_min": 64.48
+    },
+    "sha256_raw": {
+     "wall_ns": 1657.88,
+     "cpu_ns": 1653.83,
+     "wall_ns_min": 1655.78
+    },
+    "chain_raw": {
+     "wall_ns": 1668.61,
+     "cpu_ns": 1665.05,
+     "wall_ns_min": 1665.57
+    },
+    "blake3_raw": {
+     "wall_ns": 3490.29,
+     "cpu_ns": 3481.0,
+     "wall_ns_min": 3484.58
+    },
+    "render": {
+     "wall_ns": 9603.43,
+     "cpu_ns": 9576.95,
+     "wall_ns_min": 9384.36
+    },
+    "render_sha256": {
+     "wall_ns": 14945.04,
+     "cpu_ns": 14909.61,
+     "wall_ns_min": 14808.37
+    },
+    "read_control": {
+     "wall_ns": 27.49,
+     "cpu_ns": 27.39,
+     "wall_ns_min": 26.83
+    },
+    "read_state": {
+     "wall_ns": 10026.87,
+     "cpu_ns": 10000.95,
+     "wall_ns_min": 9917.49
+    },
+    "loop_vec_chain": {
+     "wall_ns": 1729.8,
+     "cpu_ns": 1726.44,
+     "wall_ns_min": 1728.01
+    },
+    "loop_txt_chain": {
+     "wall_ns": 1762.38,
+     "cpu_ns": 1758.24,
+     "wall_ns_min": 1757.91
+    },
+    "loop_txt_canon": {
+     "wall_ns": 15474.44,
+     "cpu_ns": 15433.79,
+     "wall_ns_min": 15136.65
+    }
+   },
+   "sink": 0,
+   "final_state_agrees": true,
+   "world": "chain120",
+   "slots": 485,
+   "backend_id": "cbknd-e3aa488fcef58124e97bd3e7c4eb4a08244eb351fce8ba37ed1559fa945cfa05",
+   "printer_id": "cprn-679ebff535780ce17a207eeb352231e18619c6ce11d743f038771d522e1f68b9"
+  },
+  {
+   "n": 20000,
+   "width": 22,
+   "control_width": 6,
+   "final_fnv": "2cfe689e58a91913",
+   "state_bytes_raw": 176,
+   "render_bytes_mean": 2999.0,
+   "control_text_bytes_mean": 415.8,
+   "ops": {
+    "step": {
+     "wall_ns": 48.41,
+     "cpu_ns": 48.31,
+     "wall_ns_min": 47.83
+    },
+    "sha256_raw": {
+     "wall_ns": 124.65,
+     "cpu_ns": 124.43,
+     "wall_ns_min": 124.33
+    },
+    "chain_raw": {
+     "wall_ns": 134.37,
+     "cpu_ns": 133.81,
+     "wall_ns_min": 133.61
+    },
+    "blake3_raw": {
+     "wall_ns": 213.53,
+     "cpu_ns": 212.88,
+     "wall_ns_min": 212.85
+    },
+    "render": {
+     "wall_ns": 2121.33,
+     "cpu_ns": 2117.48,
+     "wall_ns_min": 2098.87
+    },
+    "render_sha256": {
+     "wall_ns": 3351.35,
+     "cpu_ns": 3341.62,
+     "wall_ns_min": 3336.44
+    },
+    "read_control": {
+     "wall_ns": 473.37,
+     "cpu_ns": 471.69,
+     "wall_ns_min": 465.55
+    },
+    "read_state": {
+     "wall_ns": 2282.83,
+     "cpu_ns": 2274.6,
+     "wall_ns_min": 2268.78
+    },
+    "loop_vec_chain": {
+     "wall_ns": 178.5,
+     "cpu_ns": 177.82,
+     "wall_ns_min": 176.03
+    },
+    "loop_txt_chain": {
+     "wall_ns": 666.0,
+     "cpu_ns": 664.3,
+     "wall_ns_min": 655.35
+    },
+    "loop_txt_canon": {
+     "wall_ns": 3991.72,
+     "cpu_ns": 3981.68,
+     "wall_ns_min": 3876.78
+    }
+   },
+   "sink": 0,
+   "final_state_agrees": true,
+   "world": "golden-demo",
+   "slots": 22,
+   "backend_id": "cbknd-97b6c52d6bc6935934b21b5f8e3b8ac4717669f472171fa7ac8b64b6ff8c04da",
+   "printer_id": "cprn-679ebff535780ce17a207eeb352231e18619c6ce11d743f038771d522e1f68b9"
+  },
+  {
+   "n": 20000,
+   "width": 24,
+   "control_width": 12,
+   "final_fnv": "e02ef53a29ce0000",
+   "state_bytes_raw": 192,
+   "render_bytes_mean": 3617.5,
+   "control_text_bytes_mean": 529.1,
+   "ops": {
+    "step": {
+     "wall_ns": 94.33,
+     "cpu_ns": 93.93,
+     "wall_ns_min": 92.87
+    },
+    "sha256_raw": {
+     "wall_ns": 176.4,
+     "cpu_ns": 175.94,
+     "wall_ns_min": 151.69
+    },
+    "chain_raw": {
+     "wall_ns": 134.49,
+     "cpu_ns": 134.15,
+     "wall_ns_min": 133.72
+    },
+    "blake3_raw": {
+     "wall_ns": 213.83,
+     "cpu_ns": 213.28,
+     "wall_ns_min": 212.81
+    },
+    "render": {
+     "wall_ns": 2660.18,
+     "cpu_ns": 2654.19,
+     "wall_ns_min": 2649.54
+    },
+    "render_sha256": {
+     "wall_ns": 4147.77,
+     "cpu_ns": 4137.42,
+     "wall_ns_min": 4096.91
+    },
+    "read_control": {
+     "wall_ns": 646.63,
+     "cpu_ns": 644.61,
+     "wall_ns_min": 626.93
+    },
+    "read_state": {
+     "wall_ns": 2981.3,
+     "cpu_ns": 2971.86,
+     "wall_ns_min": 2906.02
+    },
+    "loop_vec_chain": {
+     "wall_ns": 224.9,
+     "cpu_ns": 224.45,
+     "wall_ns_min": 220.35
+    },
+    "loop_txt_chain": {
+     "wall_ns": 903.91,
+     "cpu_ns": 900.76,
+     "wall_ns_min": 865.35
+    },
+    "loop_txt_canon": {
+     "wall_ns": 5006.54,
+     "cpu_ns": 4991.44,
+     "wall_ns_min": 4925.25
+    }
+   },
+   "sink": 0,
+   "final_state_agrees": true,
+   "world": "two-spinners",
+   "slots": 24,
+   "backend_id": "cbknd-7f80c05cebd7aae8e33aa86e4ccfce99f2b530540923aa76a02fb2a2823bc11b",
+   "printer_id": "cprn-679ebff535780ce17a207eeb352231e18619c6ce11d743f038771d522e1f68b9"
+  },
+  {
+   "n": 20000,
+   "width": 12,
+   "control_width": 6,
+   "final_fnv": "966056b21bbd3ffc",
+   "state_bytes_raw": 96,
+   "render_bytes_mean": 2702.0,
+   "control_text_bytes_mean": 415.8,
+   "ops": {
+    "step": {
+     "wall_ns": 48.66,
+     "cpu_ns": 48.54,
+     "wall_ns_min": 47.13
+    },
+    "sha256_raw": {
+     "wall_ns": 97.07,
+     "cpu_ns": 96.89,
+     "wall_ns_min": 96.01
+    },
+    "chain_raw": {
+     "wall_ns": 108.06,
+     "cpu_ns": 107.83,
+     "wall_ns_min": 107.63
+    },
+    "blake3_raw": {
+     "wall_ns": 144.08,
+     "cpu_ns": 143.71,
+     "wall_ns_min": 143.31
+    },
+    "render": {
+     "wall_ns": 1943.11,
+     "cpu_ns": 1936.59,
+     "wall_ns_min": 1904.07
+    },
+    "render_sha256": {
+     "wall_ns": 3064.62,
+     "cpu_ns": 3056.01,
+     "wall_ns_min": 3039.4
+    },
+    "read_control": {
+     "wall_ns": 489.15,
+     "cpu_ns": 487.95,
+     "wall_ns_min": 470.52
+    },
+    "read_state": {
+     "wall_ns": 2167.15,
+     "cpu_ns": 2161.01,
+     "wall_ns_min": 2107.41
+    },
+    "loop_vec_chain": {
+     "wall_ns": 151.77,
+     "cpu_ns": 150.93,
+     "wall_ns_min": 148.22
+    },
+    "loop_txt_chain": {
+     "wall_ns": 668.72,
+     "cpu_ns": 666.93,
+     "wall_ns_min": 636.61
+    },
+    "loop_txt_canon": {
+     "wall_ns": 3676.62,
+     "cpu_ns": 3665.28,
+     "wall_ns_min": 3633.18
+    }
+   },
+   "sink": 0,
+   "final_state_agrees": true,
+   "world": "spinner-w16-n8-fixed",
+   "slots": 12,
+   "backend_id": "cbknd-37525b8f4859b718e70fe50d55fccf2e22658826cbd184a0dbcf8b94603158e1",
+   "printer_id": "cprn-679ebff535780ce17a207eeb352231e18619c6ce11d743f038771d522e1f68b9"
+  },
+  {
+   "n": 20000,
+   "width": 24,
+   "control_width": 6,
+   "final_fnv": "78b1f1823f75bb6a",
+   "state_bytes_raw": 192,
+   "render_bytes_mean": 1753.5,
+   "control_text_bytes_mean": 221.1,
+   "ops": {
+    "step": {
+     "wall_ns": 52.92,
+     "cpu_ns": 52.8,
+     "wall_ns_min": 51.09
+    },
+    "sha256_raw": {
+     "wall_ns": 152.48,
+     "cpu_ns": 152.07,
+     "wall_ns_min": 150.58
+    },
+    "chain_raw": {
+     "wall_ns": 136.95,
+     "cpu_ns": 136.25,
+     "wall_ns_min": 135.93
+    },
+    "blake3_raw": {
+     "wall_ns": 213.33,
+     "cpu_ns": 212.68,
+     "wall_ns_min": 212.8
+    },
+    "render": {
+     "wall_ns": 1372.13,
+     "cpu_ns": 1368.27,
+     "wall_ns_min": 1335.16
+    },
+    "render_sha256": {
+     "wall_ns": 2172.67,
+     "cpu_ns": 2166.62,
+     "wall_ns_min": 2145.8
+    },
+    "read_control": {
+     "wall_ns": 281.29,
+     "cpu_ns": 280.44,
+     "wall_ns_min": 273.98
+    },
+    "read_state": {
+     "wall_ns": 1463.38,
+     "cpu_ns": 1458.9,
+     "wall_ns_min": 1441.39
+    },
+    "loop_vec_chain": {
+     "wall_ns": 186.82,
+     "cpu_ns": 186.28,
+     "wall_ns_min": 183.85
+    },
+    "loop_txt_chain": {
+     "wall_ns": 471.76,
+     "cpu_ns": 470.32,
+     "wall_ns_min": 464.19
+    },
+    "loop_txt_canon": {
+     "wall_ns": 2549.73,
+     "cpu_ns": 2541.93,
+     "wall_ns_min": 2461.4
+    }
+   },
+   "sink": 0,
+   "final_state_agrees": true,
+   "world": "mailbox-routes",
+   "slots": 24,
+   "backend_id": "cbknd-32d481a9bfe76c6eed41c177a71447b48de99a4a81db8f31fe8cdb3e8d510179",
+   "printer_id": "cprn-679ebff535780ce17a207eeb352231e18619c6ce11d743f038771d522e1f68b9"
+  }
+ ],
+ "loadavg_end": [
+  2.88916015625,
+  3.7880859375,
+  5.9287109375
+ ]
+}
