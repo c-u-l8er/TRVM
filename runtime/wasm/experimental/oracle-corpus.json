@@ -1,0 +1,132 @@
+[
+  {
+    "input": "*",
+    "output": "*",
+    "interactions": 0
+  },
+  {
+    "input": "(λx.x λy.y)",
+    "output": "λa.a",
+    "interactions": 1
+  },
+  {
+    "input": "(λx.λt.(t x) λy.y)",
+    "output": "λa.(a λb.b)",
+    "interactions": 1
+  },
+  {
+    "input": "(λb.λt.λf.((b f) t) λT.λF.T)",
+    "output": "λa.λb.b",
+    "interactions": 3
+  },
+  {
+    "input": "!{a,b} = {λx.x,λy.y}; (a b)",
+    "output": "λa.a",
+    "interactions": 2
+  },
+  {
+    "input": "({λx.x,λy.y} λz.z)",
+    "output": "&0{λa.a,λb.b}",
+    "interactions": 5
+  },
+  {
+    "input": "ABORTED",
+    "output": "ABORTED",
+    "interactions": 0
+  },
+  {
+    "input": "λx.x",
+    "output": "λa.a",
+    "interactions": 0
+  },
+  {
+    "input": "λx.λy.y",
+    "output": "λa.λb.b",
+    "interactions": 0
+  },
+  {
+    "input": "&3{a,b}",
+    "output": "&3{a,b}",
+    "interactions": 0
+  },
+  {
+    "input": "!&3{a,b}=&3{x,y};(a b)",
+    "output": "(x y)",
+    "interactions": 1
+  },
+  {
+    "input": "((λf.λx.x S) Z)",
+    "output": "Z",
+    "interactions": 2
+  },
+  {
+    "input": "((λf.λx.(f x) S) Z)",
+    "output": "(S Z)",
+    "interactions": 2
+  },
+  {
+    "input": "((λf.λx.!&100{f0,f1}=f;(f0 (f1 x)) S) Z)",
+    "output": "(S (S Z))",
+    "interactions": 3
+  },
+  {
+    "input": "((λf.λx.!&100{f0,t0}=f;!&101{f1,f2}=t0;(f0 (f1 (f2 x))) S) Z)",
+    "output": "(S (S (S Z)))",
+    "interactions": 4
+  },
+  {
+    "input": "((λf.λx.!&100{f0,t0}=f;!&101{f1,t1}=t0;!&102{f2,f3}=t1;(f0 (f1 (f2 (f3 x)))) S) Z)",
+    "output": "(S (S (S (S Z))))",
+    "interactions": 5
+  },
+  {
+    "input": "((λf.λx.!&100{f0,t0}=f;!&101{f1,t1}=t0;!&102{f2,t2}=t1;!&103{f3,f4}=t2;(f0 (f1 (f2 (f3 (f4 x))))) S) Z)",
+    "output": "(S (S (S (S (S Z)))))",
+    "interactions": 6
+  },
+  {
+    "input": "((λf.λx.!&100{f0,t0}=f;!&101{f1,t1}=t0;!&102{f2,t2}=t1;!&103{f3,t3}=t2;!&104{f4,f5}=t3;(f0 (f1 (f2 (f3 (f4 (f5 x)))))) S) Z)",
+    "output": "(S (S (S (S (S (S Z))))))",
+    "interactions": 7
+  },
+  {
+    "input": "((λf.λx.!&100{f0,t0}=f;!&101{f1,t1}=t0;!&102{f2,t2}=t1;!&103{f3,t3}=t2;!&104{f4,t4}=t3;!&105{f5,f6}=t4;(f0 (f1 (f2 (f3 (f4 (f5 (f6 x))))))) S) Z)",
+    "output": "(S (S (S (S (S (S (S Z)))))))",
+    "interactions": 8
+  },
+  {
+    "input": "((λf.λx.!&100{f0,t0}=f;!&101{f1,t1}=t0;!&102{f2,t2}=t1;!&103{f3,t3}=t2;!&104{f4,t4}=t3;!&105{f5,t5}=t4;!&106{f6,f7}=t5;(f0 (f1 (f2 (f3 (f4 (f5 (f6 (f7 x)))))))) S) Z)",
+    "output": "(S (S (S (S (S (S (S (S Z))))))))",
+    "interactions": 9
+  },
+  {
+    "input": "((λf.λx.!&100{f0,f1}=f;(f0 (f1 x)) λf.λx.!&200{f0,f1}=f;(f0 (f1 x))) X)",
+    "output": "λa.(X (X (X (X a))))",
+    "interactions": 21
+  },
+  {
+    "input": "((λf.λx.!&100{f0,f1}=f;(f0 (f1 x)) λf.λx.!&200{f0,t0}=f;!&201{f1,f2}=t0;(f0 (f1 (f2 x)))) X)",
+    "output": "λa.(X (X (X (X (X (X (X (X (X a)))))))))",
+    "interactions": 36
+  },
+  {
+    "input": "((λf.λx.!&100{f0,t0}=f;!&101{f1,f2}=t0;(f0 (f1 (f2 x))) λf.λx.!&200{f0,f1}=f;(f0 (f1 x))) X)",
+    "output": "λa.(X (X (X (X (X (X (X (X a))))))))",
+    "interactions": 42
+  },
+  {
+    "input": "((λf.λx.!&100{f0,t0}=f;!&101{f1,f2}=t0;(f0 (f1 (f2 x))) λf.λx.!&200{f0,t0}=f;!&201{f1,f2}=t0;(f0 (f1 (f2 x)))) X)",
+    "output": "λa.(X (X (X (X (X (X (X (X (X (X (X (X (X (X (X (X (X (X (X (X (X (X (X (X (X (X (X a)))))))))))))))))))))))))))",
+    "interactions": 91
+  },
+  {
+    "input": "((λf.λx.!&100{f0,f1}=f;(f0 (f1 x)) λf.λx.!&200{f0,t0}=f;!&201{f1,t1}=t0;!&202{f2,f3}=t1;(f0 (f1 (f2 (f3 x))))) X)",
+    "output": "λa.(X (X (X (X (X (X (X (X (X (X (X (X (X (X (X (X a))))))))))))))))",
+    "interactions": 55
+  },
+  {
+    "input": "((λf.λx.!&100{f0,t0}=f;!&101{f1,t1}=t0;!&102{f2,f3}=t1;(f0 (f1 (f2 (f3 x)))) λf.λx.!&200{f0,f1}=f;(f0 (f1 x))) X)",
+    "output": "λa.(X (X (X (X (X (X (X (X (X (X (X (X (X (X (X (X a))))))))))))))))",
+    "interactions": 71
+  }
+]

@@ -129,6 +129,13 @@ and Law 23's memo-key completeness are type-level statements; Law 4, 6, 13 and 2
 mechanization catching up to `bend.ts`, or a published rejection battery for the checker; this stack acquiring a formal statement
 language for the laws that admit one. Any of the three moves a sentence in §3–§6 and would be recorded here with a date.
 
+**2026-09-18 — the third change happened, in part.** Laws 5 and 23 now have a machine-checkable form beside
+their batteries: `TRVM/bench/bend_laws/` (`./run.sh`), Bend 2.0.4, both proofs check and one mutant each of the
+earning failure's shape is refused, 4/4. The sentence in §3 that "this stack has no formal statement language in
+which 'sorted for every list' is a theorem" now reads: it has one for the two laws that admit it, borrowed from
+Bend, and none for the four that do not. §6's third bullet gains two public data points on the checker refusing
+wrong proofs; it does not gain a rejection battery. Nothing in §4 or §5 moves.
+
 ## 8. Claim discipline for anything public
 
 - Never "mathematically impossible", "cannot be broken", or "guaranteed" for this stack's laws. Say **evidence-graded**,

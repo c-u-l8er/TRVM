@@ -39,6 +39,12 @@ static u32 hp = 1;
 static long interactions = 0;
 static long STEPCAP = 50000000;
 static int  aborted = 0;
+enum { OK=0, INPUT_ERROR=1, PARSE_ERROR=2, STEP_LIMIT=3,
+       OUTPUT_LIMIT=4, RESOURCE_LIMIT=5, LIMIT_ERROR=6 };
+static int status = OK, strict = 0;
+static u32 output_limit = (1u<<24)-1;
+static int parse_depth = 0, reduce_depth = 0;
+static void fail(int code){ if (!aborted) status = code; aborted = 1; }
 
 static u8 in_buf[1u<<20];         // 1MB input
 static u8 out_buf[1u<<24];        // 16MB output (deep readback at 2^21 depth ~ 8MB)
@@ -51,10 +57,10 @@ static u64 wstk[WSTKCAP];
 
 static u32 alloc_n(int n){
     u32 a = hp; hp += n;
-    if (hp >= HEAPCAP){ aborted = 1; return 1; }
+    if (hp >= HEAPCAP){ fail(RESOURCE_LIMIT); return 1; }
     return a;
 }
-static inline void step(void){ if (++interactions > STEPCAP) aborted = 1; }
+static inline void step(void){ if (interactions >= STEPCAP) fail(STEP_LIMIT); else interactions++; }
 
 // ----------------------------------------------------------- reduction
 static u64 whnf(u64 t);
@@ -112,7 +118,15 @@ static u64 app_sup(u64 sup, u64 arg){
     return MK(T_SUP,L,Sn);
 }
 
+static u64 whnf_inner(u64 t);
 static u64 whnf(u64 t){
+    if (reduce_depth >= 1024){ fail(RESOURCE_LIMIT); return MK(T_ERA,0,0); }
+    reduce_depth++;
+    u64 result = whnf_inner(t);
+    reduce_depth--;
+    return result;
+}
+static u64 whnf_inner(u64 t){
     for (;;){
         if (aborted) return MK(T_ERA,0,0);
         int tag = TAG(t);
@@ -162,6 +176,7 @@ static u64 normal(u64 t){
     else if (tag == T_SUP){ u32 S = ADDR(t); stk[ssp++] = S+1; stk[ssp++] = S; }
     while (ssp > 0){
         if (aborted) break;
+        if (ssp > WSTKCAP*2-2){ fail(RESOURCE_LIMIT); break; }
         u32 idx = stk[--ssp];
         u64 v = whnf(heap[idx]); heap[idx] = v;
         int vt = TAG(v);
@@ -192,13 +207,18 @@ static const char* free_lookup(u32 loc){
     return 0;
 }
 static u32 free_intern(const char* nm){
-    for (int i=0;i<n_free;i++) if (seq(free_nm[i],nm)) return free_loc[i];
+    for (int i=0;i<n_free;i++) if (seq(free_nm[i],nm)) {
+        if (strict) fail(PARSE_ERROR);
+        return free_loc[i];
+    }
+    if (n_free >= MAXNAMES){ fail(RESOURCE_LIMIT); return 1; }
     u32 L = alloc_n(1); heap[L] = MK(T_ERA,0,0);
     free_loc[n_free]=L; scpy(free_nm[n_free],nm,40); n_free++;
     return L;
 }
 static const char* bnd_name(u32 loc){
     for (int i=0;i<n_bnd;i++) if (bnd_loc[i]==loc) return bnd_nm[i];
+    if (n_bnd >= MAXNAMES){ fail(RESOURCE_LIMIT); return ""; }
     char* s = bnd_nm[n_bnd]; int i=name_ctr++;
     if (i<26){ s[0]='a'+i; s[1]=0; }
     else { s[0]='v'; int v=i, p=1; char tmp[6]; int tp=0; if(!v)tmp[tp++]='0'; while(v){tmp[tp++]='0'+v%10; v/=10;} while(tp&&p<7) s[p++]=tmp[--tp]; s[p]=0; }
@@ -207,28 +227,46 @@ static const char* bnd_name(u32 loc){
 }
 
 // ----------------------------------------------------------- parser
-typedef struct { char nm[40]; u64 t; } Bind;
+typedef struct { char nm[40]; u64 t; int uses; } Bind;
 static Bind scope[4096]; static int sp=0;
 static const char* P;
 
 static void ws(void){ while (*P==' '||*P=='\t'||*P=='\n'||*P=='\r') P++; }
 static int  is_lambda(void){ return (*P=='\\') || ((u8)P[0]==0xCE && (u8)P[1]==0xBB); }
 static void eat_lambda(void){ if (*P=='\\') P++; else P+=2; }
-static void expect(char c){ ws(); if (*P==c) P++; else aborted=1; }
+static void expect(char c){ ws(); if (*P==c) P++; else fail(PARSE_ERROR); }
 static void rdname(char* out){
     ws(); int i=0;
-    while ((*P>='a'&&*P<='z')||(*P>='A'&&*P<='Z')||(*P>='0'&&*P<='9')||*P=='_'){ if(i<39) out[i++]=*P; P++; }
-    out[i]=0; if (i==0) aborted=1;
+    while ((*P>='a'&&*P<='z')||(*P>='A'&&*P<='Z')||(*P>='0'&&*P<='9')||*P=='_'){ if(i<39) out[i++]=*P; else if(strict) fail(PARSE_ERROR); P++; }
+    out[i]=0; if (i==0) fail(PARSE_ERROR);
 }
-static u32 rduint(void){ ws(); u32 v=0; while(*P>='0'&&*P<='9'){v=v*10+(*P-'0');P++;} return v; }
+static u32 rduint(void){
+    ws(); u32 v=0; int digits=0;
+    while(*P>='0'&&*P<='9'){
+        u32 digit = *P-'0';
+        if (strict && v > (0x7ffffffu-digit)/10u) fail(PARSE_ERROR);
+        v=v*10+digit; P++; digits++;
+    }
+    if (strict && !digits) fail(PARSE_ERROR);
+    return v;
+}
 
+static u64 parse_inner(void);
 static u64 parse_term(void){
+    if (parse_depth >= 512){ fail(RESOURCE_LIMIT); return MK(T_ERA,0,0); }
+    parse_depth++;
+    u64 result = parse_inner();
+    parse_depth--;
+    return result;
+}
+static u64 parse_inner(void){
     if (aborted) return MK(T_ERA,0,0);
     ws();
     if (is_lambda()){
+        if (sp >= 4096){ fail(RESOURCE_LIMIT); return MK(T_ERA,0,0); }
         eat_lambda(); char nm[40]; rdname(nm); expect('.');
         u32 L = alloc_n(1);
-        scpy(scope[sp].nm,nm,40); scope[sp].t = MK(T_VAR,0,L); sp++;
+        scpy(scope[sp].nm,nm,40); scope[sp].t = MK(T_VAR,0,L); scope[sp].uses=0; sp++;
         u64 bod = parse_term(); sp--;
         heap[L] = bod;
         return MK(T_LAM,0,L);
@@ -252,25 +290,34 @@ static u64 parse_term(void){
         return MK(T_SUP,0,S);
     }
     if (c=='!'){
+        if (sp > 4094){ fail(RESOURCE_LIMIT); return MK(T_ERA,0,0); }
         P++; u32 lab=0; ws();
         if (*P=='&'){ P++; lab=rduint(); }
         expect('{'); char a[40],b[40]; rdname(a); expect(','); rdname(b); expect('}'); expect('=');
+        if (strict && seq(a,b)) fail(PARSE_ERROR);
         u32 D = alloc_n(1);
         u64 val = parse_term();
         heap[D] = val;
         expect(';');
-        scpy(scope[sp].nm,a,40); scope[sp].t = MK(T_DP0,lab,D); sp++;
-        scpy(scope[sp].nm,b,40); scope[sp].t = MK(T_DP1,lab,D); sp++;
+        scpy(scope[sp].nm,a,40); scope[sp].t = MK(T_DP0,lab,D); scope[sp].uses=0; sp++;
+        scpy(scope[sp].nm,b,40); scope[sp].t = MK(T_DP1,lab,D); scope[sp].uses=0; sp++;
         u64 bod = parse_term(); sp-=2;
         return bod;
     }
     char nm[40]; rdname(nm);
-    for (int i=sp-1;i>=0;i--) if (seq(scope[i].nm,nm)) return scope[i].t;
+    for (int i=sp-1;i>=0;i--) if (seq(scope[i].nm,nm)) {
+        if (strict && scope[i].uses++) fail(PARSE_ERROR);
+        return scope[i].t;
+    }
     return MK(T_VAR,0,free_intern(nm));
 }
 
 // ----------------------------------------------------------- stringify -> out_buf
-static void emit(u8 c){ if (opos < sizeof(out_buf)-1) out_buf[opos++] = c; }
+static void emit(u8 c){
+    if (aborted) return;
+    if (opos < output_limit) out_buf[opos++] = c;
+    else if(strict) fail(OUTPUT_LIMIT);
+}
 static void emits(const char* s){ while (*s) emit((u8)*s++); }
 static void emit_lambda(void){ emit(0xCE); emit(0xBB); }
 static void emit_uint(u32 v){ char t[12]; int n=0; if(!v){emit('0');return;} while(v){t[n++]='0'+v%10; v/=10;} while(n) emit(t[--n]); }
@@ -285,6 +332,8 @@ static void show(u64 root){
     u32 ssp = 0;
     wstk[ssp++] = root;
     while (ssp > 0){
+        if (aborted) break;
+        if (ssp > WSTKCAP-5){ fail(RESOURCE_LIMIT); break; }
         u64 item = wstk[--ssp];
         if (ISLIT(item)){ emit((u8)(item & 0xFF)); continue; }
         int tag = TAG(item);
@@ -322,15 +371,41 @@ EXPORT("input_ptr")  u8*  input_ptr(void){ return in_buf; }
 EXPORT("output_ptr") u8*  output_ptr(void){ return out_buf; }
 EXPORT("last_interactions") long last_interactions(void){ return interactions; }
 
+// v2 is additive: run() keeps its length/text interface for existing callers.
+EXPORT("abi_version") int abi_version(void){ return 2; }
+EXPORT("last_status") int last_status(void){ return status; }
+EXPORT("output_length") int output_length(void){ return (int)opos; }
+EXPORT("input_capacity") int input_capacity(void){ return sizeof(in_buf); }
+EXPORT("output_capacity") int output_capacity(void){ return sizeof(out_buf); }
+
+static void reset_run(int checked){
+    hp=1; interactions=0; aborted=0; opos=0; status=OK; strict=checked;
+    sp=0; n_free=0; n_bnd=0; name_ctr=0; parse_depth=0; reduce_depth=0;
+    STEPCAP=50000000; output_limit=sizeof(out_buf)-1;
+}
+
+EXPORT("run_checked") int run_checked(int in_len, int steps, int max_output){
+    reset_run(1);
+    if (in_len <= 0 || in_len >= (int)sizeof(in_buf)){ fail(INPUT_ERROR); return status; }
+    if (steps < 0 || steps > 50000000 || max_output < 0 || max_output >= (int)sizeof(out_buf)){
+        fail(LIMIT_ERROR); return status;
+    }
+    STEPCAP=steps; output_limit=(u32)max_output;
+    for (int i=0;i<in_len;i++) if (!in_buf[i]){ fail(PARSE_ERROR); return status; }
+    in_buf[in_len]=0; P=(const char*)in_buf;
+    u64 t=parse_term(); ws();
+    if (*P) fail(PARSE_ERROR);
+    if (!aborted){ u64 nf=normal(t); if (!aborted) show(nf); }
+    if (aborted) opos=0;
+    return status;
+}
+
 EXPORT("run") int run(int in_len){
-    hp = 1; interactions = 0; aborted = 0; opos = 0;
-    sp = 0; n_free = 0; n_bnd = 0; name_ctr = 0;
-    if (in_len < 0 || in_len >= (int)sizeof(in_buf)) return -1;
-    in_buf[in_len] = 0;
-    P = (const char*)in_buf;
-    u64 t = parse_term();
-    u64 nf = normal(t);
-    if (aborted){ opos = 0; emits("ABORTED"); return opos; }
+    reset_run(0);
+    if (in_len < 0 || in_len >= (int)sizeof(in_buf)){ fail(INPUT_ERROR); return -1; }
+    in_buf[in_len]=0; P=(const char*)in_buf;
+    u64 t=parse_term(); u64 nf=normal(t);
+    if (aborted){ opos=0; aborted=0; emits("ABORTED"); return opos; }
     show(nf);
     return (int)opos;
 }

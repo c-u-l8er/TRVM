@@ -45,7 +45,7 @@
 // repositories and deploy on their own schedule, so "does this site know about
 // T&R yet" is a question that gets asked from a browser console, and a stale
 // version number is the one thing that makes it unanswerable.
-const VERSION = "0.12.3";
+const VERSION = "0.13.0";
 
 // The wordmark in the bar's brand link. Named rather than typed inline because
 // the placement band suppresses itself against it (see `renderPlacement`), and
@@ -193,12 +193,17 @@ const LINKS = {
     status: "v0.1.0-alpha",
     tier: "alpha",
   },
-  webhost: {
-    label: "WebHost.Systems",
-    tagline: "Hosting + Supabase dashboard",
-    href: "https://webhost.systems",
-    status: "in dev",
-    tier: "alpha",
+  locu: {
+    label: "locu.systems",
+    tagline: "A host for ComputeDriven loci",
+    href: "https://locu.systems",
+    // "spec only", not the "in dev" this carried while it was WebHost.Systems.
+    // The direction was ruled 2026-09-14 and written to docs/spec/90_LOCUS_HOSTING.md;
+    // nothing on the domain has hosted a locus, admitted a transition or charged
+    // anyone. The surface's own record says so and its gate enforces it, so the
+    // nav must not claim more here than the page claims about itself.
+    status: "spec only",
+    tier: "spec",
   },
 
   // Academy — the institutional loop: systems that teach & prove cognition.
@@ -765,7 +770,7 @@ const PROPERTY_MAP = {
   specprompt: { category: "stack", item: "specprompt" },
   delegatic: { category: "stack", item: "delegatic" },
   agentromatic: { category: "stack", item: "agentromatic" },
-  webhost: { category: "stack", item: "webhost" },
+  locu: { category: "stack", item: "locu" },
   ampersand: { category: "stack", item: "ampersand" },
   pulse: { category: "stack", item: "pulse" },
   prism: { category: "stack", item: "prism" },
@@ -905,12 +910,19 @@ const PLACEMENT = {
     rung: null,
   },
   delegatic: { name: "Delegatic", place: 2, layer: "authorization", rung: "live_deployed" },
-  webhost: {
-    name: "WebHost.Systems",
+  locu: {
+    name: "locu.systems",
     place: 2,
     layer: "runtime",
-    // Plan §5: no index.html in tree, so there is no marketing surface to
-    // place. Whether it is built or demoted to place 3 is [TRAVIS].
+    // The note here used to say there was no index.html in the tree and so no
+    // marketing surface to place. There is one now, generated and gated, and
+    // "runtime" finally fits what the surface is: a host for loci.
+    //
+    // The rung stays null ON PURPOSE. The surface prints "?" precisely because
+    // this table records nothing, and its launch gate enforces the pair in both
+    // directions. A direction ruled and written would support `spec`, but that
+    // is an evidence claim for whoever can witness it, not a side effect of a
+    // rename. Moving it means moving the surface's record in the same commit.
     rung: null,
   },
 
@@ -1171,7 +1183,7 @@ const CATEGORIES = [
       },
       {
         label: "Runtime",
-        items: ["opensentience", "webhost"],
+        items: ["opensentience", "locu"],
       },
     ],
     // The same argument as Factory's banner, applied to the other operation.
@@ -1216,7 +1228,7 @@ const CATEGORIES = [
       },
       {
         label: "World & runtime",
-        items: ["wrl", "trvm", "wrlm", "traaviis", "webhost"],
+        items: ["wrl", "trvm", "wrlm", "traaviis", "locu"],
       },
     ],
     // Third banner, same argument as Factory's and Compose's applied to this menu. Factory leads

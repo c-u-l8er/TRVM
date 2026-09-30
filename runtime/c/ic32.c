@@ -80,10 +80,7 @@ static void check_steps(void){
 // ---------------------------------------------------------------- reduction
 static Term whnf(Term t);
 
-// fire a floating DUP node at slot D, color L, demanded from side k (0|1)
-static Term fire(uint32_t D, uint32_t L, int k){
-    interactions++; check_steps();
-    Term v = whnf(heap[D]);
+static Term fire_value(uint32_t D, uint32_t L, int k, Term v){
     int vt = TAG(v);
     Term h0, h1;
     if (vt == T_SUP){
@@ -164,40 +161,74 @@ static void collect(Term root){
     }
 }
 
+// The original entry point, kept for callers outside this file (the governance
+// film bridge calls it): count the interaction, reduce the dup's value, fire.
+static Term whnf(Term t);
+static Term fire(uint32_t D, uint32_t L, int k){
+    interactions++; check_steps();
+    return fire_value(D, L, k, whnf(heap[D]));
+}
+
+// Weak head normal form with an explicit continuation stack.
+//
+// The previous version recursed twice: `fire` called whnf on the dup's value
+// and the APP case called whnf on the function position. On cnot_16 (0.9M
+// interactions) that recursion overflowed the default 8 MB C stack and the
+// process died with SIGSEGV; HVM4 completes the same program. Both recursions
+// are now frames on a growable heap-allocated stack. Rule order, allocation
+// order, free order and the interaction count are unchanged: every branch
+// below does exactly what the recursive version did at the same point.
+typedef struct { uint32_t kind; uint32_t at; uint32_t lab; int k; } WFrame;   // kind: 0 = APP at, 1 = DUP at/lab/k
+static WFrame* wstk_f = NULL; static long wcap_f = 0, wsp_f = 0;
+static inline void wpush(WFrame f){
+    if (wsp_f >= wcap_f){ wcap_f = wcap_f ? wcap_f*2 : (1<<16); wstk_f = (WFrame*)realloc(wstk_f, wcap_f*sizeof(WFrame)); }
+    wstk_f[wsp_f++] = f;
+}
 static Term whnf(Term t){
+    long base = wsp_f;
     for (;;){
         int tag = TAG(t);
         if (tag == T_VAR){
             Term w = heap[ADDR(t)];
             if (ISSUB(w)){ t = CLRSUB(w); continue; }
-            return t;                          // free / unsubstituted
-        }
-        if (tag == T_DP0 || tag == T_DP1){
+            // free / unsubstituted: a value for the frames below
+        } else if (tag == T_DP0 || tag == T_DP1){
             uint32_t D = ADDR(t);
             Term w = heap[D];
             if (ISSUB(w)){ t = CLRSUB(w); continue; }   // sibling already fired
-            t = fire(D, LAB(t), tag == T_DP0 ? 0 : 1);
-            continue;
-        }
-        if (tag == T_APP){
+            interactions++; check_steps();               // where `fire` counted it
+            wpush((WFrame){1, D, LAB(t), tag == T_DP0 ? 0 : 1});
+            t = heap[D]; continue;                        // reduce the dup's value first
+        } else if (tag == T_APP){
             uint32_t A = ADDR(t);
-            Term f = whnf(heap[A]);
-            int ft = TAG(f);
-            if (ft == T_LAM){                  // APP-LAM
-                interactions++; check_steps();
-                uint32_t Lv = ADDR(f);
-                Term arg = heap[A+1];
-                Term bod = heap[Lv];
-                heap[Lv] = SETSUB(arg);
-                FREE2(A);                      // the consumed application node is dead
-                t = bod; continue;
-            }
-            if (ft == T_SUP){ t = app_sup(f, heap[A+1]); FREE2(A); continue; }
-            if (ft == T_ERA){ interactions++; check_steps(); collect(heap[A+1]); FREE2(A); t = MK(T_ERA,0,0); continue; }
-            heap[A] = f;                       // stuck: memoize reduced fun
-            return MK(T_APP,0,A);
+            wpush((WFrame){0, A, 0, 0});
+            t = heap[A]; continue;                        // reduce the function position first
         }
-        return t;                              // LAM, SUP, ERA
+        // t is in weak head normal form: LAM, SUP, ERA, free VAR or stuck APP.
+        int entered = 0;
+        while (wsp_f > base){
+            WFrame f = wstk_f[--wsp_f];
+            if (f.kind == 0){
+                uint32_t A = f.at; int ft = TAG(t);
+                if (ft == T_LAM){                  // APP-LAM
+                    interactions++; check_steps();
+                    uint32_t Lv = ADDR(t);
+                    Term arg = heap[A+1];
+                    Term bod = heap[Lv];
+                    heap[Lv] = SETSUB(arg);
+                    FREE2(A);                      // the consumed application node is dead
+                    t = bod; entered = 1; break;
+                }
+                if (ft == T_SUP){ t = app_sup(t, heap[A+1]); FREE2(A); entered = 1; break; }
+                if (ft == T_ERA){ interactions++; check_steps(); collect(heap[A+1]); FREE2(A); t = MK(T_ERA,0,0); entered = 1; break; }
+                heap[A] = t;                       // stuck: memoize reduced fun; still a value
+                t = MK(T_APP,0,A);
+            } else {
+                t = fire_value(f.at, f.lab, f.k, t); entered = 1; break;
+            }
+        }
+        if (entered) continue;
+        return t;                                  // no pending frame: done
     }
 }
 

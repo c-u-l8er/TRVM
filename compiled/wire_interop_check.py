@@ -44,6 +44,12 @@ s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM); s.connect(path)
 send(s, {"op": "stats"}); stats = recv(s); s.close()
 
 lat.sort()
+# A control that cannot fail reports "failing: none". Reviewed 2026-09-22: this script
+# printed `digest_matches: false` and still exited 0, so a wrong digest looked like a pass
+# to anything reading the exit code. It now REFUSES, and --expect-mismatch is the negative
+# control that proves the refusal can fire.
+expect_mismatch = "--expect-mismatch" in sys.argv
+ok = digests == {meta["nf_sha256"]}
 print(json.dumps({
     "jobs": n_jobs,
     "nf_sha256_returned": sorted(digests),
@@ -53,4 +59,11 @@ print(json.dumps({
     "p50_ms": round(st.median(lat), 3), "min_ms": round(lat[0], 3), "max_ms": round(lat[-1], 3),
     "cold_first_job_ms": round(lat[0], 3) if n_jobs == 1 else None,
     "served": stats.get("served"), "pool": stats.get("pool"),
+    "verdict": ("REFUSED: digest mismatch" if not ok else "OK"),
 }, indent=1))
+
+if expect_mismatch:
+    # negative control: the run is a PASS only if the digest did NOT match.
+    sys.exit(0 if not ok else 4)
+if not ok:
+    sys.exit(5)
